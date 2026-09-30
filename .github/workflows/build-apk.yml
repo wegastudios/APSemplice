@@ -20,7 +20,17 @@ jobs:
           gradle-version: 8.9
       - name: Unit test
         run: gradle :app:testDebugUnitTest --no-daemon
+      - name: Prepare signing key
+        env:
+          KS_B64: ${{ secrets.APS_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/apsemplice.p12"
+            echo "APS_KEYSTORE=$RUNNER_TEMP/apsemplice.p12" >> "$GITHUB_ENV"
+          fi
       - name: Build debug APK
+        env:
+          APS_KEYSTORE_PASSWORD: ${{ secrets.APS_KEYSTORE_PASSWORD }}
         run: gradle :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:

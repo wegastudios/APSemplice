@@ -21,7 +21,26 @@ android {
         buildConfigField("boolean", "CLOUD_ENABLED", "false")
     }
 
+    // Firma fissa per le build di test: con la stessa chiave Android accetta gli aggiornamenti
+    // sopra la versione già installata (senza disinstallare e perdere i dati).
+    // La chiave arriva dai segreti di GitHub Actions; in locale/senza segreti si usa la chiave di debug.
+    val sharedKeystore = System.getenv("APS_KEYSTORE")
+    if (sharedKeystore != null) {
+        signingConfigs {
+            create("shared") {
+                storeFile = file(sharedKeystore)
+                storeType = "pkcs12"
+                storePassword = System.getenv("APS_KEYSTORE_PASSWORD")
+                keyAlias = "apsemplice"
+                keyPassword = System.getenv("APS_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (sharedKeystore != null) signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
