@@ -50,3 +50,13 @@ Prossimi passi lato app: far passare le azioni della UI per `Permissions.can(rol
 - Nessuna migrazione Room ancora (versione 1, schema esportato in `app/schemas`).
 - Niente PDF: solo CSV.
 - Ricerca/filtri di prima nota limitati ad anno solare e conto.
+
+## Soci, tessere e iscrizioni alle attività (v0.2)
+
+- **Numero tessera** (`members.cardNumber`): testo libero, assegnato a mano e modificabile. Univoco tra i soci (confronto senza maiuscole/minuscole) sia nel repository (`CardNumberTakenException` con messaggio chiaro) sia con indice UNIQUE nel database. Più soci possono essere senza tessera (NULL). "Prossimo libero" propone max(numeri) + 1.
+- **Import soci da CSV** (`importer/MemberImport.kt`): separatore `;` `,` o tab, colonne riconosciute per nome in qualunque ordine, UTF-8 o Windows-1252. Prima di scrivere si produce un *piano* (nuovo / aggiorna / errore) mostrato in anteprima. Riconoscimento di un socio già presente: tessera, poi codice fiscale, poi nome+cognome univoco. Sono scartate le righe con tessera di un'altra persona, tessere o codici fiscali duplicati nel file, nome o cognome mancanti. L'applicazione è una sola transazione (tutto o niente). Opzione per segnare gli importati come iscritti all'anno sociale corrente.
+- **Iscrizione alle attività** (`enrollments`): `startMonth` = primo mese dovuto; `endMonth` = ultimo mese dovuto se il socio è stato cancellato (null = attivo). La cancellazione non elimina nulla: i pagamenti restano registrati e si può riattivare.
+- **Situazione pagamenti** (`domain/PaymentCalc.kt`): per socio e attività, mese per mese dovuto (quota mensile dell'attività, da `startMonth` a `endMonth` o al mese corrente, dentro l'anno sociale) contro versato (incassi con `activityId` + `memberId`, attribuiti al `competenceMonth`). Saldo = versato − dovuto; mesi pagati in anticipo contano come credito.
+
+### Database in fase bozza
+La versione 2 dello schema ricrea il database (`fallbackToDestructiveMigration`): i dati di prova si perdono a ogni cambio di schema. **Va sostituito con migrazioni reali prima di usare l'app con dati veri.**

@@ -11,3 +11,4 @@
 *.keystore
 *.jks
 /dist/
+/APSemplice-debug.apk

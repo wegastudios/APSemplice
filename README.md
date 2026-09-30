@@ -7,6 +7,7 @@ App Android per la prima nota, la cassa e il bilancio di un'associazione di prom
 - **Più conti**: cassa contanti, conti correnti, conto POS… ognuno con il suo saldo; giroconti tra conti; **verifica saldo** con rettifica per far coincidere app e realtà.
 - **Incasso multi-voce**: es. socio yoga = iscrizione (se non ancora socio nell'anno) + mensilità, in un solo incasso, con **calcolo del resto** e suggerimento dei tagli quando si paga in contanti.
 - Spese e rimborsi (istruttori, soci) collegabili ad attività e beneficiario.
+- **Soci** con numero tessera univoco (assegnabile a mano), ricerca e **import da CSV**; iscrizione e cancellazione dalle attività con **situazione pagamenti** mese per mese.
 - Export **CSV** (compatibile Excel italiano): prima nota, rendiconto annuale, report attività.
 
 Stato: **v0.1, solo locale**. Login Google, sync cloud, abbonamento/verifica titolarità e plugin WordPress sono *predisposti* (interfacce + documentazione) ma non implementati.
