@@ -2,7 +2,7 @@ package it.apsemplice.app.export
 
 import it.apsemplice.app.core.Money
 import it.apsemplice.app.core.itFormat
-import it.apsemplice.app.data.AcademicYearReport
+import it.apsemplice.app.data.SocialYearReport
 import it.apsemplice.app.data.PeriodReport
 import it.apsemplice.app.data.TxRow
 import java.time.LocalDate
@@ -17,7 +17,7 @@ object CsvExporter {
     private fun line(vararg cells: String?) = cells.joinToString(";") { cell(it) } + "\r\n"
 
     fun ledger(rows: List<TxRow>): String = buildString {
-        append(line("Data", "Tipo", "Conto", "Modalità", "Voce", "Attività", "Socio", "Descrizione", "Competenza", "Riferimento", "Entrata", "Uscita"))
+        append(line("Data", "Tipo", "Conto", "Modalità", "Voce", "Attività", "N. tessera", "Socio", "Descrizione", "Competenza", "Riferimento", "Entrata", "Uscita"))
         for (r in rows) {
             val t = r.tx
             val plus = if (t.type.sign > 0) Money.plain(t.amountCents) else ""
@@ -26,7 +26,7 @@ object CsvExporter {
                 line(
                     LocalDate.parse(t.date).itFormat(), t.type.label, r.accountName, t.method.label,
                     if (t.type.isTransfer) "Giroconto" else r.categoryName,
-                    r.activityName, r.memberName, t.description, t.competenceMonth, t.documentRef, plus, minus,
+                    r.activityName, r.memberCard, r.memberName, t.description, t.competenceMonth, t.documentRef, plus, minus,
                 ),
             )
         }
@@ -53,8 +53,8 @@ object CsvExporter {
         append(line("Avanzo / disavanzo", "", Money.plain(r.result)))
     }
 
-    fun academicYearReport(r: AcademicYearReport, associationName: String): String = buildString {
-        append(line("Valutazione anno accademico", r.year.label, associationName))
+    fun socialYearReport(r: SocialYearReport, associationName: String): String = buildString {
+        append(line("Valutazione anno sociale", r.year.label, associationName))
         append(line("Soci iscritti", r.membersCount.toString()))
         append("\r\n")
         append(line("ATTIVITÀ", "Iscritti", "Incassi", "Costi", "Resta all'associazione"))

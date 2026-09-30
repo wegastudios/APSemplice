@@ -43,7 +43,7 @@ class ExpenseVm(private val c: AppContainer) : ViewModel() {
     val accounts = c.repo.observeAccounts().stateIn(viewModelScope, hot, emptyList())
     val categories = c.repo.observeCategories().stateIn(viewModelScope, hot, emptyList())
     val members = c.repo.observeMembers().stateIn(viewModelScope, hot, emptyList())
-    val activities = c.repo.observeActivities(c.reports.currentAcademicYear().label).stateIn(viewModelScope, hot, emptyList())
+    val activities = c.repo.observeActivities(c.reports.currentSocialYear().label).stateIn(viewModelScope, hot, emptyList())
     val balances = c.repo.observeBalances().stateIn(viewModelScope, hot, emptyList())
 
     private val _saved = MutableStateFlow(false)
@@ -115,7 +115,7 @@ fun ExpenseScreen(onBack: () -> Unit) {
                 { activityId = it?.id }, Modifier.fillMaxWidth(), noneLabel = "Nessuna (costo generale)",
             )
             Picker(
-                "Beneficiario", members, members.firstOrNull { it.id == memberId }, { it.fullName },
+                "Beneficiario", members, members.firstOrNull { it.id == memberId }, { it.displayLabel() },
                 { memberId = it?.id }, Modifier.fillMaxWidth(), noneLabel = "Nessuno / fornitore",
             )
             TextInput(description, { description = it }, "Descrizione", Modifier.fillMaxWidth())

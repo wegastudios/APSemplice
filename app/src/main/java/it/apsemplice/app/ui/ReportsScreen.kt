@@ -27,7 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import it.apsemplice.app.AppContainer
 import it.apsemplice.app.core.Money
-import it.apsemplice.app.data.AcademicYearReport
+import it.apsemplice.app.data.SocialYearReport
 import it.apsemplice.app.data.PeriodReport
 import it.apsemplice.app.export.CsvExporter
 import it.apsemplice.app.export.Sharing
@@ -41,16 +41,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-enum class ReportMode(val label: String) { SOLAR("Anno solare (commercialista)"), ACADEMIC("Anno accademico (attività)") }
+enum class ReportMode(val label: String) { SOLAR("Anno solare (commercialista)"), SOCIAL("Anno sociale (attività)") }
 
 class ReportsVm(private val c: AppContainer) : ViewModel() {
     val mode = MutableStateFlow(ReportMode.SOLAR)
     val year = MutableStateFlow(LocalDate.now().year)             // anno solare
-    val academicStart = MutableStateFlow(c.reports.currentAcademicYear().startYear)
+    val socialStart = MutableStateFlow(c.reports.currentSocialYear().startYear)
 
-    private data class Key(val mode: ReportMode, val year: Int, val academic: Int, val tick: Int)
+    private data class Key(val mode: ReportMode, val year: Int, val social: Int, val tick: Int)
 
-    private val key = combine(mode, year, academicStart, c.repo.observeChanges()) { m, y, a, t -> Key(m, y, a, t) }
+    private val key = combine(mode, year, socialStart, c.repo.observeChanges()) { m, y, a, t -> Key(m, y, a, t) }
 
     val period = key.flatMapLatest { k ->
         flow {
@@ -58,15 +58,15 @@ class ReportsVm(private val c: AppContainer) : ViewModel() {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null as PeriodReport?)
 
-    val academic = key.flatMapLatest { k ->
+    val social = key.flatMapLatest { k ->
         flow {
-            emit(if (k.mode == ReportMode.ACADEMIC) c.reports.academicYearReport(c.reports.academicYear(k.academic)) else null)
+            emit(if (k.mode == ReportMode.SOCIAL) c.reports.socialYearReport(c.reports.socialYear(k.social)) else null)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null as AcademicYearReport?)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null as SocialYearReport?)
 
     private fun range(): Pair<LocalDate, LocalDate> =
         if (mode.value == ReportMode.SOLAR) LocalDate.of(year.value, 1, 1) to LocalDate.of(year.value, 12, 31)
-        else c.reports.academicYear(academicStart.value).let { it.start to it.end }
+        else c.reports.socialYear(socialStart.value).let { it.start to it.end }
 
     /** (nome file, contenuto) della prima nota del periodo selezionato. */
     suspend fun ledgerCsv(): Pair<String, String> {
@@ -80,8 +80,8 @@ class ReportsVm(private val c: AppContainer) : ViewModel() {
             val (from, to) = range()
             "rendiconto-$from-$to.csv" to CsvExporter.periodReport(c.reports.periodReport(from, to), name)
         } else {
-            val ay = c.reports.academicYear(academicStart.value)
-            "attivita-${ay.label.replace('/', '-')}.csv" to CsvExporter.academicYearReport(c.reports.academicYearReport(ay), name)
+            val ay = c.reports.socialYear(socialStart.value)
+            "attivita-${ay.label.replace('/', '-')}.csv" to CsvExporter.socialYearReport(c.reports.socialYearReport(ay), name)
         }
     }
 }
@@ -91,9 +91,9 @@ fun ReportsScreen() {
     val vm = appViewModel { ReportsVm(it) }
     val mode by vm.mode.collectAsStateWithLifecycle()
     val year by vm.year.collectAsStateWithLifecycle()
-    val academicStart by vm.academicStart.collectAsStateWithLifecycle()
+    val socialStart by vm.socialStart.collectAsStateWithLifecycle()
     val period by vm.period.collectAsStateWithLifecycle()
-    val academic by vm.academic.collectAsStateWithLifecycle()
+    val social by vm.social.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -113,9 +113,9 @@ fun ReportsScreen() {
                     Text("Anno $year", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = { vm.year.value = year + 1 }) { Text("›") }
                 } else {
-                    TextButton(onClick = { vm.academicStart.value = academicStart - 1 }) { Text("‹") }
-                    Text("A.A. ${academic?.year?.label ?: ""}", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = { vm.academicStart.value = academicStart + 1 }) { Text("›") }
+                    TextButton(onClick = { vm.socialStart.value = socialStart - 1 }) { Text("‹") }
+                    Text("A.S. ${social?.year?.label ?: ""}", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { vm.socialStart.value = socialStart + 1 }) { Text("›") }
                 }
             }
 
@@ -141,7 +141,7 @@ fun ReportsScreen() {
                 }
             }
 
-            academic?.let { r ->
+            social?.let { r ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         LabeledRow("Soci iscritti") { Text("${r.membersCount}") }

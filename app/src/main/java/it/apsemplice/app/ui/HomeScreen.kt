@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import it.apsemplice.app.AppContainer
 import it.apsemplice.app.core.Money
-import it.apsemplice.app.data.AcademicYearReport
+import it.apsemplice.app.data.SocialYearReport
 import it.apsemplice.app.data.AccountBalance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,13 +42,13 @@ class HomeVm(private val c: AppContainer) : ViewModel() {
     val balances: StateFlow<List<AccountBalance>> =
         c.repo.observeBalances().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _report = MutableStateFlow<AcademicYearReport?>(null)
-    val report: StateFlow<AcademicYearReport?> = _report
+    private val _report = MutableStateFlow<SocialYearReport?>(null)
+    val report: StateFlow<SocialYearReport?> = _report
 
     init {
         viewModelScope.launch {
             c.repo.observeChanges().collect {
-                _report.value = c.reports.academicYearReport(c.reports.currentAcademicYear())
+                _report.value = c.reports.socialYearReport(c.reports.currentSocialYear())
             }
         }
     }
@@ -91,7 +91,7 @@ fun HomeScreen(go: (String) -> Unit) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Anno accademico ${r.year.label}", style = MaterialTheme.typography.titleMedium)
+                            Text("Anno sociale ${r.year.label}", style = MaterialTheme.typography.titleMedium)
                             LabeledRow("Soci iscritti") { Text("${r.membersCount}") }
                             LabeledRow("Entrate") { MoneyText(r.totalIncome) }
                             LabeledRow("Uscite") { MoneyText(r.totalExpense) }

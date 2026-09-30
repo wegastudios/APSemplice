@@ -20,9 +20,9 @@ Kotlin, Jetpack Compose (Material 3), Room (SQLite), ViewModel + Flow, Navigatio
 ### Due viste sugli stessi dati
 
 - **Anno solare** → `ReportService.periodReport(1/1, 31/12)`: saldi iniziali/finali per conto, entrate/uscite per voce di rendiconto (`categories.fiscalGroup`), avanzo. È il rendiconto per cassa da dare al commercialista, insieme alla prima nota CSV.
-- **Anno accademico** → `ReportService.academicYearReport(anno)`: per ogni attività incassi − costi = quanto resta all'associazione, più entrate/uscite generali (quote associative, affitto…) e numero soci. Le attività appartengono a un anno accademico; i movimenti sono collegati all'attività con `activityId`.
+- **Anno sociale** → `ReportService.socialYearReport(anno)`: per ogni attività incassi − costi = quanto resta all'associazione, più entrate/uscite generali (quote associative, affitto…) e numero soci. Le attività appartengono a un anno sociale; i movimenti sono collegati all'attività con `activityId`.
 
-Iscrizione all'associazione: tabella `memberships` (socio × anno accademico), creata automaticamente quando si incassa una voce di categoria "Quota associativa" per un socio. Serve a proporre l'iscrizione solo a chi non è già socio nell'anno.
+Iscrizione all'associazione: tabella `memberships` (socio × anno sociale), creata automaticamente quando si incassa una voce di categoria "Quota associativa" per un socio. Serve a proporre l'iscrizione solo a chi non è già socio nell'anno.
 
 ### Da verificare con il commercialista
 

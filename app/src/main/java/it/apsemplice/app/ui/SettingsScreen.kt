@@ -34,7 +34,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     var name by remember { mutableStateOf(profile.associationName) }
     var taxCode by remember { mutableStateOf(profile.taxCode) }
-    var startMonth by remember { mutableStateOf(profile.academicYearStartMonth) }
+    var startMonth by remember { mutableStateOf(profile.socialYearStartMonth) }
     var fee by remember { mutableStateOf(Money.plain(profile.membershipFeeCents)) }
     var entitlement by remember { mutableStateOf<Entitlement?>(null) }
     LaunchedEffect(Unit) { entitlement = container.license.current() }
@@ -48,7 +48,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             TextInput(name, { name = it }, "Denominazione", Modifier.fillMaxWidth())
             TextInput(taxCode, { taxCode = it.uppercase() }, "Codice fiscale", Modifier.fillMaxWidth())
             Picker(
-                "L'anno accademico inizia a", (1..12).toList(), startMonth,
+                "L'anno sociale inizia a", (1..12).toList(), startMonth,
                 { Month.of(it).getDisplayName(TextStyle.FULL, Locale.ITALY) },
                 { it?.let { m -> startMonth = m } }, Modifier.fillMaxWidth(),
             )
@@ -58,7 +58,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     settings.update(
                         profile.copy(
                             associationName = name.trim(), taxCode = taxCode.trim(),
-                            academicYearStartMonth = startMonth, membershipFeeCents = Money.parse(fee) ?: profile.membershipFeeCents,
+                            socialYearStartMonth = startMonth, membershipFeeCents = Money.parse(fee) ?: profile.membershipFeeCents,
                         ),
                     )
                     onBack()

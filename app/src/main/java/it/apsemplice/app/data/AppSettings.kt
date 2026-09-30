@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 data class Profile(
     val associationName: String = "",
     val taxCode: String = "",
-    /** Mese di inizio dell'anno accademico (9 = settembre). */
-    val academicYearStartMonth: Int = 9,
+    /** Mese di inizio dell'anno sociale (9 = settembre). */
+    val socialYearStartMonth: Int = 9,
     /** Quota associativa proposta negli incassi. */
     val membershipFeeCents: Long = 1000,
 )
@@ -23,7 +23,7 @@ class AppSettings(context: Context) {
         prefs.edit()
             .putString("name", profile.associationName)
             .putString("taxCode", profile.taxCode)
-            .putInt("ayStartMonth", profile.academicYearStartMonth)
+            .putInt("syStartMonth", profile.socialYearStartMonth)
             .putLong("membershipFee", profile.membershipFeeCents)
             .apply()
         _profile.value = profile
@@ -32,7 +32,7 @@ class AppSettings(context: Context) {
     private fun load() = Profile(
         associationName = prefs.getString("name", "") ?: "",
         taxCode = prefs.getString("taxCode", "") ?: "",
-        academicYearStartMonth = prefs.getInt("ayStartMonth", 9),
+        socialYearStartMonth = prefs.getInt("syStartMonth", 9),
         membershipFeeCents = prefs.getLong("membershipFee", 1000),
     )
 }

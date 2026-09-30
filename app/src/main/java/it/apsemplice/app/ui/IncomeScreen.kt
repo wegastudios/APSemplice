@@ -96,7 +96,7 @@ class IncomeVm(private val c: AppContainer) : ViewModel() {
     val accounts = repo.observeAccounts().hot(emptyList())
     val members = repo.observeMembers().hot(emptyList())
     val categories = repo.observeCategories().hot(emptyList())
-    val activities = repo.observeActivities(c.reports.currentAcademicYear().label).hot(emptyList())
+    val activities = repo.observeActivities(c.reports.currentSocialYear().label).hot(emptyList())
     val membershipFeeCents: Long get() = c.settings.profile.membershipFeeCents
 
     private val _ui = MutableStateFlow(IncomeUi())
@@ -123,9 +123,14 @@ class IncomeVm(private val c: AppContainer) : ViewModel() {
     fun setTendered(s: String) = _ui.update { it.copy(tenderedText = s) }
     fun setDocumentRef(s: String) = _ui.update { it.copy(documentRef = s) }
 
+    /** Attività a cui il socio scelto è iscritto: sono quelle proposte per prime nelle mensilità. */
+    private val _memberActivityIds = MutableStateFlow<Set<String>>(emptySet())
+    val memberActivityIds: StateFlow<Set<String>> = _memberActivityIds
+
     fun setMember(id: String?) {
         _ui.update { it.copy(memberId = id, memberIsEnrolled = false) }
         refreshEnrollment()
+        viewModelScope.launch { _memberActivityIds.value = if (id == null) emptySet() else repo.activeActivityIds(id) }
     }
 
     private fun refreshEnrollment() {
@@ -146,12 +151,17 @@ class IncomeVm(private val c: AppContainer) : ViewModel() {
 
     fun addMembershipLine() {
         val cat = categories.value.firstOrNull { it.kind == CategoryKind.MEMBERSHIP } ?: return
-        addLine("Quota associativa ${c.reports.currentAcademicYear().label}", cat, cents = membershipFeeCents)
+        addLine("Quota associativa ${c.reports.currentSocialYear().label}", cat, cents = membershipFeeCents)
     }
 
     fun addActivityLine(a: ActivityEntity) {
         val cat = categories.value.firstOrNull { it.kind == CategoryKind.ACTIVITY_FEE } ?: return
-        addLine(a.name, cat, a, YearMonth.from(_ui.value.date), a.defaultMonthlyFeeCents)
+        val memberId = _ui.value.memberId
+        viewModelScope.launch {
+            // Se il socio è iscritto, propone il primo mese ancora da pagare; altrimenti il mese della data.
+            val month = memberId?.let { repo.firstUnpaidMonth(a.id, it) } ?: YearMonth.from(_ui.value.date)
+            addLine(a.name, cat, a, month, a.defaultMonthlyFeeCents)
+        }
     }
 
     fun addOtherLine(cat: CategoryEntity) = addLine(cat.name, cat)
@@ -209,6 +219,7 @@ fun IncomeScreen(onBack: () -> Unit) {
     val members by vm.members.collectAsStateWithLifecycle()
     val categories by vm.categories.collectAsStateWithLifecycle()
     val activities by vm.activities.collectAsStateWithLifecycle()
+    val memberActivityIds by vm.memberActivityIds.collectAsStateWithLifecycle()
     var newMember by remember { mutableStateOf(false) }
 
     LaunchedEffect(ui.saved) { if (ui.saved) onBack() }
@@ -238,7 +249,7 @@ fun IncomeScreen(onBack: () -> Unit) {
 
             SectionTitle("Da chi")
             Picker(
-                "Socio", members, members.firstOrNull { it.id == ui.memberId }, { it.fullName },
+                "Socio", members, members.firstOrNull { it.id == ui.memberId }, { it.displayLabel() },
                 { vm.setMember(it?.id) }, Modifier.fillMaxWidth(), noneLabel = "Nessuno / anonimo",
             )
             TextButton(onClick = { newMember = true }) { Text("+ Nuovo socio") }
@@ -273,9 +284,12 @@ fun IncomeScreen(onBack: () -> Unit) {
                         onDismissRequest = { pickActivity = false },
                         title = { Text("Attività") },
                         text = {
+                            // Con un socio scelto, prima le attività a cui è iscritto.
+                            val sorted = activities.sortedByDescending { it.id in memberActivityIds }
                             Column {
-                                activities.forEach { a ->
-                                    TextButton(onClick = { vm.addActivityLine(a); pickActivity = false }) { Text(a.name) }
+                                sorted.forEach { a ->
+                                    val enrolledMark = if (a.id in memberActivityIds) " ✓ iscritto" else ""
+                                    TextButton(onClick = { vm.addActivityLine(a); pickActivity = false }) { Text(a.name + enrolledMark) }
                                 }
                             }
                         },
@@ -289,7 +303,7 @@ fun IncomeScreen(onBack: () -> Unit) {
                 )
             }
             if (activities.isEmpty()) {
-                Text("Nessuna attività per quest'anno accademico: creala dalla scheda Attività.", style = MaterialTheme.typography.bodySmall)
+                Text("Nessuna attività per quest'anno sociale: creala dalla scheda Attività.", style = MaterialTheme.typography.bodySmall)
             }
 
             SectionTitle("Totale")

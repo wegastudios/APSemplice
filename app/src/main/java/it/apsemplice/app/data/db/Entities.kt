@@ -46,9 +46,11 @@ data class AccountEntity(
     @Embedded val sync: SyncMeta = SyncMeta(),
 )
 
-@Entity(tableName = "members")
+@Entity(tableName = "members", indices = [Index(value = ["cardNumber"], unique = true)])
 data class MemberEntity(
     @PrimaryKey val id: String = newId(),
+    /** Numero di tessera: assegnato a mano, univoco (più soci senza tessera = null), modificabile. */
+    val cardNumber: String? = null,
     val firstName: String,
     val lastName: String,
     val taxCode: String? = null,
@@ -60,21 +62,21 @@ data class MemberEntity(
     val fullName: String get() = "$firstName $lastName".trim()
 }
 
-/** Iscrizione all'associazione per un anno accademico (es. "2025/2026"). */
-@Entity(tableName = "memberships", indices = [Index(value = ["memberId", "academicYear"], unique = true)])
+/** Iscrizione all'associazione per un anno sociale (es. "2025/2026"). */
+@Entity(tableName = "memberships", indices = [Index(value = ["memberId", "socialYear"], unique = true)])
 data class MembershipEntity(
     @PrimaryKey val id: String = newId(),
     val memberId: String,
-    val academicYear: String,
+    val socialYear: String,
     val transactionId: String? = null,
     @Embedded val sync: SyncMeta = SyncMeta(),
 )
 
-@Entity(tableName = "activities", indices = [Index("academicYear")])
+@Entity(tableName = "activities", indices = [Index("socialYear")])
 data class ActivityEntity(
     @PrimaryKey val id: String = newId(),
     val name: String,
-    val academicYear: String,
+    val socialYear: String,
     val instructorMemberId: String? = null,
     val defaultMonthlyFeeCents: Long = 0,
     val notes: String? = null,
@@ -87,8 +89,14 @@ data class EnrollmentEntity(
     @PrimaryKey val id: String = newId(),
     val activityId: String,
     val memberId: String,
+    /** Primo mese dovuto (yyyy-MM). */
+    val startMonth: String,
+    /** Ultimo mese dovuto (yyyy-MM) se il socio è stato cancellato dall'attività; null = iscrizione attiva. */
+    val endMonth: String? = null,
     @Embedded val sync: SyncMeta = SyncMeta(),
-)
+) {
+    val isActive: Boolean get() = endMonth == null
+}
 
 @Entity(tableName = "categories")
 data class CategoryEntity(

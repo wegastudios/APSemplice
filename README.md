@@ -3,7 +3,7 @@
 App Android per la prima nota, la cassa e il bilancio di un'associazione di promozione sociale (APS).
 
 - **Anno solare** per la contabilità legale (rendiconto per cassa e prima nota da consegnare al commercialista).
-- **Anno accademico** (mese di inizio configurabile, default settembre) per la gestione reale: quanto rende ogni attività e quanto resta all'associazione.
+- **Anno sociale** (mese di inizio configurabile, default settembre) per la gestione reale: quanto rende ogni attività e quanto resta all'associazione.
 - **Più conti**: cassa contanti, conti correnti, conto POS… ognuno con il suo saldo; giroconti tra conti; **verifica saldo** con rettifica per far coincidere app e realtà.
 - **Incasso multi-voce**: es. socio yoga = iscrizione (se non ancora socio nell'anno) + mensilità, in un solo incasso, con **calcolo del resto** e suggerimento dei tagli quando si paga in contanti.
 - Spese e rimborsi (istruttori, soci) collegabili ad attività e beneficiario.
@@ -16,7 +16,7 @@ Stato: **v0.1, solo locale**. Login Google, sync cloud, abbonamento/verifica tit
 1. Installa Android Studio (Ladybug o successivo) con JDK 17.
 2. `File > Open` sulla cartella del progetto e attendi la sync Gradle (Android Studio scarica il wrapper Gradle 8.9).
 3. Esegui il modulo `app` su emulatore o dispositivo (Android 8.0+, minSdk 26).
-4. Test unitari: `./gradlew test` (importi, resto, anno accademico).
+4. Test unitari: `./gradlew test` (importi, resto, anno sociale).
 
 > Il codice è stato scritto senza poterlo compilare nell'ambiente di sviluppo iniziale (nessun JDK/SDK disponibile): alla prima sync possono emergere piccoli errori di compilazione o versioni da aggiornare in `gradle/libs.versions.toml`.
 
@@ -24,7 +24,7 @@ Stato: **v0.1, solo locale**. Login Google, sync cloud, abbonamento/verifica tit
 
 ```
 app/src/main/java/it/apsemplice/app/
-  core/          Money (centesimi), AcademicYear, core/cloud (Auth, License, Sync, Roles: interfacce + versione locale)
+  core/          Money (centesimi), SocialYear, core/cloud (Auth, License, Sync, Roles: interfacce + versione locale)
   domain/        Enum di dominio, CashChange (resto)
   data/          Room (entità, DAO), LedgerRepository (regole di registrazione), ReportService, AppSettings
   export/        CSV + condivisione file

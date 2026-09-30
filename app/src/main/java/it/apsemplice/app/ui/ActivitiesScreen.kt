@@ -2,6 +2,7 @@
 
 package it.apsemplice.app.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,14 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,10 +31,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import it.apsemplice.app.AppContainer
-import it.apsemplice.app.core.AcademicYear
 import it.apsemplice.app.core.Money
-import it.apsemplice.app.data.AcademicYearReport
-import it.apsemplice.app.data.db.ActivityEntity
+import it.apsemplice.app.data.SocialYearReport
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,39 +43,29 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class ActivitiesVm(private val c: AppContainer) : ViewModel() {
-    val startYear = MutableStateFlow(c.reports.currentAcademicYear().startYear)
-    private val refresh = MutableStateFlow(0)
-    private fun ay(startYear: Int) = c.reports.academicYear(startYear)
+    val startYear = MutableStateFlow(c.reports.currentSocialYear().startYear)
+    private fun sy(startYear: Int) = c.reports.socialYear(startYear)
 
     val members = c.repo.observeMembers().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Si ricalcola quando cambiano le attività, la prima nota o le iscrizioni.
     val report = startYear.flatMapLatest { y ->
-        combine(c.repo.observeActivities(ay(y).label), c.repo.observeChanges(), refresh) { _, _, _ -> y }
-            .map { c.reports.academicYearReport(ay(it)) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null as AcademicYearReport?)
+        combine(c.repo.observeActivities(sy(y).label), c.repo.observeChanges(), c.repo.observeEnrollmentChanges()) { _, _, _ -> y }
+            .map { c.reports.socialYearReport(sy(it)) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null as SocialYearReport?)
 
     fun addActivity(name: String, feeCents: Long, instructorId: String?) {
-        viewModelScope.launch { c.repo.saveActivity(name, ay(startYear.value).label, feeCents, instructorId) }
-    }
-
-    fun enrollments(activityId: String) = c.repo.observeEnrollments(activityId)
-
-    fun setEnrolled(activityId: String, memberId: String, enrolled: Boolean) {
-        viewModelScope.launch {
-            c.repo.setEnrollment(activityId, memberId, enrolled)
-            refresh.value++
-        }
+        viewModelScope.launch { c.repo.saveActivity(name, sy(startYear.value).label, feeCents, instructorId) }
     }
 }
 
 @Composable
-fun ActivitiesScreen() {
+fun ActivitiesScreen(onOpen: (String) -> Unit) {
     val vm = appViewModel { ActivitiesVm(it) }
     val startYear by vm.startYear.collectAsStateWithLifecycle()
     val report by vm.report.collectAsStateWithLifecycle()
     val members by vm.members.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
-    var enrolling by remember { mutableStateOf<ActivityEntity?>(null) }
     val label = report?.year?.label ?: ""
 
     ScreenScaffold(
@@ -89,7 +75,7 @@ fun ActivitiesScreen() {
         Column(Modifier.padding(padding)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = { vm.startYear.value = startYear - 1 }) { Text("‹") }
-                Text("Anno accademico $label", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
+                Text("Anno sociale $label", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
                 TextButton(onClick = { vm.startYear.value = startYear + 1 }) { Text("›") }
             }
             LazyColumn(
@@ -99,14 +85,14 @@ fun ActivitiesScreen() {
                 val list = report?.activities.orEmpty()
                 if (list.isEmpty()) item { Text("Nessuna attività in questo anno. Aggiungine una con +.") }
                 items(list, key = { it.activity.id }) { s ->
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(Modifier.fillMaxWidth().clickable { onOpen(s.activity.id) }) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(s.activity.name, style = MaterialTheme.typography.titleMedium)
-                            Text("Mensilità ${Money.format(s.activity.defaultMonthlyFeeCents)} · ${s.participants} iscritti", style = MaterialTheme.typography.bodySmall)
+                            Text("Mensilità ${Money.format(s.activity.defaultMonthlyFeeCents)} · ${s.participants} iscritti attivi", style = MaterialTheme.typography.bodySmall)
                             LabeledRow("Incassi") { MoneyText(s.incomeCents) }
                             LabeledRow("Costi (istruttore, materiali)") { MoneyText(s.costCents) }
                             LabeledRow("Resta all'associazione") { MoneyText(s.marginCents, bold = true) }
-                            OutlinedButton(onClick = { enrolling = s.activity }) { Text("Iscritti al corso") }
+                            Text("Tocca per iscritti e pagamenti ›", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -127,29 +113,9 @@ fun ActivitiesScreen() {
             TextInput(name, { name = it }, "Nome (es. Yoga)", Modifier.fillMaxWidth())
             MoneyField(fee, { fee = it }, "Quota mensile", Modifier.fillMaxWidth())
             Picker(
-                "Istruttore", members, members.firstOrNull { it.id == instructor }, { it.fullName },
+                "Istruttore", members, members.firstOrNull { it.id == instructor }, { it.displayLabel() },
                 { instructor = it?.id }, Modifier.fillMaxWidth(), noneLabel = "Nessuno",
             )
         }
-    }
-
-    enrolling?.let { activity ->
-        val enrolled by vm.enrollments(activity.id).collectAsStateWithLifecycle(initialValue = emptyList())
-        val ids = enrolled.map { it.memberId }.toSet()
-        AlertDialog(
-            onDismissRequest = { enrolling = null },
-            title = { Text("Iscritti: ${activity.name}") },
-            text = {
-                LazyColumn {
-                    items(members, key = { it.id }) { m ->
-                        Row(Modifier.fillMaxWidth()) {
-                            Checkbox(checked = m.id in ids, onCheckedChange = { vm.setEnrolled(activity.id, m.id, it) })
-                            Text(m.fullName, modifier = Modifier.padding(top = 12.dp))
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { enrolling = null }) { Text("Fatto") } },
-        )
     }
 }

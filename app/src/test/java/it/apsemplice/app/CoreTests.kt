@@ -1,6 +1,6 @@
 package it.apsemplice.app
 
-import it.apsemplice.app.core.AcademicYear
+import it.apsemplice.app.core.SocialYear
 import it.apsemplice.app.core.Money
 import it.apsemplice.app.domain.CashChange
 import it.apsemplice.app.domain.CashChangeResult
@@ -58,15 +58,15 @@ class CashChangeTest {
     }
 }
 
-class AcademicYearTest {
+class SocialYearTest {
     @Test fun septemberStartsNewYear() {
-        assertEquals(2025, AcademicYear.forDate(LocalDate.of(2025, 9, 1), 9).startYear)
-        assertEquals(2025, AcademicYear.forDate(LocalDate.of(2026, 8, 31), 9).startYear)
-        assertEquals(2024, AcademicYear.forDate(LocalDate.of(2025, 8, 31), 9).startYear)
+        assertEquals(2025, SocialYear.forDate(LocalDate.of(2025, 9, 1), 9).startYear)
+        assertEquals(2025, SocialYear.forDate(LocalDate.of(2026, 8, 31), 9).startYear)
+        assertEquals(2024, SocialYear.forDate(LocalDate.of(2025, 8, 31), 9).startYear)
     }
 
     @Test fun rangeAndLabel() {
-        val ay = AcademicYear(2025, 9)
+        val ay = SocialYear(2025, 9)
         assertEquals("2025/2026", ay.label)
         assertEquals(LocalDate.of(2025, 9, 1), ay.start)
         assertEquals(LocalDate.of(2026, 8, 31), ay.end)

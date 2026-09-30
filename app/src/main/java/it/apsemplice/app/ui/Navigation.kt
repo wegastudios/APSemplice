@@ -18,10 +18,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 
 object Routes {
     const val HOME = "home"
@@ -34,6 +36,12 @@ object Routes {
     const val INCOME = "income"
     const val EXPENSE = "expense"
     const val TRANSFER = "transfer"
+    const val MEMBER = "member/{id}"
+    const val ACTIVITY = "activity/{id}"
+    const val IMPORT_MEMBERS = "import-members"
+
+    fun member(id: String) = "member/$id"
+    fun activity(id: String) = "activity/$id"
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
@@ -80,8 +88,17 @@ fun ApsNavHost() {
         NavHost(nav, startDestination = Routes.HOME, modifier = Modifier.padding(padding)) {
             composable(Routes.HOME) { HomeScreen(go) }
             composable(Routes.LEDGER) { LedgerScreen() }
-            composable(Routes.MEMBERS) { MembersScreen() }
-            composable(Routes.ACTIVITIES) { ActivitiesScreen() }
+            composable(Routes.MEMBERS) {
+                MembersScreen(onOpen = { nav.navigate(Routes.member(it)) }, onNew = { nav.navigate(Routes.member("new")) }, onImport = { go(Routes.IMPORT_MEMBERS) })
+            }
+            composable(Routes.ACTIVITIES) { ActivitiesScreen(onOpen = { nav.navigate(Routes.activity(it)) }) }
+            composable(Routes.MEMBER, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+                MemberDetailScreen(e.arguments?.getString("id") ?: "new", back)
+            }
+            composable(Routes.ACTIVITY, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+                ActivityDetailScreen(e.arguments?.getString("id").orEmpty(), back)
+            }
+            composable(Routes.IMPORT_MEMBERS) { ImportMembersScreen(back) }
             composable(Routes.REPORTS) { ReportsScreen() }
             composable(Routes.ACCOUNTS) { AccountsScreen(back) }
             composable(Routes.SETTINGS) { SettingsScreen(back) }

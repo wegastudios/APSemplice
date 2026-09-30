@@ -16,7 +16,7 @@ import androidx.room.RoomDatabase
         TransactionEntity::class,
         CashCountEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +31,10 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         fun build(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "apsemplice.db").build()
+            Room.databaseBuilder(context, AppDatabase::class.java, "apsemplice.db")
+                // FASE BOZZA: a ogni cambio di schema il database di prova viene ricreato (dati persi).
+                // Da sostituire con migrazioni vere PRIMA di usare l'app con dati reali.
+                .fallbackToDestructiveMigration()
+                .build()
     }
 }

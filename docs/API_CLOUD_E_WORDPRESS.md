@@ -70,7 +70,7 @@ Il plugin è un **client del backend**, non dell'app: non parla col telefono.
 - **Sicurezza**: nonce WP + capability check lato WP, ma l'autorizzazione vera è sempre nel backend; HTTPS obbligatorio; rate limit; audit log (chi/quando/cosa) per ogni scrittura.
 
 Endpoint dati (comuni ad app e plugin), tutti sotto `/v1/associations/{id}/`:
-`accounts`, `members`, `memberships`, `activities`, `enrollments`, `categories`, `transactions` (POST = nuovo movimento, `POST .../{txId}/void`), `receipts` (incasso multi-voce), `transfers`, `cash-counts`, `reports/period?from&to`, `reports/academic-year/{label}`, `exports/ledger.csv`.
+`accounts`, `members`, `memberships`, `activities`, `enrollments`, `categories`, `transactions` (POST = nuovo movimento, `POST .../{txId}/void`), `receipts` (incasso multi-voce), `transfers`, `cash-counts`, `reports/period?from&to`, `reports/social-year/{label}`, `exports/ledger.csv`.
 
 ## 7. Ordine di lavoro consigliato
 

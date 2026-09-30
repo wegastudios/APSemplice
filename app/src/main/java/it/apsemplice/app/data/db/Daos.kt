@@ -36,21 +36,40 @@ interface MemberDao {
     @Query("SELECT * FROM members WHERE deletedAt IS NULL ORDER BY lastName, firstName")
     suspend fun getAll(): List<MemberEntity>
 
+    @Query("SELECT * FROM members WHERE id = :id")
+    fun observe(id: String): Flow<MemberEntity?>
+
+    @Query("SELECT * FROM members WHERE id = :id")
+    suspend fun get(id: String): MemberEntity?
+
+    /** Confronto senza maiuscole/minuscole: "a12" e "A12" sono la stessa tessera. */
+    @Query("SELECT * FROM members WHERE deletedAt IS NULL AND UPPER(cardNumber) = UPPER(:card) LIMIT 1")
+    suspend fun findByCard(card: String): MemberEntity?
+
+    @Query("SELECT cardNumber FROM members WHERE deletedAt IS NULL AND cardNumber IS NOT NULL")
+    suspend fun allCardNumbers(): List<String>
+
     @Upsert
     suspend fun upsert(entity: MemberEntity)
+
+    @Upsert
+    suspend fun upsertAll(entities: List<MemberEntity>)
 }
 
 @Dao
 interface MembershipDao {
-    @Query("SELECT * FROM memberships WHERE academicYear = :year AND deletedAt IS NULL")
+    @Query("SELECT * FROM memberships WHERE socialYear = :year AND deletedAt IS NULL")
     fun observeForYear(year: String): Flow<List<MembershipEntity>>
 
-    @Query("SELECT * FROM memberships WHERE academicYear = :year AND deletedAt IS NULL")
+    @Query("SELECT * FROM memberships WHERE socialYear = :year AND deletedAt IS NULL")
     suspend fun getForYear(year: String): List<MembershipEntity>
 
     /** Include le righe annullate: serve a riattivarle rispettando l'indice univoco. */
-    @Query("SELECT * FROM memberships WHERE memberId = :memberId AND academicYear = :year")
+    @Query("SELECT * FROM memberships WHERE memberId = :memberId AND socialYear = :year")
     suspend fun find(memberId: String, year: String): MembershipEntity?
+
+    @Query("SELECT * FROM memberships WHERE memberId = :memberId AND socialYear = :year AND deletedAt IS NULL")
+    fun observeFor(memberId: String, year: String): Flow<MembershipEntity?>
 
     @Query("SELECT * FROM memberships WHERE transactionId = :transactionId AND deletedAt IS NULL")
     suspend fun byTransaction(transactionId: String): MembershipEntity?
@@ -61,16 +80,22 @@ interface MembershipDao {
 
 @Dao
 interface ActivityDao {
-    @Query("SELECT * FROM activities WHERE academicYear = :year AND deletedAt IS NULL ORDER BY name")
+    @Query("SELECT * FROM activities WHERE socialYear = :year AND deletedAt IS NULL ORDER BY name")
     fun observeForYear(year: String): Flow<List<ActivityEntity>>
 
-    @Query("SELECT * FROM activities WHERE academicYear = :year AND deletedAt IS NULL ORDER BY name")
+    @Query("SELECT * FROM activities WHERE socialYear = :year AND deletedAt IS NULL ORDER BY name")
     suspend fun getForYear(year: String): List<ActivityEntity>
 
-    @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY academicYear DESC, name")
+    @Query("SELECT * FROM activities WHERE id = :id")
+    suspend fun get(id: String): ActivityEntity?
+
+    @Query("SELECT * FROM activities WHERE id = :id")
+    fun observe(id: String): Flow<ActivityEntity?>
+
+    @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY socialYear DESC, name")
     fun observeAll(): Flow<List<ActivityEntity>>
 
-    @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY academicYear DESC, name")
+    @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY socialYear DESC, name")
     suspend fun getAll(): List<ActivityEntity>
 
     @Upsert
@@ -84,6 +109,15 @@ interface EnrollmentDao {
 
     @Query("SELECT * FROM enrollments WHERE activityId = :activityId AND deletedAt IS NULL")
     suspend fun getForActivity(activityId: String): List<EnrollmentEntity>
+
+    @Query("SELECT * FROM enrollments WHERE memberId = :memberId AND deletedAt IS NULL")
+    fun observeForMember(memberId: String): Flow<List<EnrollmentEntity>>
+
+    @Query("SELECT * FROM enrollments WHERE deletedAt IS NULL")
+    fun observeAll(): Flow<List<EnrollmentEntity>>
+
+    @Query("SELECT * FROM enrollments WHERE memberId = :memberId AND deletedAt IS NULL")
+    suspend fun getForMember(memberId: String): List<EnrollmentEntity>
 
     @Query("SELECT * FROM enrollments WHERE activityId = :activityId AND memberId = :memberId")
     suspend fun find(activityId: String, memberId: String): EnrollmentEntity?

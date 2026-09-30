@@ -1,6 +1,6 @@
 package it.apsemplice.app.data
 
-import it.apsemplice.app.core.AcademicYear
+import it.apsemplice.app.core.SocialYear
 import it.apsemplice.app.data.db.AccountEntity
 import it.apsemplice.app.data.db.ActivityEntity
 import it.apsemplice.app.data.db.AppDatabase
@@ -45,9 +45,9 @@ data class ActivitySummary(
     val marginCents: Long get() = incomeCents - costCents
 }
 
-/** Valutazione per anno accademico: cosa rende ogni attività e cosa resta all'associazione. */
-data class AcademicYearReport(
-    val year: AcademicYear,
+/** Valutazione per anno sociale: cosa rende ogni attività e cosa resta all'associazione. */
+data class SocialYearReport(
+    val year: SocialYear,
     val activities: List<ActivitySummary>,
     val membersCount: Int,
     val generalIncome: List<CategoryTotal>, // quote associative, liberalità... non legate ad attività
@@ -65,10 +65,10 @@ class ReportService(
     private val db: AppDatabase,
     private val settings: AppSettings,
 ) {
-    fun currentAcademicYear(): AcademicYear =
-        AcademicYear.forDate(LocalDate.now(), settings.profile.academicYearStartMonth)
+    fun currentSocialYear(): SocialYear =
+        SocialYear.forDate(LocalDate.now(), settings.profile.socialYearStartMonth)
 
-    fun academicYear(startYear: Int) = AcademicYear(startYear, settings.profile.academicYearStartMonth)
+    fun socialYear(startYear: Int) = SocialYear(startYear, settings.profile.socialYearStartMonth)
 
     suspend fun periodReport(from: LocalDate, to: LocalDate): PeriodReport {
         val accounts = db.accountDao().getAll()
@@ -97,7 +97,7 @@ class ReportService(
         return PeriodReport(from, to, summaries, totals(TxType.INCOME), totals(TxType.EXPENSE))
     }
 
-    suspend fun academicYearReport(year: AcademicYear): AcademicYearReport {
+    suspend fun socialYearReport(year: SocialYear): SocialYearReport {
         val activities = db.activityDao().getForYear(year.label)
         val categories = db.categoryDao().getAll().associateBy { it.id }
         val activityTx: List<TransactionEntity> =
@@ -109,7 +109,7 @@ class ReportService(
             val own = activityTx.filter { it.activityId == a.id }
             ActivitySummary(
                 activity = a,
-                participants = db.enrollmentDao().getForActivity(a.id).size,
+                participants = db.enrollmentDao().getForActivity(a.id).count { it.isActive },
                 incomeCents = own.filter { it.type == TxType.INCOME }.sumOf { it.amountCents },
                 costCents = own.filter { it.type == TxType.EXPENSE }.sumOf { it.amountCents },
             )
@@ -122,7 +122,7 @@ class ReportService(
             }
             .sortedBy { it.categoryName }
 
-        return AcademicYearReport(
+        return SocialYearReport(
             year = year,
             activities = summaries,
             membersCount = db.membershipDao().getForYear(year.label).size,
