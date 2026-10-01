@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '6';
+	const DB_VERSION        = '7';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -138,6 +138,7 @@ final class Install {
   social_year varchar(12) DEFAULT NULL,
   document_ref varchar(80) DEFAULT NULL,
   receipt_id varchar(40) DEFAULT NULL,
+  import_batch bigint(20) unsigned DEFAULT NULL,
   transfer_id varchar(40) DEFAULT NULL,
   void_reason varchar(255) DEFAULT NULL,
   voided_at datetime DEFAULT NULL,
@@ -149,6 +150,7 @@ final class Install {
   KEY activity_id (activity_id),
   KEY person_id (person_id),
   KEY receipt_id (receipt_id),
+  KEY import_batch (import_batch),
   KEY transfer_id (transfer_id),
   KEY session_id (session_id)
 ) $c;";
@@ -237,6 +239,19 @@ final class Install {
   PRIMARY KEY  (id),
   KEY transaction_id (transaction_id),
   KEY sha256 (sha256)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}import_batches (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  created_at datetime NOT NULL,
+  user_id bigint(20) unsigned DEFAULT NULL,
+  source varchar(190) NOT NULL DEFAULT '',
+  summary text,
+  data longtext,
+  undone_at datetime DEFAULT NULL,
+  undone_by bigint(20) unsigned DEFAULT NULL,
+  undo_result text,
+  PRIMARY KEY  (id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}audit_log (

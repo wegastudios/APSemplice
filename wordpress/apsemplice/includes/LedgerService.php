@@ -149,7 +149,14 @@ class LedgerService {
 		return $id;
 	}
 
+	/** Profondità della transazione in corso: una transazione dentro un'altra si unisce alla prima (altrimenti MySQL conferma subito la prima). */
+	private $tx_depth = 0;
+
 	private function in_transaction( callable $fn ) {
+		if ( $this->tx_depth > 0 ) {
+			return $fn();
+		}
+		$this->tx_depth++;
 		$this->db()->query( 'START TRANSACTION' );
 		try {
 			$res = $fn();
@@ -158,6 +165,8 @@ class LedgerService {
 		} catch ( \Throwable $e ) {
 			$this->db()->query( 'ROLLBACK' );
 			throw $e;
+		} finally {
+			$this->tx_depth--;
 		}
 	}
 
@@ -299,7 +308,7 @@ class LedgerService {
 	}
 
 	/** Giroconto tra due conti (versamento contanti in banca, accredito POS...). */
-	public function record_transfer( string $date, int $from_id, int $to_id, int $cents, string $method, string $description = '' ): void {
+	public function record_transfer( string $date, int $from_id, int $to_id, int $cents, string $method, string $description = '' ): string {
 		$this->assert_date( $date );
 		if ( $from_id === $to_id ) {
 			throw new \InvalidArgumentException( 'Scegli due conti diversi.' );
@@ -323,6 +332,7 @@ class LedgerService {
 				}
 			}
 		);
+		return $transfer;
 	}
 
 	/** Annulla (senza cancellare) un movimento; per i giroconti annulla entrambe le righe. */
@@ -445,9 +455,15 @@ class LedgerService {
 				'description'      => substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
 				'competence_month' => ! empty( $d['month'] ) ? $d['month'] : null,
 				'social_year'      => 'membership' === $cat['kind'] ? Settings::social_year( (string) $d['date'] )->label() : null,
+				'import_batch'     => ! empty( $d['batch'] ) ? (int) $d['batch'] : null,
 				'document_ref'     => ! empty( $d['ref'] ) ? substr( trim( (string) $d['ref'] ), 0, 80 ) : null,
 			)
 		);
+	}
+
+	/** Segna le righe di un giroconto come arrivate da un import (per poterlo annullare in blocco). */
+	public function tag_transfer( string $transfer_id, int $batch ): void {
+		$this->db()->update( Db::t( 'transactions' ), array( 'import_batch' => $batch ), array( 'transfer_id' => $transfer_id ) );
 	}
 
 	/** Sposta il saldo iniziale di un conto (serve a non cambiare il saldo attuale dopo l'import di movimenti storici). */

@@ -51,6 +51,7 @@ final class Actions {
 			'apse_create_pages'       => 'create_pages',
 			'apse_import_preview'     => 'import_preview',
 			'apse_import_apply'       => 'import_apply',
+			'apse_import_undo'        => 'import_undo',
 			'apse_save_wpai'          => 'save_wpai',
 			'apse_wpai_process'       => 'wpai_process',
 			'apse_wpai_retry'         => 'wpai_retry',
@@ -421,6 +422,16 @@ final class Actions {
 		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
 	}
 
+	private static function import_undo( array $p ): array {
+		$r    = \ApSemplice\ImportService::undo( (int) ( $p['batch_id'] ?? 0 ) );
+		$msg  = 'Import annullato: ' . $r['voided'] . ' movimenti annullati';
+		$msg .= $r['accounts_removed'] ? ', ' . $r['accounts_removed'] . ' conti tolti' : '';
+		$msg .= $r['people_removed'] ? ', ' . $r['people_removed'] . ' soci/ospiti rimossi' : '';
+		$msg .= $r['people_restored'] ? ', ' . $r['people_restored'] . ' schede ripristinate' : '';
+		$msg .= $r['people_kept'] ? '. Restano perché già usati: ' . implode( '; ', array_slice( $r['people_kept'], 0, 6 ) ) : '';
+		return array( Ui::url( 'apse-import' ), $msg . '.' );
+	}
+
 	private static function save_wpai( array $p ): array {
 		Settings::update(
 			array(
@@ -464,7 +475,7 @@ final class Actions {
 			$parts[] = 'Prima nota: ' . $l['created'] . ' movimenti' . ( $l['transfers'] ? ', ' . $l['transfers'] . ' giroconti' : '' ) . ( $l['duplicates'] ? ', ' . $l['duplicates'] . ' già presenti saltati' : '' )
 				. ( $l['memberships'] ? ', ' . $l['memberships'] . ' iscrizioni registrate' : '' ) . ( $l['shifted'] ? ', saldi attuali invariati' : '' );
 		}
-		$msg = 'Import completato. ' . implode( '. ', $parts ) . '.';
+		$msg = 'Import completato. ' . implode( '. ', $parts ) . '.' . ( $res['batch_id'] ? ' (Import n. ' . (int) $res['batch_id'] . ': si può annullare in blocco da "Importa".)' : '' );
 		return array( $res['people'] && ! $res['ledger'] ? Ui::url( 'apse-people' ) : Ui::url( 'apse-ledger' ), $msg );
 	}
 }

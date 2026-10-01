@@ -148,7 +148,7 @@ final class WpAllImport {
 			$sheet = array( 'name' => 'WP All Import', 'rows' => $b['table']['rows'], 'lines' => $b['table']['lines'] );
 			try {
 				$preview = ImportService::preview_sheets( array( $sheet ), $opts );
-				$res     = ImportService::apply( $preview, $opts );
+				$res     = ImportService::apply( $preview, array_merge( $opts, array( 'source' => 'WP All Import' ) ) );
 			} catch ( \Throwable $e ) {
 				foreach ( $b['posts'] as $p ) {
 					self::mark( (int) $p->ID, $e->getMessage() );

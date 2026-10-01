@@ -57,6 +57,38 @@ final class ImportPage {
 		Ui::form_close();
 		echo '<p>Modelli CSV: ' . self::data_link( PeopleCsv::TEMPLATE, 'modello-soci.csv', 'soci' ) . ' · ' . self::data_link( self::GUESTS_TEMPLATE, 'modello-ospiti.csv', 'ospiti' ) . ' · ' . self::data_link( self::LEDGER_TEMPLATE, 'modello-prima-nota.csv', 'prima nota' ) . ' <span class="description">(si aprono anche con Excel)</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">Usi <strong>WP All Import</strong>? Si può importare anche da lì: vedi <a href="' . esc_url( Ui::url( 'apse-wpai' ) ) . '">Import con WP All Import</a>.</p>';
+		self::history();
+	}
+
+	/** Import già fatti, con l'annullamento in blocco. */
+	private static function history(): void {
+		$batches = \ApSemplice\ImportService::batches( 20 );
+		if ( ! $batches ) {
+			return;
+		}
+		echo '<div class="apse-card"><h2>Import già fatti</h2><table class="widefat striped"><thead><tr><th>N.</th><th>Quando</th><th>Origine</th><th>Cosa è entrato</th><th></th></tr></thead><tbody>';
+		foreach ( $batches as $b ) {
+			$s     = $b['summary'];
+			$parts = array_filter(
+				array(
+					! empty( $s['people_created'] ) ? $s['people_created'] . ' soci/ospiti nuovi' : '',
+					! empty( $s['people_updated'] ) ? $s['people_updated'] . ' schede aggiornate' : '',
+					! empty( $s['transactions'] ) ? $s['transactions'] . ' movimenti' : '',
+					! empty( $s['transfers'] ) ? $s['transfers'] . ' giroconti' : '',
+				)
+			);
+			echo '<tr><td>' . (int) $b['id'] . '</td><td>' . esc_html( mysql2date( 'd/m/Y H:i', $b['created_at'] ) ) . '<br><span class="description">' . esc_html( (string) $b['display_name'] ) . '</span></td>'
+				. '<td>' . esc_html( $b['source'] ) . '</td><td>' . esc_html( implode( ' · ', $parts ) ) . '</td><td>';
+			if ( ! empty( $b['undone_at'] ) ) {
+				echo '<span class="description">Annullato il ' . esc_html( mysql2date( 'd/m/Y H:i', $b['undone_at'] ) ) . '</span>';
+			} else {
+				Ui::form_open( 'apse_import_undo', Ui::url( 'apse-import' ), false, 'apse-inline' );
+				echo Ui::hidden( 'batch_id', $b['id'] ) . '<button class="button button-small" data-confirm="Annullare TUTTO questo import? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Non si può rifare con un clic.">Annulla questo import</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+			}
+			echo '</td></tr>';
+		}
+		echo '</tbody></table><p class="description">L\'annullamento in blocco annulla i movimenti (restano nel registro come annullati), rimette i saldi iniziali dei conti, toglie i conti nuovi rimasti vuoti, ripristina i dati dei soci aggiornati e rimuove i soci e gli ospiti creati che non sono stati ancora usati (iscritti ad attività, prenotati, con movimenti o pagamenti): quelli già usati restano e vengono elencati.</p></div>';
 	}
 
 	private static function badge( string $action, bool $warn ): string {

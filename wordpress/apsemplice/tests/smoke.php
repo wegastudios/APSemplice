@@ -1445,6 +1445,80 @@ $set = new ReflectionMethod( Admin\Actions::class, 'save_wpai' );
 $set->invoke( null, array( 'default_type' => 'volunteer', 'default_account_id' => (int) $cash['id'], 'mark_members' => '1' ) );
 apse_ok( 'volunteer' === Settings::get( 'wpai_default_type' ) && 0 === (int) Settings::get( 'wpai_keep_balances' ) && 1 === (int) Settings::get( 'wpai_mark_members' ), 'WP All Import: impostazioni salvate' );
 Settings::update( array( 'wpai_default_type' => 'ordinary', 'wpai_default_account_id' => 0, 'wpai_keep_balances' => 1, 'wpai_mark_members' => 0 ) );
+// ---------- Annullamento in blocco di un import ----------
+$undo_x = sys_get_temp_dir() . '/apse-undo-' . wp_generate_password( 6, false ) . '.xlsx';
+$mk_xlsx(
+	array(
+		'Soci'       => array(
+			array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono' ),
+			array( array( 950 ), 'ordinario', 'Uma', 'Annullabile', 'uma.annullabile@example.com', '' ),
+			array( array( 951 ), 'ordinario', 'Ugo', 'Usato', 'ugo.usato@example.com', '' ),
+			array( array( 900 ), 'ordinario', 'Ida', 'Storica', 'ida.storica@example.com', '3339990000' ),
+		),
+		'Ospiti'     => array(
+			array( 'Tipo', 'Nome', 'Cognome', 'Ospite di' ),
+			array( 'ospite', 'Ugo', 'Ospite', array( 950 ) ),
+		),
+		'Prima nota' => array(
+			array( 'Data', 'Tipo', 'Conto', 'Voce', 'Importo', 'Descrizione', 'N. tessera' ),
+			array( '10/03/2021', 'Entrata', $cash_name, 'Quota associativa', array( 12 ), 'Quota Uma', array( 950 ) ),
+			array( '11/03/2021', 'Uscita', 'Conto Annullabile', 'Pulizie', array( 7 ), 'Spesa annullabile', '' ),
+			array( '12/03/2021', 'Giroconto in uscita', $cash_name, 'Giroconto', array( 5 ), 'Giro annullabile', '' ),
+			array( '12/03/2021', 'Giroconto in entrata', 'Conto Annullabile', 'Giroconto', array( 5 ), 'Giro annullabile', '' ),
+		),
+	),
+	$undo_x
+);
+$cash_row0  = $ledger->account( (int) $cash['id'] );
+$bal_u0     = $balances();
+$ida_before = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE card_number = '900'", ARRAY_A );
+$pu         = ImportService::preview_file( $undo_x, 'undo.xlsx', array() );
+$ru         = ImportService::apply( $pu, array( 'keep_balances' => true, 'mark_members' => true ) );
+$bid        = (int) $ru['batch_id'];
+$b0         = ImportService::batch( $bid );
+apse_ok( $bid > 0 && 'undo.xlsx' === $b0['source'] && 3 === $b0['summary']['people_created'] && 1 === $b0['summary']['people_updated'] && 2 === $b0['summary']['transactions'] && 1 === $b0['summary']['transfers'], 'import: viene registrato con numero, origine e riepilogo' );
+$tx_of = function ( int $b ) use ( $wpdb ) {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE import_batch = $b AND voided_at IS NULL" );
+};
+apse_ok( 4 === $tx_of( $bid ), 'import: i 4 movimenti (2 normali e le 2 righe del giroconto) portano il numero dell\'import' );
+$ugo = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE card_number = '951'", ARRAY_A );
+$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $exp_cat, 'amount_cents' => 100, 'person_id' => (int) $ugo['id'] ) ); // da ora "Ugo Usato" è usato
+apse_ok( '3339990000' === $wpdb->get_var( 'SELECT phone FROM ' . Db::t( 'people' ) . " WHERE card_number = '900'" ) && $balances()[ $cash_name ] === $bal_u0[ $cash_name ] - 100, 'prima dell\'annullamento: scheda aggiornata e saldo attuale invariato dall\'import' );
+apse_ok( false !== strpos( apse_render( array( Admin\ImportPage::class, 'render' ), 'Import già fatti' ), 'Annulla questo import' ), 'pagina di import: elenco degli import con il pulsante di annullamento' );
+
+$ru_undo = ImportService::undo( $bid );
+apse_ok( 0 === $tx_of( $bid ) && $ru_undo['voided'] >= 3, 'annullamento: tutti i movimenti dell\'import sono annullati (giroconto compreso)' );
+apse_ok( $balances()[ $cash_name ] === $bal_u0[ $cash_name ] - 100 && (int) $ledger->account( (int) $cash['id'] )['opening_cents'] === (int) $cash_row0['opening_cents'], 'annullamento: il saldo iniziale della cassa torna com\'era e il saldo attuale non cambia' );
+apse_ok( ! array_key_exists( 'Conto Annullabile', $balances() ) && 1 === $ru_undo['accounts_removed'], 'annullamento: il conto creato dall\'import, rimasto vuoto, viene tolto' );
+apse_ok( $ida_before['phone'] === $wpdb->get_var( 'SELECT phone FROM ' . Db::t( 'people' ) . " WHERE email = 'ida.storica@example.com'" ) && 1 === $ru_undo['people_restored'], 'annullamento: i dati del socio aggiornato tornano quelli di prima' );
+apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $ida_before['id'] . ' AND social_year = \'' . esc_sql( Settings::social_year()->label() ) . '\' AND deleted_at IS NULL' ), 'annullamento: l\'iscrizione segnata dall\'import viene tolta' );
+$uma_del = $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'people' ) . " WHERE email = 'uma.annullabile@example.com'" );
+$osp_del = $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Ugo' AND last_name = 'Ospite'" );
+apse_ok( $uma_del && $osp_del && 2 === $ru_undo['people_removed'], 'annullamento: socio e ospite creati e mai usati vengono rimossi (prima l\'ospite, poi il socio)' );
+apse_ok( false === get_user_by( 'email', 'uma.annullabile@example.com' ) && $ru_undo['users_removed'] >= 1, 'annullamento: l\'utente WordPress nato con l\'import viene tolto' );
+apse_ok( null === $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'people' ) . " WHERE card_number = '951'" ) && 1 === count( $ru_undo['people_kept'] ) && false !== strpos( $ru_undo['people_kept'][0], 'Ugo Usato' ), 'annullamento: chi è già stato usato (qui ha un movimento) resta e viene segnalato' );
+apse_ok( null !== ImportService::batch( $bid )['undone_at'] && null !== apse_throws( function () use ( $bid ) { ImportService::undo( $bid ); } ), 'annullamento: un import si annulla una volta sola' );
+apse_ok( in_array( 'import.undone', array_column( Audit::recent( 400 ), 'action' ), true ), 'registro azioni: annullamento in blocco tracciato' );
+apse_ok( false !== strpos( apse_render( array( Admin\ImportPage::class, 'render' ), 'Import già fatti' ), 'Annullato il' ), 'pagina di import: l\'import annullato risulta tale' );
+
+// il tutto-o-niente: un errore a metà annulla anche le righe già scritte (le transazioni annidate non si "chiudono" a vicenda)
+$n_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+try {
+	$ledger->in_batch(
+		function () use ( $ledger, $cash, $bank, $today ) {
+			$ledger->record_transfer( $today, (int) $cash['id'], (int) $bank['id'], 100, 'cash', 'prova' );
+			throw new \RuntimeException( 'errore a metà' );
+		}
+	);
+} catch ( \RuntimeException $e ) {
+	$n_after = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+}
+apse_ok( isset( $n_after ) && $n_after === $n_before, 'prima nota: se un\'operazione di gruppo fallisce a metà, non resta scritto nulla' );
+$uuid = $ledger->record_transfer( $today, (int) $cash['id'], (int) $bank['id'], 100, 'cash', 'prova uuid' );
+apse_ok( 36 === strlen( $uuid ), 'giroconto: restituisce il suo identificativo' );
+$ledger->void( (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE transfer_id = %s AND type = \'transfer_out\'', $uuid ) ), 'prova' );
+@unlink( $undo_x );
+
 foreach ( array( $xlsx, $csv_p, $csv_l, $junk, $nothing ) as $f ) {
 	@unlink( $f );
 }
