@@ -29,6 +29,7 @@ final class Actions {
 		'apse_front_expense_docs'   => 'do_expense_docs',
 		'apse_front_checkin'        => 'do_checkin',
 		'apse_front_checkin_scan'   => 'do_checkin_scan',
+		'apse_front_notice'         => 'do_notice',
 	);
 
 	public static function register(): void {
@@ -283,6 +284,16 @@ final class Actions {
 		}
 		self::require_cap( 'apse_manage_event', (int) $session['activity_id'] );
 		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP ) ), $t[0], $t[1] );
+	}
+
+	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */
+	public static function do_notice( array $post ): string {
+		$aid = (int) ( $post['activity_id'] ?? 0 );
+		if ( ! \ApSemplice\Notices::can_send( $aid ) ) {
+			throw new \InvalidArgumentException( 'Non hai il permesso di inviare avvisi per questa attività.' );
+		}
+		$r = \ApSemplice\Notices::send( $aid, ! empty( $post['session_id'] ) ? (int) $post['session_id'] : null, (string) ( $post['subject'] ?? '' ), (string) ( $post['body'] ?? '' ) );
+		return 'Avviso inviato a ' . $r['recipients'] . ( 1 === $r['recipients'] ? ' persona' : ' persone' ) . ( $r['emailed'] < $r['recipients'] ? ' (' . ( $r['recipients'] - $r['emailed'] ) . ' email non partite)' : '' ) . '.';
 	}
 
 	public static function do_add_guest( array $post ): string {

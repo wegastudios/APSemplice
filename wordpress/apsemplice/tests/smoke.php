@@ -13,6 +13,7 @@ use ApSemplice\Audit;
 use ApSemplice\Gatekeeper;
 use ApSemplice\Gateways;
 use ApSemplice\ImportService;
+use ApSemplice\Notices;
 use ApSemplice\Wallet;
 use ApSemplice\WpAllImport;
 use ApSemplice\PaymentConfig;
@@ -1891,6 +1892,92 @@ $acts->book( $gs4, $gx );
 apse_ok( $acts->has_active_booking( $gs4, $gx ), 'ora è socio: il limite degli ospiti non vale più' );
 apse_ok( in_array( 'person.promoted', array_column( Audit::recent( 500 ), 'action' ), true ), 'registro azioni: iscrizione di un ospite come socio tracciata' );
 Settings::update( array( 'guest_max_events' => 0 ) ); // gli altri controlli usano gli ospiti senza limite
+
+// ---------- Avvisi dei volontari agli iscritti dell'attività ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+apse_ok( Db::t( 'notices' ) === $wpdb->get_var( "SHOW TABLES LIKE '" . Db::t( 'notices' ) . "'" ), 'tabella degli avvisi' );
+$mails = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$mails ) {
+		$mails[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$nc = $acts->create( array( 'name' => 'Laboratorio avvisi', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0, 'instructor_person_id' => $vol ) );
+$acts->enroll( $nc, $tre_p, $month );
+$acts->enroll( $nc, $q, $month );
+$acts->enroll( $nc, $gz, $month );
+$emails = array_map( 'strtolower', array_column( Notices::recipients( $nc ), 'email' ) );
+sort( $emails );
+$expected = array_map( 'strtolower', array( $people->get( $tre_p )['email'], $people->get( $q )['email'], $people->get( $founder )['email'] ) );
+sort( $expected );
+apse_ok( $emails === $expected, 'avvisi: i destinatari sono gli iscritti; un ospite senza email riceve tramite il socio che lo ospita' );
+$acts->enroll( $nc, $founder, $month );
+apse_ok( 3 === count( Notices::recipients( $nc ) ), 'avvisi: se il socio è iscritto anche lui, riceve una sola copia' );
+$acts->cancel( $nc, $founder, $month );
+
+// invio dal volontario
+wp_set_current_user( $u_vol );
+$msg = $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'Cambio di orario', 'body' => "Stasera si comincia alle 19.\nPortate l'acqua." ) );
+apse_ok( false !== strpos( $msg, 'Avviso inviato a 3 persone' ) && 3 === count( $mails ), 'avvisi: il volontario invia e arriva una email a ciascun iscritto' );
+$one = $mails[0];
+apse_ok( 1 === count( (array) $one['to'] ) && false !== strpos( (string) $one['subject'], 'Laboratorio avvisi: Cambio di orario' ) && false !== strpos( (string) $one['message'], 'Stasera si comincia alle 19' ) && false !== strpos( (string) $one['message'], 'Avviso di Vera' ) && 0 === strpos( (string) $one['message'], 'Ciao ' ), 'avvisi: email individuale, con titolo, testo e chi lo manda' );
+$all_text = wp_json_encode( $mails );
+apse_ok( 3 === count( array_unique( array_map( function ( $m ) { return strtolower( (string) ( (array) $m['to'] )[0] ); }, $mails ) ) ) && false === strpos( (string) $one['message'], (string) $people->get( $q )['email'] ), 'avvisi: ognuno vede solo il proprio indirizzo' );
+$row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'notices' ) . ' ORDER BY id DESC LIMIT 1', ARRAY_A );
+apse_ok( 3 === (int) $row['recipients'] && 3 === (int) $row['emailed'] && $nc === (int) $row['activity_id'] && 'Vera Volta' === $row['author_name'], 'avvisi: registrato con destinatari, email partite e autore' );
+apse_ok( false === strpos( wp_json_encode( Audit::recent( 500 ) ), 'Stasera si comincia' ) && in_array( 'notice.sent', array_column( Audit::recent( 500 ), 'action' ), true ), 'registro azioni: invio tracciato senza il testo' );
+
+// permessi
+wp_set_current_user( $uq );
+apse_ok( ! Notices::can_send( $nc ) && null !== apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'x', 'body' => 'y' ) ); } ), 'avvisi: un socio qualunque non può inviarne' );
+wp_set_current_user( $u_tre );
+apse_ok( ! Notices::can_send( $nc ), 'avvisi: un gestore di un altro evento non può inviarne per un corso' );
+License::set_state( 'unpaid', $today );
+wp_set_current_user( $u_vol );
+apse_ok( ! Notices::can_send( $nc ), 'avvisi: con la licenza non in regola i volontari sono sospesi' );
+delete_option( License::OPT_STATE );
+wp_set_current_user( 1 );
+apse_ok( Notices::can_send( $nc ), 'avvisi: l\'amministratore può sempre' );
+
+// controlli sul contenuto e limite giornaliero
+apse_ok( null !== apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => '', 'body' => 'testo' ) ); } ) && null !== apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'titolo', 'body' => '  ' ) ); } ) && null !== apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => str_repeat( 'a', 121 ), 'body' => 'b' ) ); } ) && null !== apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => 's', 'body' => str_repeat( 'b', 2001 ) ) ); } ), 'avvisi: titolo e testo obbligatori e di lunghezza limitata' );
+$n_before = count( $mails );
+for ( $i = 0; $i < 4; $i++ ) {
+	$front::do_notice( array( 'activity_id' => $nc, 'subject' => "Prova $i", 'body' => 'testo' ) );
+}
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'Troppi', 'body' => 'testo' ) ); } ), 'ultime 24 ore' ) && count( $mails ) === $n_before + 12, 'avvisi: oltre 5 al giorno per attività si ferma (contro gli abusi)' );
+
+// bacheca e moduli nell'area riservata
+$board = $as( $uq, '[apsemplice_area_soci]' );
+apse_ok( false !== strpos( $board, 'Cambio di orario' ) && false !== strpos( $board, 'Laboratorio avvisi' ) && false !== strpos( $board, 'Portate l' ), 'bacheca: l\'iscritto trova l\'avviso nell\'area riservata' );
+apse_ok( false !== strpos( $as( $u_f, '[apsemplice_avvisi]' ), 'Cambio di orario' ), 'bacheca: il socio vede anche gli avvisi delle attività dei suoi ospiti' );
+apse_ok( false !== strpos( $as( (int) $ida['wp_user_id'], '[apsemplice_avvisi]' ), 'Nessun avviso recente' ), 'bacheca: chi non è iscritto non vede avvisi' );
+$vol_html = $as( $u_vol, '[apsemplice_area_soci]' );
+apse_ok( false !== strpos( $vol_html, 'Invia un avviso agli iscritti' ) && false !== strpos( $vol_html, 'apse_front_notice' ), 'area volontari: il modulo per inviare un avviso sotto ogni attività che tiene' );
+apse_ok( false === strpos( $as( $uq, '[apsemplice_area_soci]' ), 'Invia un avviso agli iscritti' ), 'area soci: chi non tiene attività non ha il modulo' );
+apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Avvisi agli iscritti', array( 'id' => $nc ) );
+
+// eventi: destinatari per data
+$ev_rc = Notices::recipients( $tev, $tev_s );
+apse_ok( 1 === count( $ev_rc ), 'avvisi evento: i prenotati della data (qui un ospite, tramite il socio che lo ospita)' );
+$wpdb->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) ) ), array( 'id' => $tev_s ) );
+apse_ok( 0 === count( Notices::recipients( $tev, $tev_s ) ) && 0 === count( Notices::recipients( $tev ) ), 'avvisi evento: le date già passate non hanno destinatari' );
+$wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'id' => $tev_s ) );
+wp_set_current_user( $u_tre );
+$n_before = count( $mails );
+$m2       = $front::do_notice( array( 'activity_id' => $tev, 'session_id' => $tev_s, 'subject' => 'Si entra dal cortile', 'body' => 'Ingresso dal portone laterale.' ) );
+apse_ok( false !== strpos( $m2, 'Avviso inviato a 1 persona' ) && count( $mails ) === $n_before + 1 && false !== strpos( (string) $mails[ $n_before ]['message'], 'Avviso di Tina' ), 'avvisi evento: chi gestisce l\'evento invia a una sola data' );
+$_GET['apse_session'] = (string) $tev_s;
+$det2 = $as( $u_tre, '[apsemplice_ingressi]' );
+unset( $_GET['apse_session'] );
+apse_ok( false !== strpos( $det2, 'Invia un avviso agli iscritti' ) && false !== strpos( $det2, 'a questa data' ), 'ingressi: sotto la lista dei prenotati il modulo dell\'avviso per quella data' );
+remove_all_filters( 'pre_wp_mail' );
+wp_set_current_user( 1 );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

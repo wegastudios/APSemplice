@@ -198,3 +198,21 @@ Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gest
 - **scansionare il QR del biglietto** (se per l'evento è attivo il biglietto QR): dal pulsante "Scansiona", nei browser che sanno leggere i QR; altrimenti con la fotocamera del telefono, che apre la pagina del biglietto, dove chi gestisce l'evento (con l'accesso effettuato) trova il pulsante "Registra ingresso". Il biglietto già usato risulta "Ingresso già registrato", così una copia del QR non entra due volte, e se il contributo non è versato lo si vede subito.
 
 Il permesso dei gestori nasce dai dati (non da un ruolo WordPress): toglierli dalla scheda dell'evento li esclude subito. Con la licenza non in regola i gestori sono sospesi come i soci. Ogni registrazione è nel registro azioni (senza dati personali).
+
+## Ospiti: partecipazioni ammesse prima di iscriversi
+
+Ai non soci è consentito partecipare solo poche volte (di solito 1 o 2: oltre, anche per ragioni assicurative, devono iscriversi come soci). *Impostazioni → Ospiti: partecipazioni ammesse* (default 2; 0 = nessun limite). Contano le prenotazioni agli **eventi** (date non annullate) e le iscrizioni ai **corsi**; annullare una prenotazione libera la partecipazione.
+
+- Un ospite che ha raggiunto il limite **non può prenotarsi né iscriversi** (nemmeno con il cambio di nominativo): il messaggio dice di iscriversi come socio.
+- La **storia è sempre collegata alla sua scheda**: in *Soci e ospiti → scheda dell'ospite* il pannello "Partecipazioni come ospite" elenca a cosa è già venuto (evento, data, se l'ingresso è stato registrato) e quante gliene restano. L'elenco persone ha il filtro "Solo ospiti che devono iscriversi", e il riepilogo ha la lista "Ospiti da invitare a iscriversi".
+- Accanto a ogni ospite negli elenchi dei prenotati (pagina dell'evento, lista all'ingresso, area riservata del socio) compare "2ª partecipazione come ospite" e, all'ultima consentita, l'avviso che poi deve iscriversi.
+- **Iscrivi come socio** (nella scheda dell'ospite): serve l'email; la scheda resta la stessa, quindi eventi, corsi e pagamenti già registrati restano collegati. Si crea l'utente per l'area riservata e, se vuoi, l'iscrizione all'anno sociale.
+- Per non perdere il conto, lo **stesso ospite non si registra due volte**: un socio che aggiunge un ospite con il nome di uno già presente viene rimandato alla segreteria (senza dire di chi è ospite); in amministrazione, "ingresso sul posto" rimanda alla scheda esistente.
+
+## Avvisi dei volontari agli iscritti
+
+Chi tiene un'attività (istruttore), chi gestisce un evento e gli amministratori possono inviare un **avviso** agli iscritti di quell'attività, dal modulo "Invia un avviso agli iscritti" sotto ogni attività nell'area volontari (o, per gli eventi, sotto la lista dei prenotati di una data, o dalla scheda in amministrazione).
+
+- Arriva **per email a ciascun iscritto** (singolarmente: nessuno vede gli indirizzi degli altri) e resta nella **bacheca "Avvisi"** dell'area riservata (45 giorni). Per i corsi sono gli iscritti attivi; per gli eventi i prenotati delle date non ancora passate (o di una sola data). Gli ospiti senza email ricevono l'avviso tramite il socio che li ospita, che lo vede anche in bacheca.
+- Titolo fino a 120 caratteri, testo fino a 2000; al massimo 5 avvisi al giorno per attività. Con la licenza non in regola l'invio è sospeso. Nel registro azioni restano solo i conteggi, mai il testo.
+- Le notifiche push sul telefono richiedono la PWA installata (service worker): non sono ancora attive.

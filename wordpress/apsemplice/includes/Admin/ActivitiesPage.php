@@ -125,6 +125,7 @@ final class ActivitiesPage {
 		}
 		echo '</div><div class="apse-col">';
 		self::edit_card( $activity, $back );
+		self::notices_card( $activity, $back );
 		echo '</div></div>';
 
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
@@ -305,6 +306,29 @@ final class ActivitiesPage {
 		echo Ui::hidden( 'activity_id', $activity_id ) . Ui::hidden( 'session_id', $session_id ) . Ui::hidden( 'person_id', $b['person_id'] ) . ( $in ? Ui::hidden( 'undo', 1 ) : '' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<button class="button button-small">' . ( $in ? 'Annulla' : 'Registra ingresso' ) . '</button>';
 		Ui::form_close();
+	}
+
+	/** Avvisi agli iscritti: modulo di invio e ultimi avvisi (i volontari li inviano dall'area riservata). */
+	private static function notices_card( array $activity, string $back ): void {
+		$id    = (int) $activity['id'];
+		$count = count( \ApSemplice\Notices::recipients( $id ) );
+		echo '<div class="apse-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area riservata. '
+			. 'L\'istruttore e i gestori dell\'evento li inviano dalla propria area riservata.</p>';
+		Ui::form_open( 'apse_send_notice', $back );
+		echo Ui::hidden( 'activity_id', $id ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \ApSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>'
+			. '<p><textarea name="body" class="large-text" rows="3" maxlength="' . \ApSemplice\Notices::MAX_BODY . '" placeholder="Messaggio" required></textarea></p>'
+			. '<p><button class="button" data-confirm="Inviare l\'avviso a tutti gli iscritti?">Invia avviso</button></p>';
+		Ui::form_close();
+		$recent = \ApSemplice\Notices::recent( $id, 5 );
+		if ( $recent ) {
+			echo '<table class="widefat striped"><thead><tr><th>Quando</th><th>Titolo</th><th>Da</th><th>Arrivato a</th></tr></thead><tbody>';
+			foreach ( $recent as $n ) {
+				echo '<tr><td>' . esc_html( mysql2date( 'd/m/Y H:i', $n['created_at'] ) ) . '</td><td>' . esc_html( $n['subject'] ) . '</td><td>' . esc_html( $n['author_name'] ) . '</td><td>' . (int) $n['emailed'] . ' / ' . (int) $n['recipients'] . '</td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '</div>';
 	}
 
 	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre all'istruttore. */

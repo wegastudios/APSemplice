@@ -581,7 +581,7 @@ final class Views {
 			. ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ) . '</p>'
 			. '<dl class="apsf-dl apsf-counts"><div><dt>Prenotati</dt><dd>' . (int) $booked . ( null === $s['capacity'] ? '' : ' / ' . (int) $s['capacity'] ) . '</dd></div><div><dt>Presenti</dt><dd>' . (int) $present . '</dd></div>'
 			. '<div><dt>Da registrare</dt><dd>' . (int) ( $booked - $present ) . '</dd></div><div><dt>Contributo da versare</dt><dd>' . (int) $unpaid . '</dd></div></dl>'
-			. ( $s['session_date'] !== $today ? '<p class="apsf-small apsf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . $scan;
+			. ( $s['session_date'] !== $today ? '<p class="apsf-small apsf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . $scan . self::notice_form( $a, (int) $s['id'] );
 		if ( ! $booked ) {
 			return $html . '<p class="apsf-muted">Nessuna prenotazione.</p></section>';
 		}
@@ -601,6 +601,55 @@ final class Views {
 			return '<div class="apsf-small apsf-bad">' . esc_html( $txt . ': l\'ultima consentita, poi deve iscriversi' ) . '</div>';
 		}
 		return '<div class="apsf-small apsf-muted">' . esc_html( $txt ) . '</div>';
+	}
+
+	// ---------- Avvisi agli iscritti ----------
+
+	/** Modulo "Invia un avviso agli iscritti" (vuoto se l'utente non può inviarne per quell'attività). */
+	private static function notice_form( array $a, ?int $session_id = null ): string {
+		$aid = (int) $a['id'];
+		if ( ! \ApSemplice\Notices::can_send( $aid ) ) {
+			return '';
+		}
+		$count  = count( \ApSemplice\Notices::recipients( $aid, $session_id ) );
+		$fields = self::hidden( 'activity_id', $aid ) . ( $session_id ? self::hidden( 'session_id', $session_id ) : '' ) . '<div class="apsf-fields">';
+		if ( ! $session_id && ActivityKind::uses_sessions( $a['kind'] ) ) {
+			$opts = '<option value="">Tutti i prenotati</option>';
+			foreach ( Plugin::activities()->sessions( $aid ) as $s ) {
+				if ( empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' ) ) {
+					$opts .= '<option value="' . (int) $s['id'] . '">Solo ' . esc_html( self::date_long( $s['session_date'] ) ) . '</option>';
+				}
+			}
+			$fields .= '<label>A chi <select name="session_id">' . $opts . '</select></label>';
+		}
+		$fields .= '<label>Titolo <input type="text" name="subject" maxlength="' . \ApSemplice\Notices::MAX_SUBJECT . '" required></label>'
+			. '<label>Messaggio <textarea name="body" rows="4" maxlength="' . \ApSemplice\Notices::MAX_BODY . '" required></textarea></label></div>';
+		return '<details class="apsf-details"><summary>Invia un avviso agli iscritti</summary>'
+			. '<p class="apsf-small apsf-muted">Arriva per email a chi è iscritto' . ( $session_id ? ' a questa data' : '' ) . ' (ora ' . (int) $count . ' persone; gli ospiti senza email lo ricevono tramite il socio che li ospita) e resta nella loro bacheca. Usalo per cambi dell\'ultimo momento.</p>'
+			. self::form( 'apse_front_notice', $fields, 'Invia avviso', true ) . '</details>';
+	}
+
+	/** Bacheca degli avvisi per i soci (e per chi ha ospiti iscritti): quelli recenti delle attività a cui partecipano. */
+	public static function section_notices( array $p ): string {
+		$list = \ApSemplice\Notices::board( (int) $p['id'], 8 );
+		if ( ! $list ) {
+			return '';
+		}
+		$html = '<section class="apsf-section apsf-notices"><h3>Avvisi</h3><ul class="apsf-list">';
+		foreach ( $list as $n ) {
+			$html .= '<li><div><strong>' . esc_html( $n['subject'] ) . '</strong><div class="apsf-small apsf-muted">' . esc_html( $n['activity_name'] ) . ' · ' . esc_html( mysql2date( 'd/m/Y H:i', $n['created_at'] ) )
+				. ' · ' . esc_html( $n['author_name'] ) . '</div><div>' . nl2br( esc_html( $n['body'] ) ) . '</div></div></li>';
+		}
+		return $html . '</ul></section>';
+	}
+
+	public static function notices(): string {
+		return self::with_person(
+			function ( $p ) {
+				$html = self::section_notices( $p );
+				return '' !== $html ? $html : self::notice( 'Nessun avviso recente.' );
+			}
+		);
 	}
 
 	public static function checkin(): string {
@@ -652,6 +701,7 @@ final class Views {
 				}
 				$html .= '<p>' . count( $names ) . ' iscritti<br><span class="apsf-small">' . esc_html( $names ? implode( ', ', $names ) : 'Nessun iscritto' ) . '</span></p>';
 			}
+			$html .= self::notice_form( $a );
 			$html .= '</div>';
 		}
 		if ( ! $found ) {
@@ -663,12 +713,12 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,pagamenti,ospiti,profilo,volontario,ingressi,spese' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,avvisi,pagamenti,ospiti,profilo,volontario,ingressi,spese' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin',
+					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
 				foreach ( $sections as $s ) {
