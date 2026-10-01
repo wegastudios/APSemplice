@@ -266,8 +266,9 @@ aps_ok( $p['total_income'] - $p['total_expense'] === $p['result'], 'report: avan
 $s = $reports->social_year( $sy );
 aps_ok( 1 === ( $s['members_by_type']['founder'] ?? 0 ), 'report anno sociale: 1 fondatore' );
 aps_ok( ! isset( $s['members_by_type']['volunteer'] ), 'report anno sociale: il volontario senza quota non è iscritto' );
-aps_ok( 1 === count( $s['activities'] ), 'report anno sociale: attività' );
-aps_ok( 4000 === $s['activities'][0]['income'] && 1500 === $s['activities'][0]['cost'] && 2500 === $s['activities'][0]['margin'], 'report anno sociale: incassi 40,00, costi 15,00, resta 25,00' );
+aps_ok( 2 === count( $s['activities'] ), 'report anno sociale: due attività (Yoga e Teatro)' );
+$yoga_sum = array_values( array_filter( $s['activities'], function ( $a ) { return 'Yoga' === $a['activity']['name']; } ) )[0];
+aps_ok( 4000 === $yoga_sum['income'] && 1500 === $yoga_sum['cost'] && 2500 === $yoga_sum['margin'], 'report anno sociale: incassi 40,00, costi 15,00, resta 25,00' );
 
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 aps_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );
