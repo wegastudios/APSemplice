@@ -236,12 +236,7 @@ final class Actions {
 					if ( ! $host ) {
 						throw new \InvalidArgumentException( 'Indica il socio che ospita il nuovo ospite.' );
 					}
-					$twins = $people->find_homonyms( $first, $last );
-					if ( $twins ) {
-						$t = $twins[0];
-						throw new \InvalidArgumentException( trim( $t['first_name'] . ' ' . $t['last_name'] ) . ' esiste già in anagrafica (' . MemberType::label( $t['type'] ) . '): sceglilo dall\'elenco, così le sue partecipazioni restano collegate.' );
-					}
-					$pid = $people->create( array( 'type' => MemberType::GUEST, 'host_person_id' => $host, 'first_name' => $first, 'last_name' => $last ) );
+					$pid = $people->create( array( 'type' => MemberType::GUEST, 'host_person_id' => $host, 'first_name' => $first, 'last_name' => $last, 'phone' => (string) ( $p['new_phone'] ?? '' ) ) );
 				}
 				if ( ! $pid ) {
 					throw new \InvalidArgumentException( 'Scegli una persona oppure inserisci un nuovo ospite.' );

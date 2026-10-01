@@ -286,7 +286,6 @@ class ActivityService {
 		if ( $existing && 'booked' === $existing['status'] ) {
 			throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
 		}
-		$this->assert_guest_may_join( $person );
 		if ( null !== $s['capacity'] ) {
 			$taken = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
 			if ( $taken >= (int) $s['capacity'] ) {
@@ -399,7 +398,7 @@ class ActivityService {
 
 	// ---------- Partecipazioni degli ospiti (limite prima di doversi iscrivere) ----------
 
-	/** Quante volte un non socio può partecipare (0 = nessun limite). */
+	/** Soglia di segnalazione: dopo quante partecipazioni un ospite viene evidenziato come da invitare a iscriversi (0 = nessuna segnalazione). Non blocca nulla. */
 	public function guest_limit(): int {
 		return max( 0, (int) Settings::get( 'guest_max_events' ) );
 	}
@@ -469,27 +468,14 @@ class ActivityService {
 		return $out;
 	}
 
-	/** @return array count, max (0 = nessun limite), at_limit (non può partecipare ancora), last (ha usato l'ultima partecipazione), items */
+	/** Partecipazioni di una persona e soglia di segnalazione (nessun blocco). @return array count, max (soglia, 0 = nessuna segnalazione), flagged (ha raggiunto la soglia), items */
 	public function guest_status( int $person_id ): array {
 		$items = $this->participations( $person_id );
 		$max   = $this->guest_limit();
 		$n     = count( $items );
-		return array( 'count' => $n, 'max' => $max, 'at_limit' => $max > 0 && $n >= $max, 'over' => $max > 0 && $n > $max, 'items' => $items );
+		return array( 'count' => $n, 'max' => $max, 'flagged' => $max > 0 && $n >= $max, 'items' => $items );
 	}
 
-	/** Un ospite che ha già usato le sue partecipazioni non può prenotarsi né iscriversi ancora: deve diventare socio. @throws \InvalidArgumentException */
-	private function assert_guest_may_join( array $person ): void {
-		if ( MemberType::GUEST !== $person['type'] || 0 === $this->guest_limit() ) {
-			return;
-		}
-		$n = count( $this->participations( (int) $person['id'] ) );
-		if ( $n >= $this->guest_limit() ) {
-			throw new \InvalidArgumentException(
-				trim( $person['first_name'] . ' ' . $person['last_name'] ) . ' è ospite e ha già partecipato a ' . $n . ' attività'
-				. ' (il limite per i non soci è ' . $this->guest_limit() . '): per partecipare ancora deve iscriversi come socio.'
-			);
-		}
-	}
 
 	// ---------- Gestori dell'evento e registrazione degli ingressi ----------
 
@@ -668,7 +654,6 @@ class ActivityService {
 			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' );
 		}
 		$tbl  = Db::t( 'bookings' );
-		$this->assert_guest_may_join( $to );
 		$fee  = $this->fee_for( $a, $to['type'] );
 		$note = ' [intestato da ' . trim( $from_p['first_name'] . ' ' . $from_p['last_name'] ) . ' a ' . trim( $to['first_name'] . ' ' . $to['last_name'] ) . ']';
 		$this->in_transaction(
@@ -734,7 +719,6 @@ class ActivityService {
 		if ( $row ) {
 			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ), array( 'id' => (int) $row['id'] ) );
 		} else {
-			$this->assert_guest_may_join( $enrollee );
 			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) );
 		}
 		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );

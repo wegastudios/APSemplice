@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 final class ImportPage {
 
 	const LEDGER_TEMPLATE = "Data;Tipo;Conto;Modalità;Voce;Importo;Descrizione;Riferimento;N. tessera;Attività;Competenza\r\n15/01/2024;Entrata;Cassa contanti;Contanti;Quota associativa;10,00;Quota 2023/2024;;1;;\r\n20/01/2024;Uscita;Conto corrente;Bonifico;Costo generale;45,50;Affitto sala;FT-12;;;\r\n";
-	const GUESTS_TEMPLATE = "Tipo;Nome;Cognome;Email;Ospite di\r\nospite;Gino;Rossi;;1\r\n";
+	const GUESTS_TEMPLATE = "Tipo;Nome;Cognome;Cellulare;Ospite di\r\nospite;Gino;Rossi;333 1234567;1\r\n";
 
 	public static function render(): void {
 		Ui::header( 'Importa da Excel o CSV', '<a class="page-title-action" href="' . esc_url( Ui::url( 'apse-people' ) ) . '">← Soci</a>' );
@@ -36,7 +36,7 @@ final class ImportPage {
 		echo '<p>Carica un file <strong>Excel (.xlsx)</strong> o <strong>CSV</strong> con i <strong>soci</strong>, gli <strong>ospiti</strong> e/o la <strong>prima nota</strong>, anche di anni passati. '
 			. 'Se nel file Excel ci sono più fogli (es. "Soci", "Ospiti", "Prima nota") li leggo tutti: capisco da solo a cosa serve ognuno dalle intestazioni. Prima di scrivere qualcosa vedrai un\'anteprima.</p>';
 		echo '<div class="apse-cols"><div class="apse-col"><div class="apse-card"><h2>Soci e ospiti</h2>'
-			. '<p>Colonne riconosciute, in qualunque ordine: <strong>Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale</strong> e, per gli ospiti, <strong>Ospite di</strong> (tessera, email o nome e cognome del socio). '
+			. '<p>Colonne riconosciute, in qualunque ordine: <strong>Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale</strong> e, per gli ospiti, <strong>Cellulare</strong> (obbligatorio) e <strong>Ospite di</strong> (tessera, email o nome e cognome del socio). '
 			. 'Nome, Cognome ed <strong>Email</strong> sono obbligatori per i soci (ognuno diventa un utente WordPress). Il Tipo può essere <em>fondatore</em>, <em>ordinario</em>, <em>volontario</em> oppure <em>ospite</em>.</p></div></div>'
 			. '<div class="apse-col"><div class="apse-card"><h2>Prima nota</h2>'
 			. '<p>Colonne: <strong>Data, Importo</strong> (oppure <strong>Entrata</strong> e <strong>Uscita</strong>), e se vuoi <strong>Tipo, Conto, Modalità, Voce, Descrizione, Riferimento, N. tessera, Persona, Attività, Competenza</strong>. '

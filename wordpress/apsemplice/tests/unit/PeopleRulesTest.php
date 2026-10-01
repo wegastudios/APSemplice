@@ -49,12 +49,21 @@ final class RulesTest extends TestCase {
 	}
 
 	public function test_guest_needs_a_member_host_and_no_card(): void {
-		$guest = $this->person( array( 'type' => 'guest', 'email' => '', 'host_person_id' => 5 ) );
+		$guest = $this->person( array( 'type' => 'guest', 'email' => '', 'phone' => '333 1234567', 'host_person_id' => 5 ) );
 		$this->assertNotEmpty( Rules::validate_person( $guest, null ) );
 		$this->assertNotEmpty( Rules::validate_person( $guest, array( 'type' => 'guest' ) ) );
 		$this->assertSame( array(), Rules::validate_person( $guest, array( 'type' => 'ordinary' ) ) );
 		$this->assertNotEmpty( Rules::validate_person( array_merge( $guest, array( 'card_number' => '12' ) ), array( 'type' => 'ordinary' ) ) );
 		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'host_person_id' => 5 ) ) ) );
+	}
+
+	public function test_guest_needs_a_mobile_number(): void {
+		$guest = $this->person( array( 'type' => 'guest', 'email' => '', 'host_person_id' => 5 ) );
+		foreach ( array( '', 'abc', '12345' ) as $bad ) {
+			$this->assertNotEmpty( Rules::validate_person( array_merge( $guest, array( 'phone' => $bad ) ), array( 'type' => 'ordinary' ) ), "cellulare: $bad" );
+		}
+		$this->assertSame( array(), Rules::validate_person( array_merge( $guest, array( 'phone' => '+39 333 123 4567' ) ), array( 'type' => 'ordinary' ) ) );
+		$this->assertSame( array(), Rules::validate_person( $this->person( array( 'type' => 'ordinary', 'phone' => '' ) ) ), 'i soci non hanno l obbligo' );
 	}
 
 	public function test_names_required(): void {

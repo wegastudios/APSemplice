@@ -224,6 +224,21 @@ class PeopleService {
 		return $id;
 	}
 
+	/** Persone (soci e ospiti) con lo stesso cellulare, comunque sia scritto (+39, spazi, trattini). */
+	public function find_by_phone( string $raw, ?int $except_id = null ): array {
+		if ( ! Phone::is_valid( $raw ) ) {
+			return array();
+		}
+		$key = Phone::key( $raw );
+		$out = array();
+		foreach ( $this->search() as $p ) {
+			if ( (int) $p['id'] !== (int) $except_id && ! empty( $p['phone'] ) && Phone::key( (string) $p['phone'] ) === $key ) {
+				$out[] = $p;
+			}
+		}
+		return $out;
+	}
+
 	/** Persone con lo stesso nome e cognome (senza maiuscole né accenti): serve a non registrare due volte lo stesso ospite. */
 	public function find_homonyms( string $first, string $last, ?int $except_id = null ): array {
 		$key = Text::normalize( $first . $last );
@@ -261,24 +276,75 @@ class PeopleService {
 		Audit::log( 'person.promoted', 'person', $id, array( 'from' => 'guest', 'to' => $type ) );
 	}
 
-	/** Ospiti che non possono più partecipare senza iscriversi (hanno usato tutte le partecipazioni ammesse). @return array[] persone con 'participations' */
-	public function guests_at_limit(): array {
-		$limit = Plugin::activities()->guest_limit();
-		if ( $limit <= 0 ) {
-			return array();
+	/** Chiavi con cui si riconosce la stessa persona registrata più volte: nome e cognome, email, telefono. @return array<string,string> chiave => motivo */
+	private static function identity_keys( array $g ): array {
+		$keys = array( 'n:' . Text::normalize( $g['first_name'] . $g['last_name'] ) => 'stesso nome' );
+		if ( ! empty( $g['email'] ) ) {
+			$keys[ 'e:' . Text::lower( (string) $g['email'] ) ] = 'stessa email';
 		}
+		$phone = Phone::key( (string) ( $g['phone'] ?? '' ) );
+		if ( Phone::is_valid( (string) ( $g['phone'] ?? '' ) ) ) {
+			$keys[ 'p:' . $phone ] = 'stesso cellulare';
+		}
+		return $keys;
+	}
+
+	/**
+	 * Quadro degli ospiti per chi gestisce: quante volte è venuto ognuno e se lo stesso ospite risulta registrato più volte
+	 * (stesso nome, email o telefono, anche da soci diversi): le partecipazioni delle registrazioni gemelle si sommano.
+	 * Nessun blocco: serve a "intercettare" chi aggira il conto delle partecipazioni.
+	 *
+	 * @return array<int,array> ospite => count, total (sue + dei gemelli), twins [id, name, host, count, why], flag (total ha raggiunto la soglia)
+	 */
+	public function guest_overview(): array {
+		$acts   = Plugin::activities();
 		$guests = $this->search( array( 'type' => MemberType::GUEST ) );
-		$counts = Plugin::activities()->participation_counts( array_column( $guests, 'id' ) );
-		$out    = array();
+		$counts = $acts->participation_counts( array_column( $guests, 'id' ) );
+		$limit  = $acts->guest_limit();
+		$by_key = array();
 		foreach ( $guests as $g ) {
-			if ( ( $counts[ (int) $g['id'] ] ?? 0 ) >= $limit ) {
-				$g['participations'] = $counts[ (int) $g['id'] ];
-				$out[]               = $g;
+			foreach ( array_keys( self::identity_keys( $g ) ) as $k ) {
+				$by_key[ $k ][] = (int) $g['id'];
 			}
+		}
+		$by_id = array();
+		foreach ( $guests as $g ) {
+			$by_id[ (int) $g['id'] ] = $g;
+		}
+		$out = array();
+		foreach ( $guests as $g ) {
+			$id    = (int) $g['id'];
+			$twins = array();
+			foreach ( self::identity_keys( $g ) as $k => $why ) {
+				foreach ( $by_key[ $k ] as $other ) {
+					if ( $other === $id ) {
+						continue;
+					}
+					if ( ! isset( $twins[ $other ] ) ) {
+						$o              = $by_id[ $other ];
+						$twins[ $other ] = array( 'id' => $other, 'name' => trim( $o['first_name'] . ' ' . $o['last_name'] ), 'host' => (string) $o['host_name'], 'count' => (int) ( $counts[ $other ] ?? 0 ), 'why' => array() );
+					}
+					$twins[ $other ]['why'][] = $why;
+				}
+			}
+			$total = (int) ( $counts[ $id ] ?? 0 ) + array_sum( array_column( $twins, 'count' ) );
+			$out[ $id ] = array( 'count' => (int) ( $counts[ $id ] ?? 0 ), 'total' => $total, 'twins' => array_values( $twins ), 'flag' => $limit > 0 && $total >= $limit );
 		}
 		return $out;
 	}
 
+	/** Ospiti da invitare a iscriversi: hanno raggiunto la soglia di partecipazioni (anche sommando le registrazioni gemelle). @return array[] persone con 'overview' */
+	public function guests_to_invite(): array {
+		$ov  = $this->guest_overview();
+		$out = array();
+		foreach ( $this->search( array( 'type' => MemberType::GUEST ) ) as $g ) {
+			if ( ! empty( $ov[ (int) $g['id'] ]['flag'] ) ) {
+				$g['overview'] = $ov[ (int) $g['id'] ];
+				$out[]         = $g;
+			}
+		}
+		return $out;
+	}
 	public function update( int $id, array $input ): void {
 		$current = $this->get( $id );
 		if ( ! $current ) {

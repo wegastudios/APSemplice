@@ -16,13 +16,10 @@ final class PeoplePage {
 		$status = Ui::get_str( 'status' );
 		$rows   = Plugin::people()->search( array( 'q' => $q, 'type' => $type, 'status' => $status ) );
 		$at_limit = '1' === Ui::get_str( 'at_limit' );
-		$gcounts  = Plugin::activities()->participation_counts( array_column( array_filter( $rows, function ( $x ) {
-			return MemberType::GUEST === $x['type'];
-		} ), 'id' ) );
-		$glimit   = Plugin::activities()->guest_limit();
+		$gov      = Plugin::people()->guest_overview();
 		if ( $at_limit ) {
-			$rows = array_values( array_filter( $rows, function ( $x ) use ( $gcounts, $glimit ) {
-				return MemberType::GUEST === $x['type'] && $glimit > 0 && ( $gcounts[ (int) $x['id'] ] ?? 0 ) >= $glimit;
+			$rows = array_values( array_filter( $rows, function ( $x ) use ( $gov ) {
+				return MemberType::GUEST === $x['type'] && ! empty( $gov[ (int) $x['id'] ]['flag'] );
 			} ) );
 		}
 		$today  = current_time( 'Y-m-d' );
@@ -39,7 +36,7 @@ final class PeoplePage {
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
 		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera' ), $status, 'Qualsiasi stato' ) . '</select> ';
-		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti che devono iscriversi</label> ';
+		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
@@ -49,8 +46,7 @@ final class PeoplePage {
 		}
 		foreach ( $rows as $p ) {
 			if ( MemberType::GUEST === $p['type'] ) {
-				$n     = (int) ( $gcounts[ (int) $p['id'] ] ?? 0 );
-				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $n, $glimit );
+				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $gov[ (int) $p['id'] ] ?? null );
 			} elseif ( ! empty( $p['active_until'] ) && $p['active_until'] >= $today ) {
 				$state = '<span class="apse-ok">Valida fino al ' . Ui::date( $p['active_until'] ) . '</span>';
 			} elseif ( ! empty( $p['active_until'] ) ) {
@@ -100,7 +96,7 @@ final class PeoplePage {
 		echo '<tr><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
 		echo '<tr><th>Email <span class="apse-email-req">*</span></th><td><input type="email" name="email" id="apse-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
 			. '<p class="description apse-email-note">Obbligatoria per i soci: ogni socio corrisponde a un utente WordPress.</p></td></tr>';
-		echo '<tr><th>Telefono</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"></td></tr>';
+		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
@@ -170,26 +166,38 @@ final class PeoplePage {
 		echo '</div>';
 	}
 
-	/** "2 di 2 partecipazioni — deve iscriversi" (in rosso quando ha raggiunto il limite). */
-	public static function guest_badge( int $count, int $limit ): string {
-		$txt = $count . ( $limit > 0 ? ' di ' . $limit : '' ) . ( 1 === $count && 0 === $limit ? ' partecipazione' : ' partecipazioni' );
-		if ( $limit > 0 && $count >= $limit ) {
-			return '<strong class="apse-neg">' . esc_html( $txt . ' — deve iscriversi' ) . '</strong>';
+	/** Etichetta per un ospite: quante volte è venuto, eventuali registrazioni "gemelle" (stesso nome, email o telefono) e se è da invitare a iscriversi. */
+	public static function guest_badge( ?array $ov ): string {
+		if ( ! $ov ) {
+			return '';
 		}
-		return '<span class="description">' . esc_html( $txt ) . '</span>';
+		$txt = $ov['count'] . ( 1 === $ov['count'] ? ' partecipazione' : ' partecipazioni' );
+		if ( $ov['twins'] ) {
+			$txt .= ' · registrato anche come ' . count( $ov['twins'] ) . ( 1 === count( $ov['twins'] ) ? ' altro ospite' : ' altri ospiti' ) . ': in tutto ' . $ov['total'];
+		}
+		if ( $ov['flag'] ) {
+			return '<strong class="apse-neg">' . esc_html( $txt . ' — da invitare a iscriversi' ) . '</strong>';
+		}
+		return $ov['twins'] ? '<strong class="apse-warn">' . esc_html( $txt ) . '</strong>' : '<span class="description">' . esc_html( $txt ) . '</span>';
 	}
 
-	/** Scheda di un ospite: a cosa è già venuto (eventi e corsi), quante partecipazioni gli restano e l'iscrizione come socio. */
+	/** Scheda di un ospite: a cosa è già venuto (eventi e corsi), se risulta registrato più volte e l'iscrizione come socio. */
 	private static function panel_guest_status( array $p ): void {
 		if ( MemberType::GUEST !== $p['type'] ) {
 			return;
 		}
 		$st = Plugin::activities()->guest_status( (int) $p['id'] );
-		echo '<div class="apse-card"><h2>Partecipazioni come ospite</h2><p>' . self::guest_badge( $st['count'], $st['max'] ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		if ( $st['at_limit'] ) {
-			echo '<p class="apse-neg">Ha usato tutte le partecipazioni ammesse ai non soci: per partecipare ancora (e anche per l\'assicurazione) deve iscriversi come socio.</p>';
-		} elseif ( $st['max'] > 0 ) {
-			echo '<p class="description">Gli restano ' . (int) ( $st['max'] - $st['count'] ) . ' partecipazioni prima di doversi iscrivere.</p>';
+		$ov = Plugin::people()->guest_overview()[ (int) $p['id'] ] ?? null;
+		echo '<div class="apse-card"><h2>Partecipazioni come ospite</h2><p>' . self::guest_badge( $ov ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( $ov && $ov['flag'] ) {
+			echo '<p class="apse-neg">Ha raggiunto la soglia di partecipazioni per i non soci' . ( $ov['twins'] ? ' (sommando le altre registrazioni)' : '' ) . ': conviene invitarlo a iscriversi come socio, anche per l\'assicurazione. Nessun blocco automatico: decidi tu.</p>';
+		}
+		if ( $ov && $ov['twins'] ) {
+			echo '<p><strong>Potrebbe essere la stessa persona registrata più volte:</strong></p><ul>';
+			foreach ( $ov['twins'] as $t ) {
+				echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $t['id'] ) ) ) . '">' . esc_html( $t['name'] ) . '</a> <span class="description">ospite di ' . esc_html( $t['host'] ) . ' · ' . (int) $t['count'] . ' partecipazioni · ' . esc_html( implode( ', ', array_unique( $t['why'] ) ) ) . '</span></li>';
+			}
+			echo '</ul>';
 		}
 		if ( $st['items'] ) {
 			echo '<table class="widefat striped"><thead><tr><th>Quando</th><th>A cosa</th><th>Stato</th></tr></thead><tbody>';
@@ -202,8 +210,14 @@ final class PeoplePage {
 		} else {
 			echo '<p class="description">Non ha ancora partecipato a nulla.</p>';
 		}
+		$wa = \ApSemplice\Phone::whatsapp( (string) $p['phone'] );
+		if ( '' !== $wa ) {
+			$assoc = (string) \ApSemplice\Settings::get( 'association_name' );
+			$msg   = 'Ciao ' . $p['first_name'] . ', grazie per essere venuto/a' . ( '' !== $assoc ? ' da ' . $assoc : '' ) . '! Se ti fa piacere continuare a partecipare puoi iscriverti come socio: ti spiego come?';
+			echo '<p><a class="button" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $msg ) ) . '" target="_blank" rel="noopener">💬 Scrivigli su WhatsApp</a> <span class="description">cellulare ' . esc_html( (string) $p['phone'] ) . '</span></p>';
+		}
 		Ui::form_open( 'apse_promote_guest', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), false, 'apse-confirm' );
-		echo '<details style="margin-top:10px"' . ( $st['at_limit'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<details style="margin-top:10px"' . ( $ov && $ov['flag'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p>Email (obbligatoria) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '" required> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
 			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
 			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \ApSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>' // phpcs:ignore WordPress.Security.EscapeOutput

@@ -164,7 +164,7 @@ final class Actions {
 		$last  = trim( (string) ( $post['new_last_name'] ?? '' ) );
 		if ( ! $to_id && ( '' !== $first || '' !== $last ) ) {
 			self::require_cap( 'apse_add_guest', (int) $actor['id'] );
-			$to_id = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) $actor['id'], 'first_name' => $first, 'last_name' => $last ) );
+			$to_id = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) $actor['id'], 'first_name' => $first, 'last_name' => $last, 'phone' => (string) ( $post['new_phone'] ?? '' ) ) );
 		}
 		if ( ! $to_id ) {
 			throw new \InvalidArgumentException( 'Scegli a chi intestare la prenotazione, oppure indica nome e cognome di un nuovo ospite.' );
@@ -299,16 +299,20 @@ final class Actions {
 	public static function do_add_guest( array $post ): string {
 		$actor = self::actor();
 		self::require_cap( 'apse_add_guest', (int) $actor['id'] );
-		// Lo stesso ospite non si registra due volte (neanche da soci diversi): si perderebbe il conto delle sue partecipazioni.
-		foreach ( Plugin::people()->find_homonyms( (string) ( $post['first_name'] ?? '' ), (string) ( $post['last_name'] ?? '' ) ) as $h ) {
+		$phone = (string) ( $post['phone'] ?? '' );
+		// Nessun limite automatico: si evita solo il doppione evidente tra i propri ospiti e chi è già socio (il resto lo segnalano gli elenchi a chi gestisce).
+		foreach ( Plugin::people()->find_by_phone( $phone ) as $h ) {
 			if ( MemberType::is_member( $h['type'] ) ) {
-				throw new \InvalidArgumentException( trim( $h['first_name'] . ' ' . $h['last_name'] ) . ' è già socio: va prenotato come socio, non come tuo ospite.' );
+				throw new \InvalidArgumentException( 'Questo cellulare è già di un socio: va prenotato come socio, non come tuo ospite.' );
 			}
 			if ( (int) $h['host_person_id'] === (int) $actor['id'] ) {
 				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
 			}
-			$n = Plugin::activities()->guest_status( (int) $h['id'] )['count'];
-			throw new \InvalidArgumentException( 'Questa persona risulta già come ospite di un altro socio e ha già partecipato a ' . $n . ' attività: rivolgiti alla segreteria per collegarla a te.' );
+		}
+		foreach ( Plugin::people()->guests_of( (int) $actor['id'] ) as $g ) {
+			if ( \ApSemplice\Text::normalize( $g['first_name'] . $g['last_name'] ) === \ApSemplice\Text::normalize( ( $post['first_name'] ?? '' ) . ( $post['last_name'] ?? '' ) ) ) {
+				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
+			}
 		}
 		Plugin::people()->create(
 			array(

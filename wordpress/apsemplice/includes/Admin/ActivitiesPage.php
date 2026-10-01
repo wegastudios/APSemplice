@@ -283,13 +283,13 @@ final class ActivitiesPage {
 		Ui::form_open( 'apse_walk_in', $back );
 		echo Ui::hidden( 'activity_id', $activity['id'] ) . Ui::hidden( 'session_id', $sid ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'apse-walk-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> del socio '
+			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> cellulare <input type="text" name="new_phone" placeholder="333 1234567"> del socio '
 			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'apse-walkhost-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><label><input type="checkbox" name="pay" value="1" checked> Incassa ora il contributo</label> (soci ' . esc_html( Money::format( $fee ) ) . ', ospiti ' . esc_html( Money::format( $guest ) ) . ') — '
 			. '<select name="method">' . Ui::options( array_diff_key( \ApSemplice\Labels::methods(), array( 'stripe' => 1, 'paypal' => 1 ) ), 'cash' ) . '</select> sul conto '
 			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><label><input type="checkbox" name="checkin" value="1" checked> Registra subito l\'ingresso</label> <button class="button button-primary">Prenota sul posto</button></p>'
-			. '<p class="description">Il nuovo ospite viene creato (senza email) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>';
+			. '<p class="description">Il nuovo ospite viene creato (il cellulare è obbligatorio: serve a riconoscerlo) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>';
 		Ui::form_close();
 		echo '</details>';
 	}
@@ -371,10 +371,7 @@ final class ActivitiesPage {
 		foreach ( $sessions as $s ) {
 			$cancelled = ! empty( $s['cancelled_at'] );
 			$bookings  = Plugin::activities()->bookings_for_session( (int) $s['id'] );
-			$gcounts   = Plugin::activities()->participation_counts( array_column( array_filter( $bookings, function ( $x ) {
-				return MemberType::GUEST === $x['type'] && $x['active'];
-			} ), 'person_id' ) );
-			$glimit    = Plugin::activities()->guest_limit();
+			$gov       = Plugin::people()->guest_overview();
 			$booked    = array();
 			foreach ( $bookings as $b ) {
 				if ( $b['active'] ) {
@@ -390,7 +387,7 @@ final class ActivitiesPage {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
-					echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( (int) ( $gcounts[ (int) $b['person_id'] ] ?? 0 ), $glimit ) : '' ) . '</td>'
+					echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . '</td>'
 						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="apse-warn">trasferita ad altra persona' : '<span class="apse-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 					self::checkin_cell( $b, (int) $s['id'], $id, $back, $cancelled );
 					echo '</td><td>';

@@ -270,7 +270,7 @@ final class Views {
 			}
 			$fields = '<div class="apsf-fields">'
 				. ( '' !== $options ? '<label>Intesta a <select name="to_person_id"><option value="">— scegli —</option>' . $options . '</select></label>' : '' )
-				. '<label>' . ( '' !== $options ? 'oppure nuovo ospite: nome' : 'Nuovo ospite: nome' ) . ' <input type="text" name="new_first_name"></label><label>Cognome <input type="text" name="new_last_name"></label></div>';
+				. '<label>' . ( '' !== $options ? 'oppure nuovo ospite: nome' : 'Nuovo ospite: nome' ) . ' <input type="text" name="new_first_name"></label><label>Cognome <input type="text" name="new_last_name"></label><label>Cellulare <input type="tel" name="new_phone" placeholder="333 1234567"></label></div>';
 			$html  .= '<details class="apsf-details"><summary>Cambia nominativo</summary>'
 				. '<p class="apsf-small apsf-muted">Se il nuovo partecipante ha un contributo diverso (ad esempio un ospite) la differenza va integrata.</p>'
 				. self::form( 'apse_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cambia nominativo' ) . '</details>';
@@ -427,14 +427,14 @@ final class Views {
 				foreach ( array_slice( $st['items'], 0, 3 ) as $it ) {
 					$seen[] = $it['activity_name'];
 				}
-				$status = '<div class="apsf-small ' . ( $st['at_limit'] ? 'apsf-bad' : 'apsf-muted' ) . '">Partecipazioni: ' . (int) $st['count'] . ( $st['max'] > 0 ? ' di ' . (int) $st['max'] : '' )
-					. ( $seen ? ' (' . esc_html( implode( ', ', $seen ) ) . ')' : '' ) . ( $st['at_limit'] ? ' — per partecipare ancora deve iscriversi come socio: rivolgiti alla segreteria' : '' ) . '</div>';
+				$status = '<div class="apsf-small apsf-muted">Partecipazioni: ' . (int) $st['count']
+					. ( $seen ? ' (' . esc_html( implode( ', ', $seen ) ) . ')' : '' ) . '</div>';
 				$html .= '<li><div><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong>' . $status . $tickets . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 			$html .= '</ul>';
 		}
 		$fields = '<div class="apsf-fields"><label>Nome <input type="text" name="first_name" required></label><label>Cognome <input type="text" name="last_name" required></label>'
-			. '<label>Email (facoltativa) <input type="email" name="email"></label><label>Telefono (facoltativo) <input type="text" name="phone"></label></div>';
+			. '<label>Email (facoltativa) <input type="email" name="email"></label><label>Cellulare (obbligatorio) <input type="tel" name="phone" required placeholder="333 1234567" inputmode="tel"></label></div>';
 		return $html . '<details class="apsf-details"><summary>Aggiungi un ospite</summary>' . self::form( 'apse_front_add_guest', $fields, 'Aggiungi ospite' ) . '</details></section>';
 	}
 
@@ -535,10 +535,7 @@ final class Views {
 		$unpaid   = 0;
 		$cancel   = 0;
 		$all_bookings = $svc->bookings_for_session( (int) $s['id'] );
-		$gcounts      = $svc->participation_counts( array_column( array_filter( $all_bookings, function ( $x ) {
-			return MemberType::GUEST === $x['type'] && $x['active'];
-		} ), 'person_id' ) );
-		$glimit       = $svc->guest_limit();
+		$gov          = Plugin::people()->guest_overview();
 		foreach ( $all_bookings as $b ) {
 			if ( ! $b['active'] ) {
 				$cancel++;
@@ -567,7 +564,7 @@ final class Views {
 			$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
 			$list .= '<li class="apsf-booked" data-name="' . esc_attr( Text::normalize( $name ) ) . '" data-state="' . ( $in ? 'in' : 'out' ) . '"><div><strong>' . esc_html( $name ) . '</strong>'
 				. '<div class="apsf-small apsf-muted">' . esc_html( MemberType::GUEST === $b['type'] ? 'Ospite' . $host : MemberType::label( $b['type'] ) ) . '</div>'
-				. ( MemberType::GUEST === $b['type'] ? self::guest_note( (int) ( $gcounts[ (int) $b['person_id'] ] ?? 0 ), $glimit ) : '' ) . $pay . '</div><div class="apsf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( MemberType::GUEST === $b['type'] ? self::guest_note( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . $pay . '</div><div class="apsf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		$can_scan = ! empty( $a['booking_qr'] ) && $s['session_date'] === $today;
 		$scan     = '';
@@ -591,16 +588,25 @@ final class Views {
 			. ( $cancel ? '<p class="apsf-small apsf-muted">' . (int) $cancel . ' prenotazioni annullate non sono in elenco.</p>' : '' ) . '</section>';
 	}
 
-	/** "2ª partecipazione come ospite" / "…: poi deve iscriversi": per chi accoglie all'ingresso e per i soci che portano ospiti. */
-	public static function guest_note( int $count, int $limit ): string {
-		$txt = $count . 'ª partecipazione come ospite';
-		if ( $limit > 0 && $count > $limit ) {
-			return '<div class="apsf-small apsf-bad">' . esc_html( $txt . ': oltre il limite (' . $limit . '), deve iscriversi' ) . '</div>';
+	/**
+	 * Nota su un ospite per chi accoglie all'ingresso: quante volte è venuto, se risulta registrato anche con altri nomi
+	 * (stesso cellulare, email o nome) e se è da invitare a iscriversi. Nessun blocco: decide chi gestisce.
+	 */
+	public static function guest_note( ?array $ov ): string {
+		if ( ! $ov ) {
+			return '';
 		}
-		if ( $limit > 0 && $count >= $limit ) {
-			return '<div class="apsf-small apsf-bad">' . esc_html( $txt . ': l\'ultima consentita, poi deve iscriversi' ) . '</div>';
+		$txt = $ov['count'] . 'ª partecipazione come ospite';
+		if ( $ov['twins'] ) {
+			$names = array_map( function ( $t ) {
+				return $t['name'] . ' (ospite di ' . $t['host'] . ', ' . $t['count'] . ')';
+			}, $ov['twins'] );
+			$txt  .= ' · risulta registrato anche come ' . implode( '; ', $names ) . ': in tutto ' . $ov['total'];
 		}
-		return '<div class="apsf-small apsf-muted">' . esc_html( $txt ) . '</div>';
+		if ( $ov['flag'] ) {
+			return '<div class="apsf-small apsf-bad">' . esc_html( $txt . ' — da invitare a iscriversi' ) . '</div>';
+		}
+		return '<div class="apsf-small ' . ( $ov['twins'] ? 'apsf-bad' : 'apsf-muted' ) . '">' . esc_html( $txt ) . '</div>';
 	}
 
 	// ---------- Avvisi agli iscritti ----------

@@ -122,7 +122,7 @@ apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( ar
 
 // ---------- Ospiti ----------
 apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Gino', 'last_name' => 'Ospiti' ) ); } ), 'l\'ospite richiede il socio ospitante' );
-$guest = $people->create( array( 'type' => 'guest', 'first_name' => 'Gino', 'last_name' => 'Ospiti', 'host_person_id' => $ord ) );
+$guest = $people->create( array( 'type' => 'guest', 'first_name' => 'Gino', 'last_name' => 'Ospiti', 'phone' => '347 1111111', 'host_person_id' => $ord ) );
 apse_ok( empty( $people->get( $guest )['wp_user_id'] ), 'l\'ospite non ha utente WordPress' );
 apse_ok( null !== apse_throws( function () use ( $people, $guest ) { $people->create( array( 'type' => 'guest', 'first_name' => 'X', 'last_name' => 'Y', 'host_person_id' => $guest ) ); } ), 'un ospite non può ospitare' );
 apse_ok( 1 === count( $people->guests_of( $ord ) ), 'ospiti del socio' );
@@ -468,7 +468,7 @@ wp_set_current_user( $u_f );
 $s3  = (int) $rec_sessions[2]['id'];
 $msg = $front::do_book( array( 'session_id' => $s3, 'person_id' => $founder ) );
 apse_ok( false !== strpos( $msg, 'Prenotazione registrata' ) && $acts->has_active_booking( $s3, $founder ), 'sito: il socio si prenota a un evento' );
-$front::do_add_guest( array( 'first_name' => 'Gia', 'last_name' => 'Ospite', 'phone' => '333' ) );
+$front::do_add_guest( array( 'first_name' => 'Gia', 'last_name' => 'Ospite', 'phone' => '333 2222222' ) );
 $g_list = $people->guests_of( $founder );
 apse_ok( 1 === count( $g_list ) && MemberType::GUEST === $g_list[0]['type'] && (int) $g_list[0]['host_person_id'] === $founder, 'sito: il socio aggiunge un proprio ospite' );
 $g_id = (int) $g_list[0]['id'];
@@ -643,7 +643,7 @@ $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['i
 wp_set_current_user( $u_f );
 
 // il socio cambia il nominativo a favore di un proprio ospite (contributo ospiti 8,00): integra 3,00
-$front::do_add_guest( array( 'first_name' => 'Nico', 'last_name' => 'Ospite' ) );
+$front::do_add_guest( array( 'first_name' => 'Nico', 'last_name' => 'Ospite', 'phone' => '333 3333333' ) );
 $nico = 0;
 foreach ( $people->guests_of( $founder ) as $g ) {
 	if ( 'Nico' === $g['first_name'] ) {
@@ -660,7 +660,7 @@ apse_ok( 500 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT SUM(amount_cents)
 apse_ok( false !== strpos( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = %d AND person_id = %d LIMIT 1', $paid_s, $nico ) ), 'intestato da' ), 'nota di trasferimento nella descrizione del pagamento' );
 
 // ...e poi a un nuovo ospite indicato per nome (resta lo stesso contributo, niente da integrare)
-$msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $nico, 'new_first_name' => 'Nuovo', 'new_last_name' => 'Amico' ) );
+$msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $nico, 'new_first_name' => 'Nuovo', 'new_last_name' => 'Amico', 'new_phone' => '333 9999991' ) );
 apse_ok( false !== strpos( $msg, 'Da integrare' ) && false !== strpos( $msg, '3,00' ), 'cambio verso un nuovo ospite indicato per nome: resta da integrare 3,00' );
 $amico = 0;
 foreach ( $people->guests_of( $founder ) as $g ) {
@@ -927,7 +927,7 @@ apse_ok( 'stripe' === $ps->provider() && $ps->enabled(), 'pagamenti online: Stri
 $pm   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Pagante', 'email' => 'pia.pagante@example.com' ) );
 $pmp  = $people->get( $pm );
 $u_pm = (int) $pmp['wp_user_id'];
-$pg   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gigi', 'last_name' => 'Pagante', 'host_person_id' => $pm ) );
+$pg   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gigi', 'last_name' => 'Pagante', 'phone' => '333 4444444', 'host_person_id' => $pm ) );
 $pcourse = $acts->create( array( 'name' => 'Ceramica', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'guest_fee_cents' => 1500 ) );
 $acts->enroll( $pcourse, $pm, $month );
 $acts->enroll( $pcourse, $pg, $month );
@@ -1330,9 +1330,9 @@ $mk_xlsx(
 			array( array( 901 ), 'volontario', 'Otto', 'Storico', 'otto.storico@example.com', '' ),
 		),
 		'Ospiti'      => array(
-			array( 'Tipo', 'Nome', 'Cognome', 'Ospite di' ),
-			array( 'ospite', 'Gianni', 'Storico', array( 900 ) ),
-			array( 'ospite', 'Gina', 'Storica', 'otto.storico@example.com' ),
+			array( 'Tipo', 'Nome', 'Cognome', 'Ospite di', 'Cellulare' ),
+			array( 'ospite', 'Gianni', 'Storico', array( 900 ), '333 7777771' ),
+			array( 'ospite', 'Gina', 'Storica', 'otto.storico@example.com', '333 7777772' ),
 		),
 		'Prima nota'  => array(
 			array( 'Rendiconto 2022 (titolo sopra la tabella)' ),
@@ -1430,7 +1430,7 @@ $bal_w0 = $balances()[ $cash_name ];
 $p_ok   = $stg( WpAllImport::TYPE_LEDGER, array( 'apse_date' => '2022-07-01', 'apse_income' => '20,00', 'apse_account' => $cash_name, 'apse_category' => 'Quota associativa', 'apse_card' => '902', 'apse_description' => 'WPAI quota' ) );
 $p_bad  = $stg( WpAllImport::TYPE_LEDGER, array( 'apse_date' => 'boh', 'apse_amount' => '5', 'apse_account' => $cash_name ) );
 $p_soc  = $stg( WpAllImport::TYPE_PEOPLE, array( 'apse_first_name' => 'Wanda', 'apse_last_name' => 'Pai', 'apse_email' => 'wanda.pai@example.com', 'apse_member_type' => 'volontario', 'apse_card_number' => '903' ) );
-$p_osp  = $stg( WpAllImport::TYPE_PEOPLE, array( 'apse_first_name' => 'Osvaldo', 'apse_last_name' => 'Pai', 'apse_member_type' => 'ospite', 'apse_host' => '903' ) );
+$p_osp  = $stg( WpAllImport::TYPE_PEOPLE, array( 'apse_first_name' => 'Osvaldo', 'apse_last_name' => 'Pai', 'apse_member_type' => 'ospite', 'apse_host' => '903', 'apse_phone' => '333 6666661' ) );
 $p_ext  = $stg( WpAllImport::TYPE_LEDGER, array( 'apse_date' => '2022-07-02', 'apse_income' => '1,00', 'apse_account' => $cash_name ), (int) $u_vol );
 apse_ok( 5 === WpAllImport::pending_count(), 'WP All Import: elementi in attesa contati' );
 do_action( 'pmxi_after_post_import', 1 ); // come fa WP All Import a importazione finita
@@ -1462,8 +1462,8 @@ $mk_xlsx(
 			array( array( 900 ), 'ordinario', 'Ida', 'Storica', 'ida.storica@example.com', '3339990000' ),
 		),
 		'Ospiti'     => array(
-			array( 'Tipo', 'Nome', 'Cognome', 'Ospite di' ),
-			array( 'ospite', 'Ugo', 'Ospite', array( 950 ) ),
+			array( 'Tipo', 'Nome', 'Cognome', 'Ospite di', 'Cellulare' ),
+			array( 'ospite', 'Ugo', 'Ospite', array( 950 ), '333 7777773' ),
 		),
 		'Prima nota' => array(
 			array( 'Data', 'Tipo', 'Conto', 'Voce', 'Importo', 'Descrizione', 'N. tessera' ),
@@ -1686,7 +1686,7 @@ $base = array( 'activity_id' => $wi_ev, 'session_id' => $wi_s, 'method' => 'cash
 $r1   = $walk->invoke( null, array_merge( $base, array( 'person_id' => $q ) ) );
 $b1   = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $wi_s, $q ), ARRAY_A );
 apse_ok( 'booked' === $b1['status'] && ! empty( $b1['checked_in_at'] ) && 600 === $income( $wi_s, $q ) && false !== strpos( $r1[1], 'incassati' ) && false !== strpos( $r1[1], 'ingresso registrato' ), 'sul posto: un socio senza prenotazione viene prenotato, incassato (6,00) e fatto entrare in un colpo solo' );
-$r2 = $walk->invoke( null, array_merge( $base, array( 'new_first_name' => 'Walter', 'new_last_name' => 'Sulposto', 'host_person_id' => $founder ) ) );
+$r2 = $walk->invoke( null, array_merge( $base, array( 'new_first_name' => 'Walter', 'new_last_name' => 'Sulposto', 'new_phone' => '333 8888881', 'host_person_id' => $founder ) ) );
 $wg = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Walter' AND last_name = 'Sulposto'", ARRAY_A );
 apse_ok( $wg && 'guest' === $wg['type'] && (int) $wg['host_person_id'] === $founder && 900 === $income( $wi_s, (int) $wg['id'] ) && ! empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $wi_s, (int) $wg['id'] ) ) ), 'sul posto: un nuovo ospite viene creato, collegato al socio, incassato col contributo ospiti (9,00) e fatto entrare' );
 $r3  = $walk->invoke( null, array( 'activity_id' => $wi_ev, 'session_id' => $wi_s, 'person_id' => $tre_p, 'checkin' => '1' ) );
@@ -1697,13 +1697,13 @@ apse_ok( false !== strpos( $r4[1], 'nulla da incassare' ) && 1 === (int) $wpdb->
 // tutto o niente
 $n_people = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 apse_ok( null !== apse_throws( function () use ( $walk, $base ) { $walk->invoke( null, $base ); } ) && null !== apse_throws( function () use ( $walk, $base ) { $walk->invoke( null, array_merge( $base, array( 'new_first_name' => 'Senza', 'new_last_name' => 'Ospitante' ) ) ); } ), 'sul posto: serve una persona, e un nuovo ospite ha bisogno del socio che lo ospita' );
-$fresh = $people->create( array( 'type' => 'guest', 'first_name' => 'Fabio', 'last_name' => 'Fresco', 'host_person_id' => $founder ) );
+$fresh = $people->create( array( 'type' => 'guest', 'first_name' => 'Fabio', 'last_name' => 'Fresco', 'phone' => '333 4444445', 'host_person_id' => $founder ) );
 apse_ok( null !== apse_throws( function () use ( $walk, $base, $fresh ) { $walk->invoke( null, array_merge( $base, array( 'person_id' => $fresh, 'account_id' => 0 ) ) ); } ) && ! $acts->has_active_booking( $wi_s, $fresh ) && $n_people + 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'sul posto: se l\'incasso non va (conto non valido) non resta nemmeno la prenotazione' );
 $few   = $mkev( 'Pochi posti', 0, null, array( 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +5 days' ) ), 'capacity' => 1 ) ) );
 $few_s = $first_session( $few );
 $walk->invoke( null, array( 'activity_id' => $few, 'session_id' => $few_s, 'person_id' => $q ) );
 $n_people = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
-apse_ok( false !== strpos( (string) apse_throws( function () use ( $walk, $few, $few_s, $founder ) { $walk->invoke( null, array( 'activity_id' => $few, 'session_id' => $few_s, 'new_first_name' => 'Troppi', 'new_last_name' => 'Ospiti', 'host_person_id' => $founder ) ); } ), 'esauriti' ) && $n_people === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'sul posto: con i posti esauriti non si prenota e il nuovo ospite non viene creato' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $walk, $few, $few_s, $founder ) { $walk->invoke( null, array( 'activity_id' => $few, 'session_id' => $few_s, 'new_first_name' => 'Troppi', 'new_last_name' => 'Ospiti', 'new_phone' => '333 8888882', 'host_person_id' => $founder ) ); } ), 'esauriti' ) && $n_people === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'sul posto: con i posti esauriti non si prenota e il nuovo ospite non viene creato' );
 apse_ok( null !== apse_throws( function () use ( $walk, $wi_ev, $few_s, $q ) { $walk->invoke( null, array( 'activity_id' => $wi_ev, 'session_id' => $few_s, 'person_id' => $q ) ); } ), 'sul posto: la data deve essere di quell\'evento' );
 apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ingresso senza prenotazione', array( 'id' => $wi_ev ) );
 apse_ok( 3 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = $wi_s AND status = 'booked'" ), 'sul posto: i prenotati sono tre, senza doppioni né residui dei tentativi falliti' );
@@ -1801,84 +1801,97 @@ apse_ok( null === Wallet::apple_config() && ! Settings::has_secret( 'wallet_appl
 Wallet::clear( 'google' );
 apse_ok( null === Wallet::google_config() && '' === Wallet::buttons( $founder_p ), 'Google Wallet rimosso: nessun pulsante' );
 
-// ---------- Ospiti: partecipazioni ammesse prima di iscriversi, storia sempre collegata ----------
+// ---------- Ospiti: nessun limite automatico, ma chi gestisce li "intercetta" ----------
 wp_set_current_user( 1 );
 $_SERVER['REQUEST_METHOD'] = 'GET';
-apse_ok( 2 === (int) Settings::defaults()['guest_max_events'], 'ospiti: di default un non socio può partecipare 2 volte' );
+apse_ok( 2 === (int) Settings::defaults()['guest_max_events'], 'ospiti: la soglia di segnalazione è 2 di default' );
 Settings::update( array( 'guest_max_events' => 2 ) );
-$gx = $people->create( array( 'type' => 'guest', 'first_name' => 'Olga', 'last_name' => 'Occasionale', 'host_person_id' => $founder ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $people, $founder ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Senza', 'last_name' => 'Cellulare', 'host_person_id' => $founder ) ); } ), 'cellulare' ) && null !== apse_throws( function () use ( $people, $founder ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Cellulare', 'last_name' => 'Brutto', 'phone' => '123', 'host_person_id' => $founder ) ); } ), 'ospiti: il cellulare è obbligatorio (e deve essere un numero)' );
+$gx = $people->create( array( 'type' => 'guest', 'first_name' => 'Olga', 'last_name' => 'Occasionale', 'phone' => '333 5555551', 'host_person_id' => $founder ) );
 $e1 = $mkev( 'Open day yoga', 0, null, array(), 10 );
 $e2 = $mkev( 'Open day teatro', 0, null, array(), 12 );
 $e3 = $mkev( 'Presentazione della stagione', 0, null, array(), 14 );
 $e4 = $mkev( 'Gita di primavera', 0, null, array(), 16 );
 list( $gs1, $gs2, $gs3, $gs4 ) = array( $first_session( $e1 ), $first_session( $e2 ), $first_session( $e3 ), $first_session( $e4 ) );
 $acts->book( $gs1, $gx );
-$st1 = $acts->guest_status( $gx );
-apse_ok( 1 === $st1['count'] && 2 === $st1['max'] && ! $st1['at_limit'], 'ospite: una partecipazione su due' );
 $acts->book( $gs2, $gx );
-$st = $acts->guest_status( $gx );
-apse_ok( 2 === $st['count'] && $st['at_limit'] && 2 === $acts->participation_counts( array( $gx ) )[ $gx ], 'ospite: due partecipazioni, ha raggiunto il limite' );
-$msg = (string) apse_throws( function () use ( $acts, $gs3, $gx ) { $acts->book( $gs3, $gx ); } );
-apse_ok( false !== strpos( $msg, 'iscriversi come socio' ) && false !== strpos( $msg, 'limite' ) && ! $acts->has_active_booking( $gs3, $gx ), 'ospite al limite: non può prenotare un altro evento, deve iscriversi come socio' );
-apse_ok( array( 'Open day teatro', 'Open day yoga' ) === array_column( $st['items'], 'activity_name' ) && 'event' === $st['items'][0]['type'], 'ospite: l\'elenco dice a cosa è già venuto (la più recente per prima)' );
-
-// i corsi contano come partecipazioni, e annullare una prenotazione la libera
-$gy   = $people->create( array( 'type' => 'guest', 'first_name' => 'Pino', 'last_name' => 'Provino', 'host_person_id' => $founder ) );
-$cors = $acts->create( array( 'name' => 'Corso di prova ospiti', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0 ) );
-$cor2 = $acts->create( array( 'name' => 'Secondo corso ospiti', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0 ) );
-$acts->enroll( $cors, $gy, $month );
-$acts->book( $gs1, $gy );
-apse_ok( 2 === $acts->guest_status( $gy )['count'] && null !== apse_throws( function () use ( $acts, $cor2, $gy, $month ) { $acts->enroll( $cor2, $gy, $month ); } ), 'ospite: l\'iscrizione a un corso conta come partecipazione (il secondo corso è rifiutato)' );
-$acts->enroll( $cors, $gy, $month );
-apse_ok( 2 === $acts->guest_status( $gy )['count'], 'ospite: riattivare lo stesso corso non conta due volte' );
-$acts->cancel_booking( $gs2, $gx );
-apse_ok( 1 === $acts->guest_status( $gx )['count'], 'ospite: una prenotazione annullata non conta' );
+apse_ok( 2 === $acts->guest_status( $gx )['count'] && $acts->guest_status( $gx )['flagged'], 'ospite: raggiunta la soglia (2) risulta segnalato' );
 $acts->book( $gs3, $gx );
-apse_ok( 2 === $acts->guest_status( $gx )['count'], 'ospite: liberata una partecipazione può prenotare un altro evento' );
-
-// cambio di nominativo verso un ospite al limite
+apse_ok( 3 === $acts->guest_status( $gx )['count'] && $acts->has_active_booking( $gs3, $gx ), 'nessun blocco: l\'ospite può prenotare anche oltre la soglia (decide chi gestisce)' );
+$ov = $people->guest_overview()[ $gx ];
+apse_ok( 3 === $ov['count'] && 3 === $ov['total'] && $ov['flag'] && array() === $ov['twins'], 'quadro ospiti: partecipazioni, totale e segnalazione' );
+$st = $acts->guest_status( $gx );
+apse_ok( array( 'Presentazione della stagione', 'Open day teatro', 'Open day yoga' ) === array_column( $st['items'], 'activity_name' ), 'ospite: l\'elenco dice a cosa è già venuto (la più recente per prima)' );
+$acts->cancel_booking( $gs3, $gx );
+apse_ok( 2 === $acts->guest_status( $gx )['count'], 'ospite: una prenotazione annullata non conta' );
 $acts->book( $gs4, $founder );
-apse_ok( null !== apse_throws( function () use ( $acts, $gs4, $founder, $gx ) { $acts->transfer_booking( $gs4, $founder, $gx ); } ) && $acts->has_active_booking( $gs4, $founder ), 'cambio nominativo: non si può intestare a un ospite che ha già usato le partecipazioni' );
-Settings::update( array( 'guest_max_events' => 0 ) );
 $acts->transfer_booking( $gs4, $founder, $gx );
-apse_ok( 0 === $acts->guest_limit() && $acts->has_active_booking( $gs4, $gx ), 'limite 0: nessun limite per gli ospiti' );
+apse_ok( 3 === $acts->guest_status( $gx )['count'], 'ospite: anche il cambio di nominativo verso di lui è consentito e si conta' );
 $acts->transfer_booking( $gs4, $gx, $founder );
-Settings::update( array( 'guest_max_events' => 2 ) );
 
-// visibilità: scheda dell'ospite, elenco, eventi, area riservata, ingressi
-$html = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Partecipazioni come ospite', array( 'id' => $gx ) );
-apse_ok( false !== strpos( $html, 'Open day yoga' ) && false !== strpos( $html, 'Presentazione della stagione' ) && false !== strpos( $html, 'deve iscriversi come socio' ) && false !== strpos( $html, 'Iscrivi come socio' ), 'scheda ospite: a cosa è venuto, avviso di limite e iscrizione come socio' );
-$gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last_name' => 'Zerovolte', 'host_person_id' => $founder ) );
+// corsi
+$gy   = $people->create( array( 'type' => 'guest', 'first_name' => 'Pino', 'last_name' => 'Provino', 'phone' => '333 5555552', 'host_person_id' => $founder ) );
+$cors = $acts->create( array( 'name' => 'Corso di prova ospiti', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0 ) );
+$acts->enroll( $cors, $gy, $month );
+$acts->enroll( $cors, $gy, $month );
+apse_ok( 1 === $acts->guest_status( $gy )['count'], 'ospite: l\'iscrizione a un corso conta come partecipazione, riattivarla non conta due volte' );
+
+// il "furbo": lo stesso ospite registrato da soci diversi (stesso cellulare scritto in modo diverso, o stesso nome)
+$twin_phone = $people->create( array( 'type' => 'guest', 'first_name' => 'Pinuccio', 'last_name' => 'Provini', 'phone' => '+39 333-555 5552', 'host_person_id' => $tre_p ) );
+$acts->book( $gs1, $twin_phone );
+$other_host = $people->create( array( 'type' => 'guest', 'first_name' => 'Gianni', 'last_name' => 'Altrui', 'phone' => '333 5555554', 'host_person_id' => $tre_p ) );
+$twin_name  = $people->create( array( 'type' => 'guest', 'first_name' => 'PINO', 'last_name' => 'provino', 'phone' => '347 0000000', 'host_person_id' => $tre_p ) );
+$gov2 = $people->guest_overview();
+apse_ok( 1 === $gov2[ $gy ]['count'] && 2 === $gov2[ $gy ]['total'] && 2 === count( $gov2[ $gy ]['twins'] ), 'furbi: le registrazioni gemelle (stesso cellulare, stesso nome) si sommano' );
+apse_ok( $gov2[ $gy ]['flag'] && $gov2[ $twin_phone ]['flag'], 'furbi: ognuno ha una sola partecipazione, ma insieme raggiungono la soglia e vengono segnalati' );
+$why = array();
+foreach ( $gov2[ $gy ]['twins'] as $t ) {
+	$why[ $t['id'] ] = implode( ',', array_unique( $t['why'] ) );
+}
+apse_ok( false !== strpos( (string) ( $why[ $twin_phone ] ?? '' ), 'stesso cellulare' ) && false !== strpos( (string) ( $why[ $twin_name ] ?? '' ), 'stesso nome' ), 'furbi: il motivo (stesso cellulare, stesso nome) è indicato' );
+apse_ok( 2 === count( $people->find_by_phone( '333-5555552' ) ) && 1 === count( $people->find_by_phone( '+39 3335555551' ) ) && array() === $people->find_by_phone( 'boh' ), 'ricerca per cellulare: scritto in qualunque modo' );
+$ids_to_invite = array_map( function ( $g ) { return (int) $g['id']; }, $people->guests_to_invite() );
+apse_ok( in_array( $gx, $ids_to_invite, true ) && in_array( $gy, $ids_to_invite, true ) && in_array( $twin_phone, $ids_to_invite, true ), 'ospiti da invitare: elenco per chi gestisce' );
+
+// visibilità
+$html = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Partecipazioni come ospite', array( 'id' => $gy ) );
+apse_ok( false !== strpos( $html, 'Potrebbe essere la stessa persona' ) && false !== strpos( $html, 'Pinuccio' ) && false !== strpos( $html, 'stesso cellulare' ) && false !== strpos( $html, 'Corso di prova ospiti' ) && false !== strpos( $html, 'wa.me/393335555552' ) && false !== strpos( $html, 'Iscrivi come socio' ), 'scheda ospite: a cosa è venuto, le registrazioni gemelle, WhatsApp e iscrizione come socio' );
+$gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last_name' => 'Zerovolte', 'phone' => '333 5555553', 'host_person_id' => $founder ) );
 $list = apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
-apse_ok( false !== strpos( $list, 'deve iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti che devono iscriversi"' );
+apse_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
 $ev = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
-apse_ok( false !== strpos( $ev, '2 di 2 partecipazioni' ) || false !== strpos( $ev, 'deve iscriversi' ), 'pagina evento: accanto a ogni ospite quante volte è già venuto' );
+apse_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a iscriversi' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a iscriversi' );
 $front_g = $as( $u_f, '[apsemplice_ospiti]' );
-apse_ok( false !== strpos( $front_g, 'Partecipazioni: 2 di 2' ) && false !== strpos( $front_g, 'Open day yoga' ) && false !== strpos( $front_g, 'deve iscriversi come socio' ), 'area soci: il socio vede a cosa sono venuti i suoi ospiti e quando devono iscriversi' );
+apse_ok( false !== strpos( $front_g, 'Partecipazioni: 2' ) && false !== strpos( $front_g, 'Open day yoga' ) && false === strpos( $front_g, 'iscriversi come socio' ) && false === strpos( $front_g, 'segreteria' ), 'area soci: il socio vede a cosa sono venuti i suoi ospiti, senza segnalazioni' );
 $acts->add_staff( $e1, $tre_p );
 $wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'id' => $gs1 ) );
 $_GET['apse_session'] = (string) $gs1;
 $det = $as( $u_tre, '[apsemplice_ingressi]' );
 unset( $_GET['apse_session'] );
-apse_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'Olga' ), 'lista prenotati all\'ingresso: per ogni ospite quante volte è già venuto' );
-apse_ok( false !== strpos( apse_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: partecipazioni ammesse' ), 'name="guest_max_events"' ), 'impostazioni: il limite si decide dal pannello' );
-$limit_ids = array_map( function ( $g ) { return (int) $g['id']; }, $people->guests_at_limit() );
-apse_ok( in_array( $gx, $limit_ids, true ) && in_array( $gy, $limit_ids, true ), 'ospiti al limite: elenco per invitarli a iscriversi' );
+apse_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'da invitare a iscriversi' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
+apse_ok( false === strpos( $det, '333 5555552' ) && false === strpos( $det, 'wa.me' ), 'lista prenotati all\'ingresso: nessun cellulare mostrato a chi gestisce l\'evento' );
+apse_ok( false !== strpos( apse_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' ), 'Non blocca nulla' ), 'impostazioni: la soglia è una segnalazione, non un blocco' );
+apse_ok( false !== strpos( apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Cellulare', array( 'type' => 'guest' ) ), 'Obbligatorio per gli ospiti' ), 'modulo ospite: cellulare obbligatorio' );
+Settings::update( array( 'guest_max_events' => 0 ) );
+apse_ok( empty( $people->guest_overview()[ $gx ]['flag'] ) && array() === $people->guests_to_invite(), 'soglia 0: nessuna segnalazione' );
+Settings::update( array( 'guest_max_events' => 2 ) );
 
-// ospite già registrato: niente doppioni (si perderebbe il conto)
+// aggiungere un ospite dall'area soci: cellulare obbligatorio, nessun limite
 wp_set_current_user( $u_f );
-$twin = (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'pino', 'last_name' => 'PROVINO' ) ); } );
-apse_ok( false !== strpos( $twin, 'Hai già questo ospite' ), 'nuovo ospite: lo stesso nome tra i propri ospiti è rifiutato (anche con maiuscole diverse)' );
-$other_host = $people->create( array( 'type' => 'guest', 'first_name' => 'Gianni', 'last_name' => 'Altrui', 'host_person_id' => $tre_p ) );
-$twin2      = (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Gianni', 'last_name' => 'Altrui' ) ); } );
-apse_ok( false !== strpos( $twin2, 'rivolgiti alla segreteria' ) && false !== strpos( $twin2, 'già partecipato' ) && false === strpos( $twin2, 'Tina' ), 'nuovo ospite: se è già ospite di un altro socio si indirizza alla segreteria, senza dire di chi' );
-$twin3 = (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Fulvia', 'last_name' => 'Fondi' ) ); } );
-apse_ok( false !== strpos( $twin3, 'è già socio' ), 'nuovo ospite: chi è già socio va prenotato come socio' );
+$no_phone = (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Sara', 'last_name' => 'Senzacell' ) ); } );
+apse_ok( false !== strpos( $no_phone, 'cellulare' ), 'nuovo ospite dall\'area soci: senza cellulare viene rifiutato' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Altro', 'last_name' => 'Nome', 'phone' => '333 5555552' ) ); } ), 'Hai già questo ospite' ), 'nuovo ospite: lo stesso cellulare tra i propri ospiti (scritto in modo diverso) è il doppione evidente' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'pino', 'last_name' => 'PROVINO', 'phone' => '333 0001111' ) ); } ), 'Hai già questo ospite' ), 'nuovo ospite: lo stesso nome tra i propri ospiti è rifiutato' );
+$member_phone = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'email' => 'mara.telefonata@example.com', 'phone' => '348 1234567' ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'phone' => '+39 348 123 4567' ) ); } ), 'già di un socio' ), 'nuovo ospite: un cellulare già di un socio rimanda alla prenotazione come socio' );
+$front::do_add_guest( array( 'first_name' => 'Giovanni', 'last_name' => 'Altrui', 'phone' => '+39 333 5555554' ) ); // stesso cellulare di un ospite di un altro socio: consentito, ma lo si vedrà
+$twins_now = $people->guest_overview();
+$gianni_id = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Giovanni' AND last_name = 'Altrui' AND host_person_id = $founder" );
+apse_ok( $gianni_id > 0 && ! empty( $twins_now[ $gianni_id ]['twins'] ), 'nuovo ospite: se il cellulare è di un altro ospite non si blocca, ma risulta gemello e lo si vede' );
 wp_set_current_user( 1 );
 $walk2 = new ReflectionMethod( Admin\Actions::class, 'walk_in' );
-$tw4   = (string) apse_throws( function () use ( $walk2, $e1, $gs1, $founder ) { $walk2->invoke( null, array( 'activity_id' => $e1, 'session_id' => $gs1, 'new_first_name' => 'Olga', 'new_last_name' => 'Occasionale', 'host_person_id' => $founder ) ); } );
-apse_ok( false !== strpos( $tw4, 'esiste già' ), 'sul posto: un nuovo ospite con il nome di uno già registrato rimanda alla sua scheda' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $walk2, $e1, $gs1, $founder ) { $walk2->invoke( null, array( 'activity_id' => $e1, 'session_id' => $gs1, 'new_first_name' => 'Senza', 'new_last_name' => 'Telefono', 'host_person_id' => $founder ) ); } ), 'cellulare' ), 'sul posto: un nuovo ospite richiede il cellulare' );
 apse_ok( 1 === count( $people->find_homonyms( 'olga', 'occasionale' ) ) && array() === $people->find_homonyms( 'olga', 'occasionale', $gx ), 'ricerca omonimi: senza maiuscole e escludendo la persona stessa' );
 
 // iscrizione come socio: la storia resta
@@ -1888,10 +1901,9 @@ $people->promote_guest( $gx, array( 'email' => 'olga.occasionale@example.com', '
 $olga = $people->get( $gx );
 apse_ok( 'volunteer' === $olga['type'] && empty( $olga['host_person_id'] ) && '777' === $olga['card_number'] && ! empty( $olga['wp_user_id'] ) && $people->is_active_member( $gx ), 'iscrizione come socio: tipo, tessera, utente WordPress e iscrizione all\'anno sociale' );
 apse_ok( $before === $acts->participations( $gx ) && has_action( 'admin_post_apse_promote_guest' ), 'iscrizione come socio: eventi e corsi già frequentati restano collegati alla stessa scheda' );
-$acts->book( $gs4, $gx );
-apse_ok( $acts->has_active_booking( $gs4, $gx ), 'ora è socio: il limite degli ospiti non vale più' );
+apse_ok( ! isset( $people->guest_overview()[ $gx ] ), 'iscrizione come socio: non è più tra gli ospiti da segnalare' );
 apse_ok( in_array( 'person.promoted', array_column( Audit::recent( 500 ), 'action' ), true ), 'registro azioni: iscrizione di un ospite come socio tracciata' );
-Settings::update( array( 'guest_max_events' => 0 ) ); // gli altri controlli usano gli ospiti senza limite
+Settings::update( array( 'guest_max_events' => 0 ) ); // gli altri controlli usano gli ospiti senza segnalazioni
 
 // ---------- Avvisi dei volontari agli iscritti dell'attività ----------
 wp_set_current_user( 1 );

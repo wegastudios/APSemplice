@@ -37,6 +37,9 @@ final class Rules {
 		if ( MemberType::GUEST === $type && '' !== $card ) {
 			$errors[] = 'Gli ospiti non hanno il numero di tessera.';
 		}
+		if ( MemberType::GUEST === $type && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
+			$errors[] = 'Il numero di cellulare è obbligatorio per gli ospiti (serve a riconoscerli ed evitare doppioni, e a contattarli su WhatsApp).';
+		}
 
 		if ( MemberType::requires_host( $type ) ) {
 			if ( empty( $d['host_person_id'] ) ) {

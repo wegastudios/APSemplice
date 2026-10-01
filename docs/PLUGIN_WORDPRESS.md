@@ -199,15 +199,16 @@ Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gest
 
 Il permesso dei gestori nasce dai dati (non da un ruolo WordPress): toglierli dalla scheda dell'evento li esclude subito. Con la licenza non in regola i gestori sono sospesi come i soci. Ogni registrazione è nel registro azioni (senza dati personali).
 
-## Ospiti: partecipazioni ammesse prima di iscriversi
+## Ospiti: il conto delle partecipazioni (senza blocchi)
 
-Ai non soci è consentito partecipare solo poche volte (di solito 1 o 2: oltre, anche per ragioni assicurative, devono iscriversi come soci). *Impostazioni → Ospiti: partecipazioni ammesse* (default 2; 0 = nessun limite). Contano le prenotazioni agli **eventi** (date non annullate) e le iscrizioni ai **corsi**; annullare una prenotazione libera la partecipazione.
+Ai non soci è consentito partecipare solo poche volte (di solito 1 o 2: oltre, anche per ragioni assicurative, dovrebbero iscriversi). Il plugin **non blocca nessuno**: tiene il conto e rende facile a chi gestisce accorgersene e decidere.
 
-- Un ospite che ha raggiunto il limite **non può prenotarsi né iscriversi** (nemmeno con il cambio di nominativo): il messaggio dice di iscriversi come socio.
-- La **storia è sempre collegata alla sua scheda**: in *Soci e ospiti → scheda dell'ospite* il pannello "Partecipazioni come ospite" elenca a cosa è già venuto (evento, data, se l'ingresso è stato registrato) e quante gliene restano. L'elenco persone ha il filtro "Solo ospiti che devono iscriversi", e il riepilogo ha la lista "Ospiti da invitare a iscriversi".
-- Accanto a ogni ospite negli elenchi dei prenotati (pagina dell'evento, lista all'ingresso, area riservata del socio) compare "2ª partecipazione come ospite" e, all'ultima consentita, l'avviso che poi deve iscriversi.
+- **Cellulare obbligatorio** per ogni ospite (area soci, ingresso sul posto, scheda, import): è il dato migliore per riconoscerlo e per scrivergli su WhatsApp. Si confronta senza badare a come è scritto (`+39 333 123 4567`, `0039 333-1234567` e `3331234567` sono lo stesso numero).
+- **Soglia di segnalazione** (*Impostazioni → Ospiti*, default 2; 0 = nessuna): quando le partecipazioni (prenotazioni a eventi non annullate e iscrizioni a corsi) la raggiungono, l'ospite è segnalato **"da invitare a iscriversi"**.
+- **Chi si registra più volte** (da soci diversi, con nomi scritti in modo diverso) viene **intercettato**: due schede sono "gemelle" se hanno lo stesso cellulare, la stessa email o lo stesso nome; le loro partecipazioni si **sommano**, anche se ciascuna ne ha una sola. La scheda dice quali sono e perché.
+- Dove si vede: **scheda dell'ospite** (a cosa è già venuto con data e se è venuto davvero, le schede gemelle, pulsante "💬 Scrivigli su WhatsApp" con un messaggio di invito già pronto, "Iscrivi come socio"), **elenco persone** (filtro "Solo ospiti da invitare a iscriversi"), **riepilogo** (lista degli ospiti da invitare), **pagina dell'evento** e **lista prenotati all'ingresso** (per chi gestisce l'evento: "2ª partecipazione come ospite", "risulta registrato anche come…", segnalazione). All'ingresso non si mostrano i cellulari.
+- I soci vedono solo il conto dei propri ospiti, senza segnalazioni. L'unico rifiuto automatico è il doppione evidente: aggiungere tra i propri ospiti uno già presente (stesso nome o cellulare) o un cellulare che è già di un socio.
 - **Iscrivi come socio** (nella scheda dell'ospite): serve l'email; la scheda resta la stessa, quindi eventi, corsi e pagamenti già registrati restano collegati. Si crea l'utente per l'area riservata e, se vuoi, l'iscrizione all'anno sociale.
-- Per non perdere il conto, lo **stesso ospite non si registra due volte**: un socio che aggiunge un ospite con il nome di uno già presente viene rimandato alla segreteria (senza dire di chi è ospite); in amministrazione, "ingresso sul posto" rimanda alla scheda esistente.
 
 ## Avvisi dei volontari agli iscritti
 

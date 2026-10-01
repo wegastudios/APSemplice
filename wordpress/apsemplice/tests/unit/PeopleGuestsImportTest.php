@@ -5,7 +5,12 @@ use PHPUnit\Framework\TestCase;
 final class PeopleGuestsImportTest extends TestCase {
 
 	private function plan( array $rows, array $existing = array() ): array {
-		$h = array( 'Tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Ospite di' );
+		$h = array( 'Tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Ospite di', 'Cellulare' );
+		foreach ( $rows as $i => $r ) { // gli ospiti hanno un cellulare, salvo che il test lo tolga di proposito (settima colonna presente)
+			if ( ! array_key_exists( 6, $r ) ) {
+				$rows[ $i ][6] = 'ospite' === $r[1] ? '333 1234567' : '';
+			}
+		}
 		$t = PeopleCsv::parse_table( array_merge( array( $h ), $rows ) );
 		return PeopleCsv::plan( $t['rows'], $existing );
 	}
@@ -61,6 +66,19 @@ final class PeopleGuestsImportTest extends TestCase {
 		$this->assertStringContainsString( 'ospitante', $p[0]['message'] );
 		$this->assertStringContainsString( 'non trovato', $p[1]['message'] );
 		$this->assertStringContainsString( 'già', $p[4]['message'] );
+	}
+
+	public function test_guest_needs_a_valid_mobile_number(): void {
+		$p = $this->plan(
+			array(
+				array( '', 'ospite', 'Senza', 'Cellulare', '', '1', '' ),
+				array( '', 'ospite', 'Cellulare', 'Brutto', '', '1', '12345' ),
+				array( '', 'ospite', 'Cellulare', 'Giusto', '', '1', '+39 333 123 4567' ),
+			),
+			$this->members()
+		);
+		$this->assertSame( array( 'error', 'error', 'create' ), array_column( $p, 'action' ) );
+		$this->assertStringContainsString( 'ellulare', $p[0]['message'] );
 	}
 
 	public function test_existing_guest_is_updated_not_duplicated(): void {

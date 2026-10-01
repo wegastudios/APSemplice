@@ -344,6 +344,10 @@ final class PeopleCsv {
 					$plans[ $idx ] = $err( 'Email non valida: ' . $r['email'] );
 					continue;
 				}
+				if ( ! Phone::is_valid( (string) $r['phone'] ) ) {
+					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni)' );
+					continue;
+				}
 				// Chi è l'ospitante: tessera, email oppure nome e cognome (in uno dei due ordini).
 				$existing_ids = array();
 				$file_lines   = array();
