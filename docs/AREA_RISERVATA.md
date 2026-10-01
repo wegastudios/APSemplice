@@ -67,3 +67,12 @@ e il **messaggio sui contenuti riservati**. Il CSS si carica solo nelle pagine c
 ## Pagamenti
 
 `[apsemplice_pagamenti]` (incluso in `[apsemplice_area_soci]`, sezione `pagamenti`): elenco di ciò che il socio e i suoi ospiti devono, con totale che si aggiorna selezionando le voci e pulsante "Paga con carta" / "Paga con PayPal". Senza gateway attivo mostra l'elenco e le istruzioni per pagare all'associazione.
+
+## Spese del tesoriere
+
+`[apsemplice_spese]` (incluso in `[apsemplice_area_soci]`, sezione `spese`, e disponibile come blocco/widget): modulo per registrare una spesa dal telefono, con importo, voce, conto, attività, descrizione e **documenti** (scelti dal telefono o scattati con la fotocamera; le foto sono ridotte prima dell'invio). Sotto, le ultime spese registrate dallo stesso utente, con i documenti e la possibilità di aggiungerne altri.
+
+- Compare solo a chi ha il permesso **Tesoriere**, che l'amministratore dà dalla scheda del socio (pannello "Tesoriere"). Serve un socio o volontario con accesso al sito; gli ospiti no.
+- Il tesoriere **non vede** saldi dei conti né movimenti di altri e non può annullare o modificare: registra e allega. La data non può essere futura.
+- Una spesa con un file non ammesso non viene registrata. I documenti restano nella cartella privata e li apre solo l'amministratore o il tesoriere che ha registrato quella spesa.
+- Come per i soci, con licenza non in regola il permesso è sospeso. Concessione e revoca finiscono nel registro azioni.

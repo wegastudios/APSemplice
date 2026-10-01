@@ -101,3 +101,7 @@
 .apsf-payrow { display: flex; gap: .6rem; align-items: flex-start; cursor: pointer; }
 .apsf-paytotal { font-size: 1.15em; margin: .75rem 0; }
 .apsf-paylist > li { align-items: flex-start; }
+.apsf-docs { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+.apsf-shot { cursor: pointer; display: inline-block; }
+.apsf-doc-info { margin-left: 4px; }
+.apsf-expenses h4 { margin: 18px 0 6px; }

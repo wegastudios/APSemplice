@@ -25,6 +25,7 @@ final class Actions {
 			'apse_save_person'        => 'save_person',
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
+			'apse_set_treasurer'      => 'set_treasurer',
 			'apse_save_activity'      => 'save_activity',
 			'apse_enroll'             => 'enroll',
 			'apse_cancel_enrollment'  => 'cancel_enrollment',
@@ -111,6 +112,17 @@ final class Actions {
 	private static function set_membership( array $p ): array {
 		Plugin::people()->set_membership( (int) $p['id'], (string) $p['social_year'], ! empty( $p['enabled'] ) );
 		return array( Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), 'Iscrizione aggiornata.' );
+	}
+
+	private static function set_treasurer( array $p ): array {
+		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
+		if ( ! $person || empty( $person['wp_user_id'] ) || ! MemberType::is_member( $person['type'] ) ) {
+			throw new \InvalidArgumentException( 'Solo un socio o volontario con accesso al sito può essere tesoriere.' );
+		}
+		$on = ! empty( $p['enabled'] );
+		\ApSemplice\Access::set_treasurer( (int) $person['wp_user_id'], $on );
+		Audit::log( $on ? 'treasurer.granted' : 'treasurer.revoked', 'person', (int) $person['id'] );
+		return array( Ui::url( 'apse-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora può registrare spese dall\'area riservata.' : 'Non può più registrare spese.' );
 	}
 
 	// ---------- Attività ----------
@@ -225,30 +237,9 @@ final class Actions {
 		return array( Ui::url( 'apse-ledger' ), $n > 1 ? "Incasso registrato ($n voci)." : 'Incasso registrato.' );
 	}
 
-	/** File caricati dai campi `docs` (scelti) e `shots` (scattati con la fotocamera), uniti in un solo elenco. */
-	private static function uploaded_docs(): ?array {
-		$all = array();
-		foreach ( array( 'docs', 'shots' ) as $k ) {
-			if ( empty( $_FILES[ $k ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
-				continue;
-			}
-			$n = \ApSemplice\AttachmentRules::normalize_files( $_FILES[ $k ] ); // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
-			if ( $n['errors'] ) {
-				throw new \InvalidArgumentException( $n['errors'][0] );
-			}
-			foreach ( $n['files'] as $f ) {
-				$all['name'][]     = $f['name'];
-				$all['tmp_name'][] = $f['tmp_name'];
-				$all['size'][]     = $f['size'];
-				$all['error'][]    = UPLOAD_ERR_OK;
-			}
-		}
-		return $all ?: null;
-	}
-
 	private static function add_attachment( array $p ): array {
 		$tx  = (int) ( $p['transaction_id'] ?? 0 );
-		$ids = Attachments::add( $tx, Attachments::prepare( self::uploaded_docs(), $tx ) );
+		$ids = Attachments::add( $tx, Attachments::prepare( Attachments::from_request(), $tx ) );
 		if ( ! $ids ) {
 			throw new \InvalidArgumentException( 'Scegli almeno un file da allegare.' );
 		}
@@ -261,7 +252,7 @@ final class Actions {
 	}
 
 	private static function save_expense( array $p ): array {
-		$docs = Attachments::prepare( self::uploaded_docs() ); // controllati PRIMA di registrare: se un file non va, non si registra nulla
+		$docs = Attachments::prepare( Attachments::from_request() ); // controllati PRIMA di registrare: se un file non va, non si registra nulla
 		$tx   = Plugin::ledger()->record_expense(
 			array(
 				'date'         => (string) ( $p['date'] ?? '' ),

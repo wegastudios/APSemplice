@@ -108,6 +108,7 @@ final class PeoplePage {
 		if ( $p ) {
 			echo '<div class="apse-col">';
 			self::panel_membership( $p );
+			self::panel_treasurer( $p );
 			self::panel_guests( $p );
 			self::panel_activities( $p );
 			self::panel_bookings( $p );
@@ -153,6 +154,21 @@ final class PeoplePage {
 			echo '</tbody></table>';
 		}
 		echo '</div>';
+	}
+
+	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */
+	private static function panel_treasurer( array $p ): void {
+		if ( MemberType::GUEST === $p['type'] || empty( $p['wp_user_id'] ) ) {
+			return;
+		}
+		$on = \ApSemplice\Access::is_treasurer( (int) $p['wp_user_id'] );
+		echo '<div class="apse-card"><h2>Tesoriere</h2>';
+		echo '<p>' . ( $on ? '<strong class="apse-ok">Può registrare spese dall\'area riservata</strong>' : 'Non può registrare spese.' ) . '</p>';
+		Ui::form_open( 'apse_set_treasurer', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
+		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>';
+		Ui::form_close();
+		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina "Spese" (shortcode <code>[apsemplice_spese]</code>): scatta lo scontrino e registra la spesa. Vede solo le spese che ha registrato lui e non i saldi dei conti.</p></div>';
 	}
 
 	private static function panel_guests( array $p ): void {

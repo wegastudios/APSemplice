@@ -1195,6 +1195,85 @@ foreach ( array( $pdf1, $png1, $png2, $fake ) as $f ) {
 	@unlink( $f );
 }
 
+// ---------- Tesoriere: registra spese dall'area riservata ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$set_tre = new ReflectionMethod( Admin\Actions::class, 'set_treasurer' );
+$tre_pdf = $mkf( 'fattura.pdf', "%PDF-1.4\n% fattura del tesoriere " . wp_generate_password( 12, false ) . "\ntrailer<<>>\n%%EOF\n" );
+$tre_png = $mkf( 'scontrino.png', base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' ) );
+$tre_post = array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $exp_cat, 'amount' => '8,40', 'description' => 'Colori per il corso', 'document_ref' => 'SC-77' );
+
+apse_ok( ! user_can( $u_ord, 'apse_add_expense', 0 ) && ! Access::is_treasurer( $u_ord ), 'tesoriere: un socio qualsiasi non può registrare spese' );
+$html = $as( $u_ord, '[apsemplice_spese]' );
+apse_ok( false !== strpos( $html, 'riservata al tesoriere' ) && false === strpos( $html, 'apse_front_expense' ), 'tesoriere: la pagina Spese è chiusa a chi non ha il permesso' );
+apse_ok( false === strpos( $as( $u_ord, '[apsemplice_area_soci]' ), 'Registra una spesa' ), 'tesoriere: nell\'area soci la sezione Spese non compare senza permesso' );
+wp_set_current_user( $u_ord );
+$_FILES = array();
+apse_ok( null !== apse_throws( function () use ( $front, $tre_post ) { $front::do_expense( $tre_post ); } ), 'tesoriere: l\'azione è rifiutata senza permesso' );
+
+// l'amministratore dà il permesso
+wp_set_current_user( 1 );
+apse_ok( null !== apse_throws( function () use ( $set_tre, $guest ) { $set_tre->invoke( null, array( 'id' => $guest, 'enabled' => 1 ) ); } ), 'tesoriere: un ospite non può esserlo' );
+$res = $set_tre->invoke( null, array( 'id' => $ord, 'enabled' => 1 ) );
+apse_ok( Access::is_treasurer( $u_ord ) && user_can( $u_ord, 'apse_add_expense', 0 ) && ! user_can( $u_ord, Plugin::CAP ), 'tesoriere: con il permesso può registrare spese ma non è amministratore' );
+$html = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Tesoriere', array( 'id' => $ord ) );
+apse_ok( false !== strpos( $html, 'Togli il permesso' ), 'scheda socio: il permesso di tesoriere è visibile e revocabile' );
+
+// la schermata
+$html = $as( $u_ord, '[apsemplice_spese]' );
+apse_ok( false !== strpos( $html, 'apse_front_expense' ) && false !== strpos( $html, 'multipart/form-data' ) && false !== strpos( $html, 'capture="environment"' ) && false !== strpos( $html, 'name="amount"' ), 'schermata spese: modulo con importo, voce, conto e fotocamera' );
+apse_ok( false === strpos( $html, 'Saldo' ) && false === strpos( $html, 'saldo' ), 'schermata spese: nessun saldo dei conti' );
+apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_soci]' ), 'Registra una spesa' ), 'area soci: la sezione Spese compare per il tesoriere' );
+apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['spese'] ) && shortcode_exists( 'apsemplice_spese' ), 'shortcode [apsemplice_spese] registrato (anche per blocco e widget)' );
+
+// registrazione con documenti
+wp_set_current_user( $u_ord );
+$_FILES = array( 'docs' => $files( array( 'fattura.pdf' => $tre_pdf ) ), 'shots' => $files( array( 'scontrino.png' => $tre_png ) ) );
+$msg = $front::do_expense( $tre_post );
+$ttx = (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'expense'" );
+$row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $ttx, ARRAY_A );
+apse_ok( false !== strpos( $msg, '2 documenti' ) && 840 === (int) $row['amount_cents'] && (int) $row['created_by'] === $u_ord && 'SC-77' === $row['document_ref'], 'tesoriere: spesa registrata con due documenti, a suo nome' );
+apse_ok( 2 === count( Attachments::list_for( $ttx ) ), 'tesoriere: i documenti sono allegati alla spesa' );
+$tre_att = Attachments::list_for( $ttx )[0];
+$admin_att = Attachments::list_for( $tx )[0];
+apse_ok( Attachments::can_open( $tre_att ) && ! Attachments::can_open( $admin_att ), 'tesoriere: apre i documenti delle sue spese, non quelli di altri' );
+$html = $as( $u_ord, '[apsemplice_spese]' );
+apse_ok( false !== strpos( $html, 'Le tue ultime spese' ) && false !== strpos( $html, 'Colori per il corso' ) && false !== strpos( $html, 'action=apse_attachment' ) && false === strpos( $html, 'Materiale con scontrino' ), 'tesoriere: vede le proprie spese con i documenti e non quelle degli altri' );
+$mine = Plugin::ledger()->expenses_by_user( $u_ord );
+apse_ok( 1 === count( $mine ) && $ttx === (int) $mine[0]['id'], 'elenco delle spese dell\'utente: solo le sue' );
+
+// controlli
+$n_tx = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+$_FILES = array();
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $tre_post ) { $front::do_expense( array_merge( $tre_post, array( 'date' => gmdate( 'Y-m-d', strtotime( '+3 days' ) ) ) ) ); } ), 'futuro' ), 'tesoriere: data nel futuro rifiutata' );
+$fake2  = $mkf( 'furbo2.png', "<?php echo 'ciao';" );
+$_FILES = array( 'docs' => $files( array( 'furbo2.png' => $fake2 ) ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $tre_post ) { $front::do_expense( $tre_post ); } ), 'non è ammesso' ) && $n_tx === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'tesoriere: file non ammesso, nessuna spesa registrata' );
+$_FILES = array();
+apse_ok( null !== apse_throws( function () use ( $front, $tre_post ) { $front::do_expense( array_merge( $tre_post, array( 'amount' => '0' ) ) ); } ), 'tesoriere: importo nullo rifiutato' );
+
+// altri documenti: solo sulle proprie spese
+$more = $mkf( 'altro.pdf', "%PDF-1.4\n% altro " . wp_generate_password( 12, false ) . "\n%%EOF\n" );
+$_FILES = array( 'docs' => $files( array( 'altro.pdf' => $more ) ) );
+$msg    = $front::do_expense_docs( array( 'transaction_id' => $ttx ) );
+apse_ok( false !== strpos( $msg, '1 documento' ) && 3 === count( Attachments::list_for( $ttx ) ), 'tesoriere: aggiunge documenti a una sua spesa' );
+$_FILES = array( 'docs' => $files( array( 'altro.pdf' => $more ) ) );
+apse_ok( null !== apse_throws( function () use ( $front, $tx ) { $front::do_expense_docs( array( 'transaction_id' => $tx ) ); } ), 'tesoriere: non aggiunge documenti alle spese di altri' );
+$_FILES = array();
+
+// licenza sospesa e revoca
+License::set_state( 'unpaid', $today );
+apse_ok( ! user_can( $u_ord, 'apse_add_expense', 0 ), 'licenza non in regola: il tesoriere è sospeso come i soci' );
+delete_option( License::OPT_STATE );
+wp_set_current_user( 1 );
+$set_tre->invoke( null, array( 'id' => $ord ) );
+apse_ok( ! Access::is_treasurer( $u_ord ) && ! user_can( $u_ord, 'apse_add_expense', 0 ), 'tesoriere: permesso revocato' );
+$aud = array_column( Audit::recent( 400 ), 'action' );
+apse_ok( in_array( 'treasurer.granted', $aud, true ) && in_array( 'treasurer.revoked', $aud, true ), 'registro azioni: permesso dato e tolto' );
+foreach ( array( $tre_pdf, $tre_png, $fake2, $more ) as $f ) {
+	@unlink( $f );
+}
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

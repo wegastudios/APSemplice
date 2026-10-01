@@ -2,7 +2,9 @@
 namespace ApSemplice\Frontend;
 
 use ApSemplice\Access;
+use ApSemplice\Attachments;
 use ApSemplice\MemberType;
+use ApSemplice\Money;
 use ApSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,6 +23,8 @@ final class Actions {
 		'apse_front_transfer_booking' => 'do_transfer_booking',
 		'apse_front_add_guest'      => 'do_add_guest',
 		'apse_front_profile'        => 'do_profile',
+		'apse_front_expense'        => 'do_expense',
+		'apse_front_expense_docs'   => 'do_expense_docs',
 	);
 
 	public static function register(): void {
@@ -181,6 +185,45 @@ final class Actions {
 		self::require_cap( 'apse_view_payments', (int) $actor['id'] );
 		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apse_pay', 'apse_ret', 'token', 'PayerID' ), self::back_url( $post ) );
 		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back );
+	}
+
+	/** Spesa registrata dal tesoriere (con scontrino e fatture allegati). Non vede né modifica altro della prima nota. */
+	public static function do_expense( array $post ): string {
+		self::require_cap( 'apse_add_expense', 0 );
+		$date = (string) ( $post['date'] ?? '' );
+		if ( $date > current_time( 'Y-m-d' ) ) {
+			throw new \InvalidArgumentException( 'La data della spesa non può essere nel futuro.' );
+		}
+		$docs = Attachments::prepare( Attachments::from_request() ); // controllati prima: se un file non va, non si registra nulla
+		$tx   = Plugin::ledger()->record_expense(
+			array(
+				'date'         => $date,
+				'account_id'   => (int) ( $post['account_id'] ?? 0 ),
+				'method'       => (string) ( $post['method'] ?? '' ),
+				'category_id'  => (int) ( $post['category_id'] ?? 0 ),
+				'amount_cents' => Money::parse( $post['amount'] ?? '' ) ?? 0,
+				'activity_id'  => (int) ( $post['activity_id'] ?? 0 ),
+				'description'  => $post['description'] ?? '',
+				'document_ref' => $post['document_ref'] ?? '',
+			)
+		);
+		$ids = Attachments::add( $tx, $docs );
+		return 'Spesa registrata' . ( $ids ? ' con ' . count( $ids ) . ( 1 === count( $ids ) ? ' documento.' : ' documenti.' ) : '.' );
+	}
+
+	/** Altri documenti su una spesa registrata dallo stesso utente. */
+	public static function do_expense_docs( array $post ): string {
+		self::require_cap( 'apse_add_expense', 0 );
+		$tx   = (int) ( $post['transaction_id'] ?? 0 );
+		$mine = Plugin::ledger()->expenses_by_user( get_current_user_id(), 200 );
+		if ( ! in_array( $tx, array_map( 'intval', array_column( $mine, 'id' ) ), true ) ) {
+			throw new \InvalidArgumentException( 'Puoi aggiungere documenti solo alle spese che hai registrato tu.' );
+		}
+		$ids = Attachments::add( $tx, Attachments::prepare( Attachments::from_request(), $tx ) );
+		if ( ! $ids ) {
+			throw new \InvalidArgumentException( 'Scegli almeno un file.' );
+		}
+		return count( $ids ) . ( 1 === count( $ids ) ? ' documento aggiunto.' : ' documenti aggiunti.' );
 	}
 
 	public static function do_add_guest( array $post ): string {

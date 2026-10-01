@@ -25,6 +25,7 @@ final class Access {
 		'apse_view_activity',      // id attività: vedere i dati base
 		'apse_view_participants',  // id attività: vedere chi è iscritto
 		'apse_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
+		'apse_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area riservata
 	);
 
 	/**
@@ -50,6 +51,8 @@ final class Access {
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
 			case 'apse_book_for':
 				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
+			case 'apse_add_expense':
+				return ! empty( $ctx['is_treasurer'] ) && MemberType::is_member( (string) $actor['type'] );
 			case 'apse_view_activity':
 				return self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_enrolled'] );
 			case 'apse_view_participants':
@@ -92,6 +95,21 @@ final class Access {
 		return self::person_for_user( get_current_user_id() );
 	}
 
+	const TREASURER_META = 'apse_treasurer';
+
+	/** Tesoriere: socio o volontario a cui l'amministratore ha dato il permesso di registrare spese dall'area riservata. */
+	public static function is_treasurer( int $user_id ): bool {
+		return $user_id > 0 && '1' === (string) get_user_meta( $user_id, self::TREASURER_META, true );
+	}
+
+	public static function set_treasurer( int $user_id, bool $on ): void {
+		if ( $on ) {
+			update_user_meta( $user_id, self::TREASURER_META, '1' );
+		} else {
+			delete_user_meta( $user_id, self::TREASURER_META );
+		}
+	}
+
 	public static function is_admin_user( int $user_id ): bool {
 		return $user_id > 0 && user_can( $user_id, Plugin::CAP );
 	}
@@ -110,6 +128,9 @@ final class Access {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
+		if ( 'apse_add_expense' === $ability ) {
+			$ctx['is_treasurer'] = self::is_treasurer( $user_id );
+		}
 		if ( 'apse_book_for' === $ability ) {
 			$target = Plugin::people()->get( $object_id );
 			if ( ! $target ) {

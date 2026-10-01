@@ -408,6 +408,14 @@ class LedgerService {
 		return $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
 	}
 
+	/** Ultime spese (non annullate) registrate da un utente: serve al tesoriere, che non vede il resto della prima nota. */
+	public function expenses_by_user( int $user_id, int $limit = 15 ): array {
+		$sql = 'SELECT t.*, c.name AS category_name, a.name AS account_name FROM ' . Db::t( 'transactions' ) . ' t '
+			. 'JOIN ' . Db::t( 'categories' ) . ' c ON c.id = t.category_id JOIN ' . Db::t( 'accounts' ) . ' a ON a.id = t.account_id '
+			. "WHERE t.voided_at IS NULL AND t.type = 'expense' AND t.created_by = %d ORDER BY t.tx_date DESC, t.id DESC LIMIT %d";
+		return $this->db()->get_results( $this->db()->prepare( $sql, $user_id, max( 1, $limit ) ), ARRAY_A ) ?: array();
+	}
+
 	/** Movimenti (non annullati) di una persona. */
 	public function rows_of_person( int $person_id ): array {
 		$sql = 'SELECT t.*, a.name AS account_name, c.name AS category_name, act.name AS activity_name FROM ' . Db::t( 'transactions' ) . ' t '

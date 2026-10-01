@@ -3,6 +3,7 @@ namespace ApSemplice\Frontend;
 
 use ApSemplice\Access;
 use ApSemplice\ActivityKind;
+use ApSemplice\Labels;
 use ApSemplice\License;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
@@ -70,8 +71,8 @@ final class Views {
 		return $txt;
 	}
 
-	private static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '' ): string {
-		$html  = '<form class="apsf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+	private static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '', bool $multipart = false ): string {
+		$html  = '<form class="apsf-form ' . esc_attr( $class ) . '" method="post"' . ( $multipart ? ' enctype="multipart/form-data"' : '' ) . ' action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		$html .= '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">';
 		$html .= '<input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">';
 		$html .= wp_nonce_field( $action, '_wpnonce', false, false );
@@ -295,6 +296,83 @@ final class Views {
 		return self::with_person( array( __CLASS__, 'section_pay' ) );
 	}
 
+	/** Spese del tesoriere: modulo con scatto dello scontrino + le ultime spese registrate da lui (nessun saldo, nessun altro movimento). */
+	public static function section_expenses( array $p ): string {
+		if ( ! current_user_can( 'apse_add_expense', 0 ) ) {
+			return '';
+		}
+		$ledger = Plugin::ledger();
+		$cats   = array();
+		foreach ( $ledger->categories() as $c ) {
+			if ( Labels::category_kinds()[ $c['kind'] ][2] && 'adjustment' !== $c['kind'] ) {
+				$cats[ (int) $c['id'] ] = $c['name'];
+			}
+		}
+		$accounts = array();
+		foreach ( $ledger->accounts() as $a ) {
+			$accounts[ (int) $a['id'] ] = $a['name'];
+		}
+		$methods = array_diff_key( Labels::methods(), array( 'stripe' => 1, 'paypal' => 1 ) );
+		$acts    = array();
+		foreach ( Plugin::activities()->for_year( Settings::social_year()->label() ) as $a ) {
+			$acts[ (int) $a['id'] ] = $a['name'];
+		}
+		$default = $ledger->default_account_for( 'cash' );
+		$opts    = function ( array $items, $sel = null, string $empty = '' ) {
+			$h = '' !== $empty ? '<option value="">' . esc_html( $empty ) . '</option>' : '';
+			foreach ( $items as $k => $label ) {
+				$h .= '<option value="' . esc_attr( (string) $k ) . '"' . ( (string) $k === (string) $sel ? ' selected' : '' ) . '>' . esc_html( $label ) . '</option>';
+			}
+			return $h;
+		};
+		$fields = '<div class="apsf-fields">'
+			. '<label>Data <input type="date" name="date" value="' . esc_attr( current_time( 'Y-m-d' ) ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '" required></label>'
+			. '<label>Importo (€) <input type="text" name="amount" inputmode="decimal" placeholder="0,00" required></label>'
+			. '<label>Voce <select name="category_id" required>' . $opts( $cats, null, '— scegli —' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<label>Pagato con <select name="method">' . $opts( $methods, 'cash' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<label>Dal conto <select name="account_id">' . $opts( $accounts, $default ? $default['id'] : null ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<label>Attività <select name="activity_id">' . $opts( $acts, null, 'Nessuna (costo generale)' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<label>Descrizione <input type="text" name="description" maxlength="255"></label>'
+			. '<label>N. fattura / scontrino <input type="text" name="document_ref" maxlength="80"></label>'
+			. '</div>' . self::doc_inputs();
+		$html = '<section class="apsf-section apsf-expenses"><h3>Registra una spesa</h3>'
+			. '<p class="apsf-small apsf-muted">Fotografa lo scontrino o allega la fattura: la spesa entra in prima nota con il documento.</p>'
+			. self::form( 'apse_front_expense', $fields, 'Registra la spesa', false, '', true );
+		$mine = $ledger->expenses_by_user( get_current_user_id(), 10 );
+		if ( $mine ) {
+			$att   = \ApSemplice\Attachments::map_for( array_column( $mine, 'id' ) );
+			$html .= '<h4>Le tue ultime spese</h4><ul class="apsf-list">';
+			foreach ( $mine as $t ) {
+				$docs  = '';
+				foreach ( $att[ (int) $t['id'] ] ?? array() as $a ) {
+					$docs .= '<a href="' . esc_url( \ApSemplice\Attachments::url( (int) $a['id'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $a['original_name'] ) . '</a> ';
+				}
+				$more  = '<details class="apsf-details"><summary>Aggiungi documenti</summary>'
+					. self::form( 'apse_front_expense_docs', self::hidden( 'transaction_id', $t['id'] ) . self::doc_inputs(), 'Allega', false, '', true ) . '</details>';
+				$html .= '<li><div><strong>' . esc_html( $t['category_name'] ) . '</strong> · ' . esc_html( self::d( $t['tx_date'] ) )
+					. ( '' !== $t['description'] ? '<div class="apsf-small">' . esc_html( $t['description'] ) . '</div>' : '' )
+					. '<div class="apsf-small">' . ( $docs ? '📎 ' . $docs : '<span class="apsf-muted">nessun documento</span>' ) . '</div>' . $more . '</div>'
+					. '<strong>' . esc_html( Money::format( (int) $t['amount_cents'] ) ) . '</strong></li>';
+			}
+			$html .= '</ul>';
+		}
+		return $html . '</section>';
+	}
+
+	/** Scelta dei documenti: file dal telefono o dal computer, oppure scatto con la fotocamera. */
+	private static function doc_inputs(): string {
+		return '<div class="apsf-docs"><label class="apsf-file">Documenti (PDF o foto) <input type="file" name="docs[]" class="apse-doc-input" accept="image/*,application/pdf" multiple></label>'
+			. '<label class="apsf-btn apsf-shot">📷 Scatta una foto<input type="file" name="shots[]" class="apse-doc-input" accept="image/*" capture="environment" hidden></label></div>';
+	}
+
+	public static function expenses(): string {
+		return self::with_person(
+			function ( $p ) {
+				return current_user_can( 'apse_add_expense', 0 ) ? self::section_expenses( $p ) : self::notice( 'Questa pagina è riservata al tesoriere.' );
+			}
+		);
+	}
+
 	public static function section_guests( array $p ): string {
 		if ( ! MemberType::is_member( $p['type'] ) ) {
 			return '';
@@ -374,12 +452,12 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,pagamenti,ospiti,profilo,volontario' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,pagamenti,ospiti,profilo,volontario,spese' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer',
+					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
 				foreach ( $sections as $s ) {

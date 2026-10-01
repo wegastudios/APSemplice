@@ -16,4 +16,15 @@ final class AccessBookTest extends TestCase {
 		$this->assertFalse( Access::decide( 'apse_book_for', false, array( 'id' => 7, 'type' => 'guest' ), array( 'person_id' => 7 ) ) );
 		$this->assertFalse( Access::decide( 'apse_book_for', false, null, array( 'person_id' => 7 ) ) );
 	}
+
+	public function test_treasurer_can_add_expenses_only_with_the_flag(): void {
+		$member    = array( 'id' => 7, 'type' => 'ordinary' );
+		$volunteer = array( 'id' => 8, 'type' => 'volunteer' );
+		$this->assertTrue( Access::decide( 'apse_add_expense', false, $member, array( 'is_treasurer' => true ) ) );
+		$this->assertTrue( Access::decide( 'apse_add_expense', false, $volunteer, array( 'is_treasurer' => true ) ) );
+		$this->assertFalse( Access::decide( 'apse_add_expense', false, $member, array() ), 'senza il permesso' );
+		$this->assertFalse( Access::decide( 'apse_add_expense', false, array( 'id' => 9, 'type' => 'guest' ), array( 'is_treasurer' => true ) ), 'un ospite no' );
+		$this->assertFalse( Access::decide( 'apse_add_expense', false, null, array( 'is_treasurer' => true ) ), 'chi non è un socio no' );
+		$this->assertTrue( Access::decide( 'apse_add_expense', true, null, array() ), 'l\'amministratore sì' );
+	}
 }

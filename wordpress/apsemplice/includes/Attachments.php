@@ -179,13 +179,46 @@ final class Attachments {
 		return wp_nonce_url( add_query_arg( array( 'action' => 'apse_attachment', 'id' => $id ), admin_url( 'admin-post.php' ) ), 'apse_attachment_' . $id );
 	}
 
+	/** Chi gestisce il plugin vede tutto; il tesoriere solo gli allegati delle spese registrate da lui. */
+	public static function can_open( ?array $a ): bool {
+		if ( current_user_can( Plugin::CAP ) ) {
+			return true;
+		}
+		if ( ! $a || ! current_user_can( 'apse_add_expense', 0 ) ) {
+			return false;
+		}
+		$by = self::db()->get_var( self::db()->prepare( 'SELECT created_by FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', (int) $a['transaction_id'] ) );
+		return null !== $by && (int) $by === get_current_user_id();
+	}
+
+	/** File caricati con i campi `docs` (scelti) e `shots` (scattati con la fotocamera), uniti nella struttura di un solo campo. */
+	public static function from_request(): ?array {
+		$all = array();
+		foreach ( array( 'docs', 'shots' ) as $k ) {
+			if ( empty( $_FILES[ $k ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+				continue;
+			}
+			$n = AttachmentRules::normalize_files( $_FILES[ $k ] ); // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+			if ( $n['errors'] ) {
+				throw new \InvalidArgumentException( $n['errors'][0] );
+			}
+			foreach ( $n['files'] as $f ) {
+				$all['name'][]     = $f['name'];
+				$all['tmp_name'][] = $f['tmp_name'];
+				$all['size'][]     = $f['size'];
+				$all['error'][]    = UPLOAD_ERR_OK;
+			}
+		}
+		return $all ?: null;
+	}
+
 	public static function handle_download(): void {
-		if ( ! current_user_can( Plugin::CAP ) ) {
+		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
+		$a  = self::get( $id );
+		if ( ! self::can_open( $a ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
-		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		check_admin_referer( 'apse_attachment_' . $id );
-		$a    = self::get( $id );
 		$path = $a ? self::path_of( $a ) : '';
 		if ( ! $a || $a['removed_at'] || '' === basename( $path ) || ! is_readable( $path ) ) {
 			wp_die( 'Allegato non trovato.', 404 );
