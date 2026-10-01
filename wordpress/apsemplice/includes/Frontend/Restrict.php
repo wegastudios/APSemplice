@@ -5,6 +5,7 @@ use ApSemplice\Access;
 use ApSemplice\License;
 use ApSemplice\MemberType;
 use ApSemplice\Plugin;
+use ApSemplice\Settings;
 use ApSemplice\Visibility;
 
 defined( 'ABSPATH' ) || exit;
@@ -120,6 +121,8 @@ final class Restrict {
 		$reason = Visibility::denial_reason( $ctx );
 		if ( '' !== $custom_message ) {
 			$text = $custom_message;
+		} elseif ( '' !== (string) Settings::get( 'gate_message' ) && 'license' !== $reason ) {
+			$text = (string) Settings::get( 'gate_message' );
 		} elseif ( 'license' === $reason ) {
 			$text = 'Questo contenuto non è al momento disponibile.';
 		} elseif ( Visibility::ACTIVITY === $rule && $activity_ids ) {

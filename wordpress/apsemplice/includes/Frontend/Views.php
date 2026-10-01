@@ -199,7 +199,7 @@ final class Views {
 		if ( $unpaid || array_filter( $stat, function ( $s ) {
 			return $s['summary']['balance'] < 0;
 		} ) ) {
-			$html .= '<p class="apsf-small apsf-muted">' . esc_html( (string) apply_filters( 'aps_payment_hint', 'Il pagamento si effettua in sede presso la segreteria.' ) ) . '</p>';
+			$html .= '<p class="apsf-small apsf-muted">' . esc_html( Settings::payment_hint() ) . '</p>';
 		}
 		if ( $past ) {
 			$html .= '<details class="apsf-details"><summary>Storico prenotazioni</summary><ul class="apsf-list">';

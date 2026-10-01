@@ -5,10 +5,9 @@ defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
 
 /**
  * Cifratura delle chiavi dei gateway (Stripe, PayPal) nel database.
- *
- * Non è una protezione assoluta (la chiave deriva dai "salt" di wp-config.php, che stanno sullo stesso server) ma evita che
- * le chiavi compaiano in chiaro in un dump del database, in un backup o in un'esportazione delle opzioni.
- * Meglio ancora: definire le chiavi come costanti in wp-config.php (vedi {@see Settings::secret()}), così non entrano nel database.
+ * La chiave di cifratura deriva dai "salt" di questo sito (gestiti da WordPress, nessuna configurazione a mano): in un dump del
+ * database, in un backup o in un'esportazione delle opzioni le chiavi non compaiono in chiaro. Copiando il database su un altro
+ * sito (es. staging) le chiavi salvate non sono leggibili lì: è voluto, così lo staging non usa le chiavi reali dei pagamenti.
  */
 final class Secrets {
 

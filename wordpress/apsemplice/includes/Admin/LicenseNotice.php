@@ -31,7 +31,7 @@ final class LicenseNotice {
 		if ( LicensePolicy::POPUP_NONE === $p['popup'] ) {
 			return '';
 		}
-		$url   = (string) apply_filters( 'aps_license_payment_url', '' );
+		$url   = License::payment_url();
 		$html  = '<div id="aps-license-overlay" class="aps-overlay" role="dialog" aria-modal="true" aria-labelledby="aps-overlay-title"><div class="aps-overlay-box">';
 		$html .= '<h2 id="aps-overlay-title">Licenza non in regola</h2><p>' . esc_html( LicensePolicy::message( $p['status'] ) ) . '</p>';
 		$html .= '<p>Finché non viene regolarizzata, <strong>l\'esportazione dei dati e l\'accesso di soci e volontari sono sospesi</strong>. I tuoi dati sono al sicuro e restano intatti.</p>';

@@ -3,15 +3,15 @@ namespace ApSemplice;
 
 defined( 'ABSPATH' ) || exit;
 
+/** Tutte le impostazioni si cambiano dal pannello (menu APSemplice → Impostazioni): nessun file da modificare. */
 final class Settings {
 
 	const OPTION = 'aps_settings';
 
-	/** Chiavi segrete: nel database restano cifrate; si possono anche definire come costanti in wp-config.php (APS_<NOME>). */
+	/** Chiavi segrete: nel database restano cifrate e non vengono mai mostrate. */
 	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret' );
 
-	/** Chiavi non segrete dei gateway: anche queste possono essere costanti in wp-config.php. */
-	const GATEWAY_KEYS = array( 'stripe_mode', 'stripe_publishable_key', 'paypal_mode', 'paypal_client_id' );
+	const DEFAULT_PAYMENT_HINT = 'Il pagamento si effettua in sede presso la segreteria.';
 
 	public static function defaults(): array {
 		return array(
@@ -23,6 +23,9 @@ final class Settings {
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
 			'license_key'             => '',    // chiave di licenza (verifica in standby, vedi License)
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
+			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
+			'payment_hint'            => self::DEFAULT_PAYMENT_HINT, // testo mostrato ai soci che hanno importi da pagare
+			'gate_message'            => '',    // messaggio sui contenuti riservati; vuoto = automatico
 			'payment_provider'        => PaymentConfig::NONE,
 			'stripe_mode'             => 'test',
 			'stripe_publishable_key'  => '',
@@ -68,6 +71,9 @@ final class Settings {
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['license_key']             = substr( trim( (string) $clean['license_key'] ), 0, 120 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
+		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
+		$clean['payment_hint']            = '' === trim( (string) $clean['payment_hint'] ) ? self::DEFAULT_PAYMENT_HINT : substr( trim( (string) $clean['payment_hint'] ), 0, 300 );
+		$clean['gate_message']            = substr( trim( (string) $clean['gate_message'] ), 0, 200 );
 		$clean['payment_provider']        = PaymentConfig::is_valid( (string) $clean['payment_provider'] ) ? (string) $clean['payment_provider'] : PaymentConfig::NONE;
 		$clean['stripe_mode']             = 'live' === $clean['stripe_mode'] ? 'live' : 'test';
 		$clean['paypal_mode']             = 'live' === $clean['paypal_mode'] ? 'live' : 'sandbox';
@@ -88,39 +94,41 @@ final class Settings {
 		Audit::log( 'settings.secret_cleared', 'settings', null, array( 'key' => $key ) );
 	}
 
-	/** Nome della costante di wp-config.php che sostituisce un'impostazione, es. APS_STRIPE_SECRET_KEY. */
-	public static function constant_name( string $key ): string {
-		return 'APS_' . strtoupper( $key );
-	}
-
-	public static function is_constant( string $key ): bool {
-		return defined( self::constant_name( $key ) );
-	}
-
-	/** Chiave segreta in chiaro (costante in wp-config.php, altrimenti decifrata dal database). Stringa vuota se manca o illeggibile. */
+	/**
+	 * Chiave segreta in chiaro, decifrata dal database. Stringa vuota se manca o se non è leggibile su questo sito.
+	 *
+	 * La cifratura dipende dai "salt" di questo sito: copiando il database su un altro sito (ad esempio da produzione a staging)
+	 * le chiavi NON sono leggibili lì. È voluto: lo staging non può usare per sbaglio le chiavi reali dei pagamenti.
+	 */
 	public static function secret( string $key ): string {
-		if ( self::is_constant( $key ) ) {
-			return (string) constant( self::constant_name( $key ) );
-		}
 		$plain = Secrets::decrypt( (string) self::get( $key ), wp_salt( 'auth' ) );
 		return null === $plain ? '' : $plain;
 	}
 
-	/** True se c'è una chiave salvata (anche se non leggibile). */
+	/** True se c'è una chiave salvata (anche se non leggibile su questo sito). */
 	public static function has_secret( string $key ): bool {
-		return self::is_constant( $key ) || '' !== (string) self::get( $key );
+		return '' !== (string) self::get( $key );
+	}
+
+	/** True se la chiave è salvata ma non si riesce a leggerla (database copiato da un altro sito, salt cambiati). */
+	public static function secret_unreadable( string $key ): bool {
+		return self::has_secret( $key ) && '' === self::secret( $key );
 	}
 
 	/** Configurazione dei pagamenti con i segreti in chiaro (solo per uso interno: mai da stampare). */
 	public static function payment_config(): array {
 		$c = array( 'payment_provider' => (string) self::get( 'payment_provider' ) );
-		foreach ( self::GATEWAY_KEYS as $k ) {
-			$c[ $k ] = self::is_constant( $k ) ? (string) constant( self::constant_name( $k ) ) : (string) self::get( $k );
+		foreach ( array( 'stripe_mode', 'stripe_publishable_key', 'paypal_mode', 'paypal_client_id' ) as $k ) {
+			$c[ $k ] = (string) self::get( $k );
 		}
 		foreach ( self::SECRET_KEYS as $k ) {
 			$c[ $k ] = self::secret( $k );
 		}
 		return $c;
+	}
+
+	public static function payment_hint(): string {
+		return (string) self::get( 'payment_hint' );
 	}
 
 	public static function start_month(): int {

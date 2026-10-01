@@ -27,7 +27,7 @@ già con gli shortcode dentro. L'Area soci diventa la pagina di arrivo dopo il l
 
 **Dal sito i soci possono**: prenotarsi a un evento (anche per i propri ospiti, con il contributo ospiti), annullare una prenotazione di un evento non ancora passato,
 aggiungere un ospite, aggiornare telefono e codice fiscale. Per prenotare serve la **tessera valida**. Nome ed email li cambia solo l'associazione.
-Il pagamento resta "in sede" finché non c'è l'integrazione WooCommerce (testo modificabile con il filtro `aps_payment_hint`).
+Il pagamento resta "in sede" finché non c'è l'integrazione WooCommerce (il testo dell'invito si cambia dalle impostazioni).
 
 I volontari **non vedono i contatti** degli iscritti, solo i nomi.
 
@@ -55,8 +55,9 @@ o il widget Elementor omonimo.
 Restano visibili solo i contenuti pubblici (e l'amministratore): i soci non vedono quelli riservati e le loro azioni dal sito sono sospese.
 
 ## Stile
-`.apsf` eredita `font`, colore del testo e, se il tema a blocchi lo definisce, il colore `primary` come accento. Per cambiare l'accento:
-`.apsf { --apsf-accent: #c0392b; }` (Aspetto → CSS aggiuntivo). Il CSS si carica solo nelle pagine che usano una vista.
+Il front-end eredita font e colori del tema. Il **colore d'accento** (pulsanti, tessera) si sceglie da *Impostazioni → Aspetto e messaggi del sito*
+con un selettore colore: senza scelta si usa il colore principale del tema a blocchi. Lì si cambiano anche il **testo dell'invito al pagamento** mostrato ai soci
+e il **messaggio sui contenuti riservati**. Il CSS si carica solo nelle pagine che usano una vista.
 
 ## Note
 - **Tessera digitale con QR**: non ancora (la tessera mostra numero, tipo e validità). Il QR serve a una pagina di verifica ai controlli: da fare con quella.

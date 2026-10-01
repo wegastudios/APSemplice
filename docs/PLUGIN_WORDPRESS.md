@@ -68,10 +68,9 @@ Per ora è solo la **configurazione** e la verifica; l'incasso online vero è il
 - **PayPal**: modalità (sandbox/reale), Client ID, Client Secret.
 - Le chiavi vengono **controllate** (prefissi, coerenza con la modalità: es. chiavi di prova con modalità reale = errore) e *Verifica connessione*
   fa una chiamata di prova (Stripe legge il saldo, PayPal chiede un token) **solo quando premi il pulsante**; non muove denaro.
-- **Sicurezza**: le chiavi segrete si salvano **cifrate** nel database, non vengono mai ristampate (solo `••••1234`) e non finiscono nel registro azioni.
-  Meglio ancora: definirle in `wp-config.php` (`APS_STRIPE_SECRET_KEY`, `APS_STRIPE_WEBHOOK_SECRET`, `APS_PAYPAL_CLIENT_SECRET`, e per le non segrete
-  `APS_STRIPE_PUBLISHABLE_KEY`, `APS_STRIPE_MODE`, `APS_PAYPAL_CLIENT_ID`, `APS_PAYPAL_MODE`): così non entrano nel database e prevalgono sulle impostazioni.
-  La cifratura usa i "salt" di wp-config.php: se li cambi le chiavi salvate diventano illeggibili e vanno reinserite.
+- **Sicurezza**: le chiavi segrete si inseriscono **solo dal pannello** (nessun file da modificare), si salvano **cifrate** nel database,
+  non vengono mai ristampate (solo `••••1234`) e non finiscono nel registro azioni. La cifratura è legata al sito: copiando il database su un altro
+  sito (es. lo **staging**) le chiavi salvate **non sono leggibili lì** e il pannello avvisa di reinserirle. È voluto: lo staging non può usare per sbaglio le chiavi reali.
 
 ## Soci = utenti WordPress
 
@@ -129,3 +128,10 @@ La direzione di prodotto (area soci, volontari, comunicazioni, pagamenti, PWA) �
 3. REST API + area soci/PWA (consultazione tessera e pagamenti, installabile).
 4. Pagamenti online (quota associativa e mensilità) con riconciliazione automatica sulla prima nota.
 5. Modifica dei movimenti con storico, backup/export completo, PDF.
+
+## Tutto dal pannello
+Ogni impostazione si cambia da **APSemplice → Impostazioni**, senza modificare file né scrivere codice:
+denominazione, mese di inizio dell'anno sociale, quota associativa, durata della tessera del fondatore, pagina dell'area soci,
+chiave di licenza, termine predefinito di cancellazione, **colore d'accento** del sito (selettore colore), **testo dell'invito al pagamento**,
+**messaggio sui contenuti riservati**, gateway di pagamento e relative chiavi. Le pagine del sito si creano con un pulsante e si impaginano
+con Gutenberg o Elementor. I dati stanno nel database di WordPress (tabelle `aps_*` e l'opzione `aps_settings`).

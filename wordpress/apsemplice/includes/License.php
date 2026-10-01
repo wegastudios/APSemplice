@@ -39,12 +39,18 @@ final class License {
 			'status'     => (string) ( $s['status'] ?? LicensePolicy::STATUS_STANDBY ),
 			'since'      => $s['since'] ?? null,
 			'checked_at' => $s['checked_at'] ?? null,
+			'url'        => $s['url'] ?? null,
 		);
 	}
 
 	/** Lo scrive il client del server delle licenze (e i test). */
-	public static function set_state( string $status, ?string $since = null ): void {
-		update_option( self::OPT_STATE, array( 'status' => $status, 'since' => $since, 'checked_at' => Db::now() ) );
+	public static function set_state( string $status, ?string $since = null, ?string $payment_url = null ): void {
+		update_option( self::OPT_STATE, array( 'status' => $status, 'since' => $since, 'checked_at' => Db::now(), 'url' => $payment_url ) );
+	}
+
+	/** Indirizzo per regolarizzare il pagamento: lo comunica il servizio delle licenze insieme allo stato. */
+	public static function payment_url(): string {
+		return (string) ( self::state()['url'] ?? '' );
 	}
 
 	public static function policy(): array {

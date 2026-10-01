@@ -49,7 +49,7 @@ Con `unpaid` e `unlicensed` si applica **la stessa regola**:
 | Amministratori | operativi, coperti dal popup | coperti dal popup |
 
 Il popup non compare nella pagina **Impostazioni**, così si può correggere la chiave di licenza.
-Il giorno di inizio del problema (`since`) lo comunica il server; i 7 giorni partono da lì.
+Il giorno di inizio del problema (`since`) e l'indirizzo del pulsante «Regolarizza il pagamento» (`url`) li comunica il server insieme allo stato; i 7 giorni partono da lì.
 
 ## Liberare un dominio
 

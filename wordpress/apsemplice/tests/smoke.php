@@ -752,9 +752,65 @@ aps_ok( 'none' === Settings::get( 'payment_provider' ), 'gateway non valido: si 
 Settings::clear_secret( 'stripe_secret_key' );
 aps_ok( ! Settings::has_secret( 'stripe_secret_key' ) && '' === Settings::secret( 'stripe_secret_key' ), 'chiave segreta rimossa' );
 aps_ok( in_array( 'settings.secret_cleared', array_column( Audit::recent( 50 ), 'action' ), true ) && false === strpos( wp_json_encode( Audit::recent( 200 ) ), 'sk_test' ), 'registro azioni: nessuna chiave dentro' );
-define( 'APS_PAYPAL_CLIENT_ID', 'COSTANTEDIPROVACLIENTIDXXXXXXXXXXXXXXXXXXXX' );
-aps_ok( Settings::is_constant( 'paypal_client_id' ) && 'COSTANTEDIPROVACLIENTIDXXXXXXXXXXXXXXXXXXXX' === Settings::payment_config()['paypal_client_id'], 'costante di wp-config.php: ha la precedenza sul database' );
 Settings::update( array( 'payment_provider' => 'none' ) );
+wp_set_current_user( 1 );
+
+// ---------- Tutto dal pannello: aspetto, messaggi, chiavi (nessun file da modificare) ----------
+wp_set_current_user( 1 );
+Settings::update( array( 'accent_color' => '#C0392B' ) );
+aps_ok( '#c0392b' === Settings::get( 'accent_color' ), 'colore d\'accento: salvato normalizzato' );
+$css = \ApSemplice\Frontend\Assets::inline_css();
+aps_ok( false !== strpos( $css, '--apsf-accent:#c0392b' ) && false !== strpos( $css, '--apsf-accent-text:#ffffff' ), 'colore d\'accento: diventa lo stile del front-end, con testo leggibile' );
+Settings::update( array( 'accent_color' => 'rosso' ) );
+aps_ok( '' === Settings::get( 'accent_color' ) && '' === \ApSemplice\Frontend\Assets::inline_css(), 'colore non valido: si torna al colore del tema' );
+
+Settings::update( array( 'payment_hint' => 'Paga con bonifico a IT00X.' ) );
+aps_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_soci]' ), 'Paga con bonifico a IT00X.' ), 'invito al pagamento: testo scelto nelle impostazioni' );
+Settings::update( array( 'payment_hint' => '   ' ) );
+aps_ok( Settings::DEFAULT_PAYMENT_HINT === Settings::payment_hint(), 'invito al pagamento vuoto: torna quello predefinito' );
+
+Settings::update( array( 'gate_message' => 'Area dedicata ai nostri soci.' ) );
+aps_ok( false !== strpos( $show( $p_mem, 0 ), 'Area dedicata ai nostri soci.' ), 'messaggio sui contenuti riservati: testo scelto nelle impostazioni' );
+Settings::update( array( 'gate_message' => '' ) );
+aps_ok( false !== strpos( $show( $p_mem, 0 ), 'Contenuto riservato ai soci' ), 'messaggio sui contenuti riservati vuoto: automatico' );
+
+License::set_state( 'unpaid', $today, 'https://licenze.example/paga?k=1' );
+aps_ok( false !== strpos( Admin\LicenseNotice::html(), 'https://licenze.example/paga?k=1' ), 'popup licenza: usa l\'indirizzo di pagamento comunicato dal servizio' );
+delete_option( License::OPT_STATE );
+aps_ok( false === strpos( Admin\LicenseNotice::html(), 'licenze.example' ), 'popup licenza: niente popup con la licenza in regola' );
+
+// il modulo delle impostazioni salva tutto
+$ss = new ReflectionMethod( Admin\Actions::class, 'save_settings' );
+$ss->setAccessible( true );
+$form = array(
+	'association_name' => 'APS Prova', 'social_year_start_month' => '9', 'membership_fee' => '12,00', 'founder_years' => '99',
+	'member_area_page_id' => (string) Settings::get( 'member_area_page_id' ), 'cancel_policy_default' => '24h',
+	'payment_hint' => 'Ciao', 'gate_message' => '', 'payment_provider' => 'stripe', 'stripe_mode' => 'test',
+	'stripe_publishable_key' => 'pk_test_51Zzz', 'stripe_secret_key' => 'sk_test_51Zzz', 'stripe_webhook_secret' => 'whsec_zzz',
+	'accent_custom' => '1', 'accent_color' => '#336699',
+);
+$ss->invoke( null, $form );
+aps_ok( '#336699' === Settings::get( 'accent_color' ) && 'Ciao' === Settings::payment_hint() && '24h' === Settings::get( 'cancel_policy_default' ) && 1200 === (int) Settings::get( 'membership_fee_cents' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo impostazioni: salva aspetto, messaggi, termini e chiavi' );
+$form2 = array_merge( $form, array( 'stripe_secret_key' => '', 'stripe_webhook_secret' => '' ) );
+unset( $form2['accent_custom'] );
+$ss->invoke( null, $form2 );
+aps_ok( '' === Settings::get( 'accent_color' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo senza la spunta del colore: torna al tema; chiave lasciata vuota: resta quella salvata' );
+$ss->invoke( null, array_merge( $form2, array( 'clear_stripe_secret_key' => '1' ) ) );
+aps_ok( ! Settings::has_secret( 'stripe_secret_key' ) && Settings::has_secret( 'stripe_webhook_secret' ), 'modulo: la spunta "rimuovi" toglie solo quella chiave' );
+
+// una chiave cifrata da un altro sito (database copiato) non si legge qui, e il pannello lo dice
+$opt                         = get_option( 'aps_settings' );
+$opt['stripe_secret_key']    = Secrets::encrypt( 'sk_test_ALTRO', 'sale-di-un-altro-sito' );
+update_option( 'aps_settings', $opt );
+aps_ok( Settings::has_secret( 'stripe_secret_key' ) && Settings::secret_unreadable( 'stripe_secret_key' ) && '' === Settings::secret( 'stripe_secret_key' ), 'chiave cifrata da un altro sito: segnalata come non leggibile' );
+ob_start();
+Admin\SettingsPage::render();
+$h = ob_get_clean();
+aps_ok( false !== strpos( $h, 'non è leggibile su questo sito' ) && false === strpos( $h, 'wp-config' ) && false === strpos( $h, 'sk_test_ALTRO' ), 'pannello: avviso sulla chiave illeggibile, nessun file da modificare' );
+aps_ok( false !== strpos( $h, 'Aspetto e messaggi del sito' ) && false !== strpos( $h, 'type="color"' ), 'pannello: sezione aspetto con selettore colore' );
+Settings::clear_secret( 'stripe_secret_key' );
+Settings::clear_secret( 'stripe_webhook_secret' );
+Settings::update( array( 'payment_provider' => 'none', 'accent_color' => '', 'cancel_policy_default' => '48h' ) );
 wp_set_current_user( 1 );
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 aps_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );

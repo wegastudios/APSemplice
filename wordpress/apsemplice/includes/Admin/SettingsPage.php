@@ -35,6 +35,14 @@ final class SettingsPage {
 		echo '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>';
 
+		echo '</tbody></table><h2>Aspetto e messaggi del sito</h2><table class="form-table"><tbody>';
+		echo '<tr><th>Colore d\'accento</th><td><label><input type="checkbox" name="accent_custom" value="1"' . checked( '' !== (string) $s['accent_color'], true, false ) . '> Usa un colore mio</label> '
+			. '<input type="color" name="accent_color" value="' . esc_attr( '' !== (string) $s['accent_color'] ? (string) $s['accent_color'] : '#1f6f5c' ) . '">'
+			. '<p class="description">Per pulsanti e tessera nelle pagine dei soci. Senza spunta si usa il colore principale del tema.</p></td></tr>';
+		echo '<tr><th>Invito al pagamento</th><td><textarea name="payment_hint" rows="2" class="large-text">' . esc_textarea( Settings::payment_hint() ) . '</textarea>'
+			. '<p class="description">Mostrato ai soci che hanno importi da pagare (finché i pagamenti online non sono attivi).</p></td></tr>';
+		echo '<tr><th>Messaggio sui contenuti riservati</th><td><input type="text" name="gate_message" value="' . esc_attr( (string) $s['gate_message'] ) . '" class="large-text" placeholder="Automatico: «Contenuto riservato ai soci.»">'
+			. '<p class="description">Se lo compili sostituisce il messaggio automatico mostrato a chi non può vedere un contenuto riservato.</p></td></tr>';
 		echo '</tbody></table><h2>Pagamenti online</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Come incassare online</th><td><select name="payment_provider" id="aps-pay-provider">' . Ui::options( PaymentConfig::providers(), $s['payment_provider'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">WooCommerce e Stripe/PayPal sono alternative: ne usi una. Per ora è solo la <strong>configurazione</strong>: i pagamenti restano in sede finché non attiviamo l\'integrazione.</p></td></tr>';
@@ -55,8 +63,14 @@ final class SettingsPage {
 				echo '<tr><th></th><td class="aps-warn">ℹ ' . esc_html( $w ) . '</td></tr>';
 			}
 		}
-		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate. '
-			. 'Per tenerle fuori dal database puoi definirle in <code>wp-config.php</code>, ad esempio <code>define( \'APS_STRIPE_SECRET_KEY\', \'sk_live_…\' );</code> (stessi nomi in maiuscolo: <code>APS_STRIPE_WEBHOOK_SECRET</code>, <code>APS_PAYPAL_CLIENT_SECRET</code>, <code>APS_STRIPE_PUBLISHABLE_KEY</code>, <code>APS_PAYPAL_CLIENT_ID</code>…). Usa chiavi di prova finché non sei sicuro.</p></td></tr>';
+		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
+			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. È voluto: lo staging non può usare per sbaglio le chiavi reali. Usa chiavi di prova finché non sei sicuro.</p></td></tr>';
+		foreach ( \ApSemplice\Settings::SECRET_KEYS as $sk ) {
+			if ( Settings::secret_unreadable( $sk ) ) {
+				echo '<tr><th></th><td class="aps-warn">⚠ Una chiave è salvata ma non è leggibile su questo sito: reinseriscila.</td></tr>';
+				break;
+			}
+		}
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
@@ -83,12 +97,9 @@ final class SettingsPage {
 		Ui::footer();
 	}
 
-	/** Riga di impostazione non segreta di un gateway (può essere una costante di wp-config.php). */
+	/** Riga di impostazione non segreta di un gateway. */
 	private static function gateway_row( string $key, string $label, array $s, string $type, array $options, string $row_class, string $placeholder = '' ): string {
 		$head = '<tr class="' . esc_attr( $row_class ) . '"><th>' . esc_html( $label ) . '</th><td>';
-		if ( Settings::is_constant( $key ) ) {
-			return $head . '<em>definita in wp-config.php (' . esc_html( Settings::constant_name( $key ) ) . ')</em></td></tr>';
-		}
 		if ( 'select' === $type ) {
 			return $head . '<select name="' . esc_attr( $key ) . '">' . Ui::options( $options, $s[ $key ] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
@@ -98,12 +109,9 @@ final class SettingsPage {
 	/** Riga di una chiave segreta: non si mostra mai il valore, solo una maschera; vuoto = non cambiare. */
 	private static function secret_row( string $key, string $label, string $row_class, string $hint ): string {
 		$head = '<tr class="' . esc_attr( $row_class ) . '"><th>' . esc_html( $label ) . '</th><td>';
-		if ( Settings::is_constant( $key ) ) {
-			return $head . '<em>definita in wp-config.php (' . esc_html( Settings::constant_name( $key ) ) . ')</em></td></tr>';
-		}
 		$has   = Settings::has_secret( $key );
 		$plain = Settings::secret( $key );
-		$ph    = $has ? ( '' !== $plain ? Secrets::mask( $plain ) . ' (salvata)' : 'salvata ma non leggibile: reinseriscila' ) : '';
+		$ph    = $has ? ( '' !== $plain ? Secrets::mask( $plain ) . ' (salvata)' : 'salvata ma non leggibile su questo sito (database copiato da un altro sito?): reinseriscila' ) : '';
 		return $head . '<input type="password" name="' . esc_attr( $key ) . '" value="" placeholder="' . esc_attr( $ph ) . '" autocomplete="new-password" class="regular-text"> '
 			. ( $has ? '<label><input type="checkbox" name="clear_' . esc_attr( $key ) . '" value="1"> rimuovi</label>' : '' )
 			. '<p class="description">Lascia vuoto per non cambiarla.' . ( '' !== $hint ? ' ' . esc_html( $hint ) : '' ) . '</p></td></tr>';
