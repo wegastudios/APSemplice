@@ -36,8 +36,18 @@ final class IncomePage {
 			$a = Plugin::activities()->get( $aid );
 			if ( $a && $a['social_year'] === $sy ) {
 				$next   = Plugin::activities()->first_unpaid_month( $aid, (int) $person['id'] );
-				$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['monthly_fee_cents'], 'month' => $next ?: substr( $date, 0, 7 ) );
+				$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => Plugin::activities()->fee_for( $a, $person['type'] ), 'month' => $next ?: substr( $date, 0, 7 ) );
 			}
+		}
+		// Eventi a cui è prenotata e il cui contributo non è ancora stato pagato
+		$bookings = array();
+		foreach ( Plugin::activities()->unpaid_bookings_for_person( (int) $person['id'] ) as $b ) {
+			$bookings[] = array(
+				'session_id'  => (int) $b['session_id'],
+				'activity_id' => (int) $b['activity_id'],
+				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
+				'amount'      => (int) $b['remaining'],
+			);
 		}
 		wp_send_json_success(
 			array(
@@ -48,6 +58,7 @@ final class IncomePage {
 				'needs_membership' => in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) && ( ! $until || $until < $date ),
 				'social_year'      => $sy,
 				'activities'       => $acts,
+				'bookings'         => $bookings,
 			)
 		);
 	}
@@ -64,8 +75,10 @@ final class IncomePage {
 		$today = current_time( 'Y-m-d' );
 		$sy    = Settings::social_year( $today );
 		$acts  = array();
-		foreach ( Plugin::activities()->for_year( $sy->label() ) as $a ) {
-			$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['monthly_fee_cents'] );
+		foreach ( array_filter( Plugin::activities()->for_year( $sy->label() ), function ( $x ) {
+			return 'course' === $x['kind'];
+		} ) as $a ) {
+			$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'] );
 		}
 		$default_account = $ledger->default_account_for( 'cash' );
 		$accounts_by_method = array();
@@ -103,7 +116,8 @@ final class IncomePage {
 		echo '<h2>Voci</h2><div id="aps-lines"></div>';
 		echo '<p class="aps-addbar">'
 			. '<button type="button" class="button" id="aps-add-membership">+ Quota associativa</button> '
-			. '<select id="aps-add-activity-select"><option value="">+ Mensilità attività…</option></select> '
+			. '<select id="aps-add-activity-select"><option value="">+ Mensilità corso…</option></select> '
+			. '<select id="aps-add-booking-select"><option value="">+ Contributo evento…</option></select> '
 			. '<select id="aps-add-other-select"><option value="">+ Altra voce…</option></select></p>';
 
 		echo '<p class="aps-total">Totale: <strong id="aps-total">0,00 €</strong></p>';

@@ -85,6 +85,25 @@
 		nextCard.addEventListener('click', function () { $('#aps-card').value = nextCard.getAttribute('data-next'); });
 	}
 
+	/* Nuova attività: campi diversi per tipo */
+	var kindSel = $('#aps-kind');
+	if (kindSel) {
+		var kindHints = {
+			course: 'Corso: i soci si iscrivono per mesi e pagano una quota mensile (anche gratuita).',
+			event: 'Evento una tantum: una data, prenotazione obbligatoria, un contributo per partecipante (anche gratuito).',
+			recurring: 'Evento ricorrente: molte date (le aggiungi dopo la creazione); ci si iscrive al singolo evento e si paga per ogni evento.'
+		};
+		var applyKind = function () {
+			var k = kindSel.value;
+			$$('.aps-row-event').forEach(function (r) { r.style.display = k === 'event' ? '' : 'none'; });
+			$$('.aps-row-event input[name="session_date"]').forEach(function (i) { i.required = k === 'event'; });
+			$$('.aps-fee-label').forEach(function (l) { l.textContent = k === 'course' ? 'Contributo soci (al mese)' : 'Contributo soci (a evento)'; });
+			var hint = $('#aps-kind-hint'); if (hint) { hint.textContent = kindHints[k] || ''; }
+		};
+		kindSel.addEventListener('change', applyKind);
+		applyKind();
+	}
+
 	/* Incasso multi-voce con calcolo del resto */
 	var dataEl = $('#aps-income-data');
 	if (!dataEl) { return; }
@@ -121,7 +140,7 @@
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
 			amt.addEventListener('input', function () { l.amount = amt.value; update(); });
 			row.appendChild(amt); row.appendChild(el('span', { text: '€' }));
-			[['category_id', l.category], ['activity_id', l.activity || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
+			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
 				row.appendChild(el('input', { type: 'hidden', name: n + '[' + p[0] + ']', value: p[1] }));
 			});
 			var rm = el('button', { type: 'button', 'class': 'button button-link-delete', text: 'Rimuovi' });
@@ -183,7 +202,7 @@
 		var c = catByKind('activity_fee'); if (!a || !c) { return; }
 		var mine = (ctx && ctx.activities || []).filter(function (x) { return x.id === id; })[0];
 		var month = mine ? mine.month : $('#aps-date').value.substr(0, 7);
-		addLine({ title: a.name, category: c.id, kind: 'activity_fee', activity: a.id, month: month, amount: plain(a.fee) });
+		addLine({ title: a.name, category: c.id, kind: 'activity_fee', activity: a.id, month: month, amount: plain(mine ? mine.fee : a.fee) });
 	});
 	otherSel.addEventListener('change', function () {
 		var id = parseInt(otherSel.value, 10); otherSel.value = ''; if (!id) { return; }
@@ -191,16 +210,30 @@
 		if (c) { addLine({ title: c.name, category: c.id, kind: c.kind, amount: '' }); }
 	});
 
+	/* Contributi di eventi a cui la persona è prenotata (e non ha ancora pagato) */
+	var bookSel = $('#aps-add-booking-select');
+	function fillBookings() {
+		bookSel.innerHTML = '';
+		bookSel.appendChild(el('option', { value: '', text: '+ Contributo evento…' }));
+		(ctx && ctx.bookings || []).forEach(function (b, i) { bookSel.appendChild(el('option', { value: String(i), text: b.label + ' — ' + eur(b.amount) })); });
+		bookSel.disabled = !(ctx && ctx.bookings && ctx.bookings.length);
+	}
+	bookSel.addEventListener('change', function () {
+		var i = parseInt(bookSel.value, 10); bookSel.value = ''; if (isNaN(i) || !ctx || !ctx.bookings[i]) { return; }
+		var b = ctx.bookings[i], c = catByKind('activity_fee'); if (!c) { return; }
+		addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, amount: plain(b.amount) });
+	});
+
 	/* Persona scelta: tessera, attività a cui è iscritta, mese da pagare */
 	function loadContext() {
 		var pid = $('#aps-person-select').value, info = $('#aps-person-info');
-		ctx = null; fillActivities(); info.textContent = ''; info.className = 'aps-info';
+		ctx = null; fillActivities(); fillBookings(); info.textContent = ''; info.className = 'aps-info';
 		if (!pid) { return; }
 		var fd = new FormData();
 		fd.append('action', 'aps_person_context'); fd.append('nonce', D.nonce); fd.append('person_id', pid); fd.append('date', $('#aps-date').value);
 		fetch(D.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
 			if (!res.success || !res.data.person) { return; }
-			ctx = res.data; fillActivities();
+			ctx = res.data; fillActivities(); fillBookings();
 			var txt = ctx.person.type_label;
 			if (ctx.is_guest) { txt += ' · non è socio: paga solo le attività'; }
 			else if (ctx.is_founder) { txt += ' · tessera sempre rinnovata'; }
@@ -229,5 +262,6 @@
 	});
 
 	fillActivities();
+	fillBookings();
 	render();
 })();

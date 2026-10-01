@@ -301,6 +301,117 @@ aps_ok( 2 === count( $s['activities'] ), 'report anno sociale: due attività (Yo
 $yoga_sum = array_values( array_filter( $s['activities'], function ( $a ) { return 'Yoga' === $a['activity']['name']; } ) )[0];
 aps_ok( 4000 === $yoga_sum['income'] && 1500 === $yoga_sum['cost'] && 2500 === $yoga_sum['margin'], 'report anno sociale: incassi 40,00, costi 15,00, resta 25,00' );
 
+// ---------- Tipi di attività: evento una tantum, ricorrente, corso con contributo ospiti ----------
+$ev_date = gmdate( 'Y-m-d', strtotime( $today . ' +10 days' ) );
+aps_ok( null !== aps_throws( function () use ( $acts, $sy_label ) { $acts->create( array( 'name' => 'Senza data', 'social_year' => $sy_label, 'kind' => 'event' ) ); } ), 'evento una tantum: la data è obbligatoria' );
+$event = $acts->create(
+	array(
+		'name' => 'Serata giochi', 'social_year' => $sy_label, 'kind' => 'event', 'instructor_person_id' => $vol, 'fee_cents' => 500, 'guest_fee_cents' => 800,
+		'session' => array( 'session_date' => $ev_date, 'start_time' => '21:00', 'location' => 'Sede', 'capacity' => 2 ),
+	)
+);
+$ev_sessions = $acts->sessions( $event );
+$sid         = (int) $ev_sessions[0]['id'];
+aps_ok( 1 === count( $ev_sessions ) && '21:00' === $ev_sessions[0]['start_time'], 'evento una tantum: una data creata' );
+aps_ok( null !== aps_throws( function () use ( $acts, $event, $ev_date ) { $acts->add_session( $event, array( 'session_date' => $ev_date ) ); } ), 'evento una tantum: una sola data' );
+aps_ok( null !== aps_throws( function () use ( $acts, $event, $ord, $month ) { $acts->enroll( $event, $ord, $month ); } ), 'agli eventi ci si prenota, non ci si iscrive per mesi' );
+
+$acts->book( $sid, $founder );
+$acts->book( $sid, $guest );
+$by_person = function ( int $session ) use ( $acts ) {
+	$out = array();
+	foreach ( $acts->bookings_for_session( $session ) as $b ) {
+		$out[ (int) $b['person_id'] ] = $b;
+	}
+	return $out;
+};
+$bk = $by_person( $sid );
+aps_ok( 500 === (int) $bk[ $founder ]['fee_due_cents'] && 800 === (int) $bk[ $guest ]['fee_due_cents'], 'evento: contributo soci 5,00 e contributo ospiti 8,00' );
+aps_ok( null !== aps_throws( function () use ( $acts, $sid, $founder ) { $acts->book( $sid, $founder ); } ), 'non si prenota due volte' );
+$msg = (string) aps_throws( function () use ( $acts, $sid, $ord ) { $acts->book( $sid, $ord ); } );
+aps_ok( false !== stripos( $msg, 'esauriti' ), 'capienza: posti esauriti' );
+
+$pay = function ( int $person, int $cents, ?int $session, ?int $activity = null ) use ( $ledger, $today, $cash, $cat, $event ) {
+	return $ledger->record_receipt(
+		array(
+			'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $person,
+			'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => $cents, 'activity_id' => $activity ?: $event, 'session_id' => $session ) ),
+		)
+	);
+};
+aps_ok( null !== aps_throws( function () use ( $pay, $founder ) { $pay( $founder, 500, null ); } ), 'contributo evento senza la data: rifiutato' );
+aps_ok( null !== aps_throws( function () use ( $pay, $vol, $sid ) { $pay( $vol, 500, $sid ); } ), 'contributo di chi non è prenotato: rifiutato' );
+aps_ok( null !== aps_throws( function () use ( $pay, $ord, $sid, $yoga ) { $pay( $ord, 500, $sid, $yoga ); } ), 'un corso non accetta la data di un evento' );
+$pay( $founder, 500, $sid );
+$pay( $guest, 300, $sid );
+$bk = $by_person( $sid );
+aps_ok( 'paid' === $bk[ $founder ]['state'] && 'partial' === $bk[ $guest ]['state'] && 500 === $bk[ $guest ]['remaining'], 'pagamenti evento: socio pagato, ospite parziale (resta 5,00)' );
+$unpaid = $acts->unpaid_bookings_for_person( $guest );
+aps_ok( 1 === count( $unpaid ) && 500 === $unpaid[0]['remaining'], 'incasso: l\'evento da pagare viene proposto' );
+aps_ok( 0 === count( $acts->unpaid_bookings_for_person( $founder ) ), 'incasso: niente da proporre se già pagato' );
+
+$acts->cancel_booking( $sid, $founder );
+$acts->book( $sid, $ord ); // il posto liberato si può riprenotare
+aps_ok( 2 === (int) $acts->sessions( $event )[0]['booked_count'], 'annullando una prenotazione si libera il posto' );
+aps_ok( 2 === $acts->active_participants( $event ), 'partecipanti dell\'evento' );
+
+// evento ricorrente gratuito per i soci
+$rec = $acts->create( array( 'name' => 'Aperitivo del giovedì', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 0, 'guest_fee_cents' => 300 ) );
+$rec_to = gmdate( 'Y-m-d', strtotime( $ev_date . ' +21 days' ) );
+aps_ok( 4 === $acts->generate_weekly( $rec, $ev_date, $rec_to, '19:30', 'Bar', 20 ), 'ricorrente: quattro date settimanali' );
+aps_ok( 0 === $acts->generate_weekly( $rec, $ev_date, $rec_to ), 'ricorrente: nessun duplicato rigenerando' );
+aps_ok( null !== aps_throws( function () use ( $acts, $rec ) { $acts->generate_weekly( $rec, '2026-01-10', '2026-01-01' ); } ), 'ricorrente: periodo al contrario rifiutato' );
+aps_ok( null !== aps_throws( function () use ( $acts, $yoga, $ev_date ) { $acts->add_session( $yoga, array( 'session_date' => $ev_date ) ); } ), 'i corsi non hanno date' );
+$rec_sessions = $acts->sessions( $rec );
+$s1           = (int) $rec_sessions[0]['id'];
+$s2           = (int) $rec_sessions[1]['id'];
+$acts->book( $s1, $ord );
+$acts->book( $s1, $guest );
+$acts->book( $s2, $ord ); // iscrizione al singolo evento: ogni data si prenota separatamente
+$bk = $by_person( $s1 );
+aps_ok( 'free' === $bk[ $ord ]['state'] && 300 === (int) $bk[ $guest ]['fee_due_cents'], 'ricorrente: gratuito per i soci, 3,00 per gli ospiti' );
+aps_ok( 2 === $acts->active_participants( $rec ), 'ricorrente: persone distinte' );
+aps_ok( 1 === count( $acts->bookings_for_session( $s2 ) ), 'ricorrente: ogni data ha le sue prenotazioni' );
+$acts->cancel_session( $s2 );
+$cancelled = array_filter( $acts->bookings_for_person( $ord ), function ( $b ) use ( $s2 ) { return (int) $b['session_id'] === $s2 && ! $b['active']; } );
+aps_ok( 1 === count( $cancelled ), 'data annullata: la prenotazione non conta più' );
+aps_ok( null !== aps_throws( function () use ( $acts, $s2, $vol ) { $acts->book( $s2, $vol ); } ), 'non si prenota una data annullata' );
+
+// corso con contributo ospiti diverso
+$corso = $acts->create( array( 'name' => 'Disegno', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'guest_fee_cents' => 3500 ) );
+$acts->enroll( $corso, $ord, $month );
+$acts->enroll( $corso, $guest, $month );
+$course_summary = function () use ( $acts, $corso ) {
+	$out = array();
+	foreach ( $acts->status_for_activity( $corso ) as $x ) {
+		$out[ (int) $x['enrollment']['person_id'] ] = $x['summary'];
+	}
+	return $out;
+};
+$cs = $course_summary();
+aps_ok( -2000 === $cs[ $ord ]['balance'] && -3500 === $cs[ $guest ]['balance'], 'corso: mensilità soci 20,00 e ospiti 35,00' );
+$acts->update( $corso, array( 'guest_fee_cents' => 0 ) );
+$cs = $course_summary();
+aps_ok( 0 === $cs[ $guest ]['balance'] && -2000 === $cs[ $ord ]['balance'], 'corso: contributo ospiti 0 = gratuito per gli ospiti' );
+$acts->update( $corso, array( 'guest_fee_cents' => null ) );
+aps_ok( 2000 === $acts->fee_for( $acts->get( $corso ), 'guest' ), 'corso: contributo ospiti non impostato = come i soci' );
+$acts->update( $corso, array( 'kind' => 'event' ) );
+aps_ok( 'course' === $acts->get( $corso )['kind'], 'il tipo non cambia dopo la creazione' );
+
+// REST per eventi e prenotazioni
+$r = aps_rest( $u_vol, "/apsemplice/v1/activities/$event/sessions" );
+aps_ok( 200 === $r->get_status() && 1 === count( $r->get_data()['sessions'] ) && 2 === $r->get_data()['sessions'][0]['capacity'], 'REST sessions: il volontario istruttore vede le date' );
+aps_ok( 403 === aps_rest( $u_ord, "/apsemplice/v1/activities/$rec/sessions" )->get_status(), 'REST sessions: chi non è iscritto/istruttore è rifiutato' );
+$r = aps_rest( $u_vol, "/apsemplice/v1/sessions/$sid/bookings" );
+aps_ok( 200 === $r->get_status() && ! isset( $r->get_data()['bookings'][0]['email'] ) && ! isset( $r->get_data()['bookings'][0]['state'] ), 'REST bookings: il volontario vede solo i nomi' );
+aps_ok( isset( aps_rest( 1, "/apsemplice/v1/sessions/$sid/bookings" )->get_data()['bookings'][0]['state'] ), 'REST bookings: l\'amministratore vede anche i pagamenti' );
+aps_ok( 403 === aps_rest( $u_ord, "/apsemplice/v1/sessions/$sid/bookings" )->get_status(), 'REST bookings: il socio è rifiutato' );
+$r = aps_rest( $u_vol, "/apsemplice/v1/activities/$event/participants" );
+aps_ok( 200 === $r->get_status() && 2 === count( $r->get_data()['participants'] ), 'REST participants: anche per gli eventi' );
+$r = aps_rest( $u_ord, '/apsemplice/v1/me/bookings' );
+aps_ok( 200 === $r->get_status() && count( $r->get_data()['bookings'] ) >= 3, 'REST /me/bookings' );
+wp_set_current_user( 1 );
+
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 aps_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );
 aps_ok( false !== strpos( Admin\Exports::people()[1], 'fulvia@example.com' ), 'export soci' );
@@ -329,6 +440,11 @@ aps_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Tessera e iscrizio
 aps_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Attività e pagamenti', array( 'id' => $vol ) );
 aps_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Nuovo ospite', array( 'type' => 'guest' ) );
 aps_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Yoga' );
+aps_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Serata giochi' );
+aps_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Data e prenotazioni', array( 'id' => $event ) );
+aps_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Date e prenotazioni', array( 'id' => $rec ) );
+aps_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Iscritti e pagamenti', array( 'id' => $corso ) );
+aps_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Eventi e prenotazioni', array( 'id' => $founder ) );
 aps_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Iscritti e pagamenti', array( 'id' => $yoga ) );
 aps_render( array( Admin\IncomePage::class, 'render' ), 'aps-income-data' );
 aps_render( array( Admin\ExpensePage::class, 'render' ), 'Registra spesa' );

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'aps_db_version';
-	const DB_VERSION        = '2';
+	const DB_VERSION        = '3';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -17,8 +17,13 @@ final class Install {
 
 	/** Esegue gli aggiornamenti dello schema se il plugin è stato aggiornato senza riattivarlo. */
 	public static function maybe_upgrade(): void {
-		if ( get_option( self::DB_VERSION_OPTION ) !== self::DB_VERSION ) {
+		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
+		if ( $old !== self::DB_VERSION ) {
 			self::activate();
+			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
+				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
+				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
+			}
 		}
 	}
 
@@ -93,6 +98,9 @@ final class Install {
   social_year varchar(12) NOT NULL,
   instructor_person_id bigint(20) unsigned DEFAULT NULL,
   monthly_fee_cents bigint(20) NOT NULL DEFAULT 0,
+  kind varchar(20) NOT NULL DEFAULT 'course',
+  fee_cents bigint(20) NOT NULL DEFAULT 0,
+  guest_fee_cents bigint(20) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -123,6 +131,7 @@ final class Install {
   activity_id bigint(20) unsigned DEFAULT NULL,
   person_id bigint(20) unsigned DEFAULT NULL,
   description varchar(255) NOT NULL DEFAULT '',
+  session_id bigint(20) unsigned DEFAULT NULL,
   competence_month char(7) DEFAULT NULL,
   social_year varchar(12) DEFAULT NULL,
   document_ref varchar(80) DEFAULT NULL,
@@ -138,7 +147,8 @@ final class Install {
   KEY activity_id (activity_id),
   KEY person_id (person_id),
   KEY receipt_id (receipt_id),
-  KEY transfer_id (transfer_id)
+  KEY transfer_id (transfer_id),
+  KEY session_id (session_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}cash_counts (
@@ -153,6 +163,34 @@ final class Install {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY account_id (account_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}sessions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  session_date date NOT NULL,
+  start_time char(5) DEFAULT NULL,
+  location varchar(190) DEFAULT NULL,
+  capacity int(11) DEFAULT NULL,
+  notes varchar(255) DEFAULT NULL,
+  cancelled_at datetime DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY activity_id (activity_id),
+  KEY session_date (session_date)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}bookings (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  session_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  status varchar(12) NOT NULL DEFAULT 'booked',
+  fee_due_cents bigint(20) NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL,
+  cancelled_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY session_person (session_id,person_id),
+  KEY person_id (person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}audit_log (

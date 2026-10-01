@@ -186,11 +186,28 @@ class LedgerService {
 				throw new \InvalidArgumentException( "Voce $n: mese di competenza non valido." );
 			}
 			$activity_id = ! empty( $l['activity_id'] ) ? (int) $l['activity_id'] : null;
-			if ( $activity_id && ! Plugin::activities()->get( $activity_id ) ) {
+			$session_id  = ! empty( $l['session_id'] ) ? (int) $l['session_id'] : null;
+			$activity    = $activity_id ? Plugin::activities()->get( $activity_id ) : null;
+			if ( $activity_id && ! $activity ) {
 				throw new \InvalidArgumentException( "Voce $n: attività non trovata." );
 			}
 			if ( $activity_id && ! $person ) {
-				throw new \InvalidArgumentException( "Voce $n: indica chi paga la quota dell'attività." );
+				throw new \InvalidArgumentException( "Voce $n: indica chi paga il contributo dell'attività." );
+			}
+			if ( $session_id && ! $activity_id ) {
+				throw new \InvalidArgumentException( "Voce $n: la data dell'evento richiede l'attività." );
+			}
+			if ( $activity && ActivityKind::uses_sessions( $activity['kind'] ) ) {
+				// Eventi: il contributo si paga per una data a cui la persona è prenotata
+				$session = $session_id ? Plugin::activities()->session( $session_id ) : null;
+				if ( ! $session || (int) $session['activity_id'] !== $activity_id ) {
+					throw new \InvalidArgumentException( "Voce $n: indica a quale data dell'evento si riferisce il contributo." );
+				}
+				if ( ! Plugin::activities()->has_active_booking( $session_id, (int) $person['id'] ) ) {
+					throw new \InvalidArgumentException( "Voce $n: la persona non è prenotata a questa data." );
+				}
+			} elseif ( $session_id ) {
+				throw new \InvalidArgumentException( "Voce $n: i corsi non hanno date: indica il mese di competenza." );
 			}
 			$social_year = null;
 			if ( 'membership' === $cat['kind'] ) {
@@ -205,7 +222,7 @@ class LedgerService {
 				}
 				$social_year = ! empty( $l['social_year'] ) ? $l['social_year'] : Settings::social_year( $date )->label();
 			}
-			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'activity_id' => $activity_id, 'social_year' => $social_year, 'line' => $l );
+			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
@@ -221,6 +238,7 @@ class LedgerService {
 							'method'           => $d['method'],
 							'category_id'      => (int) $p['cat']['id'],
 							'activity_id'      => $p['activity_id'],
+							'session_id'       => $p['session_id'],
 							'person_id'        => $person ? (int) $person['id'] : null,
 							'description'      => substr( (string) ( $p['line']['description'] ?? '' ), 0, 255 ),
 							'competence_month' => ! empty( $p['line']['competence_month'] ) ? $p['line']['competence_month'] : null,

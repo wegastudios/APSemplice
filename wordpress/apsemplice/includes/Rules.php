@@ -51,7 +51,7 @@ final class Rules {
 	}
 
 	/**
-	 * @param array      $d          name, monthly_fee_cents
+	 * @param array      $d          name, kind, fee_cents, guest_fee_cents (null = come i soci)
 	 * @param array|null $instructor persona istruttore (con 'type'), se indicata
 	 * @return string[]
 	 */
@@ -60,13 +60,42 @@ final class Rules {
 		if ( '' === trim( (string) ( $d['name'] ?? '' ) ) ) {
 			$errors[] = 'Il nome dell\'attività è obbligatorio.';
 		}
-		if ( (int) ( $d['monthly_fee_cents'] ?? 0 ) < 0 ) {
-			$errors[] = 'La quota mensile non può essere negativa.';
+		if ( isset( $d['kind'] ) && ! ActivityKind::is_valid( (string) $d['kind'] ) ) {
+			$errors[] = 'Tipo di attività non valido.';
+		}
+		if ( (int) ( $d['fee_cents'] ?? 0 ) < 0 ) {
+			$errors[] = 'Il contributo non può essere negativo.';
+		}
+		if ( isset( $d['guest_fee_cents'] ) && (int) $d['guest_fee_cents'] < 0 ) {
+			$errors[] = 'Il contributo per gli ospiti non può essere negativo.';
 		}
 		if ( ! empty( $d['instructor_person_id'] ) ) {
 			if ( null === $instructor || ! MemberType::can_teach( (string) ( $instructor['type'] ?? '' ) ) ) {
 				$errors[] = 'Le attività possono essere tenute solo da soci e volontari.';
 			}
+		}
+		return $errors;
+	}
+
+	/**
+	 * Una data (sessione) di un evento.
+	 *
+	 * @param array $s session_date (Y-m-d), start_time (HH:MM, facoltativa), capacity (>= 1, facoltativa)
+	 * @return string[]
+	 */
+	public static function validate_session( array $s ): array {
+		$errors = array();
+		$date   = (string) ( $s['session_date'] ?? '' );
+		$dt     = \DateTime::createFromFormat( 'Y-m-d', $date );
+		if ( ! $dt || $dt->format( 'Y-m-d' ) !== $date ) {
+			$errors[] = 'La data dell\'evento non è valida.';
+		}
+		$time = (string) ( $s['start_time'] ?? '' );
+		if ( '' !== $time && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $time ) ) {
+			$errors[] = 'L\'orario non è valido (usa il formato HH:MM).';
+		}
+		if ( isset( $s['capacity'] ) && '' !== $s['capacity'] && (int) $s['capacity'] < 1 ) {
+			$errors[] = 'I posti disponibili devono essere almeno 1 (lascia vuoto per nessun limite).';
 		}
 		return $errors;
 	}

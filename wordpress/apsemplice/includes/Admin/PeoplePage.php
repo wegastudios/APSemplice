@@ -110,6 +110,7 @@ final class PeoplePage {
 			self::panel_membership( $p );
 			self::panel_guests( $p );
 			self::panel_activities( $p );
+			self::panel_bookings( $p );
 			self::panel_payments( $p );
 			echo '</div>';
 		}
@@ -187,6 +188,20 @@ final class PeoplePage {
 			echo '</details>';
 		}
 		echo '</div>';
+	}
+
+	private static function panel_bookings( array $p ): void {
+		$rows = Plugin::activities()->bookings_for_person( (int) $p['id'] );
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="aps-card"><h2>Eventi e prenotazioni</h2><table class="widefat striped"><thead><tr><th>Data</th><th>Evento</th><th>Contributo</th><th>Stato</th></tr></thead><tbody>';
+		foreach ( $rows as $b ) {
+			echo '<tr><td>' . Ui::date( $b['session_date'] ) . ( $b['start_time'] ? ' ' . esc_html( $b['start_time'] ) : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td><a href="' . esc_url( Ui::url( 'aps-activity', array( 'id' => $b['activity_id'] ) ) ) . '">' . esc_html( $b['activity_name'] ) . '</a></td>'
+				. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : '<span class="aps-warn">annullata</span>' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</tbody></table></div>';
 	}
 
 	private static function panel_payments( array $p ): void {

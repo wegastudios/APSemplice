@@ -132,6 +132,20 @@ final class Ui {
 			. '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">' . self::options( $map, $selected, $empty ) . '</select></span>';
 	}
 
+	/** Stato del contributo di una prenotazione. */
+	public static function booking_state( array $b ): string {
+		switch ( $b['state'] ) {
+			case 'free':
+				return '<span class="aps-ok">gratuito</span>';
+			case 'paid':
+				return '<span class="aps-ok">pagato</span>';
+			case 'partial':
+				return '<span class="aps-warn">parziale · resta ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
+			default:
+				return '<span class="aps-neg">da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
+		}
+	}
+
 	public static function redirect( string $url, string $ok = '', string $err = '' ): void {
 		$args = array();
 		if ( '' !== $ok ) {

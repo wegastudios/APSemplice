@@ -25,6 +25,12 @@ final class Actions {
 			'aps_save_activity'      => 'save_activity',
 			'aps_enroll'             => 'enroll',
 			'aps_cancel_enrollment'  => 'cancel_enrollment',
+			'aps_add_session'        => 'add_session',
+			'aps_update_session'     => 'update_session',
+			'aps_generate_sessions'  => 'generate_sessions',
+			'aps_cancel_session'     => 'cancel_session',
+			'aps_book'               => 'book',
+			'aps_cancel_booking'     => 'cancel_booking',
 			'aps_save_income'        => 'save_income',
 			'aps_save_expense'       => 'save_expense',
 			'aps_save_transfer'      => 'save_transfer',
@@ -98,12 +104,29 @@ final class Actions {
 
 	// ---------- Attività ----------
 
+	/** Contributo da un campo di testo: vuoto = non indicato (null), "0" = gratuito. */
+	private static function fee_field( array $p, string $key ): ?int {
+		$raw = isset( $p[ $key ] ) ? trim( (string) $p[ $key ] ) : '';
+		return '' === $raw ? null : ( Money::parse( $raw ) ?? 0 );
+	}
+
+	private static function session_fields( array $p ): array {
+		return array(
+			'session_date' => (string) ( $p['session_date'] ?? '' ),
+			'start_time'   => (string) ( $p['start_time'] ?? '' ),
+			'location'     => (string) ( $p['location'] ?? '' ),
+			'capacity'     => (string) ( $p['capacity'] ?? '' ),
+		);
+	}
+
 	private static function save_activity( array $p ): array {
 		$data = array(
 			'name'                 => $p['name'] ?? '',
 			'social_year'          => $p['social_year'] ?? '',
+			'kind'                 => $p['kind'] ?? 'course',
 			'instructor_person_id' => $p['instructor_person_id'] ?? '',
-			'monthly_fee_cents'    => Money::parse( $p['monthly_fee'] ?? '' ) ?? 0,
+			'fee_cents'            => self::fee_field( $p, 'fee' ) ?? 0,
+			'guest_fee_cents'      => self::fee_field( $p, 'guest_fee' ),
 			'notes'                => $p['notes'] ?? '',
 		);
 		$id = (int) ( $p['id'] ?? 0 );
@@ -111,8 +134,44 @@ final class Actions {
 			Plugin::activities()->update( $id, $data );
 			return array( Ui::url( 'aps-activity', array( 'id' => $id ) ), 'Attività salvata.' );
 		}
+		if ( 'event' === $data['kind'] ) {
+			$data['session'] = self::session_fields( $p );
+		}
 		$id = Plugin::activities()->create( $data );
 		return array( Ui::url( 'aps-activity', array( 'id' => $id ) ), 'Attività creata.' );
+	}
+
+	private static function add_session( array $p ): array {
+		$aid = (int) $p['activity_id'];
+		Plugin::activities()->add_session( $aid, self::session_fields( $p ) );
+		return array( Ui::url( 'aps-activity', array( 'id' => $aid ) ), 'Data aggiunta.' );
+	}
+
+	private static function update_session( array $p ): array {
+		Plugin::activities()->update_session( (int) $p['session_id'], self::session_fields( $p ) );
+		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data aggiornata.' );
+	}
+
+	private static function generate_sessions( array $p ): array {
+		$aid = (int) $p['activity_id'];
+		$cap = isset( $p['capacity'] ) && '' !== trim( (string) $p['capacity'] ) ? (int) $p['capacity'] : null;
+		$n   = Plugin::activities()->generate_weekly( $aid, (string) ( $p['from'] ?? '' ), (string) ( $p['to'] ?? '' ), self::opt( $p, 'start_time' ), self::opt( $p, 'location' ), $cap );
+		return array( Ui::url( 'aps-activity', array( 'id' => $aid ) ), $n . ( 1 === $n ? ' data creata.' : ' date create.' ) );
+	}
+
+	private static function cancel_session( array $p ): array {
+		Plugin::activities()->cancel_session( (int) $p['session_id'] );
+		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data annullata.' );
+	}
+
+	private static function book( array $p ): array {
+		Plugin::activities()->book( (int) $p['session_id'], (int) ( $p['person_id'] ?? 0 ) );
+		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
+	}
+
+	private static function cancel_booking( array $p ): array {
+		Plugin::activities()->cancel_booking( (int) $p['session_id'], (int) $p['person_id'] );
+		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata (eventuali pagamenti vanno rimborsati a mano).' );
 	}
 
 	private static function enroll( array $p ): array {
@@ -134,6 +193,7 @@ final class Actions {
 				'category_id'      => (int) ( $l['category_id'] ?? 0 ),
 				'amount_cents'     => Money::parse( $l['amount'] ?? '' ) ?? 0,
 				'activity_id'      => (int) ( $l['activity_id'] ?? 0 ),
+				'session_id'       => (int) ( $l['session_id'] ?? 0 ),
 				'competence_month' => self::opt( $l, 'competence_month' ),
 				'social_year'      => self::opt( $l, 'social_year' ),
 				'description'      => (string) ( $l['description'] ?? '' ),

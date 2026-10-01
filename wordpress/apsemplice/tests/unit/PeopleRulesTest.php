@@ -62,12 +62,12 @@ final class RulesTest extends TestCase {
 	}
 
 	public function test_activity_instructor_must_be_volunteer(): void {
-		$act = array( 'name' => 'Yoga', 'monthly_fee_cents' => 2000, 'instructor_person_id' => 3 );
+		$act = array( 'name' => 'Yoga', 'fee_cents' => 2000, 'instructor_person_id' => 3 );
 		$this->assertSame( array(), Rules::validate_activity( $act, array( 'type' => 'volunteer' ) ) );
 		$this->assertNotEmpty( Rules::validate_activity( $act, array( 'type' => 'ordinary' ) ) );
 		$this->assertNotEmpty( Rules::validate_activity( $act, array( 'type' => 'founder' ) ) );
 		$this->assertNotEmpty( Rules::validate_activity( $act, array( 'type' => 'guest' ) ) );
-		$this->assertSame( array(), Rules::validate_activity( array( 'name' => 'Yoga', 'monthly_fee_cents' => 0 ), null ) );
+		$this->assertSame( array(), Rules::validate_activity( array( 'name' => 'Yoga', 'fee_cents' => 0 ), null ) );
 	}
 }
 

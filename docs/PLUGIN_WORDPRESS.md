@@ -24,6 +24,24 @@ Regole (in `Rules.php`, `MemberType.php`, verificate dai test):
 - Un socio non può diventare ospite; un ospite può diventare socio (serve l'email, si crea l'utente).
 - Un ospite deve avere come ospitante un socio (non un altro ospite).
 
+## Tipi di attività
+
+Tre tipi, tutti **gratuiti o con contributo**, con un **contributo ospiti** che può essere diverso da quello dei soci.
+
+| Tipo | Come ci si partecipa | Contributo |
+|---|---|---|
+| **Corso** | iscrizione per mesi (da/fino a un mese), come prima | mensile, per socio e per ospite |
+| **Evento una tantum** | **prenotazione obbligatoria** a una data (con orario, luogo, posti disponibili) | un contributo a persona |
+| **Evento ricorrente** | molte date (aggiunte a mano o generate ogni settimana); **iscrizione obbligatoria al singolo evento** | un contributo per ogni evento prenotato |
+
+- **Contributo soci** vuoto o 0 = gratuito. **Contributo ospiti**: vuoto = come i soci · 0 = gratuito per gli ospiti · un importo = diverso (anche gratuito per i soci e a pagamento per gli ospiti).
+- Alla **prenotazione** il contributo dovuto viene fissato (socio o ospite): cambiare il prezzo dopo non altera le prenotazioni già fatte. Nei corsi la quota segue invece quella attuale.
+- **Posti disponibili**: oltre il limite la prenotazione è rifiutata. Annullare una prenotazione libera il posto.
+- Annullare una **data** non conta più le sue prenotazioni; gli eventuali pagamenti già ricevuti vanno rimborsati a mano (registrando una spesa).
+- Il **tipo non si cambia** dopo la creazione. Anche gli eventi sono tenuti solo da "soci e volontari".
+- All'**incasso**: per i corsi si propone il primo mese da pagare; per gli eventi si propone il contributo delle prenotazioni non ancora pagate ("+ Contributo evento…"), che resta collegato alla data e alla persona.
+- REST: `/activities/{id}/sessions`, `/sessions/{id}/bookings` (i volontari vedono solo i nomi), `/me/bookings`.
+
 ## Soci = utenti WordPress
 
 - Creando un socio si **crea l'utente WordPress** con la stessa email (ruolo `aps_member`, che ha solo `read`: nessun accesso alla gestione). Non parte nessuna email.

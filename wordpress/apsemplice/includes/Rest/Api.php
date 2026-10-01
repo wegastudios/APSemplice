@@ -2,6 +2,7 @@
 namespace ApSemplice\Rest;
 
 use ApSemplice\Access;
+use ApSemplice\ActivityKind;
 use ApSemplice\License;
 use ApSemplice\MemberType;
 use ApSemplice\Plugin;
@@ -26,6 +27,7 @@ final class Api {
 		$logged_in = function () {
 			return self::guard();
 		};
+		self::event_routes( $logged_in );
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'me' ), 'permission_callback' => $logged_in ) );
 		register_rest_route( self::NS, '/me/activities', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'my_activities' ), 'permission_callback' => $logged_in ) );
 		register_rest_route(
@@ -66,6 +68,86 @@ final class Api {
 			return new \WP_Error( 'aps_license_required', 'Servizio sospeso: la licenza dell\'associazione non risulta attiva.', array( 'status' => 403 ) );
 		}
 		return null === $ability ? true : current_user_can( $ability, $object_id );
+	}
+
+	/** Eventi e prenotazioni. */
+	private static function event_routes( callable $logged_in ): void {
+		register_rest_route( self::NS, '/me/bookings', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'my_bookings' ), 'permission_callback' => $logged_in ) );
+		register_rest_route(
+			self::NS,
+			'/activities/(?P<id>\d+)/sessions',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'sessions' ),
+				'permission_callback' => function ( \WP_REST_Request $r ) {
+					return self::guard( 'aps_view_activity', (int) $r['id'] );
+				},
+			)
+		);
+		register_rest_route(
+			self::NS,
+			'/sessions/(?P<id>\d+)/bookings',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'session_bookings' ),
+				'permission_callback' => function ( \WP_REST_Request $r ) {
+					$s = Plugin::activities()->session( (int) $r['id'] );
+					return $s ? self::guard( 'aps_view_participants', (int) $s['activity_id'] ) : self::guard( Plugin::CAP );
+				},
+			)
+		);
+	}
+
+	public static function my_bookings() {
+		$person = Access::person_for_user( get_current_user_id() );
+		if ( ! $person ) {
+			return new \WP_Error( 'aps_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
+		}
+		$rows = array();
+		foreach ( Plugin::activities()->bookings_for_person( (int) $person['id'] ) as $b ) {
+			$rows[] = array(
+				'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'], 'activity' => $b['activity_name'],
+				'date' => $b['session_date'], 'time' => $b['start_time'], 'location' => $b['location'],
+				'active' => $b['active'], 'fee_due' => (int) $b['fee_due_cents'], 'paid' => $b['paid'], 'state' => $b['state'],
+			);
+		}
+		return rest_ensure_response( array( 'bookings' => $rows ) );
+	}
+
+	public static function sessions( \WP_REST_Request $r ) {
+		$id = (int) $r['id'];
+		$a  = Plugin::activities()->get( $id );
+		if ( ! $a ) {
+			return new \WP_Error( 'aps_not_found', 'Attività non trovata.', array( 'status' => 404 ) );
+		}
+		$out = array();
+		foreach ( Plugin::activities()->sessions( $id ) as $s ) {
+			$out[] = array(
+				'id' => (int) $s['id'], 'date' => $s['session_date'], 'time' => $s['start_time'], 'location' => $s['location'],
+				'capacity' => null === $s['capacity'] ? null : (int) $s['capacity'], 'booked' => (int) $s['booked_count'], 'cancelled' => ! empty( $s['cancelled_at'] ),
+			);
+		}
+		return rest_ensure_response( array( 'activity' => array( 'id' => $id, 'name' => $a['name'], 'kind' => $a['kind'] ), 'sessions' => $out ) );
+	}
+
+	/** Prenotati a una data. Come per gli iscritti: i volontari vedono i nomi, solo gli amministratori contatti e pagamenti. */
+	public static function session_bookings( \WP_REST_Request $r ) {
+		$s = Plugin::activities()->session( (int) $r['id'] );
+		if ( ! $s ) {
+			return new \WP_Error( 'aps_not_found', 'Data non trovata.', array( 'status' => 404 ) );
+		}
+		$admin = Access::is_admin_user( get_current_user_id() );
+		$rows  = array();
+		foreach ( Plugin::activities()->bookings_for_session( (int) $s['id'] ) as $b ) {
+			$row = array( 'person_id' => (int) $b['person_id'], 'first_name' => $b['first_name'], 'last_name' => $b['last_name'], 'type_label' => MemberType::label( $b['type'] ), 'active' => $b['active'] );
+			if ( $admin ) {
+				$row['email']   = $b['email'];
+				$row['fee_due'] = (int) $b['fee_due_cents'];
+				$row['state']   = $b['state'];
+			}
+			$rows[] = $row;
+		}
+		return rest_ensure_response( array( 'session' => array( 'id' => (int) $s['id'], 'date' => $s['session_date'], 'activity_id' => (int) $s['activity_id'] ), 'bookings' => $rows ) );
 	}
 
 	// ---------- Forme di output ----------
@@ -152,6 +234,17 @@ final class Api {
 		}
 		$admin = Access::is_admin_user( get_current_user_id() );
 		$rows  = array();
+		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
+			// Eventi: chi ha almeno una prenotazione attiva
+			foreach ( Plugin::activities()->booked_people( $id ) as $b ) {
+				$row = array( 'person_id' => (int) $b['person_id'], 'first_name' => $b['first_name'], 'last_name' => $b['last_name'], 'type_label' => MemberType::label( $b['type'] ), 'active' => true );
+				if ( $admin ) {
+					$row['email'] = $b['email'];
+				}
+				$rows[] = $row;
+			}
+			return rest_ensure_response( array( 'activity' => array( 'id' => $id, 'name' => $activity['name'], 'social_year' => $activity['social_year'], 'kind' => $activity['kind'] ), 'participants' => $rows ) );
+		}
 		foreach ( Plugin::activities()->status_for_activity( $id ) as $s ) {
 			$e   = $s['enrollment'];
 			$row = array(
