@@ -1611,7 +1611,7 @@ apse_ok( false !== strpos( $as( $uq, '[apsemplice_ingressi]' ), 'Non gestisci ne
 $_GET['apse_session'] = (string) $tev_s;
 $det = $as( $u_tre, '[apsemplice_ingressi]' );
 apse_ok( false !== strpos( $det, $guest_row['first_name'] ) && false !== strpos( $det, 'Registra ingresso' ) && false !== strpos( $det, 'data-apsf-scan' ) && false !== strpos( $det, 'Prenotati' ) && false !== strpos( $det, 'Da versare' ), 'lista prenotati: nomi, contributo, pulsante di ingresso e scansione del QR' );
-apse_ok( false === strpos( $det, '@' ) && false === strpos( $det, 'tel' . 'efono' ), 'lista prenotati: nessun recapito (email o telefono)' );
+apse_ok( false === strpos( $det, '@' ) && false === strpos( $det, 'mailto:' ) && false === strpos( $det, 'tel:' ), 'lista prenotati: nessun recapito (email o telefono)' );
 unset( $_GET['apse_session'] );
 $_GET['apse_session'] = (string) $paid_s;
 apse_ok( false === strpos( $as( $u_tre, '[apsemplice_ingressi]' ), 'Cena sociale' ), 'un gestore non apre le liste di eventi che non gestisce' );
