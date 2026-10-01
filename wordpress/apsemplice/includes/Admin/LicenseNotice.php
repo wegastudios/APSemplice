@@ -19,7 +19,7 @@ final class LicenseNotice {
 
 	public static function print_notice(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		if ( 0 !== strpos( $page, 'aps' ) || 'apse-settings' === $page ) {
+		if ( 0 !== strpos( $page, 'apse' ) || 'apse-settings' === $page ) {
 			return;
 		}
 		echo self::html(); // phpcs:ignore WordPress.Security.EscapeOutput

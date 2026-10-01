@@ -18,9 +18,9 @@ final class Admin {
 
 	public static function menu(): void {
 		$cap = Plugin::CAP;
-		add_menu_page( 'APSemplice', 'APSemplice', $cap, 'aps', array( DashboardPage::class, 'render' ), 'dashicons-groups', 30 );
+		add_menu_page( 'APSemplice', 'APSemplice', $cap, 'apse', array( DashboardPage::class, 'render' ), 'dashicons-groups', 30 );
 		$subs = array(
-			array( 'aps', 'Riepilogo', array( DashboardPage::class, 'render' ) ),
+			array( 'apse', 'Riepilogo', array( DashboardPage::class, 'render' ) ),
 			array( 'apse-people', 'Soci e ospiti', array( PeoplePage::class, 'render_list' ) ),
 			array( 'apse-activities', 'Attività', array( ActivitiesPage::class, 'render_list' ) ),
 			array( 'apse-income', 'Nuovo incasso', array( IncomePage::class, 'render' ) ),
@@ -34,7 +34,7 @@ final class Admin {
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
 		foreach ( $subs as $s ) {
-			add_submenu_page( 'aps', $s[1], $s[1], $cap, $s[0], $s[2] );
+			add_submenu_page( 'apse', $s[1], $s[1], $cap, $s[0], $s[2] );
 		}
 		// Pagine di dettaglio: raggiungibili dai link, non compaiono nel menu
 		add_submenu_page( null, 'Scheda persona', 'Scheda persona', $cap, 'apse-person', array( PeoplePage::class, 'render_edit' ) );
@@ -43,7 +43,7 @@ final class Admin {
 	}
 
 	public static function assets( string $hook ): void {
-		if ( false === strpos( $hook, 'aps' ) ) {
+		if ( false === strpos( $hook, 'apse' ) ) {
 			return;
 		}
 		wp_enqueue_style( 'apse-admin', APSE_URL . 'assets/admin.css', array(), APSE_VERSION );

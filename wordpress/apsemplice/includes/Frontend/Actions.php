@@ -26,7 +26,7 @@ final class Actions {
 	public static function register(): void {
 		// Pagamento online: la risposta è un indirizzo esterno (pagina del gateway), non un messaggio.
 		add_action(
-			'admin_post_aps_front_pay',
+			'admin_post_apse_front_pay',
 			function () {
 				check_admin_referer( 'apse_front_pay' );
 				$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
@@ -42,7 +42,7 @@ final class Actions {
 			}
 		);
 		add_action(
-			'admin_post_nopriv_aps_front_pay',
+			'admin_post_nopriv_apse_front_pay',
 			function () {
 				wp_safe_redirect( wp_login_url( self::back_url( wp_unslash( $_POST ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
 				exit;

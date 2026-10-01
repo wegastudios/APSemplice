@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 final class Exports {
 
 	public static function register(): void {
-		add_action( 'admin_post_aps_export', array( __CLASS__, 'handle' ) );
+		add_action( 'admin_post_apse_export', array( __CLASS__, 'handle' ) );
 	}
 
 	public static function link( string $what, array $args, string $label ): string {

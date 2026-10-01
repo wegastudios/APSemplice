@@ -8,6 +8,7 @@
 
 use ApSemplice\Access;
 use ApSemplice\Admin;
+use ApSemplice\Attachments;
 use ApSemplice\Audit;
 use ApSemplice\Gatekeeper;
 use ApSemplice\Gateways;
@@ -1097,6 +1098,102 @@ Settings::clear_secret( 'paypal_client_secret' );
 $ps->set_http( null );
 remove_all_filters( 'pre_wp_mail' );
 wp_set_current_user( 1 );
+
+// ---------- Allegati alle spese (cartella privata, non la libreria media) ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+Admin\Admin::init(); // in WP-CLI is_admin() è falso: si registrano qui i gestori dell'amministrazione
+foreach ( array( 'admin_post_apse_export', 'wp_ajax_apse_person_context', 'admin_post_apse_front_pay', 'admin_post_apse_attachment', 'admin_post_apse_add_attachment', 'admin_post_apse_save_expense' ) as $hook ) {
+	apse_ok( has_action( $hook ), "hook registrato con il prefisso apse_: $hook" );
+}
+apse_ok( Db::t( 'attachments' ) === $wpdb->get_var( "SHOW TABLES LIKE '" . Db::t( 'attachments' ) . "'" ) && 0 === strpos( Db::t( 'attachments' ), $wpdb->prefix . 'apse_' ), 'tabella allegati con prefisso apse_' );
+
+$tmp   = sys_get_temp_dir();
+$mkf   = function ( string $name, string $content ) use ( $tmp ) {
+	$p = $tmp . '/apse-' . wp_generate_password( 8, false ) . '-' . $name;
+	file_put_contents( $p, $content );
+	return $p;
+};
+$pdf1  = $mkf( 'scontrino.pdf', "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n" );
+$png1  = $mkf( 'foto.png', base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' ) );
+$png2  = $mkf( 'altra.png', base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' ) );
+$fake  = $mkf( 'furbo.png', "<?php echo 'ciao';" );
+$files = function ( array $paths ) {
+	$out = array( 'name' => array(), 'tmp_name' => array(), 'size' => array(), 'error' => array() );
+	foreach ( $paths as $name => $p ) {
+		$out['name'][]     = $name;
+		$out['tmp_name'][] = $p;
+		$out['size'][]     = filesize( $p );
+		$out['error'][]    = UPLOAD_ERR_OK;
+	}
+	return $out;
+};
+$exp_cat = 0;
+foreach ( $ledger->categories() as $c ) {
+	if ( Labels::category_kinds()[ $c['kind'] ][2] && 'adjustment' !== $c['kind'] ) {
+		$exp_cat = (int) $c['id'];
+		break;
+	}
+}
+$save_exp     = new ReflectionMethod( Admin\Actions::class, 'save_expense' );
+$add_att      = new ReflectionMethod( Admin\Actions::class, 'add_attachment' );
+$rm_att       = new ReflectionMethod( Admin\Actions::class, 'remove_attachment' );
+$exp_post     = array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $exp_cat, 'amount' => '12,50', 'description' => 'Materiale con scontrino' );
+$media_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'" );
+$tx_before    = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+
+// un file non ammesso blocca tutto: nessuna spesa registrata
+$_FILES = array( 'docs' => $files( array( 'scontrino.pdf' => $pdf1, 'furbo.png' => $fake ) ) );
+$msg    = (string) apse_throws( function () use ( $save_exp, $exp_post ) { $save_exp->invoke( null, $exp_post ); } );
+apse_ok( false !== strpos( $msg, 'non è ammesso' ) && $tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'allegato camuffato (php con estensione png): rifiutato e la spesa non viene registrata' );
+
+// spesa con un PDF e una foto
+$_FILES = array( 'docs' => $files( array( 'scontrino.pdf' => $pdf1 ) ), 'shots' => $files( array( 'foto.png' => $png1 ) ) );
+$res    = $save_exp->invoke( null, $exp_post );
+$tx     = (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'expense'" );
+$att    = Attachments::list_for( $tx );
+apse_ok( false !== strpos( $res[1], '2 allegati' ) && 2 === count( $att ), 'spesa registrata con due allegati (PDF e foto)' );
+$a0 = $att[0];
+apse_ok( 'application/pdf' === $a0['mime'] && 'scontrino.pdf' === $a0['original_name'] && preg_match( '/^[0-9a-f]{32}$/', $a0['stored_name'] ) && 64 === strlen( $a0['sha256'] ), 'allegato: tipo letto dal contenuto, nome sul disco casuale e senza estensione' );
+$path = Attachments::path_of( $a0 );
+apse_ok( is_file( $path ) && filesize( $path ) === (int) $a0['size_bytes'] && 0 === strpos( $path, Attachments::dir() ), 'il file sta nella cartella privata del plugin' );
+apse_ok( is_file( Attachments::dir() . '/.htaccess' ) && false !== strpos( (string) file_get_contents( Attachments::dir() . '/.htaccess' ), 'Require all denied' ) && is_file( Attachments::dir() . '/index.php' ), 'cartella privata protetta (.htaccess e index)' );
+apse_ok( $media_before === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'" ), 'niente nella libreria media: la galleria resta pulita' );
+$url = Attachments::url( (int) $a0['id'] );
+apse_ok( false !== strpos( $url, 'action=apse_attachment' ) && false !== strpos( $url, '_wpnonce=' ), 'indirizzo di apertura con controllo permessi (nonce)' );
+apse_ok( user_can( 1, Plugin::CAP ) && ! user_can( $u_ord, Plugin::CAP ) && ! user_can( $u_vol, Plugin::CAP ), 'solo chi gestisce il plugin può aprire gli allegati' );
+
+// aggiungere altri file a un movimento esistente; doppioni
+$_FILES = array( 'docs' => $files( array( 'altra.png' => $png2 ) ) );
+$res    = $add_att->invoke( null, array( 'transaction_id' => $tx, '_back' => 'x' ) );
+apse_ok( false !== strpos( $res[1], '1 allegato' ) && 3 === count( Attachments::list_for( $tx ) ), 'allegato aggiunto dopo la registrazione' );
+$_FILES = array( 'docs' => $files( array( 'copia-dello-scontrino.pdf' => $pdf1 ) ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $add_att, $tx ) { $add_att->invoke( null, array( 'transaction_id' => $tx ) ); } ), 'già allegato' ), 'stesso file allegato due volte: rifiutato' );
+$_FILES = array();
+apse_ok( null !== apse_throws( function () use ( $add_att, $tx ) { $add_att->invoke( null, array( 'transaction_id' => $tx ) ); } ), 'nessun file scelto: messaggio di errore' );
+
+// rimozione: sparisce dall'elenco ma non dal disco né dal registro
+$rm_id = (int) $att[1]['id'];
+$rm_att->invoke( null, array( 'id' => $rm_id ) );
+apse_ok( 2 === count( Attachments::list_for( $tx ) ) && null !== Attachments::get( $rm_id )['removed_at'] && is_file( Attachments::path_of( Attachments::get( $rm_id ) ) ), 'allegato tolto dall\'elenco: il file resta sul disco' );
+apse_ok( null !== apse_throws( function () use ( $rm_att, $rm_id ) { $rm_att->invoke( null, array( 'id' => $rm_id ) ); } ), 'allegato già tolto: nessuna seconda rimozione' );
+
+// movimento annullato: non si allega
+$tx2  = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $exp_cat, 'amount_cents' => 100 ) );
+$ledger->void( $tx2, 'prova' );
+$prep = Attachments::prepare( $files( array( 'altra.png' => $png2 ) ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $tx2, $prep ) { Attachments::add( $tx2, $prep ); } ), 'annullato' ), 'su un movimento annullato non si allega nulla' );
+
+// pagine e registro azioni
+$html = apse_render( array( Admin\ExpensePage::class, 'render' ), 'Documenti' );
+apse_ok( false !== strpos( $html, 'multipart/form-data' ) && false !== strpos( $html, 'capture="environment"' ) && false !== strpos( $html, 'application/pdf' ), 'modulo spesa: carica file e scatta foto (fotocamera del telefono)' );
+$html = apse_render( array( Admin\LedgerPage::class, 'render' ), 'Allegati (2)', array( 'year' => substr( $today, 0, 4 ) ) );
+apse_ok( false !== strpos( $html, 'action=apse_attachment' ) && false !== strpos( $html, 'scontrino.pdf' ) && false !== strpos( $html, 'apse_add_attachment' ), 'prima nota: allegati del movimento con apertura e aggiunta' );
+$aud = Audit::recent( 400 );
+apse_ok( in_array( 'attachment.added', array_column( $aud, 'action' ), true ) && in_array( 'attachment.removed', array_column( $aud, 'action' ), true ) && false === strpos( wp_json_encode( $aud ), 'scontrino.pdf' ), 'registro azioni: allegati tracciati, senza i nomi dei file' );
+foreach ( array( $pdf1, $png1, $png2, $fake ) as $f ) {
+	@unlink( $f );
+}
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

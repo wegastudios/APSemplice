@@ -29,3 +29,8 @@
 .apse-overlay { position: fixed; inset: 0; background: rgba(20, 20, 20, .78); z-index: 100000; display: flex; align-items: center; justify-content: center; }
 .apse-overlay-box { background: #fff; border-radius: 6px; max-width: 520px; width: calc(100% - 32px); padding: 8px 28px 22px; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
 .apse-overlay-box h2 { margin-top: 18px; }
+.apse .apse-attach { margin: 4px 0; }
+.apse .apse-attach ul { margin: 6px 0; padding-left: 16px; list-style: disc; }
+.apse form.apse-inline { display: inline; }
+.apse .apse-shot { cursor: pointer; }
+.apse .apse-doc-info { margin-left: 8px; }

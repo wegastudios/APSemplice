@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 final class IncomePage {
 
 	public static function register_ajax(): void {
-		add_action( 'wp_ajax_aps_person_context', array( __CLASS__, 'ajax_context' ) );
+		add_action( 'wp_ajax_apse_person_context', array( __CLASS__, 'ajax_context' ) );
 	}
 
 	/** Contesto di una persona per l'incasso: tessera, attività a cui è iscritta e primo mese da pagare. */

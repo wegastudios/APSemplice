@@ -274,6 +274,40 @@
 		}
 	});
 
+	// Documenti: le foto si riducono sul telefono prima dell'invio (max 1600 px, JPEG): uno scontrino passa da pochi MB a ~300 KB.
+	var MAX_SIDE = 1600;
+	function shrink(file) {
+		return new Promise(function (resolve) {
+			if (!/^image\/(jpeg|png|webp)$/.test(file.type) || !window.createImageBitmap || !window.DataTransfer) { resolve(file); return; }
+			window.createImageBitmap(file).then(function (bmp) {
+				var scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+				if (scale === 1 && file.size < 1500000) { resolve(file); return; }
+				var c = document.createElement('canvas');
+				c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+				c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+				c.toBlob(function (blob) {
+					if (!blob || blob.size >= file.size) { resolve(file); return; }
+					resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+				}, 'image/jpeg', 0.82);
+			}).catch(function () { resolve(file); });
+		});
+	}
+	document.addEventListener('change', function (e) {
+		var input = e.target;
+		if (!input.classList || !input.classList.contains('apse-doc-input') || !input.files || !input.files.length) { return; }
+		Promise.all(Array.prototype.map.call(input.files, shrink)).then(function (files) {
+			if (window.DataTransfer) {
+				var dt = new DataTransfer();
+				files.forEach(function (f) { dt.items.add(f); });
+				input.files = dt.files;
+			}
+			var cell = input.parentNode, info = cell.querySelector('.apse-doc-info');
+			if (!info) { info = el('span', { 'class': 'apse-doc-info description' }); cell.appendChild(info); }
+			var n = 0; $$('.apse-doc-input', input.form).forEach(function (i) { n += i.files.length; });
+			info.textContent = n + (n === 1 ? ' file pronto' : ' file pronti');
+		});
+	});
+
 	fillActivities();
 	fillBookings();
 	render();

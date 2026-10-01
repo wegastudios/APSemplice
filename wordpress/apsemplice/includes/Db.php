@@ -10,7 +10,7 @@ final class Db {
 		return $wpdb;
 	}
 
-	/** Nome completo di una tabella del plugin: Db::t('people') => wp_aps_people */
+	/** Nome completo di una tabella del plugin: Db::t('people') => wp_apse_people */
 	public static function t( string $name ): string {
 		global $wpdb;
 		return $wpdb->prefix . 'apse_' . $name;

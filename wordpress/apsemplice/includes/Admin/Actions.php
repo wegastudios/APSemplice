@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\Attachments;
 use ApSemplice\Audit;
 use ApSemplice\Gateways;
 use ApSemplice\MemberType;
@@ -39,6 +40,8 @@ final class Actions {
 			'apse_cancel_booking'     => 'cancel_booking',
 			'apse_save_income'        => 'save_income',
 			'apse_save_expense'       => 'save_expense',
+			'apse_add_attachment'     => 'add_attachment',
+			'apse_remove_attachment'  => 'remove_attachment',
 			'apse_save_transfer'      => 'save_transfer',
 			'apse_void_tx'            => 'void_tx',
 			'apse_add_account'        => 'add_account',
@@ -48,6 +51,7 @@ final class Actions {
 			'apse_import_preview'     => 'import_preview',
 			'apse_import_apply'       => 'import_apply',
 		);
+		add_action( 'admin_post_apse_attachment', array( Attachments::class, 'handle_download' ) );
 		foreach ( $map as $action => $method ) {
 			add_action(
 				'admin_post_' . $action,
@@ -57,7 +61,7 @@ final class Actions {
 					}
 					check_admin_referer( $action );
 					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
-					$back = ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : Ui::url( 'aps' );
+					$back = ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : Ui::url( 'apse' );
 					try {
 						$res = self::$method( $post );
 						Ui::redirect( $res[0], $res[1] );
@@ -221,8 +225,44 @@ final class Actions {
 		return array( Ui::url( 'apse-ledger' ), $n > 1 ? "Incasso registrato ($n voci)." : 'Incasso registrato.' );
 	}
 
+	/** File caricati dai campi `docs` (scelti) e `shots` (scattati con la fotocamera), uniti in un solo elenco. */
+	private static function uploaded_docs(): ?array {
+		$all = array();
+		foreach ( array( 'docs', 'shots' ) as $k ) {
+			if ( empty( $_FILES[ $k ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+				continue;
+			}
+			$n = \ApSemplice\AttachmentRules::normalize_files( $_FILES[ $k ] ); // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+			if ( $n['errors'] ) {
+				throw new \InvalidArgumentException( $n['errors'][0] );
+			}
+			foreach ( $n['files'] as $f ) {
+				$all['name'][]     = $f['name'];
+				$all['tmp_name'][] = $f['tmp_name'];
+				$all['size'][]     = $f['size'];
+				$all['error'][]    = UPLOAD_ERR_OK;
+			}
+		}
+		return $all ?: null;
+	}
+
+	private static function add_attachment( array $p ): array {
+		$tx  = (int) ( $p['transaction_id'] ?? 0 );
+		$ids = Attachments::add( $tx, Attachments::prepare( self::uploaded_docs(), $tx ) );
+		if ( ! $ids ) {
+			throw new \InvalidArgumentException( 'Scegli almeno un file da allegare.' );
+		}
+		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), count( $ids ) . ( 1 === count( $ids ) ? ' allegato aggiunto.' : ' allegati aggiunti.' ) );
+	}
+
+	private static function remove_attachment( array $p ): array {
+		Attachments::remove( (int) ( $p['id'] ?? 0 ) );
+		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), 'Allegato tolto dall\'elenco (resta nel registro azioni).' );
+	}
+
 	private static function save_expense( array $p ): array {
-		Plugin::ledger()->record_expense(
+		$docs = Attachments::prepare( self::uploaded_docs() ); // controllati PRIMA di registrare: se un file non va, non si registra nulla
+		$tx   = Plugin::ledger()->record_expense(
 			array(
 				'date'         => (string) ( $p['date'] ?? '' ),
 				'account_id'   => (int) ( $p['account_id'] ?? 0 ),
@@ -235,7 +275,8 @@ final class Actions {
 				'document_ref' => $p['document_ref'] ?? '',
 			)
 		);
-		return array( Ui::url( 'apse-ledger' ), 'Spesa registrata.' );
+		$ids = Attachments::add( $tx, $docs );
+		return array( Ui::url( 'apse-ledger' ), 'Spesa registrata' . ( $ids ? ' con ' . count( $ids ) . ( 1 === count( $ids ) ? ' allegato.' : ' allegati.' ) : '.' ) );
 	}
 
 	private static function save_transfer( array $p ): array {

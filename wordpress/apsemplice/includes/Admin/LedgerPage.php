@@ -1,6 +1,8 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\AttachmentRules;
+use ApSemplice\Attachments;
 use ApSemplice\Labels;
 use ApSemplice\Money;
 use ApSemplice\Plugin;
@@ -8,6 +10,29 @@ use ApSemplice\Plugin;
 defined( 'ABSPATH' ) || exit;
 
 final class LedgerPage {
+
+	/** Allegati di un movimento: elenco con apertura/rimozione e aggiunta di altri file. */
+	private static function attachments_cell( int $tx_id, array $list, string $here ): void {
+		echo '<details class="apse-attach"><summary>📎 Allegati' . ( $list ? ' (' . count( $list ) . ')' : '' ) . '</summary>';
+		if ( $list ) {
+			echo '<ul>';
+			foreach ( $list as $a ) {
+				echo '<li><a href="' . esc_url( Attachments::url( (int) $a['id'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $a['original_name'] ) . '</a> <span class="description">' . esc_html( AttachmentRules::format_size( (int) $a['size_bytes'] ) ) . '</span> ';
+				Ui::form_open( 'apse_remove_attachment', $here, false, 'apse-inline' );
+				echo Ui::hidden( 'id', $a['id'] ) . '<button class="button-link" data-confirm="Togliere questo allegato dall\'elenco? Resta nel registro azioni.">togli</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo '</li>';
+			}
+			echo '</ul>';
+		}
+		Ui::form_open( 'apse_add_attachment', $here, true );
+		echo Ui::hidden( 'transaction_id', $tx_id ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<input type="file" name="docs[]" class="apse-doc-input" accept="image/*,application/pdf" multiple> '
+			. '<label class="button button-small apse-shot">📷 Foto<input type="file" name="shots[]" class="apse-doc-input" accept="image/*" capture="environment" hidden></label> '
+			. '<button class="button button-small">Allega</button>';
+		Ui::form_close();
+		echo '</details>';
+	}
 
 	public static function render(): void {
 		$year   = Ui::get_int( 'year', (int) current_time( 'Y' ) );
@@ -41,6 +66,7 @@ final class LedgerPage {
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessun movimento.</td></tr>';
 		}
+		$att = Attachments::map_for( array_column( $rows, 'id' ) );
 		foreach ( $rows as $r ) {
 			$sign  = Labels::sign( $r['type'] ) > 0 ? '+' : '−';
 			$cls   = Labels::is_transfer( $r['type'] ) ? '' : ( Labels::sign( $r['type'] ) > 0 ? 'apse-ok' : 'apse-neg' );
@@ -50,6 +76,9 @@ final class LedgerPage {
 			echo '<td>' . esc_html( trim( ( $r['person_card'] ? 'n.' . $r['person_card'] . ' ' : '' ) . $r['person_name'] ) ) . '</td>';
 			echo '<td>' . esc_html( $r['account_name'] . ' · ' . ( Labels::methods()[ $r['method'] ] ?? $r['method'] ) ) . '</td>';
 			echo '<td class="' . esc_attr( $cls ) . '">' . esc_html( $sign . ' ' . Money::format( (int) $r['amount_cents'] ) ) . '</td><td>';
+			if ( ! Labels::is_transfer( $r['type'] ) ) {
+				self::attachments_cell( (int) $r['id'], $att[ (int) $r['id'] ] ?? array(), $here );
+			}
 			echo '<details><summary>Annulla</summary>';
 			Ui::form_open( 'apse_void_tx', $here, false, 'apse-confirm' );
 			echo Ui::hidden( 'id', $r['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput

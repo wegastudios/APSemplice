@@ -147,3 +147,14 @@ Dalle **Impostazioni** si sceglie il gateway e si incollano le chiavi (cifrate n
 5. Se qualcosa non torna (importo diverso, prenotazione annullata nel frattempo) i soldi entrano comunque come "pagamento online non abbinato" e il pagamento è segnato **da controllare** in *Pagamenti online*.
 
 Commissioni, payout sul conto corrente e rimborsi si registrano a mano (spesa e giroconto); i rimborsi si fanno dal pannello del gateway.
+
+## Allegati alle spese (scontrini e fatture)
+
+Nel modulo **Nuova spesa** si possono allegare uno o più PDF o foto (campo "Documenti"; dal telefono anche "Scatta una foto", che apre la fotocamera). Dalla **Prima nota** si aggiungono altri allegati a un movimento, si aprono e si tolgono dall'elenco.
+
+- **Non finiscono nella libreria media**: stanno in `wp-content/uploads/apsemplice-private/`, con nome casuale e senza estensione, più un `.htaccess` che nega l'accesso diretto. Si aprono solo da un indirizzo del plugin con controllo dei permessi (solo chi gestisce il plugin).
+- Si accettano PDF, JPG, PNG, WebP e HEIC, fino a 10 MB ciascuno e 10 per movimento. Il tipo è letto dal contenuto, non dall'estensione; i doppioni (stesso contenuto) sono rifiutati.
+- Le foto vengono ridotte dal browser prima dell'invio (max 1600 px).
+- Se un file non è ammesso la spesa **non viene registrata** e il modulo resta com'era.
+- "Togli" non cancella: l'allegato esce dall'elenco ma il file resta sul disco e l'operazione è nel registro azioni.
+- Su un server diverso da Apache (es. nginx) il `.htaccess` non vale: restano nomi casuali di 128 bit senza estensione e cartella non elencabile; per una protezione piena vietare l'accesso alla cartella dalla configurazione del server.
