@@ -13,6 +13,7 @@ final class Admin {
 		Actions::register();
 		Exports::register();
 		IncomePage::register_ajax();
+		LicenseNotice::register();
 	}
 
 	public static function menu(): void {

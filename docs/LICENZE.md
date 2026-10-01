@@ -1,6 +1,6 @@
 # Licenze: un dominio, al massimo due installazioni
 
-**Stato: in standby.** Il plugin salva la chiave e calcola già l'identità dell'installazione e le regole di dominio,
+**Stato: in standby.** Il plugin salva la chiave e ha già pronte le regole di dominio, l'identità dell'installazione, il popup e i blocchi,
 ma non contatta nessun server e consente tutte le funzioni (`License::allows()` restituisce sempre `true`).
 
 ## Regole (già implementate e testate in `LicenseRules.php`)
@@ -28,22 +28,37 @@ POST /v1/licenses/activate     { key, install_id, site_url, plugin_version }
   -> 200 { state: "active", domain: "esempio.it", used: 2, max: 2 }
   -> 409 { state: "limit_reached" | "domain_mismatch", installs: [ {id, url, last_seen} ] }
 
-POST /v1/licenses/deactivate   { key, install_id }          // libera il posto (anche da un'altra installazione dell'elenco)
+POST /v1/licenses/deactivate   { key, install_id }          // usato dal pannello del gestore per liberare un posto o il dominio
 POST /v1/licenses/validate     { key, install_id, site_url } // controllo periodico (es. settimanale)
 ```
 
 Il server applica `LicenseRules::evaluate()` (stesse regole, in PHP o riscritte in un altro linguaggio con gli stessi test).
 
-## Comportamento quando la licenza non è valida (da decidere con te)
+## Licenza non in regola (decisione presa)
 
-Proposta, per non "tenere in ostaggio" i dati di un'associazione:
+Stati (`LicensePolicy`): `standby` (oggi, nessuna verifica) · `active` · `unpaid` (pagamento mancante o scaduto) · `unlicensed` (dominio tolto dalla licenza o chiave non valida).
+Con `unpaid` e `unlicensed` si applica **la stessa regola**:
 
-- i **dati restano sempre leggibili** ed esportabili (CSV) anche con licenza scaduta o non valida;
-- si bloccano solo le funzioni avanzate elencate in `License::FEATURES` (pagamenti online, area riservata, avvisi, PWA), con un avviso chiaro;
-- se il server non è raggiungibile: **periodo di tolleranza** (es. 14 giorni) prima di considerare la licenza non verificata.
+| | Da subito | Dopo 7 giorni |
+|---|---|---|
+| **Dati** | restano leggibili | restano leggibili |
+| **Popup** che chiede il pagamento | copre le pagine del plugin, **si può chiudere** (riappare a ogni pagina) | copre sempre, **non si può chiudere** |
+| **Esportazione dei dati** (CSV prima nota, rendiconto, soci…) | **bloccata** (pulsanti disattivati, download rifiutato) | bloccata |
+| **Accesso di soci e soci volontari** (permessi e REST) | **sospeso**, risposta "Servizio sospeso" | sospeso |
+| Pagamenti online, avvisi, PWA (quando esisteranno) | bloccati | bloccati |
+| Amministratori | operativi, coperti dal popup | coperti dal popup |
+
+Il popup non compare nella pagina **Impostazioni**, così si può correggere la chiave di licenza.
+Il giorno di inizio del problema (`since`) lo comunica il server; i 7 giorni partono da lì.
+
+## Liberare un dominio
+
+Si fa **dal sito gestore delle licenze** (non dal plugin): il gestore rimuove il dominio associato alla licenza, che torna libera
+e può essere legata a un altro dominio alla prossima attivazione. Le installazioni del vecchio dominio, alla validazione successiva,
+ricevono `unlicensed` e seguono la regola qui sopra (con la settimana di tolleranza). Il plugin non ha quindi un pulsante "disattiva".
 
 ## Cosa manca per attivarlo
 
 1. Il server delle licenze (elenco installazioni, attiva/disattiva/valida, pagina per gestirle).
-2. Il client nel plugin: chiamate di attivazione/validazione, cache dello stato, pulsante "Disattiva questa installazione", avvisi.
-3. Un solo cambiamento di comportamento in `License::allows()`.
+2. Il client nel plugin: chiamate di attivazione/validazione che scrivono lo stato con `License::set_state()`, cache e tolleranza se il server non risponde.
+3. Nient'altro: popup e blocchi si attivano da soli appena lo stato diventa `unpaid` o `unlicensed`.

@@ -4,23 +4,25 @@ namespace ApSemplice;
 defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
 
 /**
- * Punto UNICO in cui il plugin decide se una funzione è disponibile.
+ * Punto UNICO in cui il plugin decide se una funzione è disponibile: `License::allows( 'funzione' )`.
  *
- * Oggi è in "standby": la chiave di licenza si salva ma non viene verificata e ogni funzione è consentita.
- * Quando servirà si cambia solo {@see License::allows()}: il resto del plugin chiama già `License::allows( 'funzione' )`.
- *
- * Le regole (una licenza = un dominio, sottodomini compresi, al massimo 2 installazioni) sono in {@see LicenseRules},
- * già pronte e testate; manca solo il server che tiene l'elenco delle installazioni attive (vedi docs/LICENZE.md).
+ * Oggi la verifica con il server è in "standby": nessun server, quindi lo stato è `standby` e tutto è consentito.
+ * Quando il server esisterà scriverà lo stato con {@see License::set_state()}; il resto è già pronto:
+ *  - {@see LicenseRules}: una licenza = un dominio (sottodomini compresi), al massimo 2 installazioni;
+ *  - {@see LicensePolicy}: cosa succede se non è in regola (popup, settimana di tolleranza, funzioni bloccate).
+ * Vedi docs/LICENZE.md.
  */
 final class License {
 
 	const OPT_INSTALL_ID  = 'aps_install_id';
 	const OPT_INSTALL_URL = 'aps_install_url';
+	const OPT_STATE       = 'aps_license_state';
 
-	/** Funzioni che in futuro potranno dipendere dal piano. */
+	/** Funzioni avanzate che si bloccano se la licenza non è in regola. */
 	const FEATURES = array(
+		'export',            // esportazione dei dati (CSV prima nota, rendiconto, soci…)
+		'member_area',       // accesso di soci e soci volontari
 		'online_payments',   // pagamenti online (WooCommerce)
-		'member_area',       // area riservata soci/volontari
 		'official_notices',  // avvisi ufficiali / notifiche push agli iscritti
 		'pwa',               // app installabile
 	);
@@ -29,9 +31,29 @@ final class License {
 		return (string) Settings::get( 'license_key' );
 	}
 
+	/** @return array ['status'=>LicensePolicy::STATUS_*, 'since'=>?'Y-m-d', 'checked_at'=>?string] */
+	public static function state(): array {
+		$s = get_option( self::OPT_STATE, array() );
+		$s = is_array( $s ) ? $s : array();
+		return array(
+			'status'     => (string) ( $s['status'] ?? LicensePolicy::STATUS_STANDBY ),
+			'since'      => $s['since'] ?? null,
+			'checked_at' => $s['checked_at'] ?? null,
+		);
+	}
+
+	/** Lo scrive il client del server delle licenze (e i test). */
+	public static function set_state( string $status, ?string $since = null ): void {
+		update_option( self::OPT_STATE, array( 'status' => $status, 'since' => $since, 'checked_at' => Db::now() ) );
+	}
+
+	public static function policy(): array {
+		$s = self::state();
+		return LicensePolicy::evaluate( $s['status'], $s['since'], Db::today() );
+	}
+
 	public static function allows( string $feature ): bool {
-		unset( $feature ); // standby: nessuna restrizione
-		return true;
+		return ! in_array( $feature, self::policy()['blocked'], true );
 	}
 
 	/**
@@ -61,15 +83,17 @@ final class License {
 
 	/** Stato mostrabile nelle impostazioni. */
 	public static function status(): array {
-		$key  = self::key();
-		$inst = self::installation();
+		$key    = self::key();
+		$inst   = self::installation();
+		$policy = self::policy();
 		return array(
-			'state'       => '' === $key ? 'none' : 'unchecked',
-			'domain'      => $inst['domain'],
-			'install_id'  => $inst['id'],
-			'local'       => LicenseRules::is_local( $inst['url'] ),
+			'state'        => '' === $key ? 'none' : 'unchecked',
+			'status'       => $policy['status'],
+			'domain'       => $inst['domain'],
+			'install_id'   => $inst['id'],
+			'local'        => LicenseRules::is_local( $inst['url'] ),
 			'max_installs' => LicenseRules::MAX_INSTALLS,
-			'note'        => 'Verifica della licenza non ancora attiva: tutte le funzioni sono disponibili.',
+			'note'         => LicensePolicy::STATUS_STANDBY === $policy['status'] ? 'Verifica della licenza non ancora attiva: tutte le funzioni sono disponibili.' : LicensePolicy::message( $policy['status'] ),
 		);
 	}
 

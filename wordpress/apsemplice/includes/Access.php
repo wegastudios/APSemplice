@@ -98,6 +98,10 @@ final class Access {
 		if ( $is_admin ) {
 			return true;
 		}
+		// Licenza non in regola: l'accesso di soci e volontari è sospeso (gli amministratori restano, coperti dal popup).
+		if ( ! License::allows( 'member_area' ) ) {
+			return false;
+		}
 		$actor = self::person_for_user( $user_id );
 		if ( ! $actor ) {
 			return false;

@@ -31,6 +31,11 @@
 		return y + '-' + ('0' + (m + 1)).slice(-2);
 	}
 
+	/* Popup di licenza: chiudibile solo se il pulsante c'è (prima settimana) */
+	document.addEventListener('click', function (e) {
+		if (e.target && e.target.id === 'aps-overlay-close') { var o = $('#aps-license-overlay'); if (o) { o.parentNode.removeChild(o); } }
+	});
+
 	/* Conferma prima di azioni distruttive */
 	document.addEventListener('click', function (e) {
 		var t = e.target.closest ? e.target.closest('[data-confirm]') : null;

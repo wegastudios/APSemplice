@@ -24,3 +24,8 @@
 .aps .aps-change { font-size: 18px; font-weight: 600; }
 .aps .aps-quick button { margin-right: 6px; }
 .aps .aps-form th { width: 190px; }
+
+/* Popup di licenza non in regola */
+.aps-overlay { position: fixed; inset: 0; background: rgba(20, 20, 20, .78); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+.aps-overlay-box { background: #fff; border-radius: 6px; max-width: 520px; width: calc(100% - 32px); padding: 8px 28px 22px; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
+.aps-overlay-box h2 { margin-top: 18px; }

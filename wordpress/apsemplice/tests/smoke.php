@@ -260,6 +260,31 @@ $inst2 = License::installation();
 aps_ok( $inst2['moved'] && $inst2['id'] !== $inst1['id'], 'licenza: una copia su un altro indirizzo diventa una nuova installazione' );
 aps_ok( $inst2['id'] === License::installation()['id'], 'licenza: il nuovo id poi resta stabile' );
 
+// ---------- Licenza non in regola: popup e blocchi ----------
+aps_ok( License::allows( 'export' ) && License::allows( 'member_area' ) && '' === Admin\LicenseNotice::html(), 'licenza in standby: nessun blocco e nessun popup' );
+License::set_state( 'unpaid', $today );
+$pol = License::policy();
+aps_ok( 'closable' === $pol['popup'] && 7 === $pol['days_left'], 'licenza non pagata: popup chiudibile per 7 giorni' );
+aps_ok( ! License::allows( 'export' ) && ! License::allows( 'member_area' ), 'licenza non pagata: export e accesso soci bloccati subito' );
+aps_ok( false !== strpos( Admin\LicenseNotice::html(), 'aps-overlay-close' ), 'popup con pulsante di chiusura' );
+aps_ok( false !== strpos( Admin\Exports::link( 'people', array(), 'Esporta' ), 'disabled' ), 'pulsanti di esportazione disattivati' );
+aps_ok( user_can( 1, 'aps_view_participants', $yoga ), 'amministratore: i permessi restano' );
+aps_ok( ! user_can( $u_vol, 'aps_view_participants', $yoga ) && ! user_can( $u_ord, 'aps_view_person', $ord ), 'volontari e soci: nessun permesso' );
+$r = aps_rest( $u_ord, '/apsemplice/v1/me' );
+aps_ok( 403 === $r->get_status() && 'aps_license_required' === $r->get_data()['code'], 'REST: i soci ricevono "servizio sospeso"' );
+aps_ok( 403 === aps_rest( $u_vol, "/apsemplice/v1/activities/$yoga/participants" )->get_status(), 'REST: il volontario è sospeso' );
+aps_ok( 200 === aps_rest( 1, '/apsemplice/v1/me' )->get_status(), 'REST: l\'amministratore resta operativo' );
+License::set_state( 'unpaid', gmdate( 'Y-m-d', strtotime( $today . ' -7 days' ) ) );
+aps_ok( 'locked' === License::policy()['popup'] && false === strpos( Admin\LicenseNotice::html(), 'aps-overlay-close' ), 'dopo una settimana il popup non si chiude più' );
+License::set_state( 'unpaid', gmdate( 'Y-m-d', strtotime( $today . ' -6 days' ) ) );
+aps_ok( 'closable' === License::policy()['popup'] && 1 === License::policy()['days_left'], 'al sesto giorno è ancora chiudibile' );
+License::set_state( 'unlicensed', $today );
+aps_ok( false !== strpos( Admin\LicenseNotice::html(), 'non risulta più associato' ), 'dominio non più associato: messaggio dedicato' );
+License::set_state( 'active' );
+aps_ok( License::allows( 'export' ) && '' === Admin\LicenseNotice::html() && 200 === aps_rest( $u_ord, '/apsemplice/v1/me' )->get_status(), 'licenza regolarizzata: tutto torna disponibile' );
+delete_option( License::OPT_STATE );
+wp_set_current_user( 1 );
+
 // ---------- Cancellazione da attività ----------
 $acts->cancel( $yoga, $guest, $month );
 aps_ok( 1 === $acts->active_participants( $yoga ), 'cancellato dall\'attività' );

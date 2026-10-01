@@ -2,6 +2,7 @@
 namespace ApSemplice\Rest;
 
 use ApSemplice\Access;
+use ApSemplice\License;
 use ApSemplice\MemberType;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -23,7 +24,7 @@ final class Api {
 
 	public static function routes(): void {
 		$logged_in = function () {
-			return is_user_logged_in();
+			return self::guard();
 		};
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'me' ), 'permission_callback' => $logged_in ) );
 		register_rest_route( self::NS, '/me/activities', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'my_activities' ), 'permission_callback' => $logged_in ) );
@@ -34,7 +35,7 @@ final class Api {
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'person' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
-					return current_user_can( 'aps_view_person', (int) $r['id'] );
+					return self::guard( 'aps_view_person', (int) $r['id'] );
 				},
 			)
 		);
@@ -45,10 +46,26 @@ final class Api {
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'participants' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
-					return current_user_can( 'aps_view_participants', (int) $r['id'] );
+					return self::guard( 'aps_view_participants', (int) $r['id'] );
 				},
 			)
 		);
+	}
+
+	/**
+	 * Controllo comune: serve un utente collegato; se la licenza non è in regola soci e volontari ricevono un
+	 * messaggio chiaro (gli amministratori no). Con $ability controlla anche il permesso specifico.
+	 *
+	 * @return true|false|\WP_Error
+	 */
+	private static function guard( ?string $ability = null, int $object_id = 0 ) {
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+		if ( ! Access::is_admin_user( get_current_user_id() ) && ! License::allows( 'member_area' ) ) {
+			return new \WP_Error( 'aps_license_required', 'Servizio sospeso: la licenza dell\'associazione non risulta attiva.', array( 'status' => 403 ) );
+		}
+		return null === $ability ? true : current_user_can( $ability, $object_id );
 	}
 
 	// ---------- Forme di output ----------

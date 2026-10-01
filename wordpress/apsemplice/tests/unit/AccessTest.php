@@ -81,9 +81,4 @@ final class LicenseTest extends TestCase {
 		$this->assertSame( '', License::domain( '' ) );
 	}
 
-	public function test_standby_allows_every_feature(): void {
-		foreach ( License::FEATURES as $f ) {
-			$this->assertTrue( License::allows( $f ), $f );
-		}
-	}
 }
