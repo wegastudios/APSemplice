@@ -24,13 +24,26 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: mbstring, simplexml, libxml
+          extensions: mbstring, simplexml, libxml, gd
           tools: composer
       - name: Syntax check
         run: |
           find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
       - run: composer update --no-interaction --no-progress
       - run: vendor/bin/phpunit
+      - name: QR codes decode with an independent reader (zbar)
+        if: matrix.php == '8.1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zbar-tools
+          php tests/qr_images.php /tmp/qr
+          fail=0
+          for f in /tmp/qr/*.png; do
+            expected=$(cat "${f%.png}.txt")
+            got=$(zbarimg --quiet --raw "$f" 2>/dev/null || true)
+            if [ "$got" != "$expected" ]; then echo "NON LETTO/DIVERSO: $f"; echo "  atteso: $expected"; echo "  letto : $got"; fail=1; else echo "ok $(basename "$f")"; fi
+          done
+          exit $fail
 
   smoke:
     name: Smoke test on real WordPress

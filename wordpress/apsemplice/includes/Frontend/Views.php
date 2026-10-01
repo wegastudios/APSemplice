@@ -130,7 +130,21 @@ final class Views {
 			. '<dl class="apsf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'
+			. self::card_qr( $p )
 			. '</div></section>';
+	}
+
+	/** QR della tessera (si verifica al momento, anche se la tessera nel frattempo scade o si rinnova). */
+	private static function card_qr( array $p ): string {
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			return '';
+		}
+		try {
+			$svg = \ApSemplice\QrCode::svg( Settings::card_url( (int) $p['id'] ), 4, 'QR della tessera di ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) );
+		} catch ( \InvalidArgumentException $e ) {
+			return '';
+		}
+		return '<div class="apsf-memcard-qr">' . $svg . '<div class="apsf-small">Mostra questo codice: chi lo scansiona vede subito se la tessera è valida.</div></div>';
 	}
 
 	private static function pay_text( array $summary ): string {

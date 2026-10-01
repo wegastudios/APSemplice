@@ -11,6 +11,7 @@ final class Front {
 		Restrict::register();
 		Actions::register();
 		PayReturn::register();
+		CardVerify::register();
 		Blocks::register();
 		ElementorSupport::register();
 	}

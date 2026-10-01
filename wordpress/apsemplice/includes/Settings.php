@@ -92,6 +92,30 @@ final class Settings {
 		update_option( self::OPTION, $clean );
 	}
 
+	// ---------- QR della tessera ----------
+
+	const CARD_SALT_OPTION = 'apse_card_salt';
+
+	/** Segreto che firma i QR delle tessere: legato al sito e a un "sale" che l'amministratore può rigenerare (invalida tutti i QR in circolazione). */
+	public static function card_secret(): string {
+		$salt = (string) get_option( self::CARD_SALT_OPTION, '' );
+		if ( '' === $salt ) {
+			$salt = bin2hex( random_bytes( 16 ) );
+			update_option( self::CARD_SALT_OPTION, $salt, false );
+		}
+		return wp_salt( 'auth' ) . '|' . $salt;
+	}
+
+	public static function regenerate_card_salt(): void {
+		update_option( self::CARD_SALT_OPTION, bin2hex( random_bytes( 16 ) ), false );
+		Audit::log( 'card.qr_regenerated', 'settings' );
+	}
+
+	/** Indirizzo di verifica della tessera di una persona (quello che c'è scritto nel QR). */
+	public static function card_url( int $person_id ): string {
+		return add_query_arg( 'apse_card', CardToken::param( $person_id, self::card_secret() ), home_url( '/' ) );
+	}
+
 	public static function clear_secret( string $key ): void {
 		if ( ! in_array( $key, self::SECRET_KEYS, true ) ) {
 			return;

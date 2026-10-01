@@ -1523,6 +1523,36 @@ foreach ( array( $xlsx, $csv_p, $csv_l, $junk, $nothing ) as $f ) {
 	@unlink( $f );
 }
 
+// ---------- QR della tessera e pagina di verifica ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$card_html = $as( $u_f, '[apsemplice_tessera]' );
+apse_ok( false !== strpos( $card_html, '<svg' ) && false !== strpos( $card_html, 'apse_card=' ) && false !== strpos( $card_html, 'Mostra questo codice' ), 'tessera digitale: mostra il QR' );
+apse_ok( preg_match( '/apse_card=(\d+\.[a-f0-9]{20})/', $card_html, $qm ) === 1 && (int) explode( '.', $qm[1] )[0] === $founder, 'il QR contiene un codice firmato della tessera del socio, senza dati personali' );
+$res = \ApSemplice\Frontend\CardVerify::result( $qm[1] );
+apse_ok( 'valid' === $res['status'] && (int) $res['person']['id'] === $founder, 'verifica: il socio fondatore ha la tessera valida' );
+$tina_param = \ApSemplice\CardToken::param( $tre_p, Settings::card_secret() );
+apse_ok( 'expired' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: un socio senza tessera valida risulta non valido' );
+$people->set_membership( $tre_p, Settings::social_year()->label(), true, 'manual' );
+apse_ok( 'valid' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: lo stesso QR diventa valido appena la tessera si rinnova (verifica in diretta)' );
+apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( $founder . '.' . str_repeat( '0', 20 ) )['status'] && 'invalid' === \ApSemplice\Frontend\CardVerify::result( 'boh' )['status'] && 'invalid' === \ApSemplice\Frontend\CardVerify::result( ( $founder + 1 ) . '.' . explode( '.', $qm[1] )[1] )['status'], 'verifica: firma sbagliata, formato errato o firma di un altro socio = non valido' );
+apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( \ApSemplice\CardToken::param( $guest, Settings::card_secret() ) )['status'], 'verifica: gli ospiti non hanno tessera' );
+$page = \ApSemplice\Frontend\CardVerify::page( $qm[1] );
+apse_ok( false !== strpos( $page, 'Tessera valida' ) && false !== strpos( $page, 'Fulvia' ) && false === strpos( $page, 'example.com' ) && false !== strpos( $page, 'noindex' ), 'pagina di verifica: stato, nome e validità; nessuna email; non indicizzata' );
+apse_ok( false !== strpos( \ApSemplice\Frontend\CardVerify::page( 'boh' ), 'QR non valido' ), 'pagina di verifica: codice non valido' );
+License::set_state( 'unpaid', $today );
+$page = \ApSemplice\Frontend\CardVerify::page( $qm[1] );
+apse_ok( false !== strpos( $page, 'Servizio sospeso' ) && false === strpos( $page, 'Fulvia' ), 'licenza non in regola: la verifica è sospesa e non mostra dati' );
+delete_option( License::OPT_STATE );
+$old_url = Settings::card_url( $founder );
+Settings::regenerate_card_salt();
+apse_ok( Settings::card_url( $founder ) !== $old_url && 'invalid' === \ApSemplice\Frontend\CardVerify::result( $qm[1] )['status'], 'QR rigenerati: i vecchi smettono di funzionare' );
+apse_ok( 'valid' === \ApSemplice\Frontend\CardVerify::result( explode( 'apse_card=', Settings::card_url( $founder ) )[1] )['status'], 'QR rigenerati: i nuovi funzionano' );
+$matrix = \ApSemplice\QrCode::matrix( Settings::card_url( $founder ) );
+apse_ok( count( $matrix ) >= 29 && count( $matrix ) <= 57, 'il QR dell\'indirizzo di verifica ha dimensioni ragionevoli' );
+apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'QR della tessera', array( 'id' => $founder ) );
+apse_render( array( Admin\CardPage::class, 'render' ), 'Rigenera tutti i QR' );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

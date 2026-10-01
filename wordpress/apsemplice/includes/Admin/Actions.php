@@ -26,6 +26,7 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_activity'      => 'save_activity',
 			'apse_enroll'             => 'enroll',
 			'apse_cancel_enrollment'  => 'cancel_enrollment',
@@ -420,6 +421,11 @@ final class Actions {
 		$token = wp_generate_password( 16, false );
 		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $prev, HOUR_IN_SECONDS );
 		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
+	}
+
+	private static function regen_qr( array $p ): array {
+		Settings::regenerate_card_salt();
+		return array( Ui::url( 'apse-card' ), 'QR rigenerati: i vecchi non funzionano più.' );
 	}
 
 	private static function import_undo( array $p ): array {

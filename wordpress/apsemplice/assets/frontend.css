@@ -105,3 +105,7 @@
 .apsf-shot { cursor: pointer; display: inline-block; }
 .apsf-doc-info { margin-left: 4px; }
 .apsf-expenses h4 { margin: 18px 0 6px; }
+.apsf-memcard-qr { margin-top: 14px; text-align: center; }
+.apsf-memcard-qr svg { width: 170px; height: 170px; max-width: 100%; background: #fff; border-radius: 8px; }
+.apsf-wallet { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+.apsf-wallet .apsf-btn { text-decoration: none; }

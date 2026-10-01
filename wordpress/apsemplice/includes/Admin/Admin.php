@@ -28,6 +28,7 @@ final class Admin {
 			array( 'apse-transfer', 'Giroconto', array( TransferPage::class, 'render' ) ),
 			array( 'apse-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
+			array( 'apse-card', 'Tessera e Wallet', array( CardPage::class, 'render' ) ),
 			array( 'apse-accounts', 'Conti e cassa', array( AccountsPage::class, 'render' ) ),
 			array( 'apse-reports', 'Report', array( ReportsPage::class, 'render' ) ),
 			array( 'apse-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),

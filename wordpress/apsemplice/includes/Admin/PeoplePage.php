@@ -108,6 +108,7 @@ final class PeoplePage {
 		if ( $p ) {
 			echo '<div class="apse-col">';
 			self::panel_membership( $p );
+			self::panel_card_qr( $p );
 			self::panel_treasurer( $p );
 			self::panel_guests( $p );
 			self::panel_activities( $p );
@@ -154,6 +155,16 @@ final class PeoplePage {
 			echo '</tbody></table>';
 		}
 		echo '</div>';
+	}
+
+	/** QR di verifica della tessera: si può stampare o girare al socio (è lo stesso che vede nella sua area riservata). */
+	private static function panel_card_qr( array $p ): void {
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			return;
+		}
+		$url = \ApSemplice\Settings::card_url( (int) $p['id'] );
+		echo '<div class="apse-card"><h2>QR della tessera</h2><div style="max-width:170px">' . \ApSemplice\QrCode::svg( $url, 4, 'QR della tessera' ) . '</div>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p></div>';
 	}
 
 	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */
