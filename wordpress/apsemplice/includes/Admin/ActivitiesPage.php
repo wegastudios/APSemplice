@@ -264,6 +264,35 @@ final class ActivitiesPage {
 		}
 	}
 
+	/** Prenotazione sul posto: chi si presenta senza aver prenotato. Prenota, incassa il contributo e registra l'ingresso in un colpo solo. */
+	private static function walk_in_form( array $activity, array $s, array $candidates, string $back ): void {
+		$ledger   = Plugin::ledger();
+		$accounts = array();
+		foreach ( $ledger->balances() as $a ) {
+			$accounts[ (int) $a['id'] ] = $a['name'];
+		}
+		$default = $ledger->default_account_for( 'cash' );
+		$members = array_values( array_filter( Plugin::people()->search(), function ( $p ) {
+			return MemberType::is_member( $p['type'] );
+		} ) );
+		$sid   = (int) $s['id'];
+		$fee   = (int) $activity['fee_cents'];
+		$guest = null === $activity['guest_fee_cents'] || '' === $activity['guest_fee_cents'] ? $fee : (int) $activity['guest_fee_cents'];
+		echo '<details class="apse-detail" style="margin-top:8px"><summary><strong>Ingresso senza prenotazione (sul posto)</strong></summary>';
+		Ui::form_open( 'apse_walk_in', $back );
+		echo Ui::hidden( 'activity_id', $activity['id'] ) . Ui::hidden( 'session_id', $sid ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'apse-walk-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> del socio '
+			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'apse-walkhost-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><label><input type="checkbox" name="pay" value="1" checked> Incassa ora il contributo</label> (soci ' . esc_html( Money::format( $fee ) ) . ', ospiti ' . esc_html( Money::format( $guest ) ) . ') — '
+			. '<select name="method">' . Ui::options( array_diff_key( \ApSemplice\Labels::methods(), array( 'stripe' => 1, 'paypal' => 1 ) ), 'cash' ) . '</select> sul conto '
+			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><label><input type="checkbox" name="checkin" value="1" checked> Registra subito l\'ingresso</label> <button class="button button-primary">Prenota sul posto</button></p>'
+			. '<p class="description">Il nuovo ospite viene creato (senza email) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>';
+		Ui::form_close();
+		echo '</details>';
+	}
+
 	/** Cella "Ingresso" di una prenotazione: ora di ingresso e pulsante per registrarlo o annullarlo. */
 	private static function checkin_cell( array $b, int $session_id, int $activity_id, string $back, bool $session_cancelled ): void {
 		if ( ! $b['active'] || $session_cancelled ) {
@@ -366,6 +395,7 @@ final class ActivitiesPage {
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'apse-book-' . (int) $s['id'] ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
+				self::walk_in_form( $activity, $s, $candidates, $back );
 
 				Ui::form_open( 'apse_update_session', $back );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput

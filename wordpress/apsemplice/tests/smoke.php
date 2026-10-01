@@ -1672,6 +1672,40 @@ $acts->add_staff( $tev, $tre_p );
 $aud = array_column( Audit::recent( 500 ), 'action' );
 apse_ok( in_array( 'checkin.recorded', $aud, true ) && in_array( 'checkin.undone', $aud, true ) && in_array( 'event_staff.added', $aud, true ) && in_array( 'event_staff.removed', $aud, true ), 'registro azioni: ingressi e gestori tracciati' );
 
+// ---------- Ingresso senza prenotazione (sul posto) ----------
+wp_set_current_user( 1 );
+$walk   = new ReflectionMethod( Admin\Actions::class, 'walk_in' );
+$wi_ev  = $mkev( 'Serata sul posto', 600, 900 );
+$wi_s   = $first_session( $wi_ev );
+$income = function ( int $session, ?int $person = null ) use ( $wpdb ) {
+	return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = $session" . ( $person ? " AND person_id = $person" : '' ) );
+};
+$base = array( 'activity_id' => $wi_ev, 'session_id' => $wi_s, 'method' => 'cash', 'account_id' => (int) $cash['id'], 'pay' => '1', 'checkin' => '1' );
+$r1   = $walk->invoke( null, array_merge( $base, array( 'person_id' => $q ) ) );
+$b1   = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $wi_s, $q ), ARRAY_A );
+apse_ok( 'booked' === $b1['status'] && ! empty( $b1['checked_in_at'] ) && 600 === $income( $wi_s, $q ) && false !== strpos( $r1[1], 'incassati' ) && false !== strpos( $r1[1], 'ingresso registrato' ), 'sul posto: un socio senza prenotazione viene prenotato, incassato (6,00) e fatto entrare in un colpo solo' );
+$r2 = $walk->invoke( null, array_merge( $base, array( 'new_first_name' => 'Walter', 'new_last_name' => 'Sulposto', 'host_person_id' => $founder ) ) );
+$wg = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Walter' AND last_name = 'Sulposto'", ARRAY_A );
+apse_ok( $wg && 'guest' === $wg['type'] && (int) $wg['host_person_id'] === $founder && 900 === $income( $wi_s, (int) $wg['id'] ) && ! empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $wi_s, (int) $wg['id'] ) ) ), 'sul posto: un nuovo ospite viene creato, collegato al socio, incassato col contributo ospiti (9,00) e fatto entrare' );
+$r3  = $walk->invoke( null, array( 'activity_id' => $wi_ev, 'session_id' => $wi_s, 'person_id' => $tre_p, 'checkin' => '1' ) );
+apse_ok( 0 === $income( $wi_s, $tre_p ) && false === strpos( $r3[1], 'incassati' ) && false !== strpos( $r3[1], 'ingresso registrato' ), 'sul posto: senza incasso il contributo resta da versare (lo si vede nell\'elenco)' );
+$r4 = $walk->invoke( null, array_merge( $base, array( 'person_id' => $q ) ) );
+apse_ok( false !== strpos( $r4[1], 'nulla da incassare' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = $wi_s AND person_id = $q" ) && 600 === $income( $wi_s, $q ), 'sul posto: chi era già prenotato e ha pagato non paga né si prenota due volte' );
+
+// tutto o niente
+$n_people = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+apse_ok( null !== apse_throws( function () use ( $walk, $base ) { $walk->invoke( null, $base ); } ) && null !== apse_throws( function () use ( $walk, $base ) { $walk->invoke( null, array_merge( $base, array( 'new_first_name' => 'Senza', 'new_last_name' => 'Ospitante' ) ) ); } ), 'sul posto: serve una persona, e un nuovo ospite ha bisogno del socio che lo ospita' );
+$fresh = $people->create( array( 'type' => 'guest', 'first_name' => 'Fabio', 'last_name' => 'Fresco', 'host_person_id' => $founder ) );
+apse_ok( null !== apse_throws( function () use ( $walk, $base, $fresh ) { $walk->invoke( null, array_merge( $base, array( 'person_id' => $fresh, 'account_id' => 0 ) ) ); } ) && ! $acts->has_active_booking( $wi_s, $fresh ) && $n_people + 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'sul posto: se l\'incasso non va (conto non valido) non resta nemmeno la prenotazione' );
+$few   = $mkev( 'Pochi posti', 0, null, array( 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +5 days' ) ), 'capacity' => 1 ) ) );
+$few_s = $first_session( $few );
+$walk->invoke( null, array( 'activity_id' => $few, 'session_id' => $few_s, 'person_id' => $q ) );
+$n_people = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $walk, $few, $few_s, $founder ) { $walk->invoke( null, array( 'activity_id' => $few, 'session_id' => $few_s, 'new_first_name' => 'Troppi', 'new_last_name' => 'Ospiti', 'host_person_id' => $founder ) ); } ), 'esauriti' ) && $n_people === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'sul posto: con i posti esauriti non si prenota e il nuovo ospite non viene creato' );
+apse_ok( null !== apse_throws( function () use ( $walk, $wi_ev, $few_s, $q ) { $walk->invoke( null, array( 'activity_id' => $wi_ev, 'session_id' => $few_s, 'person_id' => $q ) ); } ), 'sul posto: la data deve essere di quell\'evento' );
+apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ingresso senza prenotazione', array( 'id' => $wi_ev ) );
+apse_ok( 4 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = $wi_s AND status = 'booked'" ), 'sul posto: nell\'elenco dell\'evento ci sono i quattro prenotati' );
+
 $old_url = Settings::card_url( $founder );
 Settings::regenerate_card_salt();
 apse_ok( Settings::card_url( $founder ) !== $old_url && 'invalid' === \ApSemplice\Frontend\CardVerify::result( $qm[1] )['status'], 'QR rigenerati: i vecchi smettono di funzionare' );

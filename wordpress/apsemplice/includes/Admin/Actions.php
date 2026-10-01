@@ -42,6 +42,7 @@ final class Actions {
 			'apse_event_staff_add'    => 'event_staff_add',
 			'apse_event_staff_remove' => 'event_staff_remove',
 			'apse_checkin'            => 'checkin',
+			'apse_walk_in'            => 'walk_in',
 			'apse_transfer_booking'   => 'transfer_booking',
 			'apse_test_gateway'       => 'test_gateway',
 			'apse_check_payments'     => 'check_payments',
@@ -206,6 +207,71 @@ final class Actions {
 	private static function book( array $p ): array {
 		Plugin::activities()->book( (int) $p['session_id'], (int) ( $p['person_id'] ?? 0 ) );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
+	}
+
+	/**
+	 * Chi si presenta senza aver prenotato: prenota (creando l'ospite se serve), incassa il contributo e registra l'ingresso.
+	 * Tutto insieme: se qualcosa non va (posti esauriti, conto non valido...) non resta scritto nulla.
+	 */
+	private static function walk_in( array $p ): array {
+		$sid     = (int) ( $p['session_id'] ?? 0 );
+		$aid     = (int) ( $p['activity_id'] ?? 0 );
+		$svc     = Plugin::activities();
+		$session = $svc->session( $sid );
+		if ( ! $session || (int) $session['activity_id'] !== $aid ) {
+			throw new \InvalidArgumentException( 'Data non trovata.' );
+		}
+		$msg = '';
+		Plugin::ledger()->in_batch(
+			function () use ( $p, $sid, $aid, $svc, &$msg ) {
+				$people = Plugin::people();
+				$ledger = Plugin::ledger();
+				$pid    = (int) ( $p['person_id'] ?? 0 );
+				$first  = trim( (string) ( $p['new_first_name'] ?? '' ) );
+				$last   = trim( (string) ( $p['new_last_name'] ?? '' ) );
+				if ( ! $pid && ( '' !== $first || '' !== $last ) ) {
+					$host = (int) ( $p['host_person_id'] ?? 0 );
+					if ( ! $host ) {
+						throw new \InvalidArgumentException( 'Indica il socio che ospita il nuovo ospite.' );
+					}
+					$pid = $people->create( array( 'type' => MemberType::GUEST, 'host_person_id' => $host, 'first_name' => $first, 'last_name' => $last ) );
+				}
+				if ( ! $pid ) {
+					throw new \InvalidArgumentException( 'Scegli una persona oppure inserisci un nuovo ospite.' );
+				}
+				if ( ! $svc->has_active_booking( $sid, $pid ) ) {
+					$svc->book( $sid, $pid );
+				}
+				$row = null;
+				foreach ( $svc->bookings_for_session( $sid ) as $b ) {
+					if ( (int) $b['person_id'] === $pid ) {
+						$row = $b;
+					}
+				}
+				$person = $people->get( $pid );
+				$parts  = array( 'prenotato' );
+				if ( ! empty( $p['pay'] ) ) {
+					$due = $row ? (int) $row['remaining'] : 0;
+					if ( $due > 0 ) {
+						$ledger->record_receipt(
+							array(
+								'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $p['account_id'] ?? 0 ), 'method' => (string) ( $p['method'] ?? '' ), 'person_id' => $pid,
+								'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => $due, 'activity_id' => $aid, 'session_id' => $sid ) ),
+							)
+						);
+						$parts[] = 'incassati ' . Money::format( $due );
+					} else {
+						$parts[] = 'nulla da incassare';
+					}
+				}
+				if ( ! empty( $p['checkin'] ) ) {
+					$svc->check_in( $sid, $pid, false, true );
+					$parts[] = 'ingresso registrato';
+				}
+				$msg = 'Sul posto: ' . trim( $person['first_name'] . ' ' . $person['last_name'] ) . ' — ' . implode( ', ', $parts ) . '.';
+			}
+		);
+		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), $msg );
 	}
 
 	private static function event_staff_add( array $p ): array {
