@@ -39,7 +39,7 @@ final class Api {
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'person' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
-					return self::guard( 'aps_view_person', (int) $r['id'] );
+					return self::guard( 'apse_view_person', (int) $r['id'] );
 				},
 			)
 		);
@@ -50,7 +50,7 @@ final class Api {
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'participants' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
-					return self::guard( 'aps_view_participants', (int) $r['id'] );
+					return self::guard( 'apse_view_participants', (int) $r['id'] );
 				},
 			)
 		);
@@ -67,7 +67,7 @@ final class Api {
 			return false;
 		}
 		if ( ! Access::is_admin_user( get_current_user_id() ) && ! License::allows( 'member_area' ) ) {
-			return new \WP_Error( 'aps_license_required', 'Servizio sospeso: la licenza dell\'associazione non risulta attiva.', array( 'status' => 403 ) );
+			return new \WP_Error( 'apse_license_required', 'Servizio sospeso: la licenza dell\'associazione non risulta attiva.', array( 'status' => 403 ) );
 		}
 		return null === $ability ? true : current_user_can( $ability, $object_id );
 	}
@@ -82,7 +82,7 @@ final class Api {
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'sessions' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
-					return self::guard( 'aps_view_activity', (int) $r['id'] );
+					return self::guard( 'apse_view_activity', (int) $r['id'] );
 				},
 			)
 		);
@@ -94,7 +94,7 @@ final class Api {
 				'callback'            => array( __CLASS__, 'session_bookings' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
 					$s = Plugin::activities()->session( (int) $r['id'] );
-					return $s ? self::guard( 'aps_view_participants', (int) $s['activity_id'] ) : self::guard( Plugin::CAP );
+					return $s ? self::guard( 'apse_view_participants', (int) $s['activity_id'] ) : self::guard( Plugin::CAP );
 				},
 			)
 		);
@@ -103,7 +103,7 @@ final class Api {
 	public static function my_bookings() {
 		$person = Access::person_for_user( get_current_user_id() );
 		if ( ! $person ) {
-			return new \WP_Error( 'aps_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
+			return new \WP_Error( 'apse_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
 		}
 		$rows = array();
 		foreach ( Plugin::activities()->bookings_for_person( (int) $person['id'] ) as $b ) {
@@ -120,7 +120,7 @@ final class Api {
 		$id = (int) $r['id'];
 		$a  = Plugin::activities()->get( $id );
 		if ( ! $a ) {
-			return new \WP_Error( 'aps_not_found', 'Attività non trovata.', array( 'status' => 404 ) );
+			return new \WP_Error( 'apse_not_found', 'Attività non trovata.', array( 'status' => 404 ) );
 		}
 		$out = array();
 		foreach ( Plugin::activities()->sessions( $id ) as $s ) {
@@ -136,7 +136,7 @@ final class Api {
 	public static function session_bookings( \WP_REST_Request $r ) {
 		$s = Plugin::activities()->session( (int) $r['id'] );
 		if ( ! $s ) {
-			return new \WP_Error( 'aps_not_found', 'Data non trovata.', array( 'status' => 404 ) );
+			return new \WP_Error( 'apse_not_found', 'Data non trovata.', array( 'status' => 404 ) );
 		}
 		$admin = Access::is_admin_user( get_current_user_id() );
 		$rows  = array();
@@ -157,11 +157,11 @@ final class Api {
 		$payload = (string) $r->get_body();
 		$secret  = Settings::secret( 'stripe_webhook_secret' );
 		if ( ! StripeWebhook::verify( $payload, (string) $r->get_header( 'stripe-signature' ), $secret, time() ) ) {
-			return new \WP_Error( 'aps_bad_signature', 'Firma non valida.', array( 'status' => 400 ) );
+			return new \WP_Error( 'apse_bad_signature', 'Firma non valida.', array( 'status' => 400 ) );
 		}
 		$event = json_decode( $payload, true );
 		if ( ! is_array( $event ) ) {
-			return new \WP_Error( 'aps_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
+			return new \WP_Error( 'apse_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
 		}
 		return rest_ensure_response( array( 'received' => true, 'result' => Plugin::payments()->handle_stripe_event( $event ) ) );
 	}
@@ -227,7 +227,7 @@ final class Api {
 	public static function my_activities() {
 		$person = Access::person_for_user( get_current_user_id() );
 		if ( ! $person ) {
-			return new \WP_Error( 'aps_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
+			return new \WP_Error( 'apse_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
 		}
 		$rows = array_map( array( __CLASS__, 'shape_status' ), Plugin::activities()->status_for_person( (int) $person['id'] ) );
 		return rest_ensure_response( array( 'activities' => $rows ) );
@@ -236,7 +236,7 @@ final class Api {
 	public static function person( \WP_REST_Request $r ) {
 		$p = Plugin::people()->get( (int) $r['id'] );
 		if ( ! $p ) {
-			return new \WP_Error( 'aps_not_found', 'Persona non trovata.', array( 'status' => 404 ) );
+			return new \WP_Error( 'apse_not_found', 'Persona non trovata.', array( 'status' => 404 ) );
 		}
 		return rest_ensure_response( self::shape_person( $p ) );
 	}
@@ -246,7 +246,7 @@ final class Api {
 		$id       = (int) $r['id'];
 		$activity = Plugin::activities()->get( $id );
 		if ( ! $activity ) {
-			return new \WP_Error( 'aps_not_found', 'Attività non trovata.', array( 'status' => 404 ) );
+			return new \WP_Error( 'apse_not_found', 'Attività non trovata.', array( 'status' => 404 ) );
 		}
 		$admin = Access::is_admin_user( get_current_user_id() );
 		$rows  = array();

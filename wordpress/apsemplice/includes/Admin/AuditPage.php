@@ -12,7 +12,7 @@ final class AuditPage {
 		$prefix = Ui::get_str( 'type' );
 		$rows   = Audit::recent( 200, $prefix );
 		Ui::header( 'Registro azioni' );
-		echo '<form method="get" class="aps-filters"><input type="hidden" name="page" value="aps-audit"><select name="type" onchange="this.form.submit()">'
+		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-audit"><select name="type" onchange="this.form.submit()">'
 			. Ui::options(
 				array( 'person.' => 'Persone', 'membership.' => 'Iscrizioni', 'activity.' => 'Attività', 'tx.' => 'Movimenti', 'cashcount.' => 'Verifiche cassa', 'import.' => 'Import', 'settings.' => 'Impostazioni' ),
 				$prefix,

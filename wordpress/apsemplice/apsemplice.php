@@ -12,10 +12,10 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'APS_VERSION', '0.1.0' );
-define( 'APS_FILE', __FILE__ );
-define( 'APS_DIR', plugin_dir_path( __FILE__ ) );
-define( 'APS_URL', plugin_dir_url( __FILE__ ) );
+define( 'APSE_VERSION', '0.1.0' );
+define( 'APSE_FILE', __FILE__ );
+define( 'APSE_DIR', plugin_dir_path( __FILE__ ) );
+define( 'APSE_URL', plugin_dir_url( __FILE__ ) );
 
 // Autoload semplice: ApSemplice\Foo => includes/Foo.php, ApSemplice\Admin\Bar => includes/Admin/Bar.php
 spl_autoload_register(
@@ -24,7 +24,7 @@ spl_autoload_register(
 		if ( 0 !== strpos( $class, $prefix ) ) {
 			return;
 		}
-		$file = APS_DIR . 'includes/' . str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
+		$file = APSE_DIR . 'includes/' . str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
 		if ( is_readable( $file ) ) {
 			require $file;
 		}
@@ -37,6 +37,6 @@ add_action( 'plugins_loaded', array( 'ApSemplice\\Plugin', 'init' ) );
 register_deactivation_hook(
 	__FILE__,
 	function () {
-		wp_clear_scheduled_hook( 'aps_check_pending_payments' );
+		wp_clear_scheduled_hook( 'apse_check_pending_payments' );
 	}
 );

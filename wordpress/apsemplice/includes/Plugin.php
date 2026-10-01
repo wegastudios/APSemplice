@@ -1,29 +1,29 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 final class Plugin {
 
 	/** Capability per usare il plugin. Per ora solo gli amministratori (vedi Install::grant_caps). */
-	const CAP = 'aps_manage';
+	const CAP = 'apse_manage';
 
 	/** Ruolo WordPress dato ai nuovi utenti creati per i soci: nessun accesso all'area di amministrazione. */
-	const ROLE_MEMBER = 'aps_member';
+	const ROLE_MEMBER = 'apse_member';
 
 	private static $services = array();
 
 	public static function init(): void {
 		Install::maybe_upgrade();
-		Access::register();      // capability meta: aps_notify_activity, aps_view_person...
+		Access::register();      // capability meta: apse_notify_activity, apse_view_person...
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
-		add_action( 'aps_check_pending_payments', function () {
+		add_action( 'apse_check_pending_payments', function () {
 			self::payments()->check_pending();
 		} );
-		if ( ! wp_next_scheduled( 'aps_check_pending_payments' ) ) {
-			wp_schedule_event( time() + 300, 'hourly', 'aps_check_pending_payments' );
+		if ( ! wp_next_scheduled( 'apse_check_pending_payments' ) ) {
+			wp_schedule_event( time() + 300, 'hourly', 'apse_check_pending_payments' );
 		}
 		if ( is_admin() ) {
 			Admin\Admin::init();

@@ -11,18 +11,18 @@ defined( 'ABSPATH' ) || exit;
  */
 final class PayReturn {
 
-	const PARAMS = array( 'aps_pay', 'aps_ret', 'token', 'PayerID', 'paymentId' );
+	const PARAMS = array( 'apse_pay', 'apse_ret', 'token', 'PayerID', 'paymentId' );
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
 	}
 
 	public static function handle(): void {
-		if ( ! isset( $_GET['aps_pay'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! isset( $_GET['apse_pay'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;
 		}
-		$public = sanitize_text_field( wp_unslash( $_GET['aps_pay'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
-		$ret    = isset( $_GET['aps_ret'] ) && 'ok' === sanitize_key( wp_unslash( $_GET['aps_ret'] ) ) ? 'ok' : 'cancel'; // phpcs:ignore WordPress.Security.NonceVerification
+		$public = sanitize_text_field( wp_unslash( $_GET['apse_pay'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		$ret    = isset( $_GET['apse_ret'] ) && 'ok' === sanitize_key( wp_unslash( $_GET['apse_ret'] ) ) ? 'ok' : 'cancel'; // phpcs:ignore WordPress.Security.NonceVerification
 		$url    = Restrict::current_url();
 		if ( ! is_user_logged_in() ) {
 			wp_safe_redirect( wp_login_url( $url ) ); // dopo l'accesso si torna qui e il pagamento viene verificato

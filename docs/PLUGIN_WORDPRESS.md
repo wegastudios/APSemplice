@@ -4,7 +4,7 @@ Il progetto riparte da un **plugin WordPress** (cartella `wordpress/apsemplice/`
 (cartella `app/`) resta nel repository come prototipo "in pausa": il modello contabile è lo stesso.
 
 Obiettivo di lungo periodo: una PWA/area soci sopra lo stesso plugin, pagamenti online, ruoli diversi.
-Per ora il plugin è **solo per amministratori** (capability `aps_manage`, assegnata al ruolo Amministratore).
+Per ora il plugin è **solo per amministratori** (capability `apse_manage`, assegnata al ruolo Amministratore).
 
 ## Figure
 
@@ -74,7 +74,7 @@ Per ora è solo la **configurazione** e la verifica; l'incasso online vero è il
 
 ## Soci = utenti WordPress
 
-- Creando un socio si **crea l'utente WordPress** con la stessa email (ruolo `aps_member`, che ha solo `read`: nessun accesso alla gestione). Non parte nessuna email.
+- Creando un socio si **crea l'utente WordPress** con la stessa email (ruolo `apse_member`, che ha solo `read`: nessun accesso alla gestione). Non parte nessuna email.
 - Se esiste già un utente WordPress con quell'email lo si **collega** senza cambiargli ruolo (un amministratore resta amministratore).
 - Modificando nome/email del socio si aggiorna l'utente, **ma solo se è un utente "solo socio"**; gli altri non si toccano.
 - Eliminare una persona è logico (`deleted_at`): libera tessera ed email, **non cancella l'utente WordPress**.
@@ -104,7 +104,7 @@ tests/unit (PHPUnit senza WordPress) · tests/smoke.php (dentro WordPress reale,
 I **servizi** non sanno nulla dell'interfaccia: restituiscono array e lanciano `\InvalidArgumentException` con messaggi leggibili.
 Per questo la stessa logica potrà essere esposta da una **REST API** (`apsemplice/v1`) e usata da una PWA senza riscriverla.
 
-Tabelle (`{prefisso}aps_*`): `people`, `memberships`, `accounts`, `categories`, `activities`, `enrollments`, `transactions`, `cash_counts`.
+Tabelle (`{prefisso}apse_*`): `people`, `memberships`, `accounts`, `categories`, `activities`, `enrollments`, `transactions`, `cash_counts`.
 
 ## Installare
 
@@ -134,7 +134,7 @@ Ogni impostazione si cambia da **APSemplice → Impostazioni**, senza modificare
 denominazione, mese di inizio dell'anno sociale, quota associativa, durata della tessera del fondatore, pagina dell'area soci,
 chiave di licenza, termine predefinito di cancellazione, **colore d'accento** del sito (selettore colore), **testo dell'invito al pagamento**,
 **messaggio sui contenuti riservati**, gateway di pagamento e relative chiavi. Le pagine del sito si creano con un pulsante e si impaginano
-con Gutenberg o Elementor. I dati stanno nel database di WordPress (tabelle `aps_*` e l'opzione `aps_settings`).
+con Gutenberg o Elementor. I dati stanno nel database di WordPress (tabelle `apse_*` e l'opzione `apse_settings`).
 
 ## Pagamenti online (Stripe / PayPal, pagina ospitata)
 

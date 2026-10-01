@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Cosa succede quando la licenza non è in regola (pagamento mancante, dominio non più associato).

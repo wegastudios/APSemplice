@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /** Tutte le impostazioni si cambiano dal pannello (menu APSemplice → Impostazioni): nessun file da modificare. */
 final class Settings {
 
-	const OPTION = 'aps_settings';
+	const OPTION = 'apse_settings';
 
 	/** Chiavi segrete: nel database restano cifrate e non vengono mai mostrate. */
 	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret' );

@@ -3,7 +3,7 @@
  * Bootstrap dei test unitari: carica solo le classi "pure" (nessuna dipendenza da WordPress).
  * Le classi che usano il database sono verificate da tests/smoke.php dentro un WordPress reale.
  */
-define( 'APS_TESTS', true );
+define( 'APSE_TESTS', true );
 
 spl_autoload_register(
 	function ( $class ) {

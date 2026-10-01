@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Cifratura delle chiavi dei gateway (Stripe, PayPal) nel database.

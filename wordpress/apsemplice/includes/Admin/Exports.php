@@ -22,7 +22,7 @@ final class Exports {
 		if ( ! License::allows( 'export' ) ) {
 			return '<span class="button disabled" title="Esportazione sospesa: licenza non in regola">' . esc_html( $label ) . ' 🔒</span>';
 		}
-		$url =wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'aps_export', 'what' => $what ), $args ), admin_url( 'admin-post.php' ) ), 'aps_export' );
+		$url =wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'apse_export', 'what' => $what ), $args ), admin_url( 'admin-post.php' ) ), 'apse_export' );
 		return '<a class="button" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 	}
 
@@ -43,7 +43,7 @@ final class Exports {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
-		check_admin_referer( 'aps_export' );
+		check_admin_referer( 'apse_export' );
 		if ( ! License::allows( 'export' ) ) {
 			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di APSemplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}

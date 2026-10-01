@@ -222,7 +222,7 @@ final class Views {
 		$html = '<div class="apsf-manage">';
 		if ( $ev['allowed'] ) {
 			$html .= '<div class="apsf-small apsf-muted">' . esc_html( $ev['message'] ) . '</div>'
-				. self::form( 'aps_front_cancel_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ), 'Annulla prenotazione', true, 'apsf-inline' );
+				. self::form( 'apse_front_cancel_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ), 'Annulla prenotazione', true, 'apsf-inline' );
 		} else {
 			$html .= '<div class="apsf-small apsf-muted">' . esc_html( $ev['message'] ) . '</div>';
 		}
@@ -240,7 +240,7 @@ final class Views {
 				. '<label>' . ( '' !== $options ? 'oppure nuovo ospite: nome' : 'Nuovo ospite: nome' ) . ' <input type="text" name="new_first_name"></label><label>Cognome <input type="text" name="new_last_name"></label></div>';
 			$html  .= '<details class="apsf-details"><summary>Cambia nominativo</summary>'
 				. '<p class="apsf-small apsf-muted">Se il nuovo partecipante ha un contributo diverso (ad esempio un ospite) la differenza va integrata.</p>'
-				. self::form( 'aps_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cambia nominativo' ) . '</details>';
+				. self::form( 'apse_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cambia nominativo' ) . '</details>';
 		}
 		return $html . '</div>';
 	}
@@ -277,7 +277,7 @@ final class Views {
 					. '<strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
 			}
 			$fields .= '</ul><p class="apsf-paytotal">Totale: <strong class="apsf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
-			$html   .= self::form( 'aps_front_pay', $fields, 'paypal' === $pay->provider() ? 'Paga con PayPal' : 'Paga con carta' )
+			$html   .= self::form( 'apse_front_pay', $fields, 'paypal' === $pay->provider() ? 'Paga con PayPal' : 'Paga con carta' )
 				. '<p class="apsf-small apsf-muted">Paghi su una pagina sicura di ' . ( 'paypal' === $pay->provider() ? 'PayPal' : 'Stripe' ) . ': i dati della carta non passano da questo sito.</p>';
 		}
 		$recent = $pay->list( array( 'payer_person_id' => (int) $p['id'] ), 5 );
@@ -311,7 +311,7 @@ final class Views {
 		}
 		$fields = '<div class="apsf-fields"><label>Nome <input type="text" name="first_name" required></label><label>Cognome <input type="text" name="last_name" required></label>'
 			. '<label>Email (facoltativa) <input type="email" name="email"></label><label>Telefono (facoltativo) <input type="text" name="phone"></label></div>';
-		return $html . '<details class="apsf-details"><summary>Aggiungi un ospite</summary>' . self::form( 'aps_front_add_guest', $fields, 'Aggiungi ospite' ) . '</details></section>';
+		return $html . '<details class="apsf-details"><summary>Aggiungi un ospite</summary>' . self::form( 'apse_front_add_guest', $fields, 'Aggiungi ospite' ) . '</details></section>';
 	}
 
 	public static function section_profile( array $p ): string {
@@ -320,7 +320,7 @@ final class Views {
 		return '<section class="apsf-section"><h3>Il mio profilo</h3><dl class="apsf-dl"><div><dt>Nome</dt><dd>' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</dd></div>'
 			. '<div><dt>Email</dt><dd>' . esc_html( (string) $p['email'] ) . '</dd></div></dl>'
 			. '<p class="apsf-small apsf-muted">Per cambiare nome o email scrivi all\'associazione.</p>'
-			. self::form( 'aps_front_profile', $fields, 'Salva' ) . '</section>';
+			. self::form( 'apse_front_profile', $fields, 'Salva' ) . '</section>';
 	}
 
 	public static function section_volunteer( array $p ): string {
@@ -332,7 +332,7 @@ final class Views {
 		$found = false;
 		foreach ( $svc->taught_activity_ids( (int) $p['id'] ) as $aid ) {
 			$a = $svc->get( $aid );
-			if ( ! $a || ! current_user_can( 'aps_view_participants', $aid ) || $a['social_year'] !== Settings::social_year()->label() ) {
+			if ( ! $a || ! current_user_can( 'apse_view_participants', $aid ) || $a['social_year'] !== Settings::social_year()->label() ) {
 				continue;
 			}
 			$found = true;
@@ -454,7 +454,7 @@ final class Views {
 				if ( $svc->has_active_booking( (int) $s['id'], (int) $person['id'] ) ) {
 					$html .= '<span class="apsf-badge apsf-badge-ok">✓ ' . esc_html( $person['first_name'] ) . '</span> '
 						. ( $svc->cancellation_for( (int) $s['id'], (int) $person['id'] )['allowed']
-							? self::form( 'aps_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', true, 'apsf-inline' )
+							? self::form( 'apse_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', true, 'apsf-inline' )
 							: '<span class="apsf-small apsf-muted">non annullabile (gestiscila nella tua area)</span>' );
 				} else {
 					$free[] = $person;
@@ -472,7 +472,7 @@ final class Views {
 				} else {
 					$fields .= self::hidden( 'person_id', $free[0]['id'] );
 				}
-				$html .= self::form( 'aps_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'apsf-inline' );
+				$html .= self::form( 'apse_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'apsf-inline' );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {
 			$html .= '<span class="apsf-small apsf-muted">Rinnova la tessera per prenotarti</span>';

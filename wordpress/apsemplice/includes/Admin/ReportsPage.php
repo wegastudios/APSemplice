@@ -13,8 +13,8 @@ final class ReportsPage {
 	public static function render(): void {
 		$mode = 'social' === Ui::get_str( 'mode' ) ? 'social' : 'solar';
 		Ui::header( 'Report' );
-		echo '<h2 class="nav-tab-wrapper"><a class="nav-tab ' . ( 'solar' === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'aps-reports', array( 'mode' => 'solar' ) ) ) . '">Anno solare (commercialista)</a>'
-			. '<a class="nav-tab ' . ( 'social' === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'aps-reports', array( 'mode' => 'social' ) ) ) . '">Anno sociale (attività)</a></h2>';
+		echo '<h2 class="nav-tab-wrapper"><a class="nav-tab ' . ( 'solar' === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'apse-reports', array( 'mode' => 'solar' ) ) ) . '">Anno solare (commercialista)</a>'
+			. '<a class="nav-tab ' . ( 'social' === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'apse-reports', array( 'mode' => 'social' ) ) ) . '">Anno sociale (attività)</a></h2>';
 		if ( 'solar' === $mode ) {
 			self::solar();
 		} else {
@@ -24,8 +24,8 @@ final class ReportsPage {
 	}
 
 	private static function nav( string $mode, int $year, string $label ): void {
-		echo '<p><a class="button" href="' . esc_url( Ui::url( 'aps-reports', array( 'mode' => $mode, 'year' => $year - 1 ) ) ) . '">‹</a> <strong>' . esc_html( $label ) . '</strong> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'aps-reports', array( 'mode' => $mode, 'year' => $year + 1 ) ) ) . '">›</a></p>';
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-reports', array( 'mode' => $mode, 'year' => $year - 1 ) ) ) . '">‹</a> <strong>' . esc_html( $label ) . '</strong> '
+			. '<a class="button" href="' . esc_url( Ui::url( 'apse-reports', array( 'mode' => $mode, 'year' => $year + 1 ) ) ) . '">›</a></p>';
 	}
 
 	private static function solar(): void {
@@ -67,7 +67,7 @@ final class ReportsPage {
 
 		echo '<h3>Attività</h3><table class="widefat striped"><thead><tr><th>Attività</th><th>Istruttore</th><th>Iscritti</th><th>Incassi</th><th>Costi</th><th>Resta all\'associazione</th></tr></thead><tbody>';
 		foreach ( $r['activities'] as $a ) {
-			echo '<tr><td><a href="' . esc_url( Ui::url( 'aps-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></td><td>' . esc_html( (string) $a['activity']['instructor_name'] ) . '</td><td>' . (int) $a['participants'] . '</td><td>' . Ui::money( $a['income'] ) . '</td><td>' . Ui::money( $a['cost'] ) . '</td><td><strong>' . Ui::money( $a['margin'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></td><td>' . esc_html( (string) $a['activity']['instructor_name'] ) . '</td><td>' . (int) $a['participants'] . '</td><td>' . Ui::money( $a['income'] ) . '</td><td>' . Ui::money( $a['cost'] ) . '</td><td><strong>' . Ui::money( $a['margin'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</tbody></table>';
 

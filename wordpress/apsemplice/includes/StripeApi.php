@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Stripe Checkout: l'utente paga su una pagina ospitata da Stripe, noi non vediamo mai i dati della carta.
@@ -33,8 +33,8 @@ final class StripeApi {
 			'cancel_url'          => $cancel_url,
 			'client_reference_id' => $public_id,
 			'line_items'          => $lines,
-			'metadata'            => array( 'aps_payment' => $public_id ),
-			'payment_intent_data' => array( 'metadata' => array( 'aps_payment' => $public_id ) ),
+			'metadata'            => array( 'apse_payment' => $public_id ),
+			'payment_intent_data' => array( 'metadata' => array( 'apse_payment' => $public_id ) ),
 		);
 		if ( '' !== $payer_email ) {
 			$params['customer_email'] = $payer_email;

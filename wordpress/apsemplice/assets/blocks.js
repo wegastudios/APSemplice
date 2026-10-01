@@ -10,7 +10,7 @@
 	var SelectControl = wp.components.SelectControl;
 	var TextControl = wp.components.TextControl;
 	var ServerSideRender = wp.serverSideRender || wp.components.ServerSideRender;
-	var D = window.APS_BLOCKS || { views: {}, rules: {}, activities: [] };
+	var D = window.APSE_BLOCKS || { views: {}, rules: {}, activities: [] };
 
 	function options(map, emptyLabel) {
 		var out = emptyLabel ? [{ value: '', label: emptyLabel }] : [];

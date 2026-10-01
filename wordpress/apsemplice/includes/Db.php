@@ -13,7 +13,7 @@ final class Db {
 	/** Nome completo di una tabella del plugin: Db::t('people') => wp_aps_people */
 	public static function t( string $name ): string {
 		global $wpdb;
-		return $wpdb->prefix . 'aps_' . $name;
+		return $wpdb->prefix . 'apse_' . $name;
 	}
 
 	/** Data di oggi (Y-m-d) nel fuso orario del sito. */

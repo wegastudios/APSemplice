@@ -19,7 +19,7 @@ final class LicenseNotice {
 
 	public static function print_notice(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		if ( 0 !== strpos( $page, 'aps' ) || 'aps-settings' === $page ) {
+		if ( 0 !== strpos( $page, 'aps' ) || 'apse-settings' === $page ) {
 			return;
 		}
 		echo self::html(); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -32,15 +32,15 @@ final class LicenseNotice {
 			return '';
 		}
 		$url   = License::payment_url();
-		$html  = '<div id="aps-license-overlay" class="aps-overlay" role="dialog" aria-modal="true" aria-labelledby="aps-overlay-title"><div class="aps-overlay-box">';
-		$html .= '<h2 id="aps-overlay-title">Licenza non in regola</h2><p>' . esc_html( LicensePolicy::message( $p['status'] ) ) . '</p>';
+		$html  = '<div id="apse-license-overlay" class="apse-overlay" role="dialog" aria-modal="true" aria-labelledby="apse-overlay-title"><div class="apse-overlay-box">';
+		$html .= '<h2 id="apse-overlay-title">Licenza non in regola</h2><p>' . esc_html( LicensePolicy::message( $p['status'] ) ) . '</p>';
 		$html .= '<p>Finché non viene regolarizzata, <strong>l\'esportazione dei dati e l\'accesso di soci e volontari sono sospesi</strong>. I tuoi dati sono al sicuro e restano intatti.</p>';
 		$html .= $url
 			? '<p><a class="button button-primary button-hero" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza il pagamento</a></p>'
 			: '<p>Contatta il fornitore del servizio per regolarizzare il pagamento.</p>';
 		if ( LicensePolicy::POPUP_CLOSABLE === $p['popup'] ) {
 			$html .= '<p class="description">Puoi chiudere questo avviso ancora per ' . (int) $p['days_left'] . ' ' . ( 1 === (int) $p['days_left'] ? 'giorno' : 'giorni' )
-				. '; poi resterà sempre visibile.</p><p><button type="button" class="button" id="aps-overlay-close">Chiudi per ora</button></p>';
+				. '; poi resterà sempre visibile.</p><p><button type="button" class="button" id="apse-overlay-close">Chiudi per ora</button></p>';
 		} else {
 			$html .= '<p class="description">Il periodo in cui l\'avviso si poteva chiudere è terminato.</p>';
 		}

@@ -65,7 +65,7 @@ Definiti in `core/cloud/Roles.kt` (stessi nomi nel backend):
 Il plugin è un **client del backend**, non dell'app: non parla col telefono.
 
 - **Installazione/collegamento**: il titolare WordPress autentica il plugin via OAuth/device-code con il proprio account APSemplice (verificato, piano con `wordpressPluginAllowed`). Il backend emette un token per quell'installazione (`site_url` legato all'associazione), revocabile dal titolare.
-- **Ruoli WP ↔ ruoli APS**: mappatura configurabile, con capability WordPress dedicate: `aps_view`, `aps_operate`, `aps_treasurer`, `aps_admin`. Il plugin non salva password: per ogni azione usa il token del sito e passa l'utente WP (`X-APS-Acting-User`) così il backend registra chi ha operato e applica `Permissions`.
+- **Ruoli WP ↔ ruoli APS**: mappatura configurabile, con capability WordPress dedicate: `apse_view`, `apse_operate`, `apse_treasurer`, `apse_admin`. Il plugin non salva password: per ogni azione usa il token del sito e passa l'utente WP (`X-APS-Acting-User`) così il backend registra chi ha operato e applica `Permissions`.
 - **Funzioni**: le stesse dell'app (incasso, spesa, giroconto, prima nota, soci, attività, report/export) via shortcode/blocchi o pagina admin; sola lettura per i ruoli bassi.
 - **Sicurezza**: nonce WP + capability check lato WP, ma l'autorizzazione vera è sempre nel backend; HTTPS obbligatorio; rate limit; audit log (chi/quando/cosa) per ogni scrittura.
 

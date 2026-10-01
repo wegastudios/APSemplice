@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Le "voci da pagare" di un pagamento online. Ogni voce è un importo dovuto da un partecipante (il socio o un suo ospite):

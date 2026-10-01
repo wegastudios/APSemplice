@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Prova di connessione ai gateway con le chiavi salvate: parte solo quando l'amministratore preme "Verifica connessione".

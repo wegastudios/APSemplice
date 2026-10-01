@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Install {
 
-	const DB_VERSION_OPTION = 'aps_db_version';
+	const DB_VERSION_OPTION = 'apse_db_version';
 	const DB_VERSION        = '5';
 
 	public static function activate(): void {
@@ -31,7 +31,7 @@ final class Install {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		$c = $wpdb->get_charset_collate();
-		$p = $wpdb->prefix . 'aps_';
+		$p = $wpdb->prefix . 'apse_';
 
 		// dbDelta è esigente: un campo per riga, due spazi dopo PRIMARY KEY, nomi per ogni KEY.
 		$tables   = array();

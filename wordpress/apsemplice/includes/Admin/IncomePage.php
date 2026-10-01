@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Incasso multi-voce (es. quota associativa + mensilità del corso) con calcolo del resto in contanti.
- * La parte dinamica è in assets/admin.js (blocco "aps-income").
+ * La parte dinamica è in assets/admin.js (blocco "apse-income").
  */
 final class IncomePage {
 
@@ -20,7 +20,7 @@ final class IncomePage {
 
 	/** Contesto di una persona per l'incasso: tessera, attività a cui è iscritta e primo mese da pagare. */
 	public static function ajax_context(): void {
-		check_ajax_referer( 'aps_income', 'nonce' );
+		check_ajax_referer( 'apse_income', 'nonce' );
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			wp_send_json_error( 'Non autorizzato', 403 );
 		}
@@ -88,7 +88,7 @@ final class IncomePage {
 		}
 		$data = array(
 			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
-			'nonce'         => wp_create_nonce( 'aps_income' ),
+			'nonce'         => wp_create_nonce( 'apse_income' ),
 			'categories'    => $cats,
 			'activities'    => $acts,
 			'membershipFee' => (int) Settings::get( 'membership_fee_cents' ),
@@ -98,32 +98,32 @@ final class IncomePage {
 		);
 
 		Ui::header( 'Nuovo incasso' );
-		echo '<script type="application/json" id="aps-income-data">' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ) . '</script>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		Ui::form_open( 'aps_save_income', Ui::url( 'aps-income' ), false, 'aps-income' );
-		echo '<table class="form-table aps-form"><tbody>';
-		echo '<tr><th>Data</th><td><input type="date" name="date" id="aps-date" value="' . esc_attr( $today ) . '" required></td></tr>';
-		echo '<tr><th>Pagamento</th><td><select name="method" id="aps-method">' . Ui::options( Labels::methods(), 'cash' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<script type="application/json" id="apse-income-data">' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ) . '</script>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		Ui::form_open( 'apse_save_income', Ui::url( 'apse-income' ), false, 'apse-income' );
+		echo '<table class="form-table apse-form"><tbody>';
+		echo '<tr><th>Data</th><td><input type="date" name="date" id="apse-date" value="' . esc_attr( $today ) . '" required></td></tr>';
+		echo '<tr><th>Pagamento</th><td><select name="method" id="apse-method">' . Ui::options( Labels::methods(), 'cash' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
 		$acc_map = array();
 		foreach ( $accounts as $a ) {
 			$acc_map[ $a['id'] ] = $a['name'];
 		}
-		echo 'sul conto <select name="account_id" id="aps-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / anonimo —', 'aps-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. ' <a href="' . esc_url( Ui::url( 'aps-person', array( 'type' => 'ordinary' ) ) ) . '" target="_blank">+ nuovo socio</a>'
-			. '<div id="aps-person-info" class="aps-info"></div></td></tr>';
+		echo 'sul conto <select name="account_id" id="apse-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / anonimo —', 'apse-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. ' <a href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '" target="_blank">+ nuovo socio</a>'
+			. '<div id="apse-person-info" class="apse-info"></div></td></tr>';
 		echo '</tbody></table>';
 
-		echo '<h2>Voci</h2><div id="aps-lines"></div>';
-		echo '<p class="aps-addbar">'
-			. '<button type="button" class="button" id="aps-add-membership">+ Quota associativa</button> '
-			. '<select id="aps-add-activity-select"><option value="">+ Mensilità corso…</option></select> '
-			. '<select id="aps-add-booking-select"><option value="">+ Contributo evento…</option></select> '
-			. '<select id="aps-add-other-select"><option value="">+ Altra voce…</option></select></p>';
+		echo '<h2>Voci</h2><div id="apse-lines"></div>';
+		echo '<p class="apse-addbar">'
+			. '<button type="button" class="button" id="apse-add-membership">+ Quota associativa</button> '
+			. '<select id="apse-add-activity-select"><option value="">+ Mensilità corso…</option></select> '
+			. '<select id="apse-add-booking-select"><option value="">+ Contributo evento…</option></select> '
+			. '<select id="apse-add-other-select"><option value="">+ Altra voce…</option></select></p>';
 
-		echo '<p class="aps-total">Totale: <strong id="aps-total">0,00 €</strong></p>';
-		echo '<div id="aps-cash" class="aps-card"><h3>Contanti</h3>'
-			. '<p><label>Contanti ricevuti <input type="text" id="aps-tendered" inputmode="decimal" placeholder="importo esatto"> €</label></p>'
-			. '<p id="aps-quick"></p><p id="aps-change" class="aps-change"></p></div>';
+		echo '<p class="apse-total">Totale: <strong id="apse-total">0,00 €</strong></p>';
+		echo '<div id="apse-cash" class="apse-card"><h3>Contanti</h3>'
+			. '<p><label>Contanti ricevuti <input type="text" id="apse-tendered" inputmode="decimal" placeholder="importo esatto"> €</label></p>'
+			. '<p id="apse-quick"></p><p id="apse-change" class="apse-change"></p></div>';
 		echo '<p><label>N. ricevuta (facoltativo) <input type="text" name="document_ref" maxlength="80"></label></p>';
 		submit_button( 'Registra incasso' );
 		Ui::form_close();

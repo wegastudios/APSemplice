@@ -22,10 +22,10 @@ final class Blocks {
 			return;
 		}
 		wp_register_script(
-			'aps-blocks',
-			APS_URL . 'assets/blocks.js',
+			'apse-blocks',
+			APSE_URL . 'assets/blocks.js',
 			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render' ),
-			APS_VERSION,
+			APSE_VERSION,
 			true
 		);
 		$activities = array();
@@ -33,8 +33,8 @@ final class Blocks {
 			$activities[] = array( 'value' => (int) $a['id'], 'label' => $a['name'] . ' (' . $a['social_year'] . ')' );
 		}
 		wp_add_inline_script(
-			'aps-blocks',
-			'window.APS_BLOCKS = ' . wp_json_encode( array( 'views' => Shortcodes::VIEWS, 'rules' => Visibility::labels(), 'activities' => $activities ) ) . ';',
+			'apse-blocks',
+			'window.APSE_BLOCKS = ' . wp_json_encode( array( 'views' => Shortcodes::VIEWS, 'rules' => Visibility::labels(), 'activities' => $activities ) ) . ';',
 			'before'
 		);
 
@@ -43,7 +43,7 @@ final class Blocks {
 			array(
 				'api_version'     => 2,
 				'title'           => 'APSemplice',
-				'editor_script'   => 'aps-blocks',
+				'editor_script'   => 'apse-blocks',
 				'attributes'      => array(
 					'vista'   => array( 'type' => 'string', 'default' => 'area_soci' ),
 					'sezioni' => array( 'type' => 'string', 'default' => '' ),
@@ -61,7 +61,7 @@ final class Blocks {
 			array(
 				'api_version'     => 2,
 				'title'           => 'Contenuto riservato',
-				'editor_script'   => 'aps-blocks',
+				'editor_script'   => 'apse-blocks',
 				'attributes'      => array(
 					'accesso'   => array( 'type' => 'string', 'default' => Visibility::MEMBERS ),
 					'attivita'  => array( 'type' => 'array', 'items' => array( 'type' => 'integer' ), 'default' => array() ),

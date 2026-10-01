@@ -24,7 +24,7 @@ final class Ui {
 	}
 
 	public static function header( string $title, string $actions_html = '' ): void {
-		echo '<div class="wrap aps"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<div class="wrap apse"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">'; // phpcs:ignore WordPress.Security.EscapeOutput
 		self::notices();
 	}
 
@@ -33,8 +33,8 @@ final class Ui {
 	}
 
 	public static function notices(): void {
-		$ok  = self::get_str( 'aps_ok' );
-		$err = self::get_str( 'aps_err' );
+		$ok  = self::get_str( 'apse_ok' );
+		$err = self::get_str( 'apse_err' );
 		if ( '' !== $ok ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $ok ) . '</p></div>';
 		}
@@ -72,7 +72,7 @@ final class Ui {
 	}
 
 	public static function money( int $cents ): string {
-		$cls = $cents < 0 ? ' class="aps-neg"' : '';
+		$cls = $cents < 0 ? ' class="apse-neg"' : '';
 		return '<span' . $cls . '>' . esc_html( Money::format( $cents ) ) . '</span>';
 	}
 
@@ -99,20 +99,20 @@ final class Ui {
 
 	public static function pay_status( array $summary ): string {
 		if ( $summary['balance'] < 0 ) {
-			return '<strong class="aps-neg">Da versare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</strong>';
+			return '<strong class="apse-neg">Da versare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</strong>';
 		}
 		if ( $summary['balance'] > 0 ) {
-			return '<strong class="aps-ok">In regola (credito ' . esc_html( Money::format( $summary['balance'] ) ) . ')</strong>';
+			return '<strong class="apse-ok">In regola (credito ' . esc_html( Money::format( $summary['balance'] ) ) . ')</strong>';
 		}
-		return '<strong class="aps-ok">In regola</strong>';
+		return '<strong class="apse-ok">In regola</strong>';
 	}
 
 	public static function months_table( array $summary ): string {
 		if ( ! $summary['months'] ) {
 			return '<p class="description">Nessuna mensilità dovuta finora.</p>';
 		}
-		$labels = array( PaymentCalc::PAID => array( 'pagato', 'aps-ok' ), PaymentCalc::PARTIAL => array( 'parziale', 'aps-warn' ), PaymentCalc::UNPAID => array( 'da pagare', 'aps-neg' ), PaymentCalc::ADVANCE => array( 'versato fuori periodo', '' ) );
-		$html   = '<table class="widefat striped aps-months"><thead><tr><th>Mese</th><th>Versato</th><th>Dovuto</th><th>Stato</th></tr></thead><tbody>';
+		$labels = array( PaymentCalc::PAID => array( 'pagato', 'apse-ok' ), PaymentCalc::PARTIAL => array( 'parziale', 'apse-warn' ), PaymentCalc::UNPAID => array( 'da pagare', 'apse-neg' ), PaymentCalc::ADVANCE => array( 'versato fuori periodo', '' ) );
+		$html   = '<table class="widefat striped apse-months"><thead><tr><th>Mese</th><th>Versato</th><th>Dovuto</th><th>Stato</th></tr></thead><tbody>';
 		foreach ( $summary['months'] as $m ) {
 			$l     = $labels[ $m['state'] ];
 			$html .= '<tr><td>' . esc_html( self::month( $m['month'] ) ) . '</td><td>' . esc_html( Money::format( $m['paid'] ) ) . '</td><td>' . esc_html( Money::format( $m['due'] ) )
@@ -127,8 +127,8 @@ final class Ui {
 		foreach ( $people as $p ) {
 			$map[ $p['id'] ] = self::person_label( $p );
 		}
-		$id = $id ?: 'aps-sel-' . sanitize_key( $name );
-		return '<span class="aps-filter-select"><input type="search" class="aps-filter" data-target="#' . esc_attr( $id ) . '" placeholder="Filtra…" autocomplete="off"> '
+		$id = $id ?: 'apse-sel-' . sanitize_key( $name );
+		return '<span class="apse-filter-select"><input type="search" class="apse-filter" data-target="#' . esc_attr( $id ) . '" placeholder="Filtra…" autocomplete="off"> '
 			. '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">' . self::options( $map, $selected, $empty ) . '</select></span>';
 	}
 
@@ -136,25 +136,25 @@ final class Ui {
 	public static function booking_state( array $b ): string {
 		switch ( $b['state'] ) {
 			case 'free':
-				return '<span class="aps-ok">gratuito</span>';
+				return '<span class="apse-ok">gratuito</span>';
 			case 'paid':
-				return '<span class="aps-ok">pagato</span>';
+				return '<span class="apse-ok">pagato</span>';
 			case 'partial':
-				return '<span class="aps-warn">parziale · resta ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
+				return '<span class="apse-warn">parziale · resta ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
 			default:
-				return '<span class="aps-neg">da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
+				return '<span class="apse-neg">da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
 		}
 	}
 
 	public static function redirect( string $url, string $ok = '', string $err = '' ): void {
 		$args = array();
 		if ( '' !== $ok ) {
-			$args['aps_ok'] = $ok;
+			$args['apse_ok'] = $ok;
 		}
 		if ( '' !== $err ) {
-			$args['aps_err'] = $err;
+			$args['apse_err'] = $err;
 		}
-		wp_safe_redirect( add_query_arg( $args, remove_query_arg( array( 'aps_ok', 'aps_err' ), $url ) ) );
+		wp_safe_redirect( add_query_arg( $args, remove_query_arg( array( 'apse_ok', 'apse_err' ), $url ) ) );
 		exit;
 	}
 }

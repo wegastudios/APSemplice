@@ -138,7 +138,7 @@ final class Restrict {
 			$html .= '<p><a class="apsf-btn wp-element-button" href="' . esc_url( $url ) . '">Accedi</a></p>';
 		}
 		$html .= '</div>';
-		return (string) apply_filters( 'aps_gate_html', $html, $rule, $activity_ids );
+		return (string) apply_filters( 'apse_gate_html', $html, $rule, $activity_ids );
 	}
 
 	// ---------- Filtri sul contenuto ----------
@@ -180,7 +180,7 @@ final class Restrict {
 			$data['excerpt']['rendered']  = '';
 			$data['excerpt']['protected'] = true;
 		}
-		$data['aps_restricted'] = true;
+		$data['apse_restricted'] = true;
 		$response->set_data( $data );
 		return $response;
 	}
@@ -189,39 +189,39 @@ final class Restrict {
 
 	public static function add_meta_box(): void {
 		foreach ( self::post_types() as $type ) {
-			add_meta_box( 'aps_access', 'Accesso (APSemplice)', array( __CLASS__, 'render_meta_box' ), $type, 'side', 'default' );
+			add_meta_box( 'apse_access', 'Accesso (APSemplice)', array( __CLASS__, 'render_meta_box' ), $type, 'side', 'default' );
 		}
 	}
 
 	public static function render_meta_box( \WP_Post $post ): void {
 		list( $rule, $ids ) = self::rule_of( (int) $post->ID );
-		wp_nonce_field( 'aps_access_save', 'aps_access_nonce' );
+		wp_nonce_field( 'apse_access_save', 'apse_access_nonce' );
 		echo '<p class="description">Chi può leggere questo contenuto?</p>';
 		foreach ( Visibility::labels() as $value => $label ) {
-			echo '<p style="margin:4px 0"><label><input type="radio" name="aps_access" value="' . esc_attr( $value ) . '"' . checked( $rule, $value, false ) . '> ' . esc_html( $label ) . '</label></p>';
+			echo '<p style="margin:4px 0"><label><input type="radio" name="apse_access" value="' . esc_attr( $value ) . '"' . checked( $rule, $value, false ) . '> ' . esc_html( $label ) . '</label></p>';
 		}
-		echo '<div id="aps-access-activities" style="margin-top:8px"><label for="aps-access-activities-select">Attività:</label><br>';
-		echo '<select multiple size="6" style="width:100%" id="aps-access-activities-select" name="aps_access_activities[]">';
+		echo '<div id="apse-access-activities" style="margin-top:8px"><label for="apse-access-activities-select">Attività:</label><br>';
+		echo '<select multiple size="6" style="width:100%" id="apse-access-activities-select" name="apse_access_activities[]">';
 		foreach ( Plugin::activities()->all_for_select() as $a ) {
 			echo '<option value="' . (int) $a['id'] . '"' . selected( in_array( (int) $a['id'], $ids, true ), true, false ) . '>' . esc_html( $a['name'] . ' (' . $a['social_year'] . ')' ) . '</option>';
 		}
 		echo '</select><p class="description">Vedono il contenuto gli iscritti (o prenotati) a una qualsiasi delle attività scelte e chi le tiene.</p></div>';
 		echo '<p class="description">Gli amministratori vedono sempre tutto.</p>';
-		echo '<script>(function(){var box=document.getElementById("aps-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=aps_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();</script>';
+		echo '<script>(function(){var box=document.getElementById("apse-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=apse_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();</script>';
 	}
 
 	public static function save_meta_box( int $post_id, \WP_Post $post ): void {
-		if ( ! isset( $_POST['aps_access_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aps_access_nonce'] ) ), 'aps_access_save' ) ) {
+		if ( ! isset( $_POST['apse_access_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['apse_access_nonce'] ) ), 'apse_access_save' ) ) {
 			return;
 		}
 		if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || wp_is_post_revision( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
-		$rule = isset( $_POST['aps_access'] ) ? sanitize_key( wp_unslash( $_POST['aps_access'] ) ) : Visibility::PUBLIC_;
+		$rule = isset( $_POST['apse_access'] ) ? sanitize_key( wp_unslash( $_POST['apse_access'] ) ) : Visibility::PUBLIC_;
 		if ( ! Visibility::is_valid( $rule ) ) {
 			$rule = Visibility::PUBLIC_;
 		}
-		$ids = isset( $_POST['aps_access_activities'] ) ? array_values( array_filter( array_map( 'intval', (array) wp_unslash( $_POST['aps_access_activities'] ) ) ) ) : array();
+		$ids = isset( $_POST['apse_access_activities'] ) ? array_values( array_filter( array_map( 'intval', (array) wp_unslash( $_POST['apse_access_activities'] ) ) ) ) : array();
 		if ( Visibility::PUBLIC_ === $rule ) {
 			delete_post_meta( $post_id, self::META_RULE );
 			delete_post_meta( $post_id, self::META_ACTIVITIES );
@@ -234,12 +234,12 @@ final class Restrict {
 	// ---------- Colonna "Accesso" negli elenchi ----------
 
 	public static function add_column( $columns ) {
-		$columns['aps_access'] = 'Accesso';
+		$columns['apse_access'] = 'Accesso';
 		return $columns;
 	}
 
 	public static function print_column( $column, $post_id ): void {
-		if ( 'aps_access' !== $column ) {
+		if ( 'apse_access' !== $column ) {
 			return;
 		}
 		list( $rule, $ids ) = self::rule_of( (int) $post_id );

@@ -186,8 +186,8 @@ class PaymentService {
 			)
 		);
 		$id        = (int) $this->db()->insert_id;
-		$success   = add_query_arg( array( 'aps_pay' => $public, 'aps_ret' => 'ok' ), $back_url );
-		$cancel    = add_query_arg( array( 'aps_pay' => $public, 'aps_ret' => 'cancel' ), $back_url );
+		$success   = add_query_arg( array( 'apse_pay' => $public, 'apse_ret' => 'ok' ), $back_url );
+		$cancel    = add_query_arg( array( 'apse_pay' => $public, 'apse_ret' => 'cancel' ), $back_url );
 		$cfg       = Settings::payment_config();
 		$brand     = (string) Settings::get( 'association_name' );
 		try {
@@ -273,7 +273,7 @@ class PaymentService {
 		if ( 0 !== strpos( $type, 'checkout.session.' ) || ! is_array( $obj ) ) {
 			return 'ignorato';
 		}
-		$public = (string) ( $obj['client_reference_id'] ?? ( $obj['metadata']['aps_payment'] ?? '' ) );
+		$public = (string) ( $obj['client_reference_id'] ?? ( $obj['metadata']['apse_payment'] ?? '' ) );
 		$p      = '' !== $public ? $this->get_by_public( $public ) : null;
 		if ( ! $p || 'stripe' !== $p['provider'] ) {
 			return 'pagamento sconosciuto';

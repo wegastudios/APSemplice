@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Punto UNICO in cui il plugin decide se una funzione è disponibile: `License::allows( 'funzione' )`.
@@ -14,9 +14,9 @@ defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
  */
 final class License {
 
-	const OPT_INSTALL_ID  = 'aps_install_id';
-	const OPT_INSTALL_URL = 'aps_install_url';
-	const OPT_STATE       = 'aps_license_state';
+	const OPT_INSTALL_ID  = 'apse_install_id';
+	const OPT_INSTALL_URL = 'apse_install_url';
+	const OPT_STATE       = 'apse_license_state';
 
 	/** Funzioni avanzate che si bloccano se la licenza non è in regola. */
 	const FEATURES = array(

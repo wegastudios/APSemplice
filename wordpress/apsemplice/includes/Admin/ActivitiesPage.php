@@ -41,21 +41,21 @@ final class ActivitiesPage {
 		$sy_start = Ui::get_int( 'year', Settings::social_year()->start_year );
 		$year     = new SocialYear( $sy_start, Settings::start_month() );
 		$report   = Plugin::reports()->social_year( $year );
-		$back     = Ui::url( 'aps-activities', array( 'year' => $sy_start ) );
+		$back     = Ui::url( 'apse-activities', array( 'year' => $sy_start ) );
 		$today    = current_time( 'Y-m-d' );
 
 		Ui::header( 'Attività — anno sociale ' . $year->label() );
-		echo '<p><a class="button" href="' . esc_url( Ui::url( 'aps-activities', array( 'year' => $sy_start - 1 ) ) ) . '">‹ ' . esc_html( $year->previous()->label() ) . '</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'aps-activities', array( 'year' => $sy_start + 1 ) ) ) . '">' . esc_html( $year->next()->label() ) . ' ›</a></p>';
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-activities', array( 'year' => $sy_start - 1 ) ) ) . '">‹ ' . esc_html( $year->previous()->label() ) . '</a> '
+			. '<a class="button" href="' . esc_url( Ui::url( 'apse-activities', array( 'year' => $sy_start + 1 ) ) ) . '">' . esc_html( $year->next()->label() ) . ' ›</a></p>';
 
 		if ( ! $report['activities'] ) {
 			echo '<p>Nessuna attività in questo anno sociale. Creane una qui sotto.</p>';
 		}
-		echo '<div class="aps-grid">';
+		echo '<div class="apse-grid">';
 		foreach ( $report['activities'] as $s ) {
 			$a = $s['activity'];
-			echo '<div class="aps-card"><p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
-			echo '<h2 style="margin-top:2px"><a href="' . esc_url( Ui::url( 'aps-activity', array( 'id' => $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></h2>';
+			echo '<div class="apse-card"><p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
+			echo '<h2 style="margin-top:2px"><a href="' . esc_url( Ui::url( 'apse-activity', array( 'id' => $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></h2>';
 			echo '<p class="description">' . esc_html( self::fee_text( $a ) ) . '<br>' . (int) $s['participants'] . ' partecipanti · '
 				. ( $a['instructor_name'] ? 'tenuta da ' . esc_html( $a['instructor_name'] ) : 'senza istruttore' ) . '</p>';
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
@@ -69,26 +69,26 @@ final class ActivitiesPage {
 				}
 				echo '<p class="description">' . count( $sessions ) . ( 1 === count( $sessions ) ? ' data' : ' date' ) . ( $next ? ' · prossima: ' . Ui::date( $next['session_date'] ) . ( $next['start_time'] ? ' ore ' . esc_html( $next['start_time'] ) : '' ) : '' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
-			echo '<table class="aps-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<table class="apse-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $s['margin'] ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</div>';
 
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
-		echo '<div class="aps-card"><h2>Nuova attività</h2>';
-		Ui::form_open( 'aps_save_activity', $back );
+		echo '<div class="apse-card"><h2>Nuova attività</h2>';
+		Ui::form_open( 'apse_save_activity', $back );
 		echo Ui::hidden( 'social_year', $year->label() ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<table class="form-table aps-form"><tbody>';
-		echo '<tr><th>Tipo *</th><td><select name="kind" id="aps-kind">' . Ui::options( ActivityKind::labels(), ActivityKind::COURSE ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p class="description" id="aps-kind-hint"></p></td></tr>';
+		echo '<table class="form-table apse-form"><tbody>';
+		echo '<tr><th>Tipo *</th><td><select name="kind" id="apse-kind">' . Ui::options( ActivityKind::labels(), ActivityKind::COURSE ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p class="description" id="apse-kind-hint"></p></td></tr>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Yoga, Serata di giochi"></td></tr>';
-		echo '<tr class="aps-row-event"><th>Data *</th><td><input type="date" name="session_date"> ore <input type="time" name="start_time"></td></tr>';
-		echo '<tr class="aps-row-event"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
-		echo '<tr class="aps-row-event"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
-		echo self::cancel_rows( null, 'aps-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th><span class="aps-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
+		echo '<tr class="apse-row-event"><th>Data *</th><td><input type="date" name="session_date"> ore <input type="time" name="start_time"></td></tr>';
+		echo '<tr class="apse-row-event"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
+		echo '<tr class="apse-row-event"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
+		echo self::cancel_rows( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th><span class="apse-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
-		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'aps-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Le attività possono essere tenute solo da soci e volontari.</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Crea attività' );
@@ -105,17 +105,17 @@ final class ActivitiesPage {
 			wp_die( 'Attività non trovata.' );
 		}
 		$year = SocialYear::from_label( $activity['social_year'], Settings::start_month() );
-		$back = Ui::url( 'aps-activity', array( 'id' => $id ) );
+		$back = Ui::url( 'apse-activity', array( 'id' => $id ) );
 
-		Ui::header( $activity['name'], '<a class="page-title-action" href="' . esc_url( Ui::url( 'aps-activities', array( 'year' => $year->start_year ) ) ) . '">← Attività</a>' );
+		Ui::header( $activity['name'], '<a class="page-title-action" href="' . esc_url( Ui::url( 'apse-activities', array( 'year' => $year->start_year ) ) ) . '">← Attività</a>' );
 		echo '<p class="description">' . esc_html( ActivityKind::labels()[ $activity['kind'] ] ?? $activity['kind'] ) . ' · ' . esc_html( self::fee_text( $activity ) ) . '</p>';
-		echo '<div class="aps-cols"><div class="aps-col">';
+		echo '<div class="apse-cols"><div class="apse-col">';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			self::sessions_left( $activity, $back );
 		} else {
 			self::course_left( $activity, $year, $back );
 		}
-		echo '</div><div class="aps-col">';
+		echo '</div><div class="apse-col">';
 		self::edit_card( $activity, $back );
 		echo '</div></div>';
 
@@ -129,8 +129,8 @@ final class ActivitiesPage {
 
 	private static function edit_card( array $activity, string $back ): void {
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
-		echo '<div class="aps-card"><h2>Dati dell\'attività</h2>';
-		Ui::form_open( 'aps_save_activity', $back );
+		echo '<div class="apse-card"><h2>Dati dell\'attività</h2>';
+		Ui::form_open( 'apse_save_activity', $back );
 		echo Ui::hidden( 'id', $activity['id'] ) . Ui::hidden( 'social_year', $activity['social_year'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" value="' . esc_attr( $activity['name'] ) . '" class="regular-text" required></td></tr>';
 		echo '<tr><th>Contributo soci (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
@@ -139,7 +139,7 @@ final class ActivitiesPage {
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'aps-instructor' ) . '</td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );
 		Ui::form_close();
 		echo '</div>';
@@ -161,7 +161,7 @@ final class ActivitiesPage {
 		}, $statuses ) );
 		$default_month = $year->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) );
 
-		echo '<div class="aps-card"><h2>Riepilogo · anno sociale ' . esc_html( $activity['social_year'] ) . '</h2><table class="aps-kv">'
+		echo '<div class="apse-card"><h2>Riepilogo · anno sociale ' . esc_html( $activity['social_year'] ) . '</h2><table class="apse-kv">'
 			. '<tr><td>Dovuto finora</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassato</td><td>' . Ui::money( $paid ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $to_collect ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
@@ -174,10 +174,10 @@ final class ActivitiesPage {
 		$candidates = array_values( array_filter( Plugin::people()->search(), function ( $p ) use ( $enrolled_ids ) {
 			return ! in_array( (int) $p['id'], $enrolled_ids, true );
 		} ) );
-		echo '<div class="aps-card"><h2>Iscrivi un socio o un ospite</h2>';
-		Ui::form_open( 'aps_enroll', $back );
+		echo '<div class="apse-card"><h2>Iscrivi un socio o un ospite</h2>';
+		Ui::form_open( 'apse_enroll', $back );
 		echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'aps-enroll-person' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'apse-enroll-person' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p>Quota dovuta dal mese: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Iscrivi', 'secondary' );
 		Ui::form_close();
@@ -196,11 +196,11 @@ final class ActivitiesPage {
 			$e      = $s['enrollment'];
 			$active = null === $e['end_month'];
 			$label  = trim( ( $e['card_number'] ? 'n.' . $e['card_number'] . ' · ' : '' ) . $e['first_name'] . ' ' . $e['last_name'] );
-			echo '<details class="aps-detail"><summary><a href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $e['person_id'] ) ) ) . '"><strong>' . esc_html( $label ) . '</strong></a> '
+			echo '<details class="apse-detail"><summary><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $e['person_id'] ) ) ) . '"><strong>' . esc_html( $label ) . '</strong></a> '
 				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( $active ? '' : ' <span class="aps-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' ) . '</summary>';
+				. ( $active ? '' : ' <span class="apse-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' ) . '</summary>';
 			echo Ui::months_table( $s['summary'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-			Ui::form_open( $active ? 'aps_cancel_enrollment' : 'aps_enroll', $back );
+			Ui::form_open( $active ? 'apse_cancel_enrollment' : 'apse_enroll', $back );
 			echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( $active ) {
 				echo '<p>Ultimo mese dovuto: <select name="last_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -231,19 +231,19 @@ final class ActivitiesPage {
 				}
 			}
 		}
-		echo '<div class="aps-card"><h2>Riepilogo</h2><table class="aps-kv">'
+		echo '<div class="apse-card"><h2>Riepilogo</h2><table class="apse-kv">'
 			. '<tr><td>Date</td><td>' . count( $sessions ) . '</td></tr><tr><td>Partecipanti (persone distinte)</td><td>' . (int) Plugin::activities()->active_participants( $id ) . '</td></tr>'
 			. '<tr><td>Contributi dovuti dalle prenotazioni</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassati</td><td>' . Ui::money( $paid ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $due - $paid ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
-			echo '<div class="aps-card"><h2>Aggiungi date</h2>';
-			Ui::form_open( 'aps_add_session', $back );
+			echo '<div class="apse-card"><h2>Aggiungi date</h2>';
+			Ui::form_open( 'apse_add_session', $back );
 			echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<p>Una data: <input type="date" name="session_date" required> ore <input type="time" name="start_time"> luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> '
 				. '<button class="button">Aggiungi</button></p>';
 			Ui::form_close();
-			Ui::form_open( 'aps_generate_sessions', $back );
+			Ui::form_open( 'apse_generate_sessions', $back );
 			echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<p><strong>Ogni settimana</strong> dal <input type="date" name="from" required> al <input type="date" name="to" required> ore <input type="time" name="start_time"> '
 				. 'luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <button class="button">Genera date</button></p>'
@@ -272,17 +272,17 @@ final class ActivitiesPage {
 			}
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<details class="aps-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — ' // phpcs:ignore WordPress.Security.EscapeOutput
-				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti' ) . ( $cancelled ? ' <span class="aps-neg">· ANNULLATA</span>' : '' ) . '</summary>';
+			echo '<details class="apse-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — ' // phpcs:ignore WordPress.Security.EscapeOutput
+				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti' ) . ( $cancelled ? ' <span class="apse-neg">· ANNULLATA</span>' : '' ) . '</summary>';
 
 			if ( $bookings ) {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
-					echo '<tr><td><a href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . '</td>'
-						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="aps-warn">trasferita ad altra persona' : '<span class="aps-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . '</td>'
+						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="apse-warn">trasferita ad altra persona' : '<span class="apse-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 					if ( $b['active'] ) {
-						Ui::form_open( 'aps_cancel_booking', $back, false, 'aps-confirm' );
+						Ui::form_open( 'apse_cancel_booking', $back, false, 'apse-confirm' );
 						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 						echo '<button class="button button-small" data-confirm="Annullare la prenotazione? Gli eventuali pagamenti restano registrati.">Annulla prenotazione</button>';
 						Ui::form_close();
@@ -290,9 +290,9 @@ final class ActivitiesPage {
 							return (int) $x['id'] !== (int) $b['person_id'] && ! in_array( (int) $x['id'], $booked, true );
 						} ) );
 						echo '<details style="margin-top:6px"><summary>Cambia nominativo</summary>';
-						Ui::form_open( 'aps_transfer_booking', $back );
+						Ui::form_open( 'apse_transfer_booking', $back );
 						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-						echo Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'aps-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+						echo Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'apse-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 						echo '<p class="description">Il pagamento già fatto passa alla nuova persona; se il suo contributo è maggiore (es. ospite) resta da pagare la differenza.</p>';
 						Ui::form_close();
 						echo '</details>';
@@ -306,18 +306,18 @@ final class ActivitiesPage {
 				$candidates = array_values( array_filter( $all, function ( $p ) use ( $booked ) {
 					return ! in_array( (int) $p['id'], $booked, true );
 				} ) );
-				Ui::form_open( 'aps_book', $back );
+				Ui::form_open( 'apse_book', $back );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'aps-book-' . (int) $s['id'] ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'apse-book-' . (int) $s['id'] ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 
-				Ui::form_open( 'aps_update_session', $back );
+				Ui::form_open( 'apse_update_session', $back );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 				echo '<p class="description">Modifica la data: <input type="date" name="session_date" value="' . esc_attr( $s['session_date'] ) . '"> ore <input type="time" name="start_time" value="' . esc_attr( (string) $s['start_time'] ) . '"> '
 					. 'luogo <input type="text" name="location" value="' . esc_attr( (string) $s['location'] ) . '"> posti <input type="number" min="1" name="capacity" class="small-text" value="' . esc_attr( null === $cap ? '' : (string) $cap ) . '"> <button class="button button-small">Salva</button></p>';
 				Ui::form_close();
 
-				Ui::form_open( 'aps_cancel_session', $back, false, 'aps-confirm' );
+				Ui::form_open( 'apse_cancel_session', $back, false, 'apse-confirm' );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 				echo '<button class="button button-link-delete" data-confirm="Annullare questa data? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Annulla questa data</button>';
 				Ui::form_close();

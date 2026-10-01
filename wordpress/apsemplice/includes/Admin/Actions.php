@@ -21,32 +21,32 @@ final class Actions {
 
 	public static function register(): void {
 		$map = array(
-			'aps_save_person'        => 'save_person',
-			'aps_delete_person'      => 'delete_person',
-			'aps_set_membership'     => 'set_membership',
-			'aps_save_activity'      => 'save_activity',
-			'aps_enroll'             => 'enroll',
-			'aps_cancel_enrollment'  => 'cancel_enrollment',
-			'aps_add_session'        => 'add_session',
-			'aps_update_session'     => 'update_session',
-			'aps_generate_sessions'  => 'generate_sessions',
-			'aps_cancel_session'     => 'cancel_session',
-			'aps_book'               => 'book',
-			'aps_transfer_booking'   => 'transfer_booking',
-			'aps_test_gateway'       => 'test_gateway',
-			'aps_check_payments'     => 'check_payments',
-			'aps_payment_reviewed'   => 'payment_reviewed',
-			'aps_cancel_booking'     => 'cancel_booking',
-			'aps_save_income'        => 'save_income',
-			'aps_save_expense'       => 'save_expense',
-			'aps_save_transfer'      => 'save_transfer',
-			'aps_void_tx'            => 'void_tx',
-			'aps_add_account'        => 'add_account',
-			'aps_cash_count'         => 'cash_count',
-			'aps_save_settings'      => 'save_settings',
-			'aps_create_pages'       => 'create_pages',
-			'aps_import_preview'     => 'import_preview',
-			'aps_import_apply'       => 'import_apply',
+			'apse_save_person'        => 'save_person',
+			'apse_delete_person'      => 'delete_person',
+			'apse_set_membership'     => 'set_membership',
+			'apse_save_activity'      => 'save_activity',
+			'apse_enroll'             => 'enroll',
+			'apse_cancel_enrollment'  => 'cancel_enrollment',
+			'apse_add_session'        => 'add_session',
+			'apse_update_session'     => 'update_session',
+			'apse_generate_sessions'  => 'generate_sessions',
+			'apse_cancel_session'     => 'cancel_session',
+			'apse_book'               => 'book',
+			'apse_transfer_booking'   => 'transfer_booking',
+			'apse_test_gateway'       => 'test_gateway',
+			'apse_check_payments'     => 'check_payments',
+			'apse_payment_reviewed'   => 'payment_reviewed',
+			'apse_cancel_booking'     => 'cancel_booking',
+			'apse_save_income'        => 'save_income',
+			'apse_save_expense'       => 'save_expense',
+			'apse_save_transfer'      => 'save_transfer',
+			'apse_void_tx'            => 'void_tx',
+			'apse_add_account'        => 'add_account',
+			'apse_cash_count'         => 'cash_count',
+			'apse_save_settings'      => 'save_settings',
+			'apse_create_pages'       => 'create_pages',
+			'apse_import_preview'     => 'import_preview',
+			'apse_import_apply'       => 'import_apply',
 		);
 		foreach ( $map as $action => $method ) {
 			add_action(
@@ -93,20 +93,20 @@ final class Actions {
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
 			Plugin::people()->update( $id, $data );
-			return array( Ui::url( 'aps-person', array( 'id' => $id ) ), 'Scheda salvata.' );
+			return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Scheda salvata.' );
 		}
 		$id = Plugin::people()->create( $data );
-		return array( Ui::url( 'aps-person', array( 'id' => $id ) ), 'Persona creata.' );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Persona creata.' );
 	}
 
 	private static function delete_person( array $p ): array {
 		Plugin::people()->delete( (int) $p['id'] );
-		return array( Ui::url( 'aps-people' ), 'Persona eliminata (l\'utente WordPress, se c\'è, resta).' );
+		return array( Ui::url( 'apse-people' ), 'Persona eliminata (l\'utente WordPress, se c\'è, resta).' );
 	}
 
 	private static function set_membership( array $p ): array {
 		Plugin::people()->set_membership( (int) $p['id'], (string) $p['social_year'], ! empty( $p['enabled'] ) );
-		return array( Ui::url( 'aps-person', array( 'id' => (int) $p['id'] ) ), 'Iscrizione aggiornata.' );
+		return array( Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), 'Iscrizione aggiornata.' );
 	}
 
 	// ---------- Attività ----------
@@ -141,56 +141,56 @@ final class Actions {
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
 			Plugin::activities()->update( $id, $data );
-			return array( Ui::url( 'aps-activity', array( 'id' => $id ) ), 'Attività salvata.' );
+			return array( Ui::url( 'apse-activity', array( 'id' => $id ) ), 'Attività salvata.' );
 		}
 		if ( 'event' === $data['kind'] ) {
 			$data['session'] = self::session_fields( $p );
 		}
 		$id = Plugin::activities()->create( $data );
-		return array( Ui::url( 'aps-activity', array( 'id' => $id ) ), 'Attività creata.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => $id ) ), 'Attività creata.' );
 	}
 
 	private static function add_session( array $p ): array {
 		$aid = (int) $p['activity_id'];
 		Plugin::activities()->add_session( $aid, self::session_fields( $p ) );
-		return array( Ui::url( 'aps-activity', array( 'id' => $aid ) ), 'Data aggiunta.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), 'Data aggiunta.' );
 	}
 
 	private static function update_session( array $p ): array {
 		Plugin::activities()->update_session( (int) $p['session_id'], self::session_fields( $p ) );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data aggiornata.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data aggiornata.' );
 	}
 
 	private static function generate_sessions( array $p ): array {
 		$aid = (int) $p['activity_id'];
 		$cap = isset( $p['capacity'] ) && '' !== trim( (string) $p['capacity'] ) ? (int) $p['capacity'] : null;
 		$n   = Plugin::activities()->generate_weekly( $aid, (string) ( $p['from'] ?? '' ), (string) ( $p['to'] ?? '' ), self::opt( $p, 'start_time' ), self::opt( $p, 'location' ), $cap );
-		return array( Ui::url( 'aps-activity', array( 'id' => $aid ) ), $n . ( 1 === $n ? ' data creata.' : ' date create.' ) );
+		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), $n . ( 1 === $n ? ' data creata.' : ' date create.' ) );
 	}
 
 	private static function cancel_session( array $p ): array {
 		Plugin::activities()->cancel_session( (int) $p['session_id'] );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data annullata.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data annullata.' );
 	}
 
 	private static function book( array $p ): array {
 		Plugin::activities()->book( (int) $p['session_id'], (int) ( $p['person_id'] ?? 0 ) );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
 	}
 
 	private static function cancel_booking( array $p ): array {
 		Plugin::activities()->cancel_booking( (int) $p['session_id'], (int) $p['person_id'] );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata (eventuali pagamenti vanno rimborsati a mano).' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata (eventuali pagamenti vanno rimborsati a mano).' );
 	}
 
 	private static function enroll( array $p ): array {
 		Plugin::activities()->enroll( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ), (string) $p['start_month'] );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' );
 	}
 
 	private static function cancel_enrollment( array $p ): array {
 		Plugin::activities()->cancel( (int) $p['activity_id'], (int) $p['person_id'], (string) $p['last_month'] );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Cancellazione registrata: i mesi successivi non sono più dovuti.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Cancellazione registrata: i mesi successivi non sono più dovuti.' );
 	}
 
 	// ---------- Movimenti ----------
@@ -218,7 +218,7 @@ final class Actions {
 				'lines'        => $lines,
 			)
 		);
-		return array( Ui::url( 'aps-ledger' ), $n > 1 ? "Incasso registrato ($n voci)." : 'Incasso registrato.' );
+		return array( Ui::url( 'apse-ledger' ), $n > 1 ? "Incasso registrato ($n voci)." : 'Incasso registrato.' );
 	}
 
 	private static function save_expense( array $p ): array {
@@ -235,7 +235,7 @@ final class Actions {
 				'document_ref' => $p['document_ref'] ?? '',
 			)
 		);
-		return array( Ui::url( 'aps-ledger' ), 'Spesa registrata.' );
+		return array( Ui::url( 'apse-ledger' ), 'Spesa registrata.' );
 	}
 
 	private static function save_transfer( array $p ): array {
@@ -243,19 +243,19 @@ final class Actions {
 			(string) ( $p['date'] ?? '' ), (int) ( $p['from_id'] ?? 0 ), (int) ( $p['to_id'] ?? 0 ),
 			Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['method'] ?? 'other' ), trim( (string) ( $p['description'] ?? '' ) )
 		);
-		return array( Ui::url( 'aps-ledger' ), 'Giroconto registrato.' );
+		return array( Ui::url( 'apse-ledger' ), 'Giroconto registrato.' );
 	}
 
 	private static function void_tx( array $p ): array {
 		Plugin::ledger()->void( (int) $p['id'], (string) ( $p['reason'] ?? '' ) );
-		return array( $p['_back'] ?? Ui::url( 'aps-ledger' ), 'Movimento annullato (resta tracciato).' );
+		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), 'Movimento annullato (resta tracciato).' );
 	}
 
 	// ---------- Conti ----------
 
 	private static function add_account( array $p ): array {
 		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
-		return array( Ui::url( 'aps-accounts' ), 'Conto aggiunto.' );
+		return array( Ui::url( 'apse-accounts' ), 'Conto aggiunto.' );
 	}
 
 	private static function cash_count( array $p ): array {
@@ -265,7 +265,7 @@ final class Actions {
 		}
 		$diff = Plugin::ledger()->record_cash_count( (int) $p['account_id'], (string) $p['date'], $counted, ! empty( $p['adjust'] ), self::opt( $p, 'notes' ) );
 		$msg  = 0 === $diff ? 'Verifica registrata: il saldo coincide.' : 'Verifica registrata: differenza ' . Money::format( $diff ) . ( ! empty( $p['adjust'] ) ? ' (rettificata).' : '.' );
-		return array( Ui::url( 'aps-accounts' ), $msg );
+		return array( Ui::url( 'apse-accounts' ), $msg );
 	}
 
 	// ---------- Impostazioni ----------
@@ -307,7 +307,7 @@ final class Actions {
 		if ( $check['errors'] ) {
 			$msg .= ' Attenzione ai pagamenti online: ' . implode( ' ', $check['errors'] );
 		}
-		return array( Ui::url( 'aps-settings' ), $msg );
+		return array( Ui::url( 'apse-settings' ), $msg );
 	}
 
 	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
@@ -318,22 +318,22 @@ final class Actions {
 		if ( ! $res['ok'] ) {
 			throw new \InvalidArgumentException( $res['message'] );
 		}
-		return array( Ui::url( 'aps-settings' ), $res['message'] );
+		return array( Ui::url( 'apse-settings' ), $res['message'] );
 	}
 
 	private static function check_payments( array $p ): array {
 		$r = Plugin::payments()->check_pending( true );
-		return array( Ui::url( 'aps-payments' ), 'Controllati ' . $r['checked'] . ', registrati ' . $r['registered'] . ', scaduti ' . $r['expired'] . '.' );
+		return array( Ui::url( 'apse-payments' ), 'Controllati ' . $r['checked'] . ', registrati ' . $r['registered'] . ', scaduti ' . $r['expired'] . '.' );
 	}
 
 	private static function payment_reviewed( array $p ): array {
 		Plugin::payments()->mark_reviewed( (int) $p['id'] );
-		return array( Ui::url( 'aps-payments' ), 'Pagamento segnato come controllato.' );
+		return array( Ui::url( 'apse-payments' ), 'Pagamento segnato come controllato.' );
 	}
 
 	private static function transfer_booking( array $p ): array {
 		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );
-		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Nominativo cambiato: il pagamento già fatto passa alla nuova persona.' );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Nominativo cambiato: il pagamento già fatto passa alla nuova persona.' );
 	}
 
 	/** Crea le pagine standard (area soci, area volontari, attività) se non esistono già. */
@@ -343,7 +343,7 @@ final class Actions {
 			'volontari' => array( 'Area volontari', '[apsemplice_area_volontari]' ),
 			'attivita'  => array( 'Attività ed eventi', '[apsemplice_attivita]' ),
 		);
-		$saved = (array) get_option( 'aps_pages', array() );
+		$saved = (array) get_option( 'apse_pages', array() );
 		$made  = array();
 		foreach ( $defs as $key => $d ) {
 			if ( ! empty( $saved[ $key ] ) && get_post_status( (int) $saved[ $key ] ) ) {
@@ -358,11 +358,11 @@ final class Actions {
 				}
 			}
 		}
-		update_option( 'aps_pages', $saved );
+		update_option( 'apse_pages', $saved );
 		if ( ! empty( $saved['area'] ) && 0 === (int) Settings::get( 'member_area_page_id' ) ) {
 			Settings::update( array( 'member_area_page_id' => (int) $saved['area'] ) );
 		}
-		return array( Ui::url( 'aps-settings' ), $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' );
+		return array( Ui::url( 'apse-settings' ), $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' );
 	}
 
 	// ---------- Import soci ----------
@@ -383,12 +383,12 @@ final class Actions {
 		}
 		$plan  = PeopleCsv::plan( $parse['rows'], $existing, $default );
 		$token = wp_generate_password( 16, false );
-		set_transient( 'aps_import_' . get_current_user_id() . '_' . $token, $plan, HOUR_IN_SECONDS );
-		return array( Ui::url( 'aps-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
+		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $plan, HOUR_IN_SECONDS );
+		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
 	}
 
 	private static function import_apply( array $p ): array {
-		$key  = 'aps_import_' . get_current_user_id() . '_' . sanitize_key( $p['token'] ?? '' );
+		$key  = 'apse_import_' . get_current_user_id() . '_' . sanitize_key( $p['token'] ?? '' );
 		$plan = get_transient( $key );
 		if ( ! is_array( $plan ) ) {
 			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: ricarica il file.' );
@@ -434,6 +434,6 @@ final class Actions {
 		Audit::log( 'import.applied', 'people', null, array( 'created' => $created, 'updated' => $updated, 'failed' => count( $failed ) ) );
 		delete_transient( $key );
 		$msg = "Import completato: $created creati, $updated aggiornati" . ( $failed ? ', ' . count( $failed ) . ' non riusciti (' . implode( '; ', array_slice( $failed, 0, 5 ) ) . ')' : '' ) . '.';
-		return array( Ui::url( 'aps-people' ), $msg );
+		return array( Ui::url( 'apse-people' ), $msg );
 	}
 }

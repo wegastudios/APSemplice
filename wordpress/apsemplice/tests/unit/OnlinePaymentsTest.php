@@ -94,7 +94,7 @@ final class StripeApiTest extends TestCase {
 		$p = StripeApi::checkout_params( $this->items, 'PUB-1', 'omar@example.com', 'https://s.it/ok', 'https://s.it/ko' );
 		$this->assertSame( 'payment', $p['mode'] );
 		$this->assertSame( 'PUB-1', $p['client_reference_id'] );
-		$this->assertSame( 'PUB-1', $p['metadata']['aps_payment'] );
+		$this->assertSame( 'PUB-1', $p['metadata']['apse_payment'] );
 		$this->assertSame( 'omar@example.com', $p['customer_email'] );
 		$this->assertCount( 2, $p['line_items'] );
 		$this->assertSame( 800, $p['line_items'][0]['price_data']['unit_amount'] );

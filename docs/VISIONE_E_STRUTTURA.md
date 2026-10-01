@@ -37,7 +37,7 @@ tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), 
 Essere "volontario di Yoga" non è un ruolo WordPress: è il fatto che l'attività ha `instructor_person_id` = la mia persona.
 Quindi:
 
-- si usano **capability "meta"** di WordPress (`map_meta_cap`): `aps_message_activity` + id attività, `aps_edit_person` + id persona…
+- si usano **capability "meta"** di WordPress (`map_meta_cap`): `apse_message_activity` + id attività, `apse_edit_person` + id persona…
   La regola vive in **una sola classe** (`Access`): *amministratore → sì; volontario → solo se è l'istruttore di quell'attività;
   socio → solo se la persona è la sua*.
 - Gli utenti non amministratori **non entrano in wp-admin**: lavorano solo nell'area riservata (admin bar nascosta,
@@ -56,8 +56,8 @@ Quindi:
                            ▼
         Servizi (People, Activity, Ledger, Report, + Messaging, Payments, Attendance, Consent…)
                            │                      ▲
-                           ▼                      │ eventi: do_action('aps_*')
-              Database (tabelle aps_*)      Integrazioni: email, gateway di pagamento, audit log
+                           ▼                      │ eventi: do_action('apse_*')
+              Database (tabelle apse_*)      Integrazioni: email, gateway di pagamento, audit log
 ```
 
 - I **servizi** restano la sola fonte di verità (già così). Non sanno nulla di HTML né di chi li chiama.
@@ -65,7 +65,7 @@ Quindi:
   Le pagine wp-admin esistenti continuano a chiamare i servizi direttamente (nessuna riscrittura necessaria).
 - **Area riservata**: shortcode/blocchi (`[apsemplice_area_soci]`, `[apsemplice_area_volontari]`) che montano una piccola app JS
   senza build che parla con la REST. Il sito sceglie in che pagina metterli (pagine statiche dell'associazione).
-- **Eventi** (`aps_receipt_recorded`, `aps_member_enrolled`…): chi vuole reagire (ricevuta via email, log, notifiche) si aggancia
+- **Eventi** (`apse_receipt_recorded`, `apse_member_enrolled`…): chi vuole reagire (ricevuta via email, log, notifiche) si aggancia
   senza toccare i servizi.
 - **Audit log**: con più persone che operano serve sapere chi ha fatto cosa (oggi c'è solo `created_by` sui movimenti).
 

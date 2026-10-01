@@ -16,11 +16,11 @@ defined( 'ABSPATH' ) || exit;
 final class Actions {
 
 	const MAP = array(
-		'aps_front_book'           => 'do_book',
-		'aps_front_cancel_booking' => 'do_cancel_booking',
-		'aps_front_transfer_booking' => 'do_transfer_booking',
-		'aps_front_add_guest'      => 'do_add_guest',
-		'aps_front_profile'        => 'do_profile',
+		'apse_front_book'           => 'do_book',
+		'apse_front_cancel_booking' => 'do_cancel_booking',
+		'apse_front_transfer_booking' => 'do_transfer_booking',
+		'apse_front_add_guest'      => 'do_add_guest',
+		'apse_front_profile'        => 'do_profile',
 	);
 
 	public static function register(): void {
@@ -28,7 +28,7 @@ final class Actions {
 		add_action(
 			'admin_post_aps_front_pay',
 			function () {
-				check_admin_referer( 'aps_front_pay' );
+				check_admin_referer( 'apse_front_pay' );
 				$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
 				$back = self::back_url( $post );
 				try {
@@ -105,7 +105,7 @@ final class Actions {
 	public static function do_book( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
-		self::require_cap( 'aps_book_for', $person_id );
+		self::require_cap( 'apse_book_for', $person_id );
 		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
 			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
 		}
@@ -125,7 +125,7 @@ final class Actions {
 	public static function do_cancel_booking( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
-		self::require_cap( 'aps_book_for', $person_id );
+		self::require_cap( 'apse_book_for', $person_id );
 		$session_id = (int) ( $post['session_id'] ?? 0 );
 		if ( ! Plugin::activities()->session( $session_id ) ) {
 			throw new \InvalidArgumentException( 'Evento non trovato.' );
@@ -146,7 +146,7 @@ final class Actions {
 		$actor      = self::actor();
 		$from_id    = (int) ( $post['person_id'] ?? $actor['id'] );
 		$session_id = (int) ( $post['session_id'] ?? 0 );
-		self::require_cap( 'aps_book_for', $from_id );
+		self::require_cap( 'apse_book_for', $from_id );
 		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
 			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per gestire le prenotazioni.' );
 		}
@@ -154,13 +154,13 @@ final class Actions {
 		$first = trim( (string) ( $post['new_first_name'] ?? '' ) );
 		$last  = trim( (string) ( $post['new_last_name'] ?? '' ) );
 		if ( ! $to_id && ( '' !== $first || '' !== $last ) ) {
-			self::require_cap( 'aps_add_guest', (int) $actor['id'] );
+			self::require_cap( 'apse_add_guest', (int) $actor['id'] );
 			$to_id = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) $actor['id'], 'first_name' => $first, 'last_name' => $last ) );
 		}
 		if ( ! $to_id ) {
 			throw new \InvalidArgumentException( 'Scegli a chi intestare la prenotazione, oppure indica nome e cognome di un nuovo ospite.' );
 		}
-		self::require_cap( 'aps_book_for', $to_id );
+		self::require_cap( 'apse_book_for', $to_id );
 		Plugin::activities()->transfer_booking( $session_id, $from_id, $to_id, true );
 		$b   = Plugin::activities()->bookings_for_session( $session_id );
 		$msg = 'Nominativo cambiato.';
@@ -178,14 +178,14 @@ final class Actions {
 	 */
 	public static function do_pay( array $post ): string {
 		$actor = self::actor();
-		self::require_cap( 'aps_view_payments', (int) $actor['id'] );
-		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'aps_pay', 'aps_ret', 'token', 'PayerID' ), self::back_url( $post ) );
+		self::require_cap( 'apse_view_payments', (int) $actor['id'] );
+		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apse_pay', 'apse_ret', 'token', 'PayerID' ), self::back_url( $post ) );
 		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back );
 	}
 
 	public static function do_add_guest( array $post ): string {
 		$actor = self::actor();
-		self::require_cap( 'aps_add_guest', (int) $actor['id'] );
+		self::require_cap( 'apse_add_guest', (int) $actor['id'] );
 		Plugin::people()->create(
 			array(
 				'type'           => MemberType::GUEST,
@@ -201,7 +201,7 @@ final class Actions {
 
 	public static function do_profile( array $post ): string {
 		$actor = self::actor();
-		self::require_cap( 'aps_edit_own_profile', (int) $actor['id'] );
+		self::require_cap( 'apse_edit_own_profile', (int) $actor['id'] );
 		Plugin::people()->update( (int) $actor['id'], array( 'phone' => $post['phone'] ?? '', 'tax_code' => $post['tax_code'] ?? '' ) );
 		return 'Profilo aggiornato.';
 	}

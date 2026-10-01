@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /** Colori per lo stile del front-end (scelti dal selettore colore nelle impostazioni, senza toccare il CSS). */
 final class Color {

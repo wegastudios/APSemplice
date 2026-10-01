@@ -23,22 +23,22 @@ final class AccessTest extends TestCase {
 
 	public function test_members_only_touch_their_own_data(): void {
 		$me = $this->person( 7, 'ordinary' );
-		foreach ( array( 'aps_view_person', 'aps_edit_own_profile', 'aps_view_payments' ) as $a ) {
+		foreach ( array( 'apse_view_person', 'apse_edit_own_profile', 'apse_view_payments' ) as $a ) {
 			$this->assertTrue( Access::decide( $a, false, $me, array( 'person_id' => 7 ) ), $a );
 			$this->assertFalse( Access::decide( $a, false, $me, array( 'person_id' => 8 ) ), $a );
 		}
 	}
 
 	public function test_only_members_can_add_guests_for_themselves(): void {
-		$this->assertTrue( Access::decide( 'aps_add_guest', false, $this->person( 7, 'ordinary' ), array( 'person_id' => 7 ) ) );
-		$this->assertTrue( Access::decide( 'aps_add_guest', false, $this->person( 7, 'founder' ), array( 'person_id' => 7 ) ) );
-		$this->assertFalse( Access::decide( 'aps_add_guest', false, $this->person( 7, 'ordinary' ), array( 'person_id' => 8 ) ) );
-		$this->assertFalse( Access::decide( 'aps_add_guest', false, $this->person( 7, 'guest' ), array( 'person_id' => 7 ) ) );
+		$this->assertTrue( Access::decide( 'apse_add_guest', false, $this->person( 7, 'ordinary' ), array( 'person_id' => 7 ) ) );
+		$this->assertTrue( Access::decide( 'apse_add_guest', false, $this->person( 7, 'founder' ), array( 'person_id' => 7 ) ) );
+		$this->assertFalse( Access::decide( 'apse_add_guest', false, $this->person( 7, 'ordinary' ), array( 'person_id' => 8 ) ) );
+		$this->assertFalse( Access::decide( 'apse_add_guest', false, $this->person( 7, 'guest' ), array( 'person_id' => 7 ) ) );
 	}
 
 	public function test_volunteer_is_scoped_to_own_activities(): void {
 		$vol = $this->person( 3, 'volunteer' );
-		foreach ( array( 'aps_view_participants', 'aps_notify_activity', 'aps_view_activity' ) as $a ) {
+		foreach ( array( 'apse_view_participants', 'apse_notify_activity', 'apse_view_activity' ) as $a ) {
 			$this->assertTrue( Access::decide( $a, false, $vol, array( 'instructor_person_id' => 3 ) ), $a );
 			$this->assertFalse( Access::decide( $a, false, $vol, array( 'instructor_person_id' => 4 ) ), $a );
 		}
@@ -47,27 +47,27 @@ final class AccessTest extends TestCase {
 	public function test_non_volunteers_never_get_instructor_powers(): void {
 		foreach ( array( 'ordinary', 'founder', 'guest' ) as $t ) {
 			$p = $this->person( 3, $t );
-			$this->assertFalse( Access::decide( 'aps_notify_activity', false, $p, array( 'instructor_person_id' => 3 ) ), $t );
-			$this->assertFalse( Access::decide( 'aps_view_participants', false, $p, array( 'instructor_person_id' => 3 ) ), $t );
+			$this->assertFalse( Access::decide( 'apse_notify_activity', false, $p, array( 'instructor_person_id' => 3 ) ), $t );
+			$this->assertFalse( Access::decide( 'apse_view_participants', false, $p, array( 'instructor_person_id' => 3 ) ), $t );
 		}
 	}
 
 	public function test_enrolled_members_can_view_the_activity_but_not_its_participants(): void {
 		$me = $this->person( 7, 'ordinary' );
-		$this->assertTrue( Access::decide( 'aps_view_activity', false, $me, array( 'instructor_person_id' => 3, 'is_enrolled' => true ) ) );
-		$this->assertFalse( Access::decide( 'aps_view_activity', false, $me, array( 'instructor_person_id' => 3, 'is_enrolled' => false ) ) );
-		$this->assertFalse( Access::decide( 'aps_view_participants', false, $me, array( 'instructor_person_id' => 3, 'is_enrolled' => true ) ) );
+		$this->assertTrue( Access::decide( 'apse_view_activity', false, $me, array( 'instructor_person_id' => 3, 'is_enrolled' => true ) ) );
+		$this->assertFalse( Access::decide( 'apse_view_activity', false, $me, array( 'instructor_person_id' => 3, 'is_enrolled' => false ) ) );
+		$this->assertFalse( Access::decide( 'apse_view_participants', false, $me, array( 'instructor_person_id' => 3, 'is_enrolled' => true ) ) );
 	}
 
 	public function test_unknown_ability_is_denied(): void {
-		$this->assertFalse( Access::decide( 'aps_boh', false, $this->person( 1, 'volunteer' ), array( 'person_id' => 1 ) ) );
+		$this->assertFalse( Access::decide( 'apse_boh', false, $this->person( 1, 'volunteer' ), array( 'person_id' => 1 ) ) );
 	}
 }
 
 final class GatekeeperTest extends TestCase {
 	public function test_member_only_users_are_kept_out_of_admin(): void {
-		$this->assertTrue( Gatekeeper::is_member_only( array( 'aps_member' ) ) );
-		$this->assertFalse( Gatekeeper::is_member_only( array( 'aps_member', 'editor' ) ) );
+		$this->assertTrue( Gatekeeper::is_member_only( array( 'apse_member' ) ) );
+		$this->assertFalse( Gatekeeper::is_member_only( array( 'apse_member', 'editor' ) ) );
 		$this->assertFalse( Gatekeeper::is_member_only( array( 'administrator' ) ) );
 		$this->assertFalse( Gatekeeper::is_member_only( array() ) );
 	}

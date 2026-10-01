@@ -1,30 +1,30 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 /**
  * Chi può fare cosa. I permessi NON derivano da ruoli WordPress ma dai dati:
  *
- *  - amministratore del sito (capability `aps_manage`): tutto;
+ *  - amministratore del sito (capability `apse_manage`): tutto;
  *  - "socio e volontario": solo sulle attività di cui è l'istruttore;
  *  - socio: solo sui propri dati.
  *
  * La regola è in {@see Access::decide()} (pura, testata). Le "capability meta" sono registrate
- * in WordPress, quindi ovunque si può scrivere `current_user_can( 'aps_notify_activity', $activity_id )`.
+ * in WordPress, quindi ovunque si può scrivere `current_user_can( 'apse_notify_activity', $activity_id )`.
  */
 final class Access {
 
 	/** Capability meta => ammesse da decide(). Il primo argomento di current_user_can è l'id dell'oggetto. */
 	const ABILITIES = array(
-		'aps_view_person',        // id persona: vedere la scheda
-		'aps_edit_own_profile',   // id persona: modificare i propri dati
-		'aps_view_payments',      // id persona: vedere i propri pagamenti
-		'aps_add_guest',          // id persona (il socio ospitante): aggiungere un ospite
-		'aps_book_for',           // id persona: prenotarla a un evento (sé stessi o un proprio ospite)
-		'aps_view_activity',      // id attività: vedere i dati base
-		'aps_view_participants',  // id attività: vedere chi è iscritto
-		'aps_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
+		'apse_view_person',        // id persona: vedere la scheda
+		'apse_edit_own_profile',   // id persona: modificare i propri dati
+		'apse_view_payments',      // id persona: vedere i propri pagamenti
+		'apse_add_guest',          // id persona (il socio ospitante): aggiungere un ospite
+		'apse_book_for',           // id persona: prenotarla a un evento (sé stessi o un proprio ospite)
+		'apse_view_activity',      // id attività: vedere i dati base
+		'apse_view_participants',  // id attività: vedere chi è iscritto
+		'apse_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
 	);
 
 	/**
@@ -42,18 +42,18 @@ final class Access {
 		}
 		$me = (int) $actor['id'];
 		switch ( $ability ) {
-			case 'aps_view_person':
-			case 'aps_edit_own_profile':
-			case 'aps_view_payments':
+			case 'apse_view_person':
+			case 'apse_edit_own_profile':
+			case 'apse_view_payments':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me;
-			case 'aps_add_guest':
+			case 'apse_add_guest':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
-			case 'aps_book_for':
+			case 'apse_book_for':
 				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
-			case 'aps_view_activity':
+			case 'apse_view_activity':
 				return self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_enrolled'] );
-			case 'aps_view_participants':
-			case 'aps_notify_activity':
+			case 'apse_view_participants':
+			case 'apse_notify_activity':
 				return self::is_instructor( $actor, $ctx );
 		}
 		return false;
@@ -110,14 +110,14 @@ final class Access {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
-		if ( 'aps_book_for' === $ability ) {
+		if ( 'apse_book_for' === $ability ) {
 			$target = Plugin::people()->get( $object_id );
 			if ( ! $target ) {
 				return false;
 			}
 			$ctx['host_person_id'] = (int) $target['host_person_id'];
 		}
-		if ( in_array( $ability, array( 'aps_view_activity', 'aps_view_participants', 'aps_notify_activity' ), true ) ) {
+		if ( in_array( $ability, array( 'apse_view_activity', 'apse_view_participants', 'apse_notify_activity' ), true ) ) {
 			$activity = Plugin::activities()->get( $object_id );
 			if ( ! $activity ) {
 				return false;
