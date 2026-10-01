@@ -98,6 +98,12 @@ final class Xlsx {
 		if ( false !== stripos( $xml, '<!DOCTYPE' ) || false !== stripos( $xml, '<!ENTITY' ) ) {
 			throw new \InvalidArgumentException( 'Il file Excel contiene dati non ammessi.' );
 		}
+		// Si lavora con nomi senza namespace (più semplice e robusto): via la dichiarazione di default e l'eventuale prefisso del namespace principale.
+		$xml = (string) preg_replace( '/\sxmlns="[^"]*"/', '', $xml );
+		if ( preg_match( '/xmlns:([A-Za-z_][\w.\-]*)="' . preg_quote( self::NS_MAIN, '/' ) . '"/', $xml, $m ) ) {
+			$p   = preg_quote( $m[1], '/' );
+			$xml = (string) preg_replace( array( '/<(\/?)' . $p . ':/', '/\sxmlns:' . $p . '="[^"]*"/' ), array( '<$1', '' ), $xml );
+		}
 		$prev = libxml_use_internal_errors( true );
 		$x    = simplexml_load_string( $xml, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA );
 		libxml_clear_errors();
@@ -105,8 +111,7 @@ final class Xlsx {
 		if ( ! $x ) {
 			throw new \InvalidArgumentException( 'Il file Excel è danneggiato.' );
 		}
-		// Si lavora con i nomi senza prefisso: il namespace di default è sempre quello principale.
-		return $x->children( self::NS_MAIN ) ? $x->children( self::NS_MAIN ) : $x;
+		return $x;
 	}
 
 	private static function shared_strings( string $xml ): array {
