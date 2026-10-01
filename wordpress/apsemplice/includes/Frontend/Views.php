@@ -139,12 +139,14 @@ final class Views {
 		if ( ! MemberType::is_member( $p['type'] ) ) {
 			return '';
 		}
+		$url = Settings::card_url( (int) $p['id'] );
 		try {
-			$svg = \ApSemplice\QrCode::svg( Settings::card_url( (int) $p['id'] ), 4, 'QR della tessera di ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) );
+			$svg = \ApSemplice\QrCode::svg( $url, 4, 'QR della tessera di ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) );
 		} catch ( \InvalidArgumentException $e ) {
 			return '';
 		}
-		return '<div class="apsf-memcard-qr">' . $svg . '<div class="apsf-small">Mostra questo codice: chi lo scansiona vede subito se la tessera è valida.</div></div>';
+		return '<div class="apsf-memcard-qr">' . $svg . '<div class="apsf-small">Mostra questo codice: chi lo scansiona vede subito se la tessera è valida. '
+			. '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div></div>';
 	}
 
 	private static function pay_text( array $summary ): string {
