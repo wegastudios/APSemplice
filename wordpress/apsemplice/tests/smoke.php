@@ -1925,6 +1925,7 @@ wp_set_current_user( $u_vol );
 $msg = $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'Cambio di orario', 'body' => "Stasera si comincia alle 19.\nPortate l'acqua." ) );
 apse_ok( false !== strpos( $msg, 'Avviso inviato a 3 persone' ) && 3 === count( $mails ), 'avvisi: il volontario invia e arriva una email a ciascun iscritto' );
 $one = $mails[0];
+WP_CLI::log( 'DEBUG mail: ' . wp_json_encode( $one ) );
 apse_ok( 1 === count( (array) $one['to'] ) && false !== strpos( (string) $one['subject'], 'Laboratorio avvisi: Cambio di orario' ) && false !== strpos( (string) $one['message'], 'Stasera si comincia alle 19' ) && false !== strpos( (string) $one['message'], 'Avviso di Vera' ) && 0 === strpos( (string) $one['message'], 'Ciao ' ), 'avvisi: email individuale, con titolo, testo e chi lo manda' );
 $all_text = wp_json_encode( $mails );
 apse_ok( 3 === count( array_unique( array_map( function ( $m ) { return strtolower( (string) ( (array) $m['to'] )[0] ); }, $mails ) ) ) && false === strpos( (string) $one['message'], (string) $people->get( $q )['email'] ), 'avvisi: ognuno vede solo il proprio indirizzo' );
