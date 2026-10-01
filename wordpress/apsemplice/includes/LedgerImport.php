@@ -263,6 +263,15 @@ final class LedgerImport {
 			$people_name[ Text::normalize( $p['first'] . $p['last'] ) ][] = $p;
 			$people_name[ Text::normalize( $p['last'] . $p['first'] ) ][] = $p;
 		}
+		$pending_card = array();
+		$pending_name = array();
+		foreach ( (array) ( $ctx['pending_people'] ?? array() ) as $p ) {
+			if ( ! empty( $p['card'] ) ) {
+				$pending_card[ Text::lower( (string) $p['card'] ) ] = true;
+			}
+			$pending_name[ Text::normalize( $p['first'] . $p['last'] ) ][] = $p;
+			$pending_name[ Text::normalize( $p['last'] . $p['first'] ) ][] = $p;
+		}
 		$acts = array();
 		foreach ( (array) ( $ctx['activities'] ?? array() ) as $a ) {
 			$acts[ Text::normalize( $a['name'] ) ][] = $a;
@@ -348,21 +357,26 @@ final class LedgerImport {
 
 			// Persona, attività, competenza
 			$person_id = 0;
+			$late      = false; // il socio è nello stesso file e ancora non esiste: si collega all'applicazione
 			if ( '' !== $r['card'] ) {
 				$p = $people_card[ Text::lower( PeopleCsv::clean_card( $r['card'] ) ) ] ?? null;
 				if ( $p ) {
 					$person_id = (int) $p['id'];
+				} elseif ( isset( $pending_card[ Text::lower( PeopleCsv::clean_card( $r['card'] ) ) ] ) ) {
+					$late = true;
 				} else {
 					$warn[] = 'Tessera ' . $r['card'] . ' non trovata: importato senza persona';
 				}
 			}
-			if ( ! $person_id && '' !== $r['person'] ) {
+			if ( ! $person_id && ! $late && '' !== $r['person'] ) {
 				$m = $people_name[ Text::normalize( $r['person'] ) ] ?? array();
 				$m = array_values( array_unique( array_map( function ( $x ) {
 					return (int) $x['id'];
 				}, $m ) ) );
 				if ( 1 === count( $m ) ) {
 					$person_id = $m[0];
+				} elseif ( ! $m && 1 === count( $pending_name[ Text::normalize( $r['person'] ) ] ?? array() ) ) {
+					$late = true;
 				} else {
 					$warn[] = ( $m ? 'Più persone chiamate' : 'Persona non trovata:' ) . ' "' . $r['person'] . '": importato senza persona';
 				}
@@ -388,6 +402,7 @@ final class LedgerImport {
 				'date' => $r['date'], 'type' => $r['type'], 'cents' => $r['cents'], 'account_id' => $acc_id, 'new_account' => $new_name,
 				'new_account_type' => $new_name ? $acc_type : null, 'account_ref' => $acc_ref, 'method' => $method, 'category_id' => $cat['id'], 'category_kind' => $cat['kind'],
 				'person_id' => $person_id, 'activity_id' => $activity_id, 'description' => $desc, 'ref' => $r['ref'], 'month' => $month,
+				'person_late' => $late, 'card' => $r['card'], 'person_text' => $r['person'],
 			);
 			$key = self::key( $r['date'], $acc_ref, $r['type'], $r['cents'], $desc, $r['ref'] );
 			$seen[ $key ] = ( $seen[ $key ] ?? 0 ) + 1;

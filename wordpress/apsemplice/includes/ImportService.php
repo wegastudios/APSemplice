@@ -59,7 +59,7 @@ final class ImportService {
 			$out['people'] = array( 'plan' => PeopleCsv::plan( $people_rows, self::existing_people(), $default ) );
 		}
 		if ( $ledger_rows ) {
-			$plan             = LedgerImport::plan( $ledger_rows, self::ledger_context( $ledger_rows, (int) ( $opts['default_account_id'] ?? 0 ) ) );
+			$plan             = LedgerImport::plan( $ledger_rows, self::ledger_context( $ledger_rows, (int) ( $opts['default_account_id'] ?? 0 ), $people_rows ) );
 			$names            = array_column( Plugin::ledger()->accounts(), 'name', 'id' );
 			$out['ledger']    = array( 'plan' => $plan, 'summary' => LedgerImport::summary( $plan, array_map( 'strval', $names ) ) );
 		}
@@ -77,7 +77,7 @@ final class ImportService {
 		return $out;
 	}
 
-	private static function ledger_context( array $rows, int $default_account_id ): array {
+	private static function ledger_context( array $rows, int $default_account_id, array $people_rows = array() ): array {
 		$ledger = Plugin::ledger();
 		$from   = null;
 		$to     = null;
@@ -102,6 +102,9 @@ final class ImportService {
 			'activities'         => Plugin::activities()->all_for_select(),
 			'existing'           => $from ? $ledger->import_keys( $from, $to ) : array(),
 			'default_account_id' => $default_account_id,
+			'pending_people'     => array_map( function ( $r ) {
+				return array( 'card' => $r['card'], 'first' => $r['first'], 'last' => $r['last'] );
+			}, $people_rows ),
 		);
 	}
 
@@ -212,6 +215,36 @@ final class ImportService {
 		$delta  = array(); // variazione per conto già esistente
 		$new    = array(); // riferimento "new:…" => id del conto creato
 		$member_rows = array();
+
+		// Soci che stavano nello stesso file: ora esistono, si collegano ai loro movimenti.
+		$late = array();
+		foreach ( $plan as $i => $p ) {
+			if ( 'create' === $p['action'] && ! empty( $p['data']['person_late'] ) ) {
+				$late[ $i ] = $p['data'];
+			}
+		}
+		if ( $late ) {
+			$by_card = array();
+			$by_name = array();
+			foreach ( $people->search() as $pe ) {
+				if ( ! empty( $pe['card_number'] ) ) {
+					$by_card[ Text::lower( (string) $pe['card_number'] ) ] = (int) $pe['id'];
+				}
+				$by_name[ Text::normalize( $pe['first_name'] . $pe['last_name'] ) ][ (int) $pe['id'] ]  = true;
+				$by_name[ Text::normalize( $pe['last_name'] . $pe['first_name'] ) ][ (int) $pe['id'] ] = true;
+			}
+			foreach ( $late as $i => $d ) {
+				$id = 0;
+				if ( '' !== (string) $d['card'] ) {
+					$id = $by_card[ Text::lower( PeopleCsv::clean_card( (string) $d['card'] ) ) ] ?? 0;
+				}
+				if ( ! $id && '' !== (string) $d['person_text'] ) {
+					$m  = array_keys( $by_name[ Text::normalize( (string) $d['person_text'] ) ] ?? array() );
+					$id = 1 === count( $m ) ? (int) $m[0] : 0;
+				}
+				$plan[ $i ]['data']['person_id'] = $id;
+			}
+		}
 
 		$ledger->in_batch(
 			function () use ( $plan, $ledger, &$res, &$from, &$to, &$delta, &$new, &$member_rows ) {

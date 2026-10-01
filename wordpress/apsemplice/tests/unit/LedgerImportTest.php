@@ -191,6 +191,23 @@ final class LedgerImportTest extends TestCase {
 		$this->assertSame( 1, $s['counts']['skip'] );
 	}
 
+	public function test_member_from_the_same_file_is_linked_later_without_a_warning(): void {
+		$ctx = array( 'pending_people' => array( array( 'card' => '900', 'first' => 'Ida', 'last' => 'Storica' ) ) );
+		$p   = $this->plan(
+			array(
+				array( '15/01/2024', 'Entrata', 'Cassa contanti', '', 'Quota associativa', '10,00', '', '', '900', '', '', '' ),
+				array( '16/01/2024', 'Entrata', 'Cassa contanti', '', 'Quota associativa', '10,00', '', '', '', 'Storica Ida', '', '' ),
+				array( '17/01/2024', 'Entrata', 'Cassa contanti', '', 'Quota associativa', '10,00', '', '', '777', '', '', '' ),
+			),
+			$ctx
+		);
+		$this->assertTrue( $p[0]['data']['person_late'] );
+		$this->assertSame( array(), $p[0]['warnings'] );
+		$this->assertTrue( $p[1]['data']['person_late'] );
+		$this->assertFalse( $p[2]['data']['person_late'] );
+		$this->assertNotEmpty( $p[2]['warnings'], 'una tessera che non è né nel database né nel file resta un avviso' );
+	}
+
 	public function test_summary_totals_and_range(): void {
 		$p = $this->plan(
 			array(
