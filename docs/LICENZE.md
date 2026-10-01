@@ -1,7 +1,7 @@
 # Licenze: un dominio, al massimo due installazioni
 
 **Stato: in standby.** Il plugin salva la chiave e ha già pronte le regole di dominio, l'identità dell'installazione, il popup e i blocchi,
-ma non contatta nessun server e consente tutte le funzioni (`License::allows()` restituisce sempre `true`).
+ma non contatta nessun server: lo stato è `standby` e tutte le funzioni sono consentite (`License::allows()` è `true`) finché il server non scrive uno stato diverso.
 
 ## Regole (già implementate e testate in `LicenseRules.php`)
 
