@@ -135,3 +135,15 @@ denominazione, mese di inizio dell'anno sociale, quota associativa, durata della
 chiave di licenza, termine predefinito di cancellazione, **colore d'accento** del sito (selettore colore), **testo dell'invito al pagamento**,
 **messaggio sui contenuti riservati**, gateway di pagamento e relative chiavi. Le pagine del sito si creano con un pulsante e si impaginano
 con Gutenberg o Elementor. I dati stanno nel database di WordPress (tabelle `aps_*` e l'opzione `aps_settings`).
+
+## Pagamenti online (Stripe / PayPal, pagina ospitata)
+
+Dalle **Impostazioni** si sceglie il gateway e si incollano le chiavi (cifrate nel database, legate al sito). I dati della carta non passano mai dal sito: il socio paga su una pagina di Stripe Checkout o di PayPal.
+
+1. Nell'area soci, sezione **Pagamenti** (shortcode `[apsemplice_pagamenti]`), il socio vede cosa deve: quota associativa, mensilità dei corsi, contributi degli eventi, anche per i propri ospiti. Importi e voci sono **sempre ricalcolati dal server**.
+2. Il sito crea il pagamento sul gateway e porta il socio alla pagina ospitata.
+3. La conferma arriva da tre strade, tutte idempotenti: ritorno del socio sul sito (verifica diretta col gateway), **webhook di Stripe** (`/wp-json/apsemplice/v1/webhooks/stripe`, firma verificata) e controllo orario (WP-Cron o pulsante in *Pagamenti online*).
+4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico), una ricevuta per persona, con metodo e riferimento del gateway; il socio riceve la ricevuta via email.
+5. Se qualcosa non torna (importo diverso, prenotazione annullata nel frattempo) i soldi entrano comunque come "pagamento online non abbinato" e il pagamento è segnato **da controllare** in *Pagamenti online*.
+
+Commissioni, payout sul conto corrente e rimborsi si registrano a mano (spesa e giroconto); i rimborsi si fanno dal pannello del gateway.

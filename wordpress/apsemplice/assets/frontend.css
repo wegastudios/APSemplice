@@ -96,3 +96,8 @@
 	.apsf-list > li { align-items: flex-start; }
 }
 .apsf-manage { flex-basis: 100%; }
+
+/* Pagamenti online */
+.apsf-payrow { display: flex; gap: .6rem; align-items: flex-start; cursor: pointer; }
+.apsf-paytotal { font-size: 1.15em; margin: .75rem 0; }
+.apsf-paylist > li { align-items: flex-start; }

@@ -42,6 +42,17 @@ class LedgerService {
 		return (int) $this->db()->insert_id;
 	}
 
+	/** Conto "Stripe" / "PayPal" in cui entrano gli incassi online (creato al primo pagamento). */
+	public function online_account( string $provider ): int {
+		$name = 'paypal' === $provider ? 'PayPal' : 'Stripe';
+		foreach ( $this->accounts() as $a ) {
+			if ( $a['name'] === $name ) {
+				return (int) $a['id'];
+			}
+		}
+		return $this->add_account( $name, 'other', 0 );
+	}
+
 	public function categories(): array {
 		return $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'categories' ) . ' WHERE deleted_at IS NULL ORDER BY name', ARRAY_A ) ?: array();
 	}
@@ -51,7 +62,7 @@ class LedgerService {
 		return $row ?: null;
 	}
 
-	private function category_id_of_kind( string $kind ): int {
+	public function category_id_of_kind( string $kind ): int {
 		return (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'categories' ) . ' WHERE kind = %s AND deleted_at IS NULL LIMIT 1', $kind ) );
 	}
 

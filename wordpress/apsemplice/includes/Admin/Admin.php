@@ -27,6 +27,7 @@ final class Admin {
 			array( 'aps-expense', 'Nuova spesa', array( ExpensePage::class, 'render' ) ),
 			array( 'aps-transfer', 'Giroconto', array( TransferPage::class, 'render' ) ),
 			array( 'aps-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
+			array( 'aps-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'aps-accounts', 'Conti e cassa', array( AccountsPage::class, 'render' ) ),
 			array( 'aps-reports', 'Report', array( ReportsPage::class, 'render' ) ),
 			array( 'aps-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),

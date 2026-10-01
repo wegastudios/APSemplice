@@ -1,0 +1,407 @@
+<?php
+namespace ApSemplice;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Pagamenti online su pagina ospitata dal gateway: Stripe Checkout oppure PayPal.
+ *
+ * Flusso: il socio sceglie le voci da pagare nell'area soci → il server RICALCOLA importi e voci → crea il pagamento sul gateway
+ * e manda il socio alla pagina del gateway → al ritorno (e con il webhook di Stripe, e con un controllo periodico) il pagamento
+ * viene confermato direttamente dal gateway → l'incasso entra in prima nota (quota associativa, mensilità, prenotazioni) sul
+ * conto "Stripe" o "PayPal". La conferma è idempotente: lo stesso pagamento non si registra due volte.
+ *
+ * I dati della carta non passano mai dal sito.
+ */
+class PaymentService {
+
+	const PENDING_AFTER_MINUTES = 10;
+	const EXPIRE_AFTER_DAYS     = 3;
+
+	/** @var callable|null rete iniettabile per i test */
+	private $http = null;
+
+	public function set_http( ?callable $http ): void {
+		$this->http = $http;
+	}
+
+	private function http(): callable {
+		return $this->http ?: array( Gateways::class, 'wp_http' );
+	}
+
+	private function db(): \wpdb {
+		return Db::db();
+	}
+
+	// ---------- Configurazione ----------
+
+	/** Gateway attivo: stripe | paypal, oppure '' se non scelto o con configurazione incompleta. */
+	public function provider(): string {
+		$c = Settings::payment_config();
+		if ( ! in_array( $c['payment_provider'], array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ), true ) ) {
+			return '';
+		}
+		return array() === PaymentConfig::validate( $c )['errors'] ? $c['payment_provider'] : '';
+	}
+
+	public function enabled(): bool {
+		return '' !== $this->provider() && License::allows( 'online_payments' );
+	}
+
+	// ---------- Cosa c'è da pagare ----------
+
+	private function month_label( string $ym ): string {
+		return Frontend\Views::MONTHS[ (int) substr( $ym, 5, 2 ) ] . ' ' . substr( $ym, 0, 4 );
+	}
+
+	/**
+	 * Voci dovute dal socio e dai suoi ospiti, indicizzate per chiave. Gli importi sono sempre quelli del server.
+	 *
+	 * @return array[] chiave => voce
+	 */
+	public function dues_for( array $actor ): array {
+		$people  = Plugin::people();
+		$acts    = Plugin::activities();
+		$persons = array_merge( array( $actor ), $people->guests_of( (int) $actor['id'] ) );
+		$items   = array();
+		foreach ( $persons as $p ) {
+			$pid  = (int) $p['id'];
+			$name = trim( $p['first_name'] . ' ' . $p['last_name'] );
+			// Quota associativa: solo per il socio stesso (i fondatori e gli ospiti non la pagano)
+			$fee = (int) Settings::get( 'membership_fee_cents' );
+			if ( $pid === (int) $actor['id'] && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
+				$sy    = Settings::social_year();
+				$until = $people->active_until( $pid );
+				if ( ! $until || $until < $sy->end()->format( 'Y-m-d' ) ) {
+					if ( ! $until || $until < Db::today() ) {
+						$i           = array( 'type' => PaymentItems::MEMBERSHIP, 'person_id' => $pid, 'person_name' => $name, 'social_year' => $sy->label(), 'amount_cents' => $fee, 'label' => 'Quota associativa ' . $sy->label() );
+						$i['key']    = PaymentItems::key( $i );
+						$items[ $i['key'] ] = $i;
+					}
+				}
+			}
+			foreach ( $acts->status_for_person( $pid ) as $s ) {
+				foreach ( $s['summary']['unpaid_months'] as $m ) {
+					if ( $m['missing'] <= 0 ) {
+						continue;
+					}
+					$i        = array(
+						'type' => PaymentItems::COURSE_MONTH, 'person_id' => $pid, 'person_name' => $name, 'activity_id' => (int) $s['enrollment']['activity_id'],
+						'month' => $m['month'], 'amount_cents' => (int) $m['missing'], 'label' => $s['activity']['name'] . ' — ' . $this->month_label( $m['month'] ),
+					);
+					$i['key'] = PaymentItems::key( $i );
+					$items[ $i['key'] ] = $i;
+				}
+			}
+			foreach ( $acts->unpaid_bookings_for_person( $pid ) as $b ) {
+				$i        = array(
+					'type' => PaymentItems::BOOKING, 'person_id' => $pid, 'person_name' => $name, 'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'],
+					'amount_cents' => (int) $b['remaining'], 'label' => $b['activity_name'] . ' — ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
+				);
+				$i['key'] = PaymentItems::key( $i );
+				$items[ $i['key'] ] = $i;
+			}
+		}
+		return $items;
+	}
+
+	// ---------- Archivio ----------
+
+	public function get_by_public( string $public_id ): ?array {
+		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . ' WHERE public_id = %s', $public_id ), ARRAY_A );
+		return $row ?: null;
+	}
+
+	private function get( int $id ): ?array {
+		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . ' WHERE id = %d', $id ), ARRAY_A );
+		return $row ?: null;
+	}
+
+	private function update( int $id, array $data ): void {
+		$data['updated_at'] = Db::now();
+		$this->db()->update( Db::t( 'payments' ), $data, array( 'id' => $id ) );
+	}
+
+	/** Pagamenti, dal più recente. @param array $f status, payer_person_id, review */
+	public function list( array $f = array(), int $limit = 100 ): array {
+		$where = array( '1=1' );
+		$args  = array();
+		if ( ! empty( $f['status'] ) ) {
+			$where[] = 'p.status = %s';
+			$args[]  = $f['status'];
+		}
+		if ( ! empty( $f['payer_person_id'] ) ) {
+			$where[] = 'p.payer_person_id = %d';
+			$args[]  = (int) $f['payer_person_id'];
+		}
+		if ( ! empty( $f['review'] ) ) {
+			$where[] = 'p.review = 1';
+		}
+		$sql    = 'SELECT p.*, CONCAT(pe.first_name, " ", pe.last_name) AS payer_name FROM ' . Db::t( 'payments' ) . ' p LEFT JOIN ' . Db::t( 'people' ) . ' pe ON pe.id = p.payer_person_id WHERE ' . implode( ' AND ', $where ) . ' ORDER BY p.id DESC LIMIT %d';
+		$args[] = max( 1, $limit );
+		return $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
+	}
+
+	public function mark_reviewed( int $id ): void {
+		$this->update( $id, array( 'review' => 0 ) );
+		Audit::log( 'payment.reviewed', 'payment', $id );
+	}
+
+	// ---------- Creazione del pagamento ----------
+
+	/**
+	 * Crea il pagamento sul gateway e restituisce l'indirizzo della pagina di pagamento a cui mandare il socio.
+	 *
+	 * @param array    $actor     persona collegata all'utente che paga (socio)
+	 * @param string[] $keys      chiavi delle voci scelte (si accettano solo quelle realmente dovute da lui o dai suoi ospiti)
+	 * @param string   $back_url  pagina del sito a cui tornare dopo il pagamento
+	 */
+	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url ): string {
+		$provider = $this->provider();
+		if ( '' === $provider || ! License::allows( 'online_payments' ) ) {
+			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi.' );
+		}
+		$dues  = $this->dues_for( $actor );
+		$items = array();
+		foreach ( array_unique( array_map( 'strval', $keys ) ) as $k ) {
+			if ( isset( $dues[ $k ] ) ) {
+				$items[] = $dues[ $k ];
+			}
+		}
+		if ( ! $items ) {
+			throw new \InvalidArgumentException( 'Scegli almeno una voce da pagare.' );
+		}
+		$total = PaymentItems::total( $items );
+		if ( $total < PaymentItems::MIN_TOTAL_CENTS ) {
+			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( PaymentItems::MIN_TOTAL_CENTS ) . '.' );
+		}
+
+		$public = wp_generate_uuid4();
+		$now    = Db::now();
+		$this->db()->insert(
+			Db::t( 'payments' ),
+			array(
+				'public_id' => $public, 'provider' => $provider, 'status' => 'created', 'amount_cents' => $total, 'currency' => 'EUR',
+				'payer_person_id' => (int) $actor['id'], 'payer_user_id' => $user_id, 'items' => wp_json_encode( $items ), 'created_at' => $now, 'updated_at' => $now,
+			)
+		);
+		$id        = (int) $this->db()->insert_id;
+		$success   = add_query_arg( array( 'aps_pay' => $public, 'aps_ret' => 'ok' ), $back_url );
+		$cancel    = add_query_arg( array( 'aps_pay' => $public, 'aps_ret' => 'cancel' ), $back_url );
+		$cfg       = Settings::payment_config();
+		$brand     = (string) Settings::get( 'association_name' );
+		try {
+			if ( PaymentConfig::STRIPE === $provider ) {
+				$params = StripeApi::checkout_params( $items, $public, (string) $actor['email'], $success, $cancel );
+				$res    = StripeApi::create_session( $this->http(), $cfg['stripe_secret_key'], $params, $public );
+			} else {
+				$live  = 'live' === $cfg['paypal_mode'];
+				$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
+				$res   = PayPalApi::create_order( $this->http(), $live, $token, PayPalApi::order_payload( $items, $public, $success, $cancel, $brand ), $public );
+			}
+		} catch ( \RuntimeException $e ) {
+			$this->update( $id, array( 'status' => 'failed', 'error' => substr( $e->getMessage(), 0, 250 ) ) );
+			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );
+			throw new \InvalidArgumentException( 'Il servizio di pagamento non risponde in questo momento. Riprova più tardi.' );
+		}
+		$this->update( $id, array( 'status' => 'pending', 'provider_ref' => $res['id'] ) );
+		Audit::log( 'payment.created', 'payment', $id, array( 'provider' => $provider, 'cents' => $total, 'items' => count( $items ) ) );
+		return $res['url'];
+	}
+
+	// ---------- Conferme ----------
+
+	/** Ritorno del socio dalla pagina del gateway. @return string messaggio per l'utente */
+	public function handle_return( string $public_id, string $ret, int $user_id ): string {
+		$p = $this->get_by_public( $public_id );
+		if ( ! $p || (int) $p['payer_user_id'] !== $user_id ) {
+			throw new \InvalidArgumentException( 'Pagamento non trovato.' );
+		}
+		if ( 'paid' === $p['status'] ) {
+			return 'Pagamento ricevuto: grazie!';
+		}
+		if ( 'cancel' === $ret ) {
+			if ( in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
+				$this->update( (int) $p['id'], array( 'status' => 'cancelled' ) );
+			}
+			return 'Pagamento annullato: non è stato addebitato nulla.';
+		}
+		$this->confirm_with_gateway( $p );
+		$p = $this->get( (int) $p['id'] );
+		if ( 'paid' === $p['status'] ) {
+			return 'Pagamento ricevuto: grazie!';
+		}
+		return 'Pagamento in attesa di conferma dal gateway: appena arriva lo registriamo.';
+	}
+
+	/** Interroga il gateway e, se il pagamento risulta riuscito, lo registra. @return bool true se è stato registrato ora */
+	private function confirm_with_gateway( array $p ): bool {
+		if ( ! in_array( $p['status'], array( 'created', 'pending' ), true ) || empty( $p['provider_ref'] ) ) {
+			return false;
+		}
+		$cfg = Settings::payment_config();
+		try {
+			if ( 'stripe' === $p['provider'] ) {
+				$s = StripeApi::retrieve_session( $this->http(), $cfg['stripe_secret_key'], $p['provider_ref'] );
+				if ( StripeApi::is_paid( $s ) ) {
+					return $this->finalize( $p, (int) ( $s['amount_total'] ?? 0 ), (string) ( $s['payment_intent'] ?? '' ) );
+				}
+				if ( 'expired' === ( $s['status'] ?? '' ) ) {
+					$this->update( (int) $p['id'], array( 'status' => 'expired' ) );
+				}
+				return false;
+			}
+			$live  = 'live' === $cfg['paypal_mode'];
+			$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
+			$order = PayPalApi::get_order( $this->http(), $live, $token, $p['provider_ref'] );
+			if ( 'APPROVED' === ( $order['status'] ?? '' ) ) {
+				$order = PayPalApi::capture_order( $this->http(), $live, $token, $p['provider_ref'] ); // l'utente ha approvato: si incassa
+			}
+			if ( PayPalApi::is_completed( $order ) ) {
+				return $this->finalize( $p, PayPalApi::captured_cents( $order ), PayPalApi::capture_id( $order ) );
+			}
+		} catch ( \RuntimeException $e ) {
+			$this->update( (int) $p['id'], array( 'error' => substr( $e->getMessage(), 0, 250 ) ) );
+		}
+		return false;
+	}
+
+	/** Webhook di Stripe già verificato (firma). @return string esito per il log */
+	public function handle_stripe_event( array $event ): string {
+		$type = (string) ( $event['type'] ?? '' );
+		$obj  = $event['data']['object'] ?? array();
+		if ( 0 !== strpos( $type, 'checkout.session.' ) || ! is_array( $obj ) ) {
+			return 'ignorato';
+		}
+		$public = (string) ( $obj['client_reference_id'] ?? ( $obj['metadata']['aps_payment'] ?? '' ) );
+		$p      = '' !== $public ? $this->get_by_public( $public ) : null;
+		if ( ! $p || 'stripe' !== $p['provider'] ) {
+			return 'pagamento sconosciuto';
+		}
+		if ( ! empty( $p['provider_ref'] ) && ! empty( $obj['id'] ) && $p['provider_ref'] !== $obj['id'] ) {
+			return 'sessione diversa';
+		}
+		if ( in_array( $type, array( 'checkout.session.completed', 'checkout.session.async_payment_succeeded' ), true ) && StripeApi::is_paid( $obj ) ) {
+			$this->finalize( $p, (int) ( $obj['amount_total'] ?? 0 ), (string) ( $obj['payment_intent'] ?? '' ) );
+			return 'registrato';
+		}
+		if ( in_array( $type, array( 'checkout.session.expired', 'checkout.session.async_payment_failed' ), true ) && in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
+			$this->update( (int) $p['id'], array( 'status' => 'checkout.session.expired' === $type ? 'expired' : 'failed' ) );
+			return 'chiuso';
+		}
+		return 'in attesa';
+	}
+
+	/** Ricontrolla i pagamenti rimasti in sospeso (chiamato ogni ora da WP-Cron e dal pulsante in amministrazione). */
+	public function check_pending( bool $include_recent = false ): array {
+		$limit = gmdate( 'Y-m-d H:i:s', time() - ( $include_recent ? 0 : self::PENDING_AFTER_MINUTES * 60 ) );
+		$rows  = $this->db()->get_results(
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE status = 'pending' AND created_at <= %s ORDER BY id LIMIT 50", get_date_from_gmt( $limit ) ),
+			ARRAY_A
+		) ?: array();
+		$out = array( 'checked' => 0, 'registered' => 0, 'expired' => 0 );
+		foreach ( $rows as $p ) {
+			$out['checked']++;
+			if ( $this->confirm_with_gateway( $p ) ) {
+				$out['registered']++;
+				continue;
+			}
+			$fresh = $this->get( (int) $p['id'] );
+			if ( 'pending' === $fresh['status'] && strtotime( $p['created_at'] ) < time() - self::EXPIRE_AFTER_DAYS * DAY_IN_SECONDS ) {
+				$this->update( (int) $p['id'], array( 'status' => 'expired' ) );
+				$out['expired']++;
+			}
+		}
+		return $out;
+	}
+
+	// ---------- Registrazione in prima nota ----------
+
+	/**
+	 * Registra l'incasso (una sola volta). Il pagamento è già arrivato: se qualcosa non torna (prenotazione annullata nel frattempo,
+	 * importo diverso) i soldi entrano comunque come "pagamento online non abbinato" e il pagamento viene segnato "da controllare".
+	 *
+	 * @return bool true se questa chiamata ha registrato il pagamento
+	 */
+	private function finalize( array $p, int $paid_cents, string $provider_payment_id ): bool {
+		$tbl     = Db::t( 'payments' );
+		$claimed = $this->db()->query( $this->db()->prepare( "UPDATE $tbl SET status = 'processing', updated_at = %s WHERE id = %d AND status IN ('created','pending')", Db::now(), (int) $p['id'] ) );
+		if ( 1 !== (int) $claimed ) {
+			return false; // già registrato (o in registrazione) da un altro passaggio
+		}
+		$items       = (array) json_decode( (string) $p['items'], true );
+		$ledger      = Plugin::ledger();
+		$account     = $ledger->online_account( $p['provider'] );
+		$method      = $p['provider'];
+		$today       = Db::today();
+		$ref         = substr( (string) $p['provider_ref'], 0, 80 );
+		$note        = 'Pagamento online (' . ( 'paypal' === $p['provider'] ? 'PayPal' : 'Stripe' ) . ')';
+		$allocated   = 0;
+		$review      = false;
+		$error       = null;
+		$unallocated = 0;
+		try {
+			if ( $paid_cents !== (int) $p['amount_cents'] ) {
+				$review      = true;
+				$error       = 'Importo pagato (' . Money::format( $paid_cents ) . ') diverso da quello atteso (' . Money::format( (int) $p['amount_cents'] ) . ').';
+				$unallocated = $paid_cents;
+			} else {
+				foreach ( PaymentItems::group_by_person( $items ) as $person_id => $group ) {
+					$lines = array();
+					foreach ( $group as $i ) {
+						$lines[] = $this->line_for( $i, $note, $ledger );
+					}
+					try {
+						$ledger->record_receipt( array( 'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => (int) $person_id, 'document_ref' => $ref, 'lines' => $lines ) );
+						$allocated += PaymentItems::total( $group );
+					} catch ( \InvalidArgumentException $e ) {
+						$review       = true;
+						$error        = substr( $e->getMessage(), 0, 250 );
+						$unallocated += PaymentItems::total( $group );
+					}
+				}
+			}
+			if ( $unallocated > 0 ) {
+				$ledger->record_receipt(
+					array(
+						'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => (int) $p['payer_person_id'], 'document_ref' => $ref,
+						'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => $unallocated, 'description' => $note . ' non abbinato a una voce' ) ),
+					)
+				);
+			}
+		} catch ( \Throwable $e ) {
+			$review = true;
+			$error  = substr( 'Registrazione incompleta: ' . $e->getMessage(), 0, 250 );
+		}
+		$this->update( (int) $p['id'], array( 'status' => 'paid', 'paid_at' => Db::now(), 'provider_payment_id' => substr( $provider_payment_id, 0, 120 ), 'allocated_cents' => $allocated, 'review' => $review ? 1 : 0, 'error' => $error ) );
+		Audit::log( 'payment.paid', 'payment', (int) $p['id'], array( 'provider' => $p['provider'], 'cents' => $paid_cents, 'review' => $review ) );
+		$this->send_receipt_email( $this->get( (int) $p['id'] ), $items );
+		return true;
+	}
+
+	private function line_for( array $i, string $note, LedgerService $ledger ): array {
+		switch ( $i['type'] ) {
+			case PaymentItems::MEMBERSHIP:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => (int) $i['amount_cents'], 'social_year' => $i['social_year'], 'description' => $note );
+			case PaymentItems::COURSE_MONTH:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'competence_month' => $i['month'], 'description' => $note );
+			default:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'session_id' => (int) $i['session_id'], 'description' => $note );
+		}
+	}
+
+	/** Ricevuta via email al socio che ha pagato (se l'invio non riesce non succede nulla: il pagamento è già registrato). */
+	private function send_receipt_email( ?array $p, array $items ): void {
+		$payer = $p ? Plugin::people()->get( (int) $p['payer_person_id'] ) : null;
+		if ( ! $p || ! $payer || empty( $payer['email'] ) ) {
+			return;
+		}
+		$assoc = (string) Settings::get( 'association_name' );
+		$lines = array_map( function ( $i ) {
+			return '- ' . PaymentItems::line_name( $i ) . ': ' . Money::format( (int) $i['amount_cents'] );
+		}, $items );
+		$body  = 'Ciao ' . $payer['first_name'] . ",\n\nabbiamo ricevuto il tuo pagamento online" . ( '' !== $assoc ? ' per ' . $assoc : '' ) . ".\n\n" . implode( "\n", $lines )
+			. "\n\nTotale: " . Money::format( (int) $p['amount_cents'] ) . "\nData: " . ( new \DateTimeImmutable( (string) $p['paid_at'] ) )->format( 'd/m/Y' ) . "\nRiferimento: " . $p['public_id'] . "\n\nGrazie!";
+		wp_mail( $payer['email'], 'Ricevuta del pagamento' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $body );
+	}
+}

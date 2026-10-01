@@ -21,6 +21,7 @@ final class Shortcodes {
 		'area_soci'       => 'Area soci (tessera, attività, ospiti, profilo)',
 		'tessera'         => 'Tessera digitale',
 		'mie_attivita'    => 'Le mie attività e prenotazioni',
+		'pagamenti'       => 'Pagamenti da fare (paga online)',
 		'ospiti'          => 'I miei ospiti',
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività che tengo)',
@@ -44,9 +45,11 @@ final class Shortcodes {
 	public static function render_view( string $view, array $atts = array() ): string {
 		switch ( $view ) {
 			case 'area_soci':
-				return Views::area( shortcode_atts( array( 'sezioni' => 'tessera,attivita,ospiti,profilo,volontario' ), $atts ) );
+				return Views::area( shortcode_atts( array( 'sezioni' => 'tessera,attivita,pagamenti,ospiti,profilo,volontario' ), $atts ) );
 			case 'tessera':
 				return Views::card();
+			case 'pagamenti':
+				return Views::pay();
 			case 'mie_attivita':
 				return Views::my_activities();
 			case 'ospiti':

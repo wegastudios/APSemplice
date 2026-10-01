@@ -11,7 +11,7 @@ final class Labels {
 	}
 
 	public static function methods(): array {
-		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'other' => 'Altro' );
+		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'other' => 'Altro' );
 	}
 
 	/** kind => [etichetta, è un'entrata, è un'uscita] */

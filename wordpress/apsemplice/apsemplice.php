@@ -33,3 +33,10 @@ spl_autoload_register(
 
 register_activation_hook( __FILE__, array( 'ApSemplice\\Install', 'activate' ) );
 add_action( 'plugins_loaded', array( 'ApSemplice\\Plugin', 'init' ) );
+
+register_deactivation_hook(
+	__FILE__,
+	function () {
+		wp_clear_scheduled_hook( 'aps_check_pending_payments' );
+	}
+);

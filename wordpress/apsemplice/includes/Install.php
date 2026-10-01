@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'aps_db_version';
-	const DB_VERSION        = '4';
+	const DB_VERSION        = '5';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -195,6 +195,31 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY session_person (session_id,person_id),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}payments (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  public_id varchar(40) NOT NULL,
+  provider varchar(12) NOT NULL,
+  status varchar(16) NOT NULL DEFAULT 'created',
+  amount_cents bigint(20) NOT NULL,
+  currency char(3) NOT NULL DEFAULT 'EUR',
+  payer_person_id bigint(20) unsigned NOT NULL,
+  payer_user_id bigint(20) unsigned NOT NULL,
+  items longtext NOT NULL,
+  provider_ref varchar(120) DEFAULT NULL,
+  provider_payment_id varchar(120) DEFAULT NULL,
+  allocated_cents bigint(20) NOT NULL DEFAULT 0,
+  review tinyint(1) NOT NULL DEFAULT 0,
+  error varchar(255) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  paid_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY public_id (public_id),
+  KEY provider_ref (provider_ref),
+  KEY status (status),
+  KEY payer_person_id (payer_person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}audit_log (

@@ -10,6 +10,7 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
+		PayReturn::register();
 		Blocks::register();
 		ElementorSupport::register();
 	}

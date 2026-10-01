@@ -7,6 +7,7 @@ use ApSemplice\License;
 use ApSemplice\MemberType;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
+use ApSemplice\StripeWebhook;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,6 +29,7 @@ final class Api {
 			return self::guard();
 		};
 		self::event_routes( $logged_in );
+		register_rest_route( self::NS, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'me' ), 'permission_callback' => $logged_in ) );
 		register_rest_route( self::NS, '/me/activities', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'my_activities' ), 'permission_callback' => $logged_in ) );
 		register_rest_route(
@@ -148,6 +150,20 @@ final class Api {
 			$rows[] = $row;
 		}
 		return rest_ensure_response( array( 'session' => array( 'id' => (int) $s['id'], 'date' => $s['session_date'], 'activity_id' => (int) $s['activity_id'] ), 'bookings' => $rows ) );
+	}
+
+	/** Webhook di Stripe: pubblico ma accettato solo con firma valida (segreto del webhook impostato nel pannello). */
+	public static function stripe_webhook( \WP_REST_Request $r ) {
+		$payload = (string) $r->get_body();
+		$secret  = Settings::secret( 'stripe_webhook_secret' );
+		if ( ! StripeWebhook::verify( $payload, (string) $r->get_header( 'stripe-signature' ), $secret, time() ) ) {
+			return new \WP_Error( 'aps_bad_signature', 'Firma non valida.', array( 'status' => 400 ) );
+		}
+		$event = json_decode( $payload, true );
+		if ( ! is_array( $event ) ) {
+			return new \WP_Error( 'aps_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
+		}
+		return rest_ensure_response( array( 'received' => true, 'result' => Plugin::payments()->handle_stripe_event( $event ) ) );
 	}
 
 	// ---------- Forme di output ----------

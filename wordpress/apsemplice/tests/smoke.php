@@ -831,6 +831,273 @@ $people->delete( $ord );
 $again = $people->create( array( 'type' => 'ordinary', 'card_number' => '3', 'first_name' => 'Nuovo', 'last_name' => 'Titolare', 'email' => 'omar@example.com' ) );
 aps_ok( $again > 0, 'eliminando un socio si libera tessera ed email' );
 
+// ---------- Pagamenti online: pagina ospitata da Stripe / PayPal (gateway simulati) ----------
+wp_set_current_user( 1 );
+$ps = Plugin::payments();
+Settings::update( array( 'payment_provider' => 'none', 'membership_fee_cents' => 1000 ) );
+aps_ok( '' === $ps->provider() && ! $ps->enabled(), 'pagamenti online: spenti finché non si sceglie un gateway' );
+aps_ok( isset( Labels::methods()['stripe'] ) && isset( Labels::methods()['paypal'] ), 'metodi di pagamento Stripe e PayPal disponibili' );
+aps_ok( false !== wp_next_scheduled( 'aps_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
+
+$mails = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$mails ) {
+		$mails[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+
+// gateway simulati
+$stripe_sessions = array();
+$paypal_orders   = array();
+$fake_gateway    = function ( $method, $url, $headers, $body ) use ( &$stripe_sessions, &$paypal_orders ) {
+	if ( false !== strpos( $url, 'api.stripe.com/v1/checkout/sessions' ) ) {
+		if ( 'POST' === $method ) {
+			parse_str( (string) $body, $b );
+			$id    = 'cs_test_' . ( count( $stripe_sessions ) + 1 );
+			$total = 0;
+			foreach ( $b['line_items'] as $li ) {
+				$total += (int) $li['price_data']['unit_amount'];
+			}
+			$stripe_sessions[ $id ] = array( 'paid' => false, 'amount' => $total, 'ref' => $b['client_reference_id'], 'status' => 'open', 'key' => $headers['Idempotency-Key'] ?? '' );
+			return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'url' => 'https://checkout.stripe.com/c/pay/' . $id ) ) );
+		}
+		$id = basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+		$s  = $stripe_sessions[ $id ];
+		return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'payment_status' => $s['paid'] ? 'paid' : 'unpaid', 'status' => $s['status'], 'amount_total' => $s['amount'], 'payment_intent' => 'pi_' . $id, 'client_reference_id' => $s['ref'] ) ) );
+	}
+	if ( false !== strpos( $url, '/v1/oauth2/token' ) ) {
+		return array( 'code' => 200, 'body' => '{"access_token":"TOK"}' );
+	}
+	if ( false !== strpos( $url, '/v2/checkout/orders' ) ) {
+		if ( 'POST' === $method && '/orders' === substr( $url, -7 ) ) {
+			$p     = json_decode( (string) $body, true );
+			$id    = 'ORD' . ( count( $paypal_orders ) + 1 );
+			$cents = (int) round( (float) $p['purchase_units'][0]['amount']['value'] * 100 );
+			$paypal_orders[ $id ] = array( 'status' => 'CREATED', 'amount' => $cents );
+			return array( 'code' => 201, 'body' => wp_json_encode( array( 'id' => $id, 'status' => 'CREATED', 'links' => array( array( 'rel' => 'payer-action', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=' . $id ) ) ) ) );
+		}
+		$id = preg_match( '#/orders/([A-Z0-9]+)#', $url, $m ) ? $m[1] : '';
+		if ( '/capture' === substr( $url, -8 ) ) {
+			if ( 'APPROVED' !== $paypal_orders[ $id ]['status'] ) {
+				return array( 'code' => 422, 'body' => '{"details":[{"issue":"ORDER_NOT_APPROVED"}]}' );
+			}
+			$paypal_orders[ $id ]['status'] = 'COMPLETED';
+		}
+		$out = array( 'id' => $id, 'status' => $paypal_orders[ $id ]['status'] );
+		if ( 'COMPLETED' === $out['status'] ) {
+			$out['purchase_units'] = array( array( 'payments' => array( 'captures' => array( array( 'id' => 'CAP' . $id, 'status' => 'COMPLETED', 'amount' => array( 'currency_code' => 'EUR', 'value' => \ApSemplice\PaymentItems::decimal( $paypal_orders[ $id ]['amount'] ) ) ) ) ) ) );
+		}
+		return array( 'code' => 200, 'body' => wp_json_encode( $out ) );
+	}
+	return array( 'code' => 404, 'body' => '{}' );
+};
+$ps->set_http( $fake_gateway );
+$sum_tx = function ( string $where ) use ( $wpdb ) {
+	return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . " WHERE voided_at IS NULL AND $where" );
+};
+$balance_of = function ( string $name ) use ( $ledger ) {
+	foreach ( $ledger->balances() as $b ) {
+		if ( $name === $b['name'] ) {
+			return (int) $b['balance'];
+		}
+	}
+	return 0;
+};
+$latest = function () use ( $ps ) {
+	return $ps->list( array(), 1 )[0];
+};
+
+Settings::update( array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Smoke1', 'stripe_secret_key' => 'sk_test_51Smoke1', 'stripe_webhook_secret' => 'whsec_smoke123' ) );
+aps_ok( 'stripe' === $ps->provider() && $ps->enabled(), 'pagamenti online: Stripe attivo con la configurazione completa' );
+
+// dati dedicati: un socio senza tessera valida con un ospite, un corso e un evento
+$pm   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Pagante', 'email' => 'pia.pagante@example.com' ) );
+$pmp  = $people->get( $pm );
+$u_pm = (int) $pmp['wp_user_id'];
+$pg   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gigi', 'last_name' => 'Pagante', 'host_person_id' => $pm ) );
+$pcourse = $acts->create( array( 'name' => 'Ceramica', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'guest_fee_cents' => 1500 ) );
+$acts->enroll( $pcourse, $pm, $month );
+$acts->enroll( $pcourse, $pg, $month );
+$pev   = $mkev( 'Cena online', 500, 800 );
+$pev_s = $first_session( $pev );
+$acts->book( $pev_s, $pm );
+$acts->book( $pev_s, $pg );
+$k_q   = "q:$pm:$sy_label";
+$k_mon = "m:$pcourse:$pm:$month";
+$k_ev  = "b:$pev_s:$pm";
+$k_gm  = "m:$pcourse:$pg:$month";
+$k_gev = "b:$pev_s:$pg";
+$dues  = $ps->dues_for( $pmp );
+aps_ok( isset( $dues[ $k_q ] ) && 1000 === $dues[ $k_q ]['amount_cents'], 'da pagare: quota associativa del socio senza tessera valida' );
+aps_ok( isset( $dues[ $k_mon ] ) && 2000 === $dues[ $k_mon ]['amount_cents'] && isset( $dues[ $k_ev ] ) && 500 === $dues[ $k_ev ]['amount_cents'], 'da pagare: mensilità del corso e contributo dell\'evento, con gli importi del server' );
+aps_ok( isset( $dues[ $k_gm ] ) && 1500 === $dues[ $k_gm ]['amount_cents'] && isset( $dues[ $k_gev ] ) && 800 === $dues[ $k_gev ]['amount_cents'], 'da pagare: anche le voci dell\'ospite, con i suoi importi' );
+aps_ok( ! isset( $ps->dues_for( $people->get( $pg ) )[ $k_q ] ) && ! isset( $dues[ "b:$pev_s:$vol" ] ), 'da pagare: l\'ospite non paga la quota e non ci sono voci altrui' );
+aps_ok( array() === array_filter( array_keys( $ps->dues_for( $people->get( $founder ) ) ), function ( $k ) { return 0 === strpos( $k, 'q:' ); } ), 'da pagare: il fondatore non paga la quota' );
+
+// creazione: il server ricalcola, ignora chiavi estranee o inventate
+wp_set_current_user( $u_pm );
+aps_ok( null !== aps_throws( function () use ( $ps, $pmp, $u_pm, $pev_s, $ord ) { $ps->create_checkout( $pmp, $u_pm, array( 'm:999:1:2026-01', "b:$pev_s:$ord", 'q:1:2026/2027' ), home_url( '/area/' ) ); } ), 'checkout: chiavi inventate o altrui rifiutate' );
+$url = $ps->create_checkout( $pmp, $u_pm, array( $k_mon, $k_ev, 'm:999:1:2026-01', "b:$pev_s:$ord" ), home_url( '/area/' ) );
+$row = $latest();
+aps_ok( 0 === strpos( $url, 'https://checkout.stripe.com/c/pay/cs_test_' ) && 'pending' === $row['status'] && 2500 === (int) $row['amount_cents'] && 'stripe' === $row['provider'], 'checkout Stripe: pagamento in attesa, importo 25,00 deciso dal server' );
+aps_ok( 2500 === $stripe_sessions[ $row['provider_ref'] ]['amount'] && $stripe_sessions[ $row['provider_ref'] ]['key'] === $row['public_id'], 'Stripe riceve l\'importo del server e una chiave di idempotenza' );
+License::set_state( 'unpaid', $today );
+aps_ok( ! $ps->enabled() && null !== aps_throws( function () use ( $ps, $pmp, $u_pm, $k_ev ) { $ps->create_checkout( $pmp, $u_pm, array( $k_ev ), home_url( '/area/' ) ); } ), 'licenza non in regola: niente nuovi pagamenti online' );
+delete_option( License::OPT_STATE );
+
+// ritorno: annullato, poi in attesa, poi pagato (verifica diretta col gateway)
+aps_ok( false !== strpos( $ps->handle_return( $row['public_id'], 'cancel', $u_pm ), 'annullato' ) && 'cancelled' === $ps->get_by_public( $row['public_id'] )['status'], 'ritorno "annulla": nessun addebito, pagamento annullato' );
+$ps->create_checkout( $pmp, $u_pm, array( $k_mon, $k_ev ), home_url( '/area/' ) );
+$row = $latest();
+aps_ok( null !== aps_throws( function () use ( $ps, $row, $u_f ) { $ps->handle_return( $row['public_id'], 'ok', $u_f ); } ), 'ritorno: solo chi ha avviato il pagamento può verificarlo' );
+aps_ok( false !== strpos( $ps->handle_return( $row['public_id'], 'ok', $u_pm ), 'attesa' ) && 'pending' === $ps->get_by_public( $row['public_id'] )['status'], 'ritorno: se il gateway non conferma resta in attesa (nessun incasso)' );
+$stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
+aps_ok( false !== strpos( $ps->handle_return( $row['public_id'], 'ok', $u_pm ), 'ricevuto' ), 'ritorno: pagamento confermato dal gateway' );
+$paid_row = $ps->get_by_public( $row['public_id'] );
+aps_ok( 'paid' === $paid_row['status'] && 2500 === (int) $paid_row['allocated_cents'] && ! (int) $paid_row['review'], 'pagamento registrato per intero, nessun controllo da fare' );
+aps_ok( 2500 === $balance_of( 'Stripe' ), 'prima nota: 25,00 sul conto "Stripe" (creato in automatico)' );
+aps_ok( ! isset( $ps->dues_for( $people->get( $pm ) )[ $k_mon ] ) && ! isset( $ps->dues_for( $people->get( $pm ) )[ $k_ev ] ) && 'paid' === $by_person( $pev_s )[ $pm ]['state'], 'la mensilità e il contributo dell\'evento risultano pagati' );
+aps_ok( 2500 === $sum_tx( "method = 'stripe' AND document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" ), 'i movimenti riportano metodo Stripe e il riferimento del gateway' );
+$ps->handle_return( $row['public_id'], 'ok', $u_pm );
+$ps->check_pending( true );
+aps_ok( 2500 === $balance_of( 'Stripe' ), 'pagamento già registrato: ritorni e controlli ripetuti non lo duplicano' );
+aps_ok( ! empty( $mails ) && false !== strpos( wp_json_encode( $mails[0] ), 'pia.pagante@example.com' ) && false !== strpos( (string) $mails[0]['message'], '25,00' ), 'ricevuta via email al socio che ha pagato' );
+
+// webhook di Stripe: firma, ripetizioni, importo diverso
+$event   = function ( array $row, int $amount, string $type = 'checkout.session.completed' ) {
+	return array( 'id' => 'evt_' . wp_generate_password( 6, false ), 'type' => $type, 'data' => array( 'object' => array( 'id' => $row['provider_ref'], 'client_reference_id' => $row['public_id'], 'payment_status' => 'paid', 'amount_total' => $amount, 'payment_intent' => 'pi_wh' ) ) );
+};
+$webhook = function ( array $ev, ?string $secret = null, ?int $ts = null ) {
+	wp_set_current_user( 0 );
+	$payload = wp_json_encode( $ev );
+	$req     = new WP_REST_Request( 'POST', '/apsemplice/v1/webhooks/stripe' );
+	$req->set_body( $payload );
+	$req->set_header( 'Content-Type', 'application/json' );
+	$req->set_header( 'Stripe-Signature', \ApSemplice\StripeWebhook::header( $payload, $secret ?? 'whsec_smoke123', $ts ?? time() ) );
+	return rest_do_request( $req );
+};
+wp_set_current_user( $u_pm );
+$ps->create_checkout( $pmp, $u_pm, array( $k_gev ), home_url( '/area/' ) );
+$row = $latest();
+$stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
+aps_ok( 400 === $webhook( $event( $row, 800 ), 'whsec_sbagliato' )->get_status(), 'webhook: firma sbagliata rifiutata' );
+aps_ok( 400 === $webhook( $event( $row, 800 ), null, time() - 3600 )->get_status(), 'webhook: firma troppo vecchia rifiutata' );
+aps_ok( 'pending' === $ps->get_by_public( $row['public_id'] )['status'], 'webhook rifiutato: nessun incasso registrato' );
+$r = $webhook( $event( $row, 800 ) );
+aps_ok( 200 === $r->get_status() && 'registrato' === $r->get_data()['result'] && 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 'paid' === $by_person( $pev_s )[ $pg ]['state'], 'webhook valido: pagamento dell\'ospite registrato' );
+$before = $balance_of( 'Stripe' );
+$webhook( $event( $row, 800 ) );
+aps_ok( $before === $balance_of( 'Stripe' ) && 3300 === $before, 'webhook ripetuto da Stripe: nessun doppio incasso' );
+aps_ok( 'ignorato' === $webhook( array( 'id' => 'e', 'type' => 'charge.refunded', 'data' => array( 'object' => array() ) ) )->get_data()['result'], 'webhook di altro tipo: ignorato' );
+
+// importo pagato diverso da quello atteso
+wp_set_current_user( $u_pm );
+$ps->create_checkout( $pmp, $u_pm, array( $k_gm ), home_url( '/area/' ) );
+$row = $latest();
+$stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
+$webhook( $event( $row, 100 ) );
+$p2 = $ps->get_by_public( $row['public_id'] );
+aps_ok( 'paid' === $p2['status'] && 1 === (int) $p2['review'] && 0 === (int) $p2['allocated_cents'] && false !== strpos( (string) $p2['error'], 'diverso' ), 'importo pagato diverso da quello atteso: registrato e segnato "da controllare"' );
+aps_ok( 100 === $sum_tx( "method = 'stripe' AND description LIKE '%non abbinato%'" ), 'importo diverso: i soldi arrivati entrano comunque in prima nota come "non abbinato"' );
+
+// prenotazione annullata mentre il socio stava pagando
+wp_set_current_user( 1 );
+$ev2   = $mkev( 'Evento annullato nel frattempo', 500, null );
+$ev2_s = $first_session( $ev2 );
+$acts->book( $ev2_s, $pm );
+wp_set_current_user( $u_pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$ev2_s:$pm" ), home_url( '/area/' ) );
+$row = $latest();
+wp_set_current_user( 1 );
+$acts->cancel_booking( $ev2_s, $pm );
+$stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
+$ps->handle_return( $row['public_id'], 'ok', $u_pm );
+$p3 = $ps->get_by_public( $row['public_id'] );
+aps_ok( 'paid' === $p3['status'] && 1 === (int) $p3['review'] && 0 === (int) $p3['allocated_cents'], 'prenotazione annullata nel frattempo: pagamento registrato e segnato "da controllare"' );
+aps_ok( 500 === $sum_tx( "document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" ), 'prenotazione annullata: i 5,00 incassati restano in prima nota' );
+$review_list = $ps->list( array( 'review' => 1 ) );
+aps_ok( 2 === count( $review_list ), 'elenco "da controllare": i due pagamenti anomali' );
+$ps->mark_reviewed( (int) $review_list[0]['id'] );
+aps_ok( 1 === count( $ps->list( array( 'review' => 1 ) ) ), 'segnare un pagamento come controllato' );
+
+// quota associativa online
+aps_ok( ! $people->is_active_member( $pm ), 'prima del pagamento il socio non ha la tessera valida' );
+wp_set_current_user( $u_pm );
+$ps->create_checkout( $pmp, $u_pm, array( $k_q ), home_url( '/area/' ) );
+$row = $latest();
+$stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
+$ps->handle_return( $row['public_id'], 'ok', $u_pm );
+aps_ok( $people->is_active_member( $pm ) && ! isset( $ps->dues_for( $people->get( $pm ) )[ $k_q ] ), 'pagata la quota online: il socio ha la tessera valida e la voce sparisce' );
+
+// pagina dell'area soci e azione dal sito
+$q  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Quinto', 'last_name' => 'Quotato', 'email' => 'quinto.quotato@example.com' ) );
+$uq = (int) $people->get( $q )['wp_user_id'];
+$html = $as( $uq, '[apsemplice_pagamenti]' );
+aps_ok( false !== strpos( $html, 'aps_front_pay' ) && false !== strpos( $html, 'Paga con carta' ) && false !== strpos( $html, 'data-cents' ), 'area soci: elenco da pagare con il pulsante "Paga con carta"' );
+aps_ok( false !== strpos( $as( $uq, '[apsemplice_area_soci]' ), 'apsf-pay' ), 'l\'area soci completa include la sezione pagamenti' );
+wp_set_current_user( $uq );
+$redirect = \ApSemplice\Frontend\Actions::do_pay( array( 'items' => array( "q:$q:$sy_label" ) ) );
+aps_ok( 0 === strpos( $redirect, 'https://checkout.stripe.com/' ), 'azione dal sito: porta alla pagina di pagamento ospitata' );
+$open = $latest();
+
+// scadenza: un pagamento rimasto in sospeso per giorni
+$wpdb->update( Db::t( 'payments' ), array( 'created_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-5 days' ) ) ), array( 'id' => (int) $open['id'] ) );
+$res = $ps->check_pending( true );
+aps_ok( $res['checked'] >= 1 && $res['expired'] >= 1 && 'expired' === $ps->get_by_public( $open['public_id'] )['status'], 'controllo periodico: i pagamenti mai confermati scadono dopo qualche giorno' );
+
+// PayPal: ordine, approvazione, cattura
+Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
+aps_ok( 'paypal' === $ps->provider(), 'pagamenti online: PayPal attivo' );
+wp_set_current_user( 1 );
+$ev3   = $mkev( 'Gita in barca', 700, null );
+$ev3_s = $first_session( $ev3 );
+$acts->book( $ev3_s, $pm );
+wp_set_current_user( $u_pm );
+$url = $ps->create_checkout( $pmp, $u_pm, array( "b:$ev3_s:$pm" ), home_url( '/area/' ) );
+$row = $latest();
+aps_ok( false !== strpos( $url, 'sandbox.paypal.com/checkoutnow' ) && 'paypal' === $row['provider'] && 700 === (int) $row['amount_cents'] && 'pending' === $row['status'], 'checkout PayPal: ordine creato, il socio va su PayPal' );
+aps_ok( false !== strpos( $ps->handle_return( $row['public_id'], 'ok', $u_pm ), 'attesa' ), 'PayPal: ritorno senza approvazione = ancora in attesa' );
+$paypal_orders[ $row['provider_ref'] ]['status'] = 'APPROVED';
+aps_ok( false !== strpos( $ps->handle_return( $row['public_id'], 'ok', $u_pm ), 'ricevuto' ) && 'paid' === $ps->get_by_public( $row['public_id'] )['status'], 'PayPal: approvato, il sito cattura e registra il pagamento' );
+aps_ok( 700 === $balance_of( 'PayPal' ) && 700 === $sum_tx( "method = 'paypal' AND document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" ), 'prima nota: 7,00 sul conto "PayPal"' );
+
+// PayPal approvato ma l'utente non è tornato sul sito: lo recupera il controllo periodico
+wp_set_current_user( 1 );
+$ev4   = $mkev( 'Torneo', 600, null );
+$ev4_s = $first_session( $ev4 );
+$acts->book( $ev4_s, $pm );
+wp_set_current_user( $u_pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$ev4_s:$pm" ), home_url( '/area/' ) );
+$row = $latest();
+$paypal_orders[ $row['provider_ref'] ]['status'] = 'APPROVED';
+$res = $ps->check_pending( true );
+aps_ok( $res['registered'] >= 1 && 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 1300 === $balance_of( 'PayPal' ), 'PayPal: l\'utente non è tornato, il controllo periodico cattura e registra' );
+aps_ok( false === strpos( $as( $uq, '[apsemplice_pagamenti]' ), 'Paga con carta' ), 'area soci: con PayPal non compare "Paga con carta"' );
+
+// pagina di amministrazione e impostazioni
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+aps_render( array( Admin\PaymentsPage::class, 'render' ), 'Verifica i pagamenti in sospeso' );
+$adm = aps_render( array( Admin\PaymentsPage::class, 'render' ), 'da controllare', array( 'review' => '1' ) );
+aps_ok( false !== strpos( $adm, 'Pagamento online' ) || false !== strpos( $adm, 'Importo pagato' ), 'amministrazione: i pagamenti da controllare mostrano il motivo' );
+aps_render( array( Admin\SettingsPage::class, 'render' ), 'checkout.session.async_payment_succeeded' );
+$audit_all = Audit::recent( 400 );
+$audit     = array_column( $audit_all, 'action' );
+aps_ok( in_array( 'payment.created', $audit, true ) && in_array( 'payment.paid', $audit, true ) && false === strpos( wp_json_encode( $audit_all ), 'sk_test_51Smoke1' ), 'registro azioni: pagamenti tracciati, senza chiavi' );
+
+// ripristino
+Settings::update( array( 'payment_provider' => 'none' ) );
+Settings::clear_secret( 'stripe_secret_key' );
+Settings::clear_secret( 'stripe_webhook_secret' );
+Settings::clear_secret( 'paypal_client_secret' );
+$ps->set_http( null );
+remove_all_filters( 'pre_wp_mail' );
+wp_set_current_user( 1 );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 aps_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

@@ -199,7 +199,9 @@ final class Views {
 		if ( $unpaid || array_filter( $stat, function ( $s ) {
 			return $s['summary']['balance'] < 0;
 		} ) ) {
-			$html .= '<p class="apsf-small apsf-muted">' . esc_html( Settings::payment_hint() ) . '</p>';
+			if ( ! Plugin::payments()->enabled() ) {
+				$html .= '<p class="apsf-small apsf-muted">' . esc_html( Settings::payment_hint() ) . '</p>';
+			}
 		}
 		if ( $past ) {
 			$html .= '<details class="apsf-details"><summary>Storico prenotazioni</summary><ul class="apsf-list">';
@@ -241,6 +243,56 @@ final class Views {
 				. self::form( 'aps_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cambia nominativo' ) . '</details>';
 		}
 		return $html . '</div>';
+	}
+
+	/** Stato di un pagamento online, per l'elenco dei pagamenti recenti. */
+	private static function payment_status( string $status ): string {
+		$m = array(
+			'paid' => 'pagato', 'pending' => 'in attesa di conferma', 'created' => 'avviato', 'processing' => 'in registrazione',
+			'cancelled' => 'annullato', 'failed' => 'non riuscito', 'expired' => 'scaduto',
+		);
+		return $m[ $status ] ?? $status;
+	}
+
+	/** Cosa c'è da pagare (quota associativa, mensilità, eventi) e, se i pagamenti online sono attivi, il pulsante per pagare. */
+	public static function section_pay( array $p ): string {
+		$pay  = Plugin::payments();
+		$dues = $pay->dues_for( $p );
+		$html = '<section class="apsf-section apsf-pay"><h3>Pagamenti</h3>';
+		if ( ! $dues ) {
+			$html .= '<p class="apsf-muted">Non hai nulla da pagare al momento.</p>';
+		} elseif ( ! $pay->enabled() ) {
+			$html .= '<ul class="apsf-list">';
+			foreach ( $dues as $i ) {
+				$html .= '<li><div><strong>' . esc_html( $i['label'] ) . '</strong><div class="apsf-small">' . esc_html( $i['person_name'] ) . '</div></div><strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
+			}
+			$html .= '</ul><p class="apsf-small apsf-muted">' . esc_html( Settings::payment_hint() ) . '</p>';
+		} else {
+			$total  = 0;
+			$fields = '<ul class="apsf-list apsf-paylist">';
+			foreach ( $dues as $i ) {
+				$total  += (int) $i['amount_cents'];
+				$fields .= '<li><label class="apsf-payrow"><input type="checkbox" name="items[]" value="' . esc_attr( $i['key'] ) . '" data-cents="' . (int) $i['amount_cents'] . '" checked> '
+					. '<span><strong>' . esc_html( $i['label'] ) . '</strong><span class="apsf-small"> · ' . esc_html( $i['person_name'] ) . '</span></span></label>'
+					. '<strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
+			}
+			$fields .= '</ul><p class="apsf-paytotal">Totale: <strong class="apsf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
+			$html   .= self::form( 'aps_front_pay', $fields, 'paypal' === $pay->provider() ? 'Paga con PayPal' : 'Paga con carta' )
+				. '<p class="apsf-small apsf-muted">Paghi su una pagina sicura di ' . ( 'paypal' === $pay->provider() ? 'PayPal' : 'Stripe' ) . ': i dati della carta non passano da questo sito.</p>';
+		}
+		$recent = $pay->list( array( 'payer_person_id' => (int) $p['id'] ), 5 );
+		if ( $recent ) {
+			$html .= '<details class="apsf-details"><summary>Ultimi pagamenti online</summary><ul class="apsf-list">';
+			foreach ( $recent as $r ) {
+				$html .= '<li><div>' . esc_html( ( new \DateTimeImmutable( $r['created_at'] ) )->format( 'd/m/Y' ) ) . ' · ' . esc_html( self::payment_status( $r['status'] ) ) . '</div><strong>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</strong></li>';
+			}
+			$html .= '</ul></details>';
+		}
+		return $html . '</section>';
+	}
+
+	public static function pay(): string {
+		return self::with_person( array( __CLASS__, 'section_pay' ) );
 	}
 
 	public static function section_guests( array $p ): string {
@@ -322,11 +374,11 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,ospiti,profilo,volontario' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,pagamenti,ospiti,profilo,volontario' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
-					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'ospiti' => 'section_guests',
+					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
 					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';

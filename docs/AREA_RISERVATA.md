@@ -63,3 +63,7 @@ e il **messaggio sui contenuti riservati**. Il CSS si carica solo nelle pagine c
 - **Tessera digitale con QR**: non ancora (la tessera mostra numero, tipo e validità). Il QR serve a una pagina di verifica ai controlli: da fare con quella.
 - Gli **ospiti non hanno accesso**: partecipano tramite il socio che li ospita.
 - Il widget Elementor è verificato in CI contro l'ultima versione stabile di Elementor (registrazione e controlli); l'aspetto dentro l'editor Elementor va provato a mano.
+
+## Pagamenti
+
+`[apsemplice_pagamenti]` (incluso in `[apsemplice_area_soci]`, sezione `pagamenti`): elenco di ciò che il socio e i suoi ospiti devono, con totale che si aggiorna selezionando le voci e pulsante "Paga con carta" / "Paga con PayPal". Senza gateway attivo mostra l'elenco e le istruzioni per pagare all'associazione.

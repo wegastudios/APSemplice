@@ -24,6 +24,30 @@ final class Actions {
 	);
 
 	public static function register(): void {
+		// Pagamento online: la risposta è un indirizzo esterno (pagina del gateway), non un messaggio.
+		add_action(
+			'admin_post_aps_front_pay',
+			function () {
+				check_admin_referer( 'aps_front_pay' );
+				$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+				$back = self::back_url( $post );
+				try {
+					wp_redirect( self::do_pay( $post ) ); // phpcs:ignore WordPress.Security.SafeRedirect -- indirizzo restituito dal gateway
+				} catch ( \InvalidArgumentException $e ) {
+					self::redirect( $back, '', $e->getMessage() );
+				} catch ( \Throwable $e ) {
+					self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
+				}
+				exit;
+			}
+		);
+		add_action(
+			'admin_post_nopriv_aps_front_pay',
+			function () {
+				wp_safe_redirect( wp_login_url( self::back_url( wp_unslash( $_POST ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
+				exit;
+			}
+		);
 		foreach ( self::MAP as $action => $method ) {
 			add_action(
 				'admin_post_' . $action,
@@ -146,6 +170,17 @@ final class Actions {
 			}
 		}
 		return $msg;
+	}
+
+	/**
+	 * Avvia il pagamento online delle voci scelte (dovute da lui o dai suoi ospiti).
+	 * @return string indirizzo della pagina di pagamento del gateway
+	 */
+	public static function do_pay( array $post ): string {
+		$actor = self::actor();
+		self::require_cap( 'aps_view_payments', (int) $actor['id'] );
+		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'aps_pay', 'aps_ret', 'token', 'PayerID' ), self::back_url( $post ) );
+		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back );
 	}
 
 	public static function do_add_guest( array $post ): string {

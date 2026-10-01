@@ -34,6 +34,8 @@ final class Actions {
 			'aps_book'               => 'book',
 			'aps_transfer_booking'   => 'transfer_booking',
 			'aps_test_gateway'       => 'test_gateway',
+			'aps_check_payments'     => 'check_payments',
+			'aps_payment_reviewed'   => 'payment_reviewed',
 			'aps_cancel_booking'     => 'cancel_booking',
 			'aps_save_income'        => 'save_income',
 			'aps_save_expense'       => 'save_expense',
@@ -317,6 +319,16 @@ final class Actions {
 			throw new \InvalidArgumentException( $res['message'] );
 		}
 		return array( Ui::url( 'aps-settings' ), $res['message'] );
+	}
+
+	private static function check_payments( array $p ): array {
+		$r = Plugin::payments()->check_pending( true );
+		return array( Ui::url( 'aps-payments' ), 'Controllati ' . $r['checked'] . ', registrati ' . $r['registered'] . ', scaduti ' . $r['expired'] . '.' );
+	}
+
+	private static function payment_reviewed( array $p ): array {
+		Plugin::payments()->mark_reviewed( (int) $p['id'] );
+		return array( Ui::url( 'aps-payments' ), 'Pagamento segnato come controllato.' );
 	}
 
 	private static function transfer_booking( array $p ): array {

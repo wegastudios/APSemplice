@@ -19,6 +19,12 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
+		add_action( 'aps_check_pending_payments', function () {
+			self::payments()->check_pending();
+		} );
+		if ( ! wp_next_scheduled( 'aps_check_pending_payments' ) ) {
+			wp_schedule_event( time() + 300, 'hourly', 'aps_check_pending_payments' );
+		}
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}
@@ -34,6 +40,10 @@ final class Plugin {
 
 	public static function ledger(): LedgerService {
 		return self::$services['ledger'] ?? ( self::$services['ledger'] = new LedgerService() );
+	}
+
+	public static function payments(): PaymentService {
+		return self::$services['payments'] ?? ( self::$services['payments'] = new PaymentService() );
 	}
 
 	public static function reports(): ReportService {
