@@ -25,6 +25,7 @@ final class Access {
 		'apse_view_activity',      // id attività: vedere i dati base
 		'apse_view_participants',  // id attività: vedere chi è iscritto
 		'apse_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
+		'apse_manage_event',       // id attività: gestire un evento (lista prenotati, registrazione ingressi): istruttore e gestori indicati
 		'apse_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area riservata
 	);
 
@@ -51,6 +52,8 @@ final class Access {
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
 			case 'apse_book_for':
 				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
+			case 'apse_manage_event':
+				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) );
 			case 'apse_add_expense':
 				return ! empty( $ctx['is_treasurer'] ) && MemberType::is_member( (string) $actor['type'] );
 			case 'apse_view_activity':
@@ -138,7 +141,7 @@ final class Access {
 			}
 			$ctx['host_person_id'] = (int) $target['host_person_id'];
 		}
-		if ( in_array( $ability, array( 'apse_view_activity', 'apse_view_participants', 'apse_notify_activity' ), true ) ) {
+		if ( in_array( $ability, array( 'apse_view_activity', 'apse_view_participants', 'apse_notify_activity', 'apse_manage_event' ), true ) ) {
 			$activity = Plugin::activities()->get( $object_id );
 			if ( ! $activity ) {
 				return false;
@@ -146,6 +149,7 @@ final class Access {
 			$ctx = array(
 				'instructor_person_id' => (int) $activity['instructor_person_id'],
 				'is_enrolled'          => in_array( $object_id, Plugin::activities()->active_activity_ids( (int) $actor['id'] ), true ),
+				'is_staff'             => 'apse_manage_event' === $ability && Plugin::activities()->is_staff( $object_id, (int) $actor['id'] ),
 			);
 		}
 		return self::decide( $ability, false, $actor, $ctx );

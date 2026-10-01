@@ -27,4 +27,17 @@ final class AccessBookTest extends TestCase {
 		$this->assertFalse( Access::decide( 'apse_add_expense', false, null, array( 'is_treasurer' => true ) ), 'chi non è un socio no' );
 		$this->assertTrue( Access::decide( 'apse_add_expense', true, null, array() ), 'l\'amministratore sì' );
 	}
+
+	public function test_event_managers(): void {
+		$volunteer = array( 'id' => 8, 'type' => 'volunteer' );
+		$member    = array( 'id' => 7, 'type' => 'ordinary' );
+		$guest     = array( 'id' => 9, 'type' => 'guest' );
+		$this->assertTrue( Access::decide( 'apse_manage_event', false, $volunteer, array( 'instructor_person_id' => 8 ) ), 'l\'istruttore' );
+		$this->assertTrue( Access::decide( 'apse_manage_event', false, $member, array( 'instructor_person_id' => 8, 'is_staff' => true ) ), 'un socio indicato come gestore' );
+		$this->assertFalse( Access::decide( 'apse_manage_event', false, $member, array( 'instructor_person_id' => 8 ) ), 'un socio qualunque' );
+		$this->assertFalse( Access::decide( 'apse_manage_event', false, $volunteer, array( 'instructor_person_id' => 5 ) ), 'un volontario che non tiene l\'evento' );
+		$this->assertFalse( Access::decide( 'apse_manage_event', false, $guest, array( 'is_staff' => true ) ), 'un ospite mai' );
+		$this->assertFalse( Access::decide( 'apse_manage_event', false, null, array( 'is_staff' => true ) ), 'chi non è socio' );
+		$this->assertTrue( Access::decide( 'apse_manage_event', true, null, array() ), 'l\'amministratore' );
+	}
 }

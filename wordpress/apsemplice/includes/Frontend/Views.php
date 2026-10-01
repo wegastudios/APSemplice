@@ -10,6 +10,7 @@ use ApSemplice\Money;
 use ApSemplice\Plugin;
 use ApSemplice\Pricing;
 use ApSemplice\Settings;
+use ApSemplice\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -439,6 +440,153 @@ final class Views {
 			. self::form( 'apse_front_profile', $fields, 'Salva' ) . '</section>';
 	}
 
+	// ---------- Gestione degli eventi: prenotati e ingressi ----------
+
+	/** Eventi che l'utente può gestire (istruttore, gestori indicati, amministratori). @return array[] attività */
+	private static function managed_events(): array {
+		$svc = Plugin::activities();
+		$out = array();
+		if ( Access::is_admin_user( get_current_user_id() ) ) {
+			foreach ( $svc->for_year( Settings::social_year()->label() ) as $a ) {
+				if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
+					$out[] = $a;
+				}
+			}
+			return $out;
+		}
+		$person = Access::current_person();
+		foreach ( $person ? $svc->managed_activity_ids( (int) $person['id'] ) : array() as $aid ) {
+			$a = $svc->get( $aid );
+			if ( $a && current_user_can( 'apse_manage_event', $aid ) ) {
+				$out[] = $a;
+			}
+		}
+		return $out;
+	}
+
+	private static function session_url( int $session_id = 0 ): string {
+		$base = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apse_session' ), Restrict::current_url() );
+		return $session_id ? add_query_arg( 'apse_session', $session_id, $base ) : $base;
+	}
+
+	/** Elenco delle date degli eventi gestiti e, aprendone una, lista dei prenotati con registrazione degli ingressi. */
+	public static function section_checkin( array $p ): string {
+		$events = self::managed_events();
+		if ( ! $events ) {
+			return '';
+		}
+		$svc = Plugin::activities();
+		$sid = isset( $_GET['apse_session'] ) ? (int) $_GET['apse_session'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( $sid ) {
+			$s = $svc->session( $sid );
+			foreach ( $events as $a ) {
+				if ( $s && (int) $s['activity_id'] === (int) $a['id'] ) {
+					return self::checkin_detail( $s, $a );
+				}
+			}
+		}
+		$today = current_time( 'Y-m-d' );
+		$from  = gmdate( 'Y-m-d', strtotime( $today . ' -3 days' ) );
+		$html  = '<section class="apsf-section apsf-checkin"><h3>Ingressi agli eventi</h3><p class="apsf-small apsf-muted">Gli eventi che gestisci: apri una data per vedere i prenotati e registrare gli ingressi.</p>';
+		$any   = false;
+		foreach ( $events as $a ) {
+			$rows = '';
+			foreach ( $svc->sessions( (int) $a['id'] ) as $s ) {
+				if ( ! empty( $s['cancelled_at'] ) || $s['session_date'] < $from ) {
+					continue;
+				}
+				$active  = 0;
+				$present = 0;
+				foreach ( $svc->bookings_for_session( (int) $s['id'] ) as $b ) {
+					if ( $b['active'] ) {
+						$active++;
+						$present += ! empty( $b['checked_in_at'] ) ? 1 : 0;
+					}
+				}
+				$rows .= '<li><div><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
+					. ( $s['session_date'] === $today ? ' <span class="apsf-badge apsf-badge-ok">oggi</span>' : '' )
+					. '<div class="apsf-small">' . (int) $active . ' prenotati · ' . (int) $present . ' presenti</div></div>'
+					. '<a class="apsf-btn" href="' . esc_url( self::session_url( (int) $s['id'] ) ) . '">Apri</a></li>';
+			}
+			if ( '' !== $rows ) {
+				$any   = true;
+				$html .= '<h4>' . esc_html( $a['name'] ) . '</h4><ul class="apsf-list">' . $rows . '</ul>';
+			}
+		}
+		if ( ! $any ) {
+			$html .= '<p class="apsf-muted">Nessuna data in programma per i tuoi eventi.</p>';
+		}
+		return $html . '</section>';
+	}
+
+	private static function checkin_detail( array $s, array $a ): string {
+		$svc      = Plugin::activities();
+		$today    = current_time( 'Y-m-d' );
+		$list     = '';
+		$booked   = 0;
+		$present  = 0;
+		$unpaid   = 0;
+		$cancel   = 0;
+		foreach ( $svc->bookings_for_session( (int) $s['id'] ) as $b ) {
+			if ( ! $b['active'] ) {
+				$cancel++;
+				continue;
+			}
+			$booked++;
+			$in    = ! empty( $b['checked_in_at'] );
+			$present += $in ? 1 : 0;
+			$host  = '';
+			if ( MemberType::GUEST === $b['type'] && ! empty( $b['host_person_id'] ) ) {
+				$h    = Plugin::people()->get( (int) $b['host_person_id'] );
+				$host = $h ? ' di ' . $h['first_name'] . ' ' . $h['last_name'] : '';
+			}
+			if ( (int) $b['fee_due_cents'] <= 0 ) {
+				$pay = '<span class="apsf-small apsf-muted">Gratuito</span>';
+			} elseif ( (int) $b['remaining'] > 0 ) {
+				$unpaid++;
+				$pay = '<span class="apsf-bad apsf-small">Da versare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
+			} else {
+				$pay = '<span class="apsf-good apsf-small">Versato</span>';
+			}
+			$ids = self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $b['person_id'] );
+			$act = $in
+				? '<span class="apsf-small apsf-good">✔ ore ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</span>' . self::form( 'apse_front_checkin', $ids . self::hidden( 'undo', 1 ), 'Annulla', true, 'apsf-inline' )
+				: self::form( 'apse_front_checkin', $ids, 'Registra ingresso', false, 'apsf-inline' );
+			$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
+			$list .= '<li class="apsf-booked" data-name="' . esc_attr( Text::normalize( $name ) ) . '" data-state="' . ( $in ? 'in' : 'out' ) . '"><div><strong>' . esc_html( $name ) . '</strong>'
+				. '<div class="apsf-small apsf-muted">' . esc_html( MemberType::GUEST === $b['type'] ? 'Ospite' . $host : MemberType::label( $b['type'] ) ) . '</div>' . $pay . '</div><div class="apsf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		$can_scan = ! empty( $a['booking_qr'] ) && $s['session_date'] === $today;
+		$scan     = '';
+		if ( $can_scan ) {
+			$scan = '<div class="apsf-scan"><button type="button" class="apsf-btn" data-apsf-scan>📷 Scansiona il QR del biglietto</button> '
+				. '<video class="apsf-scan-video" playsinline muted hidden></video><p class="apsf-small apsf-muted apsf-scan-msg">Oppure scansiona con la fotocamera del telefono: il QR apre la pagina dove registrare l\'ingresso.</p>'
+				. self::form( 'apse_front_checkin_scan', '<input type="hidden" name="ticket" value="">', 'Registra', false, 'apsf-scan-form' ) . '</div>';
+		}
+		$html = '<section class="apsf-section apsf-checkin"><p><a href="' . esc_url( self::session_url() ) . '">← Tutti gli eventi</a></p>'
+			. '<h3>' . esc_html( $a['name'] ) . '</h3><p><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
+			. ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ) . '</p>'
+			. '<dl class="apsf-dl apsf-counts"><div><dt>Prenotati</dt><dd>' . (int) $booked . ( null === $s['capacity'] ? '' : ' / ' . (int) $s['capacity'] ) . '</dd></div><div><dt>Presenti</dt><dd>' . (int) $present . '</dd></div>'
+			. '<div><dt>Da registrare</dt><dd>' . (int) ( $booked - $present ) . '</dd></div><div><dt>Contributo da versare</dt><dd>' . (int) $unpaid . '</dd></div></dl>'
+			. ( $s['session_date'] !== $today ? '<p class="apsf-small apsf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . $scan;
+		if ( ! $booked ) {
+			return $html . '<p class="apsf-muted">Nessuna prenotazione.</p></section>';
+		}
+		return $html . '<div class="apsf-checkin-tools"><input type="search" class="apsf-search" placeholder="Cerca per nome" aria-label="Cerca per nome">'
+			. '<span class="apsf-filters"><button type="button" class="apsf-chip is-on" data-filter="all">Tutti</button><button type="button" class="apsf-chip" data-filter="out">Da registrare</button><button type="button" class="apsf-chip" data-filter="in">Presenti</button></span></div>'
+			. '<ul class="apsf-list apsf-booked-list">' . $list . '</ul>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. ( $cancel ? '<p class="apsf-small apsf-muted">' . (int) $cancel . ' prenotazioni annullate non sono in elenco.</p>' : '' ) . '</section>';
+	}
+
+	public static function checkin(): string {
+		return self::with_person(
+			function ( $p ) {
+				$html = self::section_checkin( $p );
+				return '' !== $html ? $html : self::notice( 'Non gestisci nessun evento.' );
+			}
+		);
+	}
+
 	public static function section_volunteer( array $p ): string {
 		if ( ! MemberType::can_teach( $p['type'] ) ) {
 			return '';
@@ -490,12 +638,12 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,pagamenti,ospiti,profilo,volontario,spese' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,pagamenti,ospiti,profilo,volontario,ingressi,spese' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses',
+					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
 				foreach ( $sections as $s ) {

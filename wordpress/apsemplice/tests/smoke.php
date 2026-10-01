@@ -1589,6 +1589,89 @@ apse_ok( true === \ApSemplice\Frontend\TicketVerify::result( $gt )['today'] && f
 License::set_state( 'unpaid', $today );
 apse_ok( 'suspended' === \ApSemplice\Frontend\TicketVerify::result( $gt )['status'], 'licenza non in regola: anche i biglietti sono sospesi' );
 delete_option( License::OPT_STATE );
+// ---------- Gestori dell'evento, lista prenotati e registrazione degli ingressi ----------
+wp_set_current_user( 1 );
+$guest_row = $people->get( $g_id );
+apse_ok( ! user_can( $u_tre, 'apse_manage_event', $tev ) && ! user_can( $uq, 'apse_manage_event', $tev ) && user_can( 1, 'apse_manage_event', $tev ), 'evento: all\'inizio lo gestiscono solo gli amministratori' );
+$acts->add_staff( $tev, $tre_p );
+apse_ok( user_can( $u_tre, 'apse_manage_event', $tev ) && ! user_can( $uq, 'apse_manage_event', $tev ) && ! user_can( $u_tre, 'apse_manage_event', $paid_ev ), 'gestore indicato: gestisce quell\'evento e non gli altri' );
+apse_ok( array( $tre_p ) === array_map( function ( $m ) { return (int) $m['person_id']; }, $acts->staff( $tev ) ) && $acts->is_staff( $tev, $tre_p ) && in_array( $tev, $acts->managed_activity_ids( $tre_p ), true ), 'gestori dell\'evento: elenco e eventi gestiti' );
+apse_ok( null !== apse_throws( function () use ( $acts, $tev, $tre_p ) { $acts->add_staff( $tev, $tre_p ); } ) && null !== apse_throws( function () use ( $acts, $tev, $guest ) { $acts->add_staff( $tev, $guest ); } ) && null !== apse_throws( function () use ( $acts, $corso, $vol ) { $acts->add_staff( $corso, $vol ); } ), 'gestori: non due volte, non gli ospiti, non per i corsi' );
+apse_ok( ! user_can( $u_vol, 'apse_manage_event', $tev ), 'un volontario qualsiasi non gestisce un evento che non tiene' );
+$acts->update( $tev, array( 'instructor_person_id' => $vol ) );
+apse_ok( user_can( $u_vol, 'apse_manage_event', $tev ) && null !== apse_throws( function () use ( $acts, $tev, $vol ) { $acts->add_staff( $tev, $vol ); } ), 'l\'istruttore gestisce l\'evento per definizione' );
+License::set_state( 'unpaid', $today );
+apse_ok( ! user_can( $u_tre, 'apse_manage_event', $tev ) && user_can( 1, 'apse_manage_event', $tev ), 'licenza non in regola: i gestori sono sospesi come i soci, gli amministratori restano' );
+delete_option( License::OPT_STATE );
+
+// area riservata: elenco degli eventi e lista dei prenotati
+$list = $as( $u_tre, '[apsemplice_ingressi]' );
+apse_ok( false !== strpos( $list, 'Concerto con QR' ) && false !== strpos( $list, 'oggi' ) && false !== strpos( $list, 'apse_session=' ), 'area riservata: il gestore vede i suoi eventi con le date (oggi evidenziato)' );
+apse_ok( false !== strpos( $as( $uq, '[apsemplice_ingressi]' ), 'Non gestisci nessun evento' ) && false === strpos( $as( $uq, '[apsemplice_area_soci]' ), 'Ingressi agli eventi' ), 'area riservata: chi non gestisce eventi non vede la sezione' );
+$_GET['apse_session'] = (string) $tev_s;
+$det = $as( $u_tre, '[apsemplice_ingressi]' );
+apse_ok( false !== strpos( $det, $guest_row['first_name'] ) && false !== strpos( $det, 'Registra ingresso' ) && false !== strpos( $det, 'data-apsf-scan' ) && false !== strpos( $det, 'Prenotati' ) && false !== strpos( $det, 'Da versare' ), 'lista prenotati: nomi, contributo, pulsante di ingresso e scansione del QR' );
+apse_ok( false === strpos( $det, '@' ) && false === strpos( $det, 'tel' . 'efono' ), 'lista prenotati: nessun recapito (email o telefono)' );
+unset( $_GET['apse_session'] );
+$_GET['apse_session'] = (string) $paid_s;
+apse_ok( false === strpos( $as( $u_tre, '[apsemplice_ingressi]' ), 'Cena sociale' ), 'un gestore non apre le liste di eventi che non gestisce' );
+unset( $_GET['apse_session'] );
+
+// registrazione ingressi
+wp_set_current_user( $uq );
+apse_ok( null !== apse_throws( function () use ( $front, $tev_s, $g_id ) { $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) ); } ), 'ingresso: chi non gestisce l\'evento non può registrarlo' );
+wp_set_current_user( $u_tre );
+$m1 = $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) );
+$bk = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ), ARRAY_A );
+apse_ok( false !== strpos( $m1, 'Ingresso registrato' ) && false !== strpos( $m1, 'contributo da versare' ) && ! empty( $bk['checked_in_at'] ) && (int) $bk['checked_in_by'] === $u_tre, 'ingresso: registrato con ora e chi l\'ha fatto; avvisa se il contributo non è versato' );
+apse_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) ), 'già registrato' ), 'ingresso: la seconda volta dice che era già registrato' );
+$tp = \ApSemplice\Frontend\TicketVerify::result( $gt );
+apse_ok( 'used' === $tp['status'] && false !== strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'Ingresso già registrato' ), 'biglietto: dopo l\'ingresso il QR risulta già usato (una copia del QR non entra due volte)' );
+$ps = \ApSemplice\Frontend\TicketVerify::page( $gt );
+wp_set_current_user( 0 );
+apse_ok( false === strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'apse_front_checkin' ), 'pagina del biglietto: senza accesso non ci sono comandi' );
+wp_set_current_user( $uq );
+apse_ok( false === strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'apse_front_checkin' ), 'pagina del biglietto: un socio che non gestisce l\'evento non ha comandi' );
+wp_set_current_user( $u_tre );
+apse_ok( false !== strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'Annulla la registrazione' ) && false !== strpos( \ApSemplice\Frontend\TicketVerify::page( $gt, array( 'ok' => 'Ingresso registrato: prova' ) ), 'Ingresso registrato: prova' ), 'pagina del biglietto: il gestore può annullare la registrazione e vede l\'esito dell\'azione' );
+apse_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) ), 'annullata' ) && empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'ingresso: la registrazione si può annullare' );
+apse_ok( 'valid' === \ApSemplice\Frontend\TicketVerify::result( $gt )['status'] && false !== strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'Registra ingresso' ), 'biglietto: annullata la registrazione torna valido, con il comando per il gestore' );
+
+// ingresso da QR scansionato
+$m2 = $front::do_checkin_scan( array( 'ticket' => Settings::ticket_url( $tev_s, $g_id ) ) );
+apse_ok( false !== strpos( $m2, 'Ingresso registrato' ), 'ingresso da QR: l\'indirizzo letto dal QR registra l\'ingresso' );
+$front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) );
+apse_ok( false !== strpos( $front::do_checkin_scan( array( 'ticket' => $gt ) ), 'Ingresso registrato' ), 'ingresso da QR: anche il solo codice' );
+$front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_checkin_scan( array( 'ticket' => 'https://example.org/?apse_ticket=1.2.' . str_repeat( 'a', 20 ) ) ); } ), 'non valido' ) && null !== apse_throws( function () use ( $front ) { $front::do_checkin_scan( array( 'ticket' => '' ) ); } ), 'ingresso da QR: un QR di altro tipo o falso è rifiutato' );
+$foreign = \ApSemplice\CardToken::ticket_param( $paid_s, $founder, Settings::card_secret() );
+apse_ok( null !== apse_throws( function () use ( $front, $foreign ) { $front::do_checkin_scan( array( 'ticket' => $foreign ) ); } ), 'ingresso da QR: un biglietto di un evento che non gestisci è rifiutato' );
+
+// giorno dell'evento, prenotazioni annullate
+$wpdb->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) ) ), array( 'id' => $tev_s ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $tev_s, $g_id ) { $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) ); } ), 'giorno dell\'evento' ), 'ingresso: si registra nel giorno dell\'evento' );
+apse_ok( false === strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'apse_front_checkin' ) && false !== strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'giorno dell\'evento' ), 'pagina del biglietto: un altro giorno il gestore non ha il comando' );
+wp_set_current_user( 1 );
+apse_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) ), 'Ingresso registrato' ), 'ingresso: l\'amministratore può registrarlo anche in un altro giorno' );
+$front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) );
+$wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'id' => $tev_s ) );
+apse_ok( null !== apse_throws( function () use ( $acts, $tev_s, $founder ) { $acts->check_in( $tev_s, $founder ); } ), 'ingresso: una prenotazione annullata non entra' );
+apse_ok( 'none' === $acts->check_in( $tev_s, $g_id, true )['status'], 'ingresso: annullare chi non è entrato non fa nulla' );
+
+// amministrazione
+$adm = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Gestori dell\'evento', array( 'id' => $tev ) );
+apse_ok( false !== strpos( $adm, 'Tina' ) && false !== strpos( $adm, '<th>Ingresso</th>' ) && false !== strpos( $adm, 'apse_checkin' ), 'amministrazione: gestori dell\'evento e colonna degli ingressi' );
+$adm_checkin = new ReflectionMethod( Admin\Actions::class, 'checkin' );
+$r1          = $adm_checkin->invoke( null, array( 'activity_id' => $tev, 'session_id' => $tev_s, 'person_id' => $g_id ) );
+apse_ok( 'Ingresso registrato.' === $r1[1] && ! empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'amministrazione: registra l\'ingresso' );
+$adm_checkin->invoke( null, array( 'activity_id' => $tev, 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => 1 ) );
+$staff_rm = new ReflectionMethod( Admin\Actions::class, 'event_staff_remove' );
+$staff_rm->invoke( null, array( 'activity_id' => $tev, 'person_id' => $tre_p ) );
+apse_ok( ! $acts->is_staff( $tev, $tre_p ) && ! user_can( $u_tre, 'apse_manage_event', $tev ), 'amministrazione: tolto il gestore, perde subito il permesso' );
+$acts->add_staff( $tev, $tre_p );
+$aud = array_column( Audit::recent( 500 ), 'action' );
+apse_ok( in_array( 'checkin.recorded', $aud, true ) && in_array( 'checkin.undone', $aud, true ) && in_array( 'event_staff.added', $aud, true ) && in_array( 'event_staff.removed', $aud, true ), 'registro azioni: ingressi e gestori tracciati' );
+
 $old_url = Settings::card_url( $founder );
 Settings::regenerate_card_salt();
 apse_ok( Settings::card_url( $founder ) !== $old_url && 'invalid' === \ApSemplice\Frontend\CardVerify::result( $qm[1] )['status'], 'QR rigenerati: i vecchi smettono di funzionare' );

@@ -55,4 +55,57 @@
 			if (info) { info.textContent = n + (n === 1 ? ' file pronto' : ' file pronti'); }
 		});
 	});
+
+	// Ingressi agli eventi: ricerca e filtri sulla lista dei prenotati.
+	function applyFilter(root) {
+		var q = (root.querySelector('.apsf-search') || { value: '' }).value.toLowerCase().replace(/[^a-z0-9]/g, '');
+		var chip = root.querySelector('.apsf-chip.is-on');
+		var f = chip ? chip.getAttribute('data-filter') : 'all';
+		root.querySelectorAll('.apsf-booked').forEach(function (li) {
+			var ok = (f === 'all' || li.getAttribute('data-state') === f) && (q === '' || (li.getAttribute('data-name') || '').indexOf(q) !== -1);
+			li.hidden = !ok;
+		});
+	}
+	document.addEventListener('input', function (e) {
+		var root = e.target && e.target.closest ? e.target.closest('.apsf-checkin') : null;
+		if (root && e.target.classList.contains('apsf-search')) { applyFilter(root); }
+	});
+	document.addEventListener('click', function (e) {
+		var chip = e.target && e.target.closest ? e.target.closest('.apsf-chip') : null;
+		if (!chip) { return; }
+		var root = chip.closest('.apsf-checkin');
+		root.querySelectorAll('.apsf-chip').forEach(function (c) { c.classList.remove('is-on'); });
+		chip.classList.add('is-on');
+		applyFilter(root);
+	});
+
+	// Ingressi agli eventi: scansione del QR dal telefono (dove il browser sa leggere i QR; altrimenti basta la fotocamera del telefono).
+	document.addEventListener('click', function (e) {
+		var btn = e.target && e.target.closest ? e.target.closest('[data-apsf-scan]') : null;
+		if (!btn) { return; }
+		var box = btn.closest('.apsf-scan'), msg = box.querySelector('.apsf-scan-msg'), video = box.querySelector('.apsf-scan-video');
+		if (!('BarcodeDetector' in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+			msg.textContent = 'Questo browser non legge i QR da qui: apri la fotocamera del telefono e inquadra il QR del biglietto, poi tocca il link per registrare l\'ingresso.';
+			return;
+		}
+		var detector = new window.BarcodeDetector({ formats: ['qr_code'] }), stream = null, timer = null;
+		function stop() { if (timer) { clearInterval(timer); } if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); } video.hidden = true; }
+		navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
+			stream = s; video.srcObject = s; video.hidden = false; video.play();
+			msg.textContent = 'Inquadra il QR del biglietto…';
+			timer = setInterval(function () {
+				detector.detect(video).then(function (codes) {
+					for (var i = 0; i < codes.length; i++) {
+						if (String(codes[i].rawValue).indexOf('apse_ticket=') !== -1) {
+							stop();
+							var form = box.querySelector('.apsf-scan-form');
+							form.querySelector('input[name="ticket"]').value = codes[i].rawValue;
+							form.submit();
+							return;
+						}
+					}
+				}).catch(function () {});
+			}, 300);
+		}).catch(function () { msg.textContent = 'Non riesco ad aprire la fotocamera: controlla il permesso del browser.'; });
+	});
 })();

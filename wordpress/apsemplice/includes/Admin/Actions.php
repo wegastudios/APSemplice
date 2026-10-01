@@ -39,6 +39,9 @@ final class Actions {
 			'apse_generate_sessions'  => 'generate_sessions',
 			'apse_cancel_session'     => 'cancel_session',
 			'apse_book'               => 'book',
+			'apse_event_staff_add'    => 'event_staff_add',
+			'apse_event_staff_remove' => 'event_staff_remove',
+			'apse_checkin'            => 'checkin',
 			'apse_transfer_booking'   => 'transfer_booking',
 			'apse_test_gateway'       => 'test_gateway',
 			'apse_check_payments'     => 'check_payments',
@@ -203,6 +206,22 @@ final class Actions {
 	private static function book( array $p ): array {
 		Plugin::activities()->book( (int) $p['session_id'], (int) ( $p['person_id'] ?? 0 ) );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
+	}
+
+	private static function event_staff_add( array $p ): array {
+		Plugin::activities()->add_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ) );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Gestore dell\'evento aggiunto: ora vede i prenotati e registra gli ingressi dall\'area riservata.' );
+	}
+
+	private static function event_staff_remove( array $p ): array {
+		Plugin::activities()->remove_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ) );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Gestore tolto.' );
+	}
+
+	/** Ingresso registrato o annullato da amministrazione (anche in un giorno diverso da quello dell'evento). */
+	private static function checkin( array $p ): array {
+		$r = Plugin::activities()->check_in( (int) $p['session_id'], (int) $p['person_id'], ! empty( $p['undo'] ), true );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'recorded' === $r['status'] ? 'Ingresso registrato.' : ( 'undone' === $r['status'] ? 'Registrazione annullata.' : 'Ingresso già registrato.' ) );
 	}
 
 	private static function cancel_booking( array $p ): array {

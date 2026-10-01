@@ -245,6 +245,8 @@ final class ActivitiesPage {
 			. '<tr><td>Contributi dovuti dalle prenotazioni</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassati</td><td>' . Ui::money( $paid ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $due - $paid ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
+		self::staff_card( $activity, $back );
+
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
 			echo '<div class="apse-card"><h2>Aggiungi date</h2>';
 			Ui::form_open( 'apse_add_session', $back );
@@ -260,6 +262,49 @@ final class ActivitiesPage {
 			Ui::form_close();
 			echo '</div>';
 		}
+	}
+
+	/** Cella "Ingresso" di una prenotazione: ora di ingresso e pulsante per registrarlo o annullarlo. */
+	private static function checkin_cell( array $b, int $session_id, int $activity_id, string $back, bool $session_cancelled ): void {
+		if ( ! $b['active'] || $session_cancelled ) {
+			echo '—';
+			return;
+		}
+		$in = ! empty( $b['checked_in_at'] );
+		echo $in ? '<strong class="apse-ok">✔ ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</strong> ' : '';
+		Ui::form_open( 'apse_checkin', $back, false, 'apse-inline' );
+		echo Ui::hidden( 'activity_id', $activity_id ) . Ui::hidden( 'session_id', $session_id ) . Ui::hidden( 'person_id', $b['person_id'] ) . ( $in ? Ui::hidden( 'undo', 1 ) : '' ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<button class="button button-small">' . ( $in ? 'Annulla' : 'Registra ingresso' ) . '</button>';
+		Ui::form_close();
+	}
+
+	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre all'istruttore. */
+	private static function staff_card( array $activity, string $back ): void {
+		$id    = (int) $activity['id'];
+		$svc   = Plugin::activities();
+		$staff = $svc->staff( $id );
+		$in    = array();
+		echo '<div class="apse-card"><h2>Gestori dell\'evento</h2>';
+		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. L\'istruttore e gli amministratori lo possono già fare.</p>';
+		if ( $staff ) {
+			echo '<ul>';
+			foreach ( $staff as $m ) {
+				$in[] = (int) $m['person_id'];
+				echo '<li>' . esc_html( $m['first_name'] . ' ' . $m['last_name'] ) . ' <span class="description">' . esc_html( MemberType::label( $m['type'] ) ) . '</span> ';
+				Ui::form_open( 'apse_event_staff_remove', $back, false, 'apse-inline' );
+				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questo gestore?">togli</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo '</li>';
+			}
+			echo '</ul>';
+		}
+		$candidates = array_values( array_filter( Plugin::people()->search(), function ( $p ) use ( $in, $activity ) {
+			return MemberType::is_member( $p['type'] ) && ! in_array( (int) $p['id'], $in, true ) && (int) $p['id'] !== (int) $activity['instructor_person_id'];
+		} ) );
+		Ui::form_open( 'apse_event_staff_add', $back );
+		echo Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'apse-staff-' . $id ) . ' <button class="button">Aggiungi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		Ui::form_close();
+		echo '</div>';
 	}
 
 	private static function sessions_list( array $activity, string $back ): void {
@@ -285,11 +330,13 @@ final class ActivitiesPage {
 				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti' ) . ( $cancelled ? ' <span class="apse-neg">· ANNULLATA</span>' : '' ) . '</summary>';
 
 			if ( $bookings ) {
-				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th></th></tr></thead><tbody>';
+				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
 					echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . '</td>'
 						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="apse-warn">trasferita ad altra persona' : '<span class="apse-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					self::checkin_cell( $b, (int) $s['id'], $id, $back, $cancelled );
+					echo '</td><td>';
 					if ( $b['active'] ) {
 						Ui::form_open( 'apse_cancel_booking', $back, false, 'apse-confirm' );
 						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput

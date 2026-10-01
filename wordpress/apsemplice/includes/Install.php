@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '8';
+	const DB_VERSION        = '9';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -195,8 +195,20 @@ final class Install {
   transferred_from bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   cancelled_at datetime DEFAULT NULL,
+  checked_in_at datetime DEFAULT NULL,
+  checked_in_by bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY session_person (session_id,person_id),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}activity_staff (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY activity_person (activity_id,person_id),
   KEY person_id (person_id)
 ) $c;";
 

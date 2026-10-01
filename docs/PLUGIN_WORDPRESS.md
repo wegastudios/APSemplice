@@ -189,3 +189,12 @@ Facoltativo: in *Tessera e Wallet* si caricano le credenziali dell'associazione;
 **Google Wallet** — servono un account **Google Pay & Wallet Console** con l'**ID emittente**, l'accesso ai pass "Generico" e un **account di servizio** Google Cloud con la sua chiave in formato JSON. Finché l'emittente è in prova, Google consente il salvataggio solo agli utenti di test.
 
 La tessera nel wallet mostra nome, tipo, numero e scadenza **al momento dell'emissione** (non si aggiorna da sola al rinnovo) e, se è attivo il QR della tessera, anche quel QR, che verifica sempre la validità in diretta. Gli ospiti non hanno tessera.
+
+## Gestione degli eventi: gestori, lista prenotati e registrazione degli ingressi
+
+Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre all'istruttore e agli amministratori) possono, dall'**area riservata** (shortcode `[apsemplice_ingressi]`, incluso in `[apsemplice_area_soci]`), solo per quell'evento:
+- vedere l'elenco delle date e, aprendone una, la **lista dei prenotati** con tipo (socio/ospite e di chi), contributo (versato, da versare, gratuito), ora di ingresso e contatori (prenotati, presenti, da registrare, contributi da versare), con ricerca per nome e filtri. Non compaiono email o telefoni;
+- **registrare l'ingresso** di ogni persona (o annullare la registrazione), **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno, dalla scheda dell'evento in amministrazione (colonna "Ingresso");
+- **scansionare il QR del biglietto** (se per l'evento è attivo il biglietto QR): dal pulsante "Scansiona", nei browser che sanno leggere i QR; altrimenti con la fotocamera del telefono, che apre la pagina del biglietto, dove chi gestisce l'evento (con l'accesso effettuato) trova il pulsante "Registra ingresso". Il biglietto già usato risulta "Ingresso già registrato", così una copia del QR non entra due volte, e se il contributo non è versato lo si vede subito.
+
+Il permesso dei gestori nasce dai dati (non da un ruolo WordPress): toglierli dalla scheda dell'evento li esclude subito. Con la licenza non in regola i gestori sono sospesi come i soci. Ogni registrazione è nel registro azioni (senza dati personali).

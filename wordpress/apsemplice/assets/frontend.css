@@ -109,3 +109,12 @@
 .apsf-memcard-qr svg { width: 170px; height: 170px; max-width: 100%; background: #fff; border-radius: 8px; }
 .apsf-wallet { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
 .apsf-wallet .apsf-btn { text-decoration: none; }
+.apsf-checkin-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.apsf-search { flex: 1 1 180px; min-width: 0; }
+.apsf-chip { border: 1px solid currentColor; background: transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; opacity: .7; }
+.apsf-chip.is-on { opacity: 1; font-weight: 600; }
+.apsf-counts { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.apsf-scan-video { width: 100%; max-width: 360px; border-radius: 10px; display: block; margin: 8px 0; }
+.apsf-booked[hidden] { display: none; }
+.apsf-checkin-act { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.apsf-scan-form { display: none; }

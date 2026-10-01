@@ -3,9 +3,11 @@ namespace ApSemplice\Frontend;
 
 use ApSemplice\Access;
 use ApSemplice\Attachments;
+use ApSemplice\CardToken;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
 use ApSemplice\Plugin;
+use ApSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -25,6 +27,8 @@ final class Actions {
 		'apse_front_profile'        => 'do_profile',
 		'apse_front_expense'        => 'do_expense',
 		'apse_front_expense_docs'   => 'do_expense_docs',
+		'apse_front_checkin'        => 'do_checkin',
+		'apse_front_checkin_scan'   => 'do_checkin_scan',
 	);
 
 	public static function register(): void {
@@ -224,6 +228,61 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Scegli almeno un file.' );
 		}
 		return count( $ids ) . ( 1 === count( $ids ) ? ' documento aggiunto.' : ' documenti aggiunti.' );
+	}
+
+	/** Messaggio dopo una registrazione di ingresso: chi, e se c'è un contributo ancora da versare. */
+	private static function checkin_message( array $r, int $session_id, int $person_id ): string {
+		$name = '';
+		$due  = '';
+		foreach ( Plugin::activities()->bookings_for_session( $session_id ) as $b ) {
+			if ( (int) $b['person_id'] === $person_id ) {
+				$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
+				if ( $b['active'] && (int) $b['remaining'] > 0 ) {
+					$due = ' — contributo da versare ' . Money::format( (int) $b['remaining'] );
+				}
+			}
+		}
+		switch ( $r['status'] ) {
+			case 'recorded':
+				return 'Ingresso registrato: ' . $name . $due . '.';
+			case 'already':
+				return 'Ingresso già registrato alle ' . mysql2date( 'H:i', $r['at'] ) . ': ' . $name . '.';
+			case 'undone':
+				return 'Registrazione annullata: ' . $name . '.';
+		}
+		return 'Nessun ingresso da annullare per ' . $name . '.';
+	}
+
+	/** Registra (o annulla) l'ingresso di una persona prenotata: solo per chi gestisce l'evento (istruttore, gestori indicati, amministratori). */
+	public static function do_checkin( array $post ): string {
+		$sid     = (int) ( $post['session_id'] ?? 0 );
+		$pid     = (int) ( $post['person_id'] ?? 0 );
+		$session = Plugin::activities()->session( $sid );
+		if ( ! $session ) {
+			throw new \InvalidArgumentException( 'Data non trovata.' );
+		}
+		self::require_cap( 'apse_manage_event', (int) $session['activity_id'] );
+		$r = Plugin::activities()->check_in( $sid, $pid, ! empty( $post['undo'] ), current_user_can( Plugin::CAP ) );
+		return self::checkin_message( $r, $sid, $pid );
+	}
+
+	/** Ingresso da QR scansionato: accetta l'indirizzo letto dal QR (o il solo codice). */
+	public static function do_checkin_scan( array $post ): string {
+		$raw = trim( (string) ( $post['ticket'] ?? '' ) );
+		if ( false !== strpos( $raw, 'apse_ticket=' ) ) {
+			parse_str( (string) wp_parse_url( $raw, PHP_URL_QUERY ), $q );
+			$raw = (string) ( $q['apse_ticket'] ?? '' );
+		}
+		$t = CardToken::ticket_parse( $raw );
+		if ( ! $t || ! CardToken::ticket_valid( $t[0], $t[1], $t[2], Settings::card_secret() ) ) {
+			throw new \InvalidArgumentException( 'QR non valido: non è un biglietto di questo sito.' );
+		}
+		$session = Plugin::activities()->session( $t[0] );
+		if ( ! $session ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		self::require_cap( 'apse_manage_event', (int) $session['activity_id'] );
+		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP ) ), $t[0], $t[1] );
 	}
 
 	public static function do_add_guest( array $post ): string {

@@ -327,7 +327,7 @@ class ActivityService {
 	public function bookings_for_session( int $session_id ): array {
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT b.*, p.first_name, p.last_name, p.type, p.card_number, p.email FROM ' . Db::t( 'bookings' ) . ' b '
+				'SELECT b.*, p.first_name, p.last_name, p.type, p.card_number, p.email, p.host_person_id FROM ' . Db::t( 'bookings' ) . ' b '
 				. 'JOIN ' . Db::t( 'people' ) . ' p ON p.id = b.person_id AND p.deleted_at IS NULL WHERE b.session_id = %d '
 				. "ORDER BY (b.status = 'booked') DESC, p.last_name, p.first_name",
 				$session_id
@@ -394,6 +394,100 @@ class ActivityService {
 		return (bool) $this->db()->get_var(
 			$this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND person_id = %d AND status = 'booked'", $session_id, $person_id )
 		);
+	}
+
+	// ---------- Gestori dell'evento e registrazione degli ingressi ----------
+
+	/** Soci abilitati alla gestione di un evento (oltre all'istruttore e agli amministratori). */
+	public function staff( int $activity_id ): array {
+		return $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT s.id AS staff_id, p.id AS person_id, p.first_name, p.last_name, p.type, p.card_number FROM ' . Db::t( 'activity_staff' ) . ' s '
+				. 'JOIN ' . Db::t( 'people' ) . ' p ON p.id = s.person_id AND p.deleted_at IS NULL WHERE s.activity_id = %d ORDER BY p.last_name, p.first_name',
+				$activity_id
+			),
+			ARRAY_A
+		) ?: array();
+	}
+
+	public function is_staff( int $activity_id, int $person_id ): bool {
+		return (bool) $this->db()->get_var(
+			$this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'activity_staff' ) . ' WHERE activity_id = %d AND person_id = %d', $activity_id, $person_id )
+		);
+	}
+
+	/** @throws \InvalidArgumentException */
+	public function add_staff( int $activity_id, int $person_id ): void {
+		$a = $this->get( $activity_id );
+		$p = Plugin::people()->get( $person_id );
+		if ( ! $a || ! ActivityKind::uses_sessions( $a['kind'] ) ) {
+			throw new \InvalidArgumentException( 'I gestori si indicano per gli eventi e gli eventi ricorrenti.' );
+		}
+		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Può gestire un evento solo un socio o volontario (non un ospite).' );
+		}
+		if ( $a['instructor_person_id'] && (int) $a['instructor_person_id'] === $person_id ) {
+			throw new \InvalidArgumentException( 'È già l\'istruttore dell\'evento: lo gestisce per definizione.' );
+		}
+		if ( $this->is_staff( $activity_id, $person_id ) ) {
+			throw new \InvalidArgumentException( 'È già tra i gestori dell\'evento.' );
+		}
+		$this->db()->insert( Db::t( 'activity_staff' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'created_at' => Db::now() ) );
+		Audit::log( 'event_staff.added', 'activity', $activity_id, array( 'person' => $person_id ) );
+	}
+
+	public function remove_staff( int $activity_id, int $person_id ): void {
+		$this->db()->delete( Db::t( 'activity_staff' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
+		Audit::log( 'event_staff.removed', 'activity', $activity_id, array( 'person' => $person_id ) );
+	}
+
+	/** Eventi (con date) che una persona gestisce: quelli che tiene come istruttore e quelli in cui è tra i gestori. @return int[] */
+	public function managed_activity_ids( int $person_id ): array {
+		$ids = $this->db()->get_col(
+			$this->db()->prepare(
+				'SELECT a.id FROM ' . Db::t( 'activities' ) . " a WHERE a.deleted_at IS NULL AND a.kind IN ('event','recurring') AND (a.instructor_person_id = %d OR a.id IN (SELECT activity_id FROM " . Db::t( 'activity_staff' ) . ' WHERE person_id = %d)) ORDER BY a.social_year DESC, a.name',
+				$person_id,
+				$person_id
+			)
+		) ?: array();
+		return array_map( 'intval', $ids );
+	}
+
+	/**
+	 * Registra (o annulla) l'ingresso di una persona prenotata a una data.
+	 *
+	 * @param bool $force consente di registrare anche in un giorno diverso da quello dell'evento (solo amministratori)
+	 * @return array status (recorded|already|undone|none), at (ora, o null)
+	 * @throws \InvalidArgumentException
+	 */
+	public function check_in( int $session_id, int $person_id, bool $undo = false, bool $force = false ): array {
+		$s = $this->session( $session_id );
+		$b = $this->booking( $session_id, $person_id );
+		if ( ! $s || ! $b || 'booked' !== $b['status'] ) {
+			throw new \InvalidArgumentException( 'Nessuna prenotazione attiva per questa persona.' );
+		}
+		if ( ! empty( $s['cancelled_at'] ) ) {
+			throw new \InvalidArgumentException( 'Questa data dell\'evento è stata annullata.' );
+		}
+		$tbl = Db::t( 'bookings' );
+		if ( $undo ) {
+			if ( empty( $b['checked_in_at'] ) ) {
+				return array( 'status' => 'none', 'at' => null );
+			}
+			$this->db()->update( $tbl, array( 'checked_in_at' => null, 'checked_in_by' => null ), array( 'id' => (int) $b['id'] ) );
+			Audit::log( 'checkin.undone', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'person' => $person_id ) );
+			return array( 'status' => 'undone', 'at' => null );
+		}
+		if ( ! empty( $b['checked_in_at'] ) ) {
+			return array( 'status' => 'already', 'at' => $b['checked_in_at'] );
+		}
+		if ( ! $force && $s['session_date'] !== current_time( 'Y-m-d' ) ) {
+			throw new \InvalidArgumentException( 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ').' );
+		}
+		$now = Db::now();
+		$this->db()->update( $tbl, array( 'checked_in_at' => $now, 'checked_in_by' => get_current_user_id() ?: null ), array( 'id' => (int) $b['id'] ) );
+		Audit::log( 'checkin.recorded', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'person' => $person_id ) );
+		return array( 'status' => 'recorded', 'at' => $now );
 	}
 
 	/** Persone distinte con una prenotazione attiva a una data non annullata di questa attività. */
