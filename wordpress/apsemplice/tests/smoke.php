@@ -968,7 +968,7 @@ aps_ok( 2500 === $balance_of( 'Stripe' ), 'pagamento già registrato: ritorni e 
 aps_ok( ! empty( $mails ) && false !== strpos( wp_json_encode( $mails[0] ), 'pia.pagante@example.com' ) && false !== strpos( (string) $mails[0]['message'], '25,00' ), 'ricevuta via email al socio che ha pagato' );
 
 // webhook di Stripe: firma, ripetizioni, importo diverso
-$event   = function ( array $row, int $amount, string $type = 'checkout.session.completed' ) {
+$mk_event = function ( array $row, int $amount, string $type = 'checkout.session.completed' ) {
 	return array( 'id' => 'evt_' . wp_generate_password( 6, false ), 'type' => $type, 'data' => array( 'object' => array( 'id' => $row['provider_ref'], 'client_reference_id' => $row['public_id'], 'payment_status' => 'paid', 'amount_total' => $amount, 'payment_intent' => 'pi_wh' ) ) );
 };
 $webhook = function ( array $ev, ?string $secret = null, ?int $ts = null ) {
@@ -984,13 +984,13 @@ wp_set_current_user( $u_pm );
 $ps->create_checkout( $pmp, $u_pm, array( $k_gev ), home_url( '/area/' ) );
 $row = $latest();
 $stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
-aps_ok( 400 === $webhook( $event( $row, 800 ), 'whsec_sbagliato' )->get_status(), 'webhook: firma sbagliata rifiutata' );
-aps_ok( 400 === $webhook( $event( $row, 800 ), null, time() - 3600 )->get_status(), 'webhook: firma troppo vecchia rifiutata' );
+aps_ok( 400 === $webhook( $mk_event( $row, 800 ), 'whsec_sbagliato' )->get_status(), 'webhook: firma sbagliata rifiutata' );
+aps_ok( 400 === $webhook( $mk_event( $row, 800 ), null, time() - 3600 )->get_status(), 'webhook: firma troppo vecchia rifiutata' );
 aps_ok( 'pending' === $ps->get_by_public( $row['public_id'] )['status'], 'webhook rifiutato: nessun incasso registrato' );
-$r = $webhook( $event( $row, 800 ) );
+$r = $webhook( $mk_event( $row, 800 ) );
 aps_ok( 200 === $r->get_status() && 'registrato' === $r->get_data()['result'] && 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 'paid' === $by_person( $pev_s )[ $pg ]['state'], 'webhook valido: pagamento dell\'ospite registrato' );
 $before = $balance_of( 'Stripe' );
-$webhook( $event( $row, 800 ) );
+$webhook( $mk_event( $row, 800 ) );
 aps_ok( $before === $balance_of( 'Stripe' ) && 3300 === $before, 'webhook ripetuto da Stripe: nessun doppio incasso' );
 aps_ok( 'ignorato' === $webhook( array( 'id' => 'e', 'type' => 'charge.refunded', 'data' => array( 'object' => array() ) ) )->get_data()['result'], 'webhook di altro tipo: ignorato' );
 
@@ -999,7 +999,7 @@ wp_set_current_user( $u_pm );
 $ps->create_checkout( $pmp, $u_pm, array( $k_gm ), home_url( '/area/' ) );
 $row = $latest();
 $stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
-$webhook( $event( $row, 100 ) );
+$webhook( $mk_event( $row, 100 ) );
 $p2 = $ps->get_by_public( $row['public_id'] );
 aps_ok( 'paid' === $p2['status'] && 1 === (int) $p2['review'] && 0 === (int) $p2['allocated_cents'] && false !== strpos( (string) $p2['error'], 'diverso' ), 'importo pagato diverso da quello atteso: registrato e segnato "da controllare"' );
 aps_ok( 100 === $sum_tx( "method = 'stripe' AND description LIKE '%non abbinato%'" ), 'importo diverso: i soldi arrivati entrano comunque in prima nota come "non abbinato"' );
