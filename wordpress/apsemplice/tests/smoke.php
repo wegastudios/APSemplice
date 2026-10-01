@@ -1704,7 +1704,7 @@ $n_people = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 apse_ok( false !== strpos( (string) apse_throws( function () use ( $walk, $few, $few_s, $founder ) { $walk->invoke( null, array( 'activity_id' => $few, 'session_id' => $few_s, 'new_first_name' => 'Troppi', 'new_last_name' => 'Ospiti', 'host_person_id' => $founder ) ); } ), 'esauriti' ) && $n_people === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'sul posto: con i posti esauriti non si prenota e il nuovo ospite non viene creato' );
 apse_ok( null !== apse_throws( function () use ( $walk, $wi_ev, $few_s, $q ) { $walk->invoke( null, array( 'activity_id' => $wi_ev, 'session_id' => $few_s, 'person_id' => $q ) ); } ), 'sul posto: la data deve essere di quell\'evento' );
 apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ingresso senza prenotazione', array( 'id' => $wi_ev ) );
-apse_ok( 4 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = $wi_s AND status = 'booked'" ), 'sul posto: nell\'elenco dell\'evento ci sono i quattro prenotati' );
+apse_ok( 3 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = $wi_s AND status = 'booked'" ), 'sul posto: i prenotati sono tre, senza doppioni né residui dei tentativi falliti' );
 
 $old_url = Settings::card_url( $founder );
 Settings::regenerate_card_salt();
