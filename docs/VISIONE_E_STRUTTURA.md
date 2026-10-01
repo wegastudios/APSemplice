@@ -17,7 +17,7 @@ comunicazioni email/SMS/app, corsi ed eventi con presenze, contabilità, privacy
 | Comunicazioni | I volontari hanno già i gruppi WhatsApp per le comunicazioni ordinarie. Il plugin serve per gli **avvisi ufficiali dell'ultimo momento** (lezione annullata, cambio sede/orario) come **notifica PWA** agli iscritti dell'attività — non per campagne email. Meno consensi marketing, meno rischio spam. |
 | Contatti ai volontari | Non visibili: il volontario vede i nomi degli iscritti e invia l'avviso dal sistema. |
 | Wallet (Apple/Google) | Non ora; teniamo la tessera digitale con QR pronta per un'estensione. |
-| Licenza | Chiave di licenza salvata ma **non verificata** (standby). Tutto passa da `License::allows()`: quando si attiverà l'autorizzazione dei domini si cambia solo quel punto. |
+| Licenza | **Una licenza = un dominio (sottodomini compresi), al massimo 2 installazioni insieme** (vedi [LICENZE.md](LICENZE.md)): regole e identità dell'installazione già implementate, server di verifica in **standby**. Chiave salvata ma non verificata. Tutto passa da `License::allows()`: quando si attiverà l'autorizzazione dei domini si cambia solo quel punto. |
 | Ruoli sociali (presidente, consiglio…) | Fuori dal plugin: pagine statiche del sito. |
 
 **Passo 1 (fondamenta) — fatto:** `Access` (permessi dai dati, con capability meta WordPress), REST API `apsemplice/v1`

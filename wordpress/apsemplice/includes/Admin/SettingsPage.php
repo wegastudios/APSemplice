@@ -24,7 +24,10 @@ final class SettingsPage {
 		) . '<p class="description">La pagina del sito dove soci e volontari lavorano (la creeremo con uno shortcode). Chi ha solo il ruolo "Socio APS" viene mandato qui al posto di wp-admin.</p></td></tr>';
 		$lic = License::status();
 		echo '<tr><th>Chiave di licenza</th><td><input type="text" name="license_key" value="' . esc_attr( (string) $s['license_key'] ) . '" class="regular-text" autocomplete="off">'
-			. '<p class="description">Dominio di questo sito: <code>' . esc_html( $lic['domain'] ) . '</code>. ' . esc_html( $lic['note'] ) . '</p></td></tr>';
+			. '<p class="description">Una licenza vale per un dominio (<code>' . esc_html( $lic['domain'] ) . '</code>, sottodomini compresi) e per al massimo '
+			. (int) $lic['max_installs'] . ' installazioni attive insieme su quel dominio, ad esempio il sito e il suo staging. '
+			. ( $lic['local'] ? 'Questo è un ambiente locale: non richiede licenza. ' : '' )
+			. esc_html( $lic['note'] ) . '</p><p class="description">ID di questa installazione: <code>' . esc_html( $lic['install_id'] ) . '</code></p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();

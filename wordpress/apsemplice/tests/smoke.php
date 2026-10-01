@@ -253,6 +253,12 @@ aps_ok( 1 === (int) Audit::recent( 1 )[0]['user_id'], 'il registro ricorda chi h
 Settings::update( array( 'license_key' => '  ABC-123  ', 'member_area_page_id' => 0 ) );
 aps_ok( 'ABC-123' === License::key() && License::allows( 'online_payments' ), 'licenza: chiave salvata, funzioni consentite (standby)' );
 aps_ok( '' !== License::status()['domain'], 'licenza: dominio del sito' );
+$inst1 = License::installation();
+aps_ok( $inst1['id'] === License::installation()['id'] && ! $inst1['moved'], 'licenza: l\'id dell\'installazione è stabile' );
+update_option( License::OPT_INSTALL_URL, 'https://produzione-originale.example.it' ); // simula un database copiato da un altro indirizzo
+$inst2 = License::installation();
+aps_ok( $inst2['moved'] && $inst2['id'] !== $inst1['id'], 'licenza: una copia su un altro indirizzo diventa una nuova installazione' );
+aps_ok( $inst2['id'] === License::installation()['id'], 'licenza: il nuovo id poi resta stabile' );
 
 // ---------- Cancellazione da attività ----------
 $acts->cancel( $yoga, $guest, $month );
