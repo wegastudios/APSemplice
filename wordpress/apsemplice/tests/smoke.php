@@ -412,6 +412,179 @@ $r = aps_rest( $u_ord, '/apsemplice/v1/me/bookings' );
 aps_ok( 200 === $r->get_status() && count( $r->get_data()['bookings'] ) >= 3, 'REST /me/bookings' );
 wp_set_current_user( 1 );
 
+
+// ---------- Front-end: shortcode, area soci, prenotazioni dal sito, contenuti riservati ----------
+$people->set_membership( $ord, $sy_label, true );
+$people->set_membership( $vol, $sy_label, true );
+$u_f = (int) $people->get( $founder )['wp_user_id'];
+foreach ( array_keys( \ApSemplice\Frontend\Shortcodes::VIEWS ) as $slug ) {
+	aps_ok( shortcode_exists( 'apsemplice_' . $slug ), "shortcode apsemplice_$slug registrato" );
+}
+aps_ok( shortcode_exists( 'apsemplice_riservato' ), 'shortcode apsemplice_riservato registrato' );
+$as = function ( int $user, string $shortcode ) {
+	wp_set_current_user( $user );
+	return do_shortcode( $shortcode );
+};
+
+// Area soci per ruolo
+$html = $as( 0, '[apsemplice_area_soci]' );
+aps_ok( false !== strpos( $html, 'loginform' ), 'area soci: l\'anonimo vede il modulo di accesso' );
+$html = $as( $u_ord, '[apsemplice_area_soci]' );
+aps_ok( false !== strpos( $html, 'Omar' ) && false !== strpos( $html, 'Tessera n.' ) && false !== strpos( $html, 'Le mie attività' ) && false !== strpos( $html, 'I miei ospiti' ) && false !== strpos( $html, 'Il mio profilo' ), 'area soci: il socio vede tessera, attività, ospiti e profilo' );
+aps_ok( false === strpos( $html, 'Le attività che tengo' ), 'area soci: il socio non vede la parte dei volontari' );
+$html_vol = $as( $u_vol, '[apsemplice_area_soci]' );
+aps_ok( false !== strpos( $html_vol, 'Le attività che tengo' ) && false !== strpos( $html_vol, 'Yoga' ), 'area soci: il volontario vede le attività che tiene' );
+aps_ok( false === strpos( $html_vol, 'omar@example.com' ), 'area soci: il volontario non vede le email degli iscritti' );
+aps_ok( false !== strpos( $as( 1, '[apsemplice_area_soci]' ), 'amministratore' ), 'area soci: l\'amministratore senza scheda riceve un messaggio chiaro' );
+aps_ok( false !== strpos( $as( $u_ord, '[apsemplice_tessera]' ), 'apsf-memcard' ), 'shortcode tessera' );
+aps_ok( false !== strpos( $as( $u_vol, '[apsemplice_area_volontari]' ), 'Yoga' ), 'shortcode area volontari (volontario)' );
+aps_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_volontari]' ), 'riservata ai soci e volontari' ), 'shortcode area volontari (socio semplice)' );
+
+// Elenco attività pubblico e prenotazioni
+$html = $as( 0, '[apsemplice_attivita]' );
+aps_ok( false !== strpos( $html, 'Yoga' ) && false !== strpos( $html, 'Serata giochi' ) && false !== strpos( $html, 'Accedi per prenotarti' ), 'attività: pubblico, con invito ad accedere per prenotarsi' );
+aps_ok( false !== strpos( $html, 'Soci 5,00' ) && false !== strpos( $html, 'ospiti 8,00' ), 'attività: contributo soci e ospiti visibile' );
+$html = $as( 0, '[apsemplice_attivita tipo="evento"]' );
+aps_ok( false !== strpos( $html, 'Serata giochi' ) && false === strpos( $html, 'Yoga' ), 'attività: filtro per tipo' );
+aps_ok( false !== strpos( $as( $u_f, '[apsemplice_attivita tipo="ricorrente"]' ), 'aps_front_book' ), 'attività: il socio con tessera valida vede il pulsante Prenotati' );
+aps_ok( false !== strpos( $as( 0, '[apsemplice_prossimi_eventi limite="3"]' ), 'apsf-upcoming' ), 'prossimi eventi' );
+aps_ok( false !== strpos( $as( 0, '[apsemplice_accesso]' ), 'loginform' ) && '' === $as( $u_f, '[apsemplice_accesso]' ), 'accesso: solo per chi non è collegato' );
+
+// Azioni dei soci
+$front = '\ApSemplice\Frontend\Actions';
+wp_set_current_user( $u_f );
+$s3  = (int) $rec_sessions[2]['id'];
+$msg = $front::do_book( array( 'session_id' => $s3, 'person_id' => $founder ) );
+aps_ok( false !== strpos( $msg, 'Prenotazione registrata' ) && $acts->has_active_booking( $s3, $founder ), 'sito: il socio si prenota a un evento' );
+$front::do_add_guest( array( 'first_name' => 'Gia', 'last_name' => 'Ospite', 'phone' => '333' ) );
+$g_list = $people->guests_of( $founder );
+aps_ok( 1 === count( $g_list ) && MemberType::GUEST === $g_list[0]['type'] && (int) $g_list[0]['host_person_id'] === $founder, 'sito: il socio aggiunge un proprio ospite' );
+$g_id = (int) $g_list[0]['id'];
+$front::do_book( array( 'session_id' => $s3, 'person_id' => $g_id ) );
+$gb = $by_person( $s3 );
+aps_ok( 300 === (int) $gb[ $g_id ]['fee_due_cents'] && 0 === (int) $gb[ $founder ]['fee_due_cents'], 'sito: l\'ospite prenotato paga il contributo ospiti' );
+aps_ok( null !== aps_throws( function () use ( $front, $s3, $guest ) { $front::do_book( array( 'session_id' => $s3, 'person_id' => $guest ) ); } ), 'sito: non si prenota l\'ospite di un altro socio' );
+$past_session = $acts->add_session( $rec, array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' -3 days' ) ) ) );
+aps_ok( null !== aps_throws( function () use ( $front, $past_session, $founder ) { $front::do_book( array( 'session_id' => $past_session, 'person_id' => $founder ) ); } ), 'sito: non si prenota un evento già passato' );
+wp_set_current_user( $u_ord );
+aps_ok( null !== aps_throws( function () use ( $front, $s3, $founder ) { $front::do_book( array( 'session_id' => $s3, 'person_id' => $founder ) ); } ), 'sito: non si prenota un altro socio' );
+$people->set_membership( $ord, $sy_label, false );
+aps_ok( null !== aps_throws( function () use ( $front, $s3, $ord ) { $front::do_book( array( 'session_id' => $s3, 'person_id' => $ord ) ); } ), 'sito: con la tessera scaduta non ci si prenota' );
+$people->set_membership( $ord, $sy_label, true );
+wp_set_current_user( $u_f );
+$front::do_cancel_booking( array( 'session_id' => $s3, 'person_id' => $g_id ) );
+aps_ok( ! $acts->has_active_booking( $s3, $g_id ), 'sito: il socio annulla la prenotazione del suo ospite' );
+$front::do_profile( array( 'phone' => '3331112222', 'tax_code' => 'abcdef12g34h567i' ) );
+aps_ok( '3331112222' === $people->get( $founder )['phone'] && 'ABCDEF12G34H567I' === $people->get( $founder )['tax_code'], 'sito: il socio aggiorna il proprio profilo' );
+License::set_state( 'unpaid', $today );
+aps_ok( null !== aps_throws( function () use ( $front, $s3, $founder ) { $front::do_book( array( 'session_id' => $s3, 'person_id' => $founder ) ); } ), 'licenza non in regola: le azioni dei soci sono sospese' );
+aps_ok( false !== strpos( $as( $u_f, '[apsemplice_area_soci]' ), 'sospeso' ), 'licenza non in regola: l\'area soci mostra "servizio sospeso"' );
+delete_option( License::OPT_STATE );
+
+// Contenuti riservati: pagine e articoli
+wp_set_current_user( 1 );
+$mk   = function ( string $title, string $rule, array $ids = array() ) {
+	$id = wp_insert_post( array( 'post_type' => 'post', 'post_status' => 'publish', 'post_title' => $title, 'post_content' => "SEGRETO $title", 'post_excerpt' => "RIASSUNTO $title" ) );
+	if ( 'public' !== $rule ) {
+		update_post_meta( $id, '_aps_access', $rule );
+		update_post_meta( $id, '_aps_access_activities', $ids );
+	}
+	return $id;
+};
+$show = function ( int $post_id, int $user ) {
+	wp_set_current_user( $user );
+	$GLOBALS['post'] = get_post( $post_id );
+	setup_postdata( $GLOBALS['post'] );
+	$html = apply_filters( 'the_content', $GLOBALS['post']->post_content );
+	wp_reset_postdata();
+	return $html;
+};
+$p_pub  = $mk( 'Pubblico', 'public' );
+$p_mem  = $mk( 'Solo soci', 'members' );
+$p_vol  = $mk( 'Solo volontari', 'volunteers' );
+$p_yoga = $mk( 'Programma Yoga', 'activity', array( $yoga ) );
+$p_teat = $mk( 'Programma Teatro', 'activity', array( $other ) );
+$sees   = function ( int $post, int $user ) use ( $show ) {
+	return false !== strpos( $show( $post, $user ), 'SEGRETO' );
+};
+aps_ok( $sees( $p_pub, 0 ), 'riservati: il contenuto pubblico lo vedono tutti' );
+aps_ok( ! $sees( $p_mem, 0 ) && false !== strpos( $show( $p_mem, 0 ), 'Accedi' ), 'riservati: l\'anonimo vede l\'invito ad accedere, non il contenuto' );
+aps_ok( $sees( $p_mem, $u_ord ) && ! $sees( $p_vol, $u_ord ), 'riservati: il socio vede "solo soci" ma non "solo volontari"' );
+aps_ok( $sees( $p_vol, $u_vol ), 'riservati: il volontario vede "solo volontari"' );
+aps_ok( $sees( $p_yoga, $u_ord ) && ! $sees( $p_teat, $u_ord ), 'riservati: il socio iscritto a Yoga vede il programma di Yoga ma non quello di Teatro' );
+aps_ok( $sees( $p_yoga, $u_vol ) && ! $sees( $p_teat, $u_vol ), 'riservati: l\'istruttore vede solo i contenuti delle sue attività' );
+aps_ok( $sees( $p_mem, $u_f ) && ! $sees( $p_vol, $u_f ) && ! $sees( $p_yoga, $u_f ), 'riservati: il fondatore vede "solo soci" ma non quello di attività a cui non è iscritto' );
+aps_ok( $sees( $p_vol, 1 ) && $sees( $p_teat, 1 ) && $sees( $p_yoga, 1 ), 'riservati: l\'amministratore vede tutto' );
+$people->set_membership( $ord, $sy_label, false );
+aps_ok( ! $sees( $p_mem, $u_ord ) && $sees( $p_yoga, $u_ord ), 'riservati: tessera scaduta = niente "solo soci", ma resta il programma dell\'attività a cui è iscritto' );
+$people->set_membership( $ord, $sy_label, true );
+License::set_state( 'unpaid', $today );
+aps_ok( ! $sees( $p_mem, $u_ord ) && $sees( $p_pub, $u_ord ) && $sees( $p_mem, 1 ), 'riservati: licenza non in regola = i soci non vedono i contenuti riservati' );
+delete_option( License::OPT_STATE );
+
+wp_set_current_user( 0 );
+$rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/posts/' . $p_mem ) )->get_data();
+aps_ok( '' === $rest['content']['rendered'] && ! empty( $rest['content']['protected'] ), 'riservati: l\'API REST non rivela il contenuto' );
+aps_ok( false === strpos( get_the_excerpt( $p_mem ), 'RIASSUNTO' ), 'riservati: neanche il riassunto' );
+wp_set_current_user( 1 );
+$rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/posts/' . $p_mem ) )->get_data();
+aps_ok( false !== strpos( $rest['content']['rendered'], 'SEGRETO' ), 'riservati: l\'amministratore legge il contenuto via REST' );
+
+// Riquadro nell'editor e colonna
+wp_set_current_user( 1 );
+$p_edit = $mk( 'Da riservare', 'public' );
+$_POST  = array( 'aps_access_nonce' => wp_create_nonce( 'aps_access_save' ), 'aps_access' => 'activity', 'aps_access_activities' => array( (string) $yoga ) );
+\ApSemplice\Frontend\Restrict::save_meta_box( $p_edit, get_post( $p_edit ) );
+aps_ok( 'activity' === get_post_meta( $p_edit, '_aps_access', true ) && array( $yoga ) === array_map( 'intval', (array) get_post_meta( $p_edit, '_aps_access_activities', true ) ), 'riquadro Accesso: salva regola e attività' );
+ob_start();
+\ApSemplice\Frontend\Restrict::print_column( 'aps_access', $p_edit );
+aps_ok( false !== strpos( ob_get_clean(), 'Iscritti: Yoga' ), 'colonna Accesso negli elenchi' );
+ob_start();
+\ApSemplice\Frontend\Restrict::render_meta_box( get_post( $p_edit ) );
+aps_ok( false !== strpos( ob_get_clean(), 'name="aps_access"' ), 'riquadro Accesso: si disegna' );
+$_POST = array( 'aps_access_nonce' => wp_create_nonce( 'aps_access_save' ), 'aps_access' => 'public' );
+\ApSemplice\Frontend\Restrict::save_meta_box( $p_edit, get_post( $p_edit ) );
+aps_ok( '' === get_post_meta( $p_edit, '_aps_access', true ), 'riquadro Accesso: tornando pubblico la regola si toglie' );
+$_POST = array( 'aps_access_nonce' => 'sbagliato', 'aps_access' => 'members' );
+\ApSemplice\Frontend\Restrict::save_meta_box( $p_edit, get_post( $p_edit ) );
+aps_ok( '' === get_post_meta( $p_edit, '_aps_access', true ), 'riquadro Accesso: nonce errato ignorato' );
+$_POST = array();
+
+// Parti di pagina: shortcode e blocchi
+aps_ok( false === strpos( $as( 0, '[apsemplice_riservato accesso="soci"]INTERNO[/apsemplice_riservato]' ), 'INTERNO' ), 'parte riservata (shortcode): nascosta agli anonimi' );
+aps_ok( false !== strpos( $as( $u_f, '[apsemplice_riservato accesso="soci"]INTERNO[/apsemplice_riservato]' ), 'INTERNO' ), 'parte riservata (shortcode): visibile ai soci' );
+aps_ok( false !== strpos( $as( $u_ord, "[apsemplice_riservato accesso=\"attivita\" attivita=\"$yoga\"]X-YOGA[/apsemplice_riservato]" ), 'X-YOGA' ) && false === strpos( $as( $u_f, "[apsemplice_riservato accesso=\"attivita\" attivita=\"$yoga\"]X-YOGA[/apsemplice_riservato]" ), 'X-YOGA' ), 'parte riservata (shortcode): solo gli iscritti all\'attività' );
+aps_ok( false !== strpos( $as( 0, '[apsemplice_riservato accesso="soci" messaggio="Solo per noi"]x[/apsemplice_riservato]' ), 'Solo per noi' ), 'parte riservata: messaggio personalizzato' );
+$registry = WP_Block_Type_Registry::get_instance();
+aps_ok( $registry->is_registered( 'apsemplice/vista' ) && $registry->is_registered( 'apsemplice/riservato' ), 'blocchi Gutenberg registrati' );
+$block = function ( string $name, array $attrs, string $inner = '' ) {
+	return render_block( array( 'blockName' => $name, 'attrs' => $attrs, 'innerBlocks' => array(), 'innerHTML' => $inner, 'innerContent' => array( $inner ) ) );
+};
+wp_set_current_user( 0 );
+aps_ok( false === strpos( $block( 'apsemplice/riservato', array( 'accesso' => 'members' ), '<p>BLK</p>' ), 'BLK' ), 'blocco Contenuto riservato: nascosto agli anonimi' );
+wp_set_current_user( $u_f );
+aps_ok( false !== strpos( $block( 'apsemplice/riservato', array( 'accesso' => 'members' ), '<p>BLK</p>' ), 'BLK' ), 'blocco Contenuto riservato: visibile ai soci' );
+aps_ok( false !== strpos( $block( 'apsemplice/vista', array( 'vista' => 'attivita' ) ), 'Yoga' ), 'blocco APSemplice (vista attività)' );
+wp_set_current_user( 1 );
+aps_ok( file_exists( APS_DIR . 'assets/blocks.js' ) && file_exists( APS_DIR . 'assets/frontend.css' ), 'asset front-end presenti' );
+
+// Pagine standard
+$pages = new ReflectionMethod( Admin\Actions::class, 'create_pages' );
+$pages->setAccessible( true );
+$res1 = $pages->invoke( null, array() );
+$saved_pages = (array) get_option( 'aps_pages', array() );
+aps_ok( 3 === count( $saved_pages ) && false !== strpos( get_post( $saved_pages['area'] )->post_content, '[apsemplice_area_soci]' ), 'pagine standard create con gli shortcode' );
+aps_ok( 'volunteers' === get_post_meta( $saved_pages['volontari'], '_aps_access', true ), 'la pagina Area volontari è riservata ai volontari' );
+aps_ok( (int) $saved_pages['area'] === (int) Settings::get( 'member_area_page_id' ) && Gatekeeper::area_url() === get_permalink( $saved_pages['area'] ), 'l\'Area soci diventa la pagina di arrivo dopo il login' );
+aps_ok( false !== strpos( $pages->invoke( null, array() )[1], 'esistono già' ), 'pagine standard: non si duplicano' );
+aps_ok( false !== strpos( do_shortcode( get_post( $saved_pages['attivita'] )->post_content ), 'Yoga' ), 'la pagina Attività mostra le attività' );
+
+// Elementor (installato nel test): i widget si registrano e i controlli si costruiscono
+aps_ok( class_exists( '\Elementor\Plugin' ), 'Elementor è presente nell\'ambiente di test' );
+$el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types();
+aps_ok( isset( $el_widgets['apsemplice_view'] ) && isset( $el_widgets['apsemplice_reserved'] ), 'Elementor: widget APSemplice registrati' );
+aps_ok( array_key_exists( 'view', $el_widgets['apsemplice_view']->get_controls() ) && array_key_exists( 'rule', $el_widgets['apsemplice_reserved']->get_controls() ), 'Elementor: i controlli dei widget si costruiscono' );
+wp_set_current_user( 1 );
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 aps_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );
 aps_ok( false !== strpos( Admin\Exports::people()[1], 'fulvia@example.com' ), 'export soci' );
@@ -454,6 +627,7 @@ aps_render( array( Admin\AccountsPage::class, 'render' ), 'Verifica saldo' );
 aps_render( array( Admin\ReportsPage::class, 'render' ), 'Saldi dei conti' );
 aps_render( array( Admin\ReportsPage::class, 'render' ), 'Soci iscritti', array( 'mode' => 'social' ) );
 aps_render( array( Admin\SettingsPage::class, 'render' ), 'Chiave di licenza' );
+aps_render( array( Admin\SettingsPage::class, 'render' ), 'Crea le pagine standard' );
 aps_render( array( Admin\AuditPage::class, 'render' ), 'Registro azioni' );
 aps_render( array( Admin\ImportPage::class, 'render' ), 'Importa soci da CSV' );
 

@@ -38,6 +38,7 @@ final class Actions {
 			'aps_add_account'        => 'add_account',
 			'aps_cash_count'         => 'cash_count',
 			'aps_save_settings'      => 'save_settings',
+			'aps_create_pages'       => 'create_pages',
 			'aps_import_preview'     => 'import_preview',
 			'aps_import_apply'       => 'import_apply',
 		);
@@ -274,6 +275,35 @@ final class Actions {
 			)
 		);
 		return array( Ui::url( 'aps-settings' ), 'Impostazioni salvate.' );
+	}
+
+	/** Crea le pagine standard (area soci, area volontari, attività) se non esistono già. */
+	private static function create_pages( array $p ): array {
+		$defs  = array(
+			'area'      => array( 'Area soci', '[apsemplice_area_soci]' ),
+			'volontari' => array( 'Area volontari', '[apsemplice_area_volontari]' ),
+			'attivita'  => array( 'Attività ed eventi', '[apsemplice_attivita]' ),
+		);
+		$saved = (array) get_option( 'aps_pages', array() );
+		$made  = array();
+		foreach ( $defs as $key => $d ) {
+			if ( ! empty( $saved[ $key ] ) && get_post_status( (int) $saved[ $key ] ) ) {
+				continue;
+			}
+			$id = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $d[0], 'post_content' => $d[1] ) );
+			if ( $id && ! is_wp_error( $id ) ) {
+				$saved[ $key ] = (int) $id;
+				$made[]        = $d[0];
+				if ( 'volontari' === $key ) {
+					update_post_meta( $id, '_aps_access', 'volunteers' ); // la pagina dei volontari è visibile solo a loro
+				}
+			}
+		}
+		update_option( 'aps_pages', $saved );
+		if ( ! empty( $saved['area'] ) && 0 === (int) Settings::get( 'member_area_page_id' ) ) {
+			Settings::update( array( 'member_area_page_id' => (int) $saved['area'] ) );
+		}
+		return array( Ui::url( 'aps-settings' ), $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' );
 	}
 
 	// ---------- Import soci ----------

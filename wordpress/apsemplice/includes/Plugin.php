@@ -18,6 +18,7 @@ final class Plugin {
 		Access::register();      // capability meta: aps_notify_activity, aps_view_person...
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
+		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}

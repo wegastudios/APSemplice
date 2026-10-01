@@ -21,6 +21,7 @@ final class Access {
 		'aps_edit_own_profile',   // id persona: modificare i propri dati
 		'aps_view_payments',      // id persona: vedere i propri pagamenti
 		'aps_add_guest',          // id persona (il socio ospitante): aggiungere un ospite
+		'aps_book_for',           // id persona: prenotarla a un evento (sé stessi o un proprio ospite)
 		'aps_view_activity',      // id attività: vedere i dati base
 		'aps_view_participants',  // id attività: vedere chi è iscritto
 		'aps_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
@@ -47,6 +48,8 @@ final class Access {
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me;
 			case 'aps_add_guest':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
+			case 'aps_book_for':
+				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
 			case 'aps_view_activity':
 				return self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_enrolled'] );
 			case 'aps_view_participants':
@@ -107,6 +110,13 @@ final class Access {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
+		if ( 'aps_book_for' === $ability ) {
+			$target = Plugin::people()->get( $object_id );
+			if ( ! $target ) {
+				return false;
+			}
+			$ctx['host_person_id'] = (int) $target['host_person_id'];
+		}
 		if ( in_array( $ability, array( 'aps_view_activity', 'aps_view_participants', 'aps_notify_activity' ), true ) ) {
 			$activity = Plugin::activities()->get( $object_id );
 			if ( ! $activity ) {

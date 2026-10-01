@@ -564,4 +564,50 @@ class ActivityService {
 		}
 		return null;
 	}
+
+	// ---------- Per l'area riservata e i contenuti riservati ----------
+
+	/** Attività a cui la persona partecipa: corsi con iscrizione non conclusa, eventi con una prenotazione attiva. */
+	public function person_activity_ids( int $person_id ): array {
+		$ym      = substr( Db::today(), 0, 7 );
+		$courses = $this->db()->get_col(
+			$this->db()->prepare( 'SELECT activity_id FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d AND (end_month IS NULL OR end_month >= %s)', $person_id, $ym )
+		);
+		$events  = $this->db()->get_col(
+			$this->db()->prepare(
+				'SELECT DISTINCT s.activity_id FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id AND s.cancelled_at IS NULL WHERE b.person_id = %d AND b.status = 'booked'",
+				$person_id
+			)
+		);
+		return array_values( array_unique( array_map( 'intval', array_merge( $courses, $events ) ) ) );
+	}
+
+	/** Attività tenute da una persona (istruttore). */
+	public function taught_activity_ids( int $person_id ): array {
+		return array_map(
+			'intval',
+			$this->db()->get_col( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE instructor_person_id = %d AND deleted_at IS NULL', $person_id ) )
+		);
+	}
+
+	/** Tutte le attività (per le liste di scelta), dalle più recenti. */
+	public function all_for_select(): array {
+		return $this->db()->get_results( 'SELECT id, name, social_year, kind FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL ORDER BY social_year DESC, name', ARRAY_A ) ?: array();
+	}
+
+	/** Prossime date non annullate (da oggi), con i dati dell'attività e i posti occupati. */
+	public function upcoming_sessions( int $limit = 10, ?int $activity_id = null ): array {
+		$sql  = 'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents, '
+			. '(SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " b WHERE b.session_id = s.id AND b.status = 'booked') AS booked_count "
+			. 'FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
+			. 'WHERE s.cancelled_at IS NULL AND s.session_date >= %s';
+		$args = array( Db::today() );
+		if ( $activity_id ) {
+			$sql   .= ' AND a.id = %d';
+			$args[] = $activity_id;
+		}
+		$sql   .= ' ORDER BY s.session_date, s.start_time, s.id LIMIT %d';
+		$args[] = max( 1, $limit );
+		return $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
+	}
 }
