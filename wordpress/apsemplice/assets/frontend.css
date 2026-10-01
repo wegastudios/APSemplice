@@ -95,3 +95,4 @@
 	.apsf-memcard-data { gap: 1rem; }
 	.apsf-list > li { align-items: flex-start; }
 }
+.apsf-manage { flex-basis: 100%; }

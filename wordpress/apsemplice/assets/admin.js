@@ -80,6 +80,18 @@
 		typeSel.addEventListener('change', applyType);
 		applyType();
 	}
+	/* Impostazioni: mostra solo i campi del gateway scelto */
+	var payProvider = $('#aps-pay-provider');
+	if (payProvider) {
+		var applyProvider = function () {
+			var p = payProvider.value;
+			$$('.aps-pay-stripe').forEach(function (r) { r.style.display = p === 'stripe' ? '' : 'none'; });
+			$$('.aps-pay-paypal').forEach(function (r) { r.style.display = p === 'paypal' ? '' : 'none'; });
+		};
+		payProvider.addEventListener('change', applyProvider);
+		applyProvider();
+	}
+
 	var nextCard = $('#aps-next-card');
 	if (nextCard) {
 		nextCard.addEventListener('click', function () { $('#aps-card').value = nextCard.getAttribute('data-next'); });
@@ -96,6 +108,7 @@
 		var applyKind = function () {
 			var k = kindSel.value;
 			$$('.aps-row-event').forEach(function (r) { r.style.display = k === 'event' ? '' : 'none'; });
+			$$('.aps-row-sessions').forEach(function (r) { r.style.display = k === 'course' ? 'none' : ''; });
 			$$('.aps-row-event input[name="session_date"]').forEach(function (i) { i.required = k === 'event'; });
 			$$('.aps-fee-label').forEach(function (l) { l.textContent = k === 'course' ? 'Contributo soci (al mese)' : 'Contributo soci (a evento)'; });
 			var hint = $('#aps-kind-hint'); if (hint) { hint.textContent = kindHints[k] || ''; }

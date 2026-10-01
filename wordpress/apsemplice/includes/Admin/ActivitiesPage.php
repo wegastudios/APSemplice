@@ -2,6 +2,7 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\ActivityKind;
+use ApSemplice\CancelPolicy;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
 use ApSemplice\Plugin;
@@ -12,6 +13,16 @@ defined( 'ABSPATH' ) || exit;
 
 final class ActivitiesPage {
 
+
+	/** Righe del modulo: cancellabile e termine (solo per eventi ed eventi ricorrenti). */
+	private static function cancel_rows( ?array $a, string $row_class ): string {
+		$on      = $a && ! empty( $a['cancellable'] );
+		$pol     = $a ? (string) $a['cancel_policy'] : '';
+		$default = CancelPolicy::labels()[ Settings::get( 'cancel_policy_default' ) ] ?? '';
+		return '<tr class="' . esc_attr( $row_class ) . '"><th>Cancellazione</th><td><label><input type="checkbox" name="cancellable" value="1"' . checked( $on, true, false ) . '> Cancellabile anche se a pagamento</label>'
+			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
+			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
+	}
 	/** "Contributo 5,00 € a evento · ospiti 8,00 €" oppure "Gratuito". */
 	private static function fee_text( array $a ): string {
 		$fee   = (int) $a['fee_cents'];
@@ -74,6 +85,7 @@ final class ActivitiesPage {
 		echo '<tr class="aps-row-event"><th>Data *</th><td><input type="date" name="session_date"> ore <input type="time" name="start_time"></td></tr>';
 		echo '<tr class="aps-row-event"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
 		echo '<tr class="aps-row-event"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
+		echo self::cancel_rows( null, 'aps-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th><span class="aps-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'aps-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
@@ -124,6 +136,9 @@ final class ActivitiesPage {
 		echo '<tr><th>Contributo soci (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
 		$guest = null === $activity['guest_fee_cents'] ? '' : Money::plain( (int) $activity['guest_fee_cents'] );
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
+		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
+			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		}
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'aps-instructor' ) . '</td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );
 		Ui::form_close();
@@ -265,12 +280,22 @@ final class ActivitiesPage {
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
 					echo '<tr><td><a href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . '</td>'
-						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : '<span class="aps-warn">prenotazione annullata' . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="aps-warn">trasferita ad altra persona' : '<span class="aps-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 					if ( $b['active'] ) {
 						Ui::form_open( 'aps_cancel_booking', $back, false, 'aps-confirm' );
 						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 						echo '<button class="button button-small" data-confirm="Annullare la prenotazione? Gli eventuali pagamenti restano registrati.">Annulla prenotazione</button>';
 						Ui::form_close();
+						$others = array_values( array_filter( $all, function ( $x ) use ( $b, $booked ) {
+							return (int) $x['id'] !== (int) $b['person_id'] && ! in_array( (int) $x['id'], $booked, true );
+						} ) );
+						echo '<details style="margin-top:6px"><summary>Cambia nominativo</summary>';
+						Ui::form_open( 'aps_transfer_booking', $back );
+						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+						echo Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'aps-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+						echo '<p class="description">Il pagamento già fatto passa alla nuova persona; se il suo contributo è maggiore (es. ospite) resta da pagare la differenza.</p>';
+						Ui::form_close();
+						echo '</details>';
 					}
 					echo '</td></tr>';
 				}

@@ -42,6 +42,37 @@ Tre tipi, tutti **gratuiti o con contributo**, con un **contributo ospiti** che 
 - All'**incasso**: per i corsi si propone il primo mese da pagare; per gli eventi si propone il contributo delle prenotazioni non ancora pagate ("+ Contributo evento…"), che resta collegato alla data e alla persona.
 - REST: `/activities/{id}/sessions`, `/sessions/{id}/bookings` (i volontari vedono solo i nomi), `/me/bookings`.
 
+## Cancellazioni e cambio di nominativo (eventi)
+
+| Evento | Annullare la prenotazione | Cambiare nominativo |
+|---|---|---|
+| **Gratuito** (per quella persona) | **sempre**, fino all'inizio dell'evento | sì, fino all'inizio |
+| **A pagamento**, non cancellabile (default) | **mai** | **sì**, fino all'inizio |
+| **A pagamento**, creato come **cancellabile** | fino al termine scelto: **24 ore**, **48 ore** o **una settimana** prima | sì, fino all'inizio |
+
+- Il termine si sceglie per ogni evento (o "predefinito", impostato in *Impostazioni → Eventi: cancellazioni*, default 48 ore).
+- L'inizio è la data con l'orario; senza orario vale la mezzanotte di quel giorno.
+- "Gratuito" si valuta sul contributo **dovuto da quella prenotazione**: un evento gratis per i soci ma a pagamento per gli ospiti è annullabile solo per i soci.
+- **Cambio di nominativo**: la prenotazione (e quanto già pagato) passa a un'altra persona. Se il nuovo partecipante deve di più (es. un ospite con
+  contributo ospiti maggiore) la **differenza resta da pagare**; se deve meno non c'è rimborso. I pagamenti già registrati vengono intestati al nuovo
+  partecipante (con una nota «intestato da … a …» nella descrizione) e i posti occupati non cambiano. Il socio può intestare a sé stesso, a un proprio ospite
+  già inserito o a un nuovo ospite (nome e cognome); l'amministratore a chiunque e anche a evento iniziato.
+- **Amministratore**: può sempre annullare una prenotazione (i pagamenti già ricevuti restano registrati e vanno rimborsati a mano).
+
+## Pagamenti online: configurazione (Stripe / PayPal in alternativa a WooCommerce)
+
+*Impostazioni → Pagamenti online*: si sceglie **un** metodo — Nessuno (in sede), WooCommerce (non ancora collegato), Stripe o PayPal.
+Per ora è solo la **configurazione** e la verifica; l'incasso online vero è il passo successivo.
+
+- **Stripe**: modalità (prova/reale), chiave pubblicabile `pk_…`, chiave segreta `sk_…`/`rk_…`, segreto del webhook `whsec_…`.
+- **PayPal**: modalità (sandbox/reale), Client ID, Client Secret.
+- Le chiavi vengono **controllate** (prefissi, coerenza con la modalità: es. chiavi di prova con modalità reale = errore) e *Verifica connessione*
+  fa una chiamata di prova (Stripe legge il saldo, PayPal chiede un token) **solo quando premi il pulsante**; non muove denaro.
+- **Sicurezza**: le chiavi segrete si salvano **cifrate** nel database, non vengono mai ristampate (solo `••••1234`) e non finiscono nel registro azioni.
+  Meglio ancora: definirle in `wp-config.php` (`APS_STRIPE_SECRET_KEY`, `APS_STRIPE_WEBHOOK_SECRET`, `APS_PAYPAL_CLIENT_SECRET`, e per le non segrete
+  `APS_STRIPE_PUBLISHABLE_KEY`, `APS_STRIPE_MODE`, `APS_PAYPAL_CLIENT_ID`, `APS_PAYPAL_MODE`): così non entrano nel database e prevalgono sulle impostazioni.
+  La cifratura usa i "salt" di wp-config.php: se li cambi le chiavi salvate diventano illeggibili e vanno reinserite.
+
 ## Soci = utenti WordPress
 
 - Creando un socio si **crea l'utente WordPress** con la stessa email (ruolo `aps_member`, che ha solo `read`: nessun accesso alla gestione). Non parte nessuna email.

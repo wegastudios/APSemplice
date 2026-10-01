@@ -2,8 +2,10 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\Audit;
+use ApSemplice\Gateways;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
+use ApSemplice\PaymentConfig;
 use ApSemplice\PeopleCsv;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -30,6 +32,8 @@ final class Actions {
 			'aps_generate_sessions'  => 'generate_sessions',
 			'aps_cancel_session'     => 'cancel_session',
 			'aps_book'               => 'book',
+			'aps_transfer_booking'   => 'transfer_booking',
+			'aps_test_gateway'       => 'test_gateway',
 			'aps_cancel_booking'     => 'cancel_booking',
 			'aps_save_income'        => 'save_income',
 			'aps_save_expense'       => 'save_expense',
@@ -128,6 +132,8 @@ final class Actions {
 			'instructor_person_id' => $p['instructor_person_id'] ?? '',
 			'fee_cents'            => self::fee_field( $p, 'fee' ) ?? 0,
 			'guest_fee_cents'      => self::fee_field( $p, 'guest_fee' ),
+			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
+			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'notes'                => $p['notes'] ?? '',
 		);
 		$id = (int) ( $p['id'] ?? 0 );
@@ -263,18 +269,56 @@ final class Actions {
 	// ---------- Impostazioni ----------
 
 	private static function save_settings( array $p ): array {
+		$txt = function ( string $k ) use ( $p ) {
+			return sanitize_text_field( $p[ $k ] ?? '' );
+		};
 		Settings::update(
 			array(
-				'association_name'        => sanitize_text_field( $p['association_name'] ?? '' ),
-				'tax_code'                => sanitize_text_field( $p['tax_code'] ?? '' ),
+				'association_name'        => $txt( 'association_name' ),
+				'tax_code'                => $txt( 'tax_code' ),
 				'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
 				'member_area_page_id'     => (int) ( $p['member_area_page_id'] ?? 0 ),
-				'license_key'             => sanitize_text_field( $p['license_key'] ?? '' ),
+				'license_key'             => $txt( 'license_key' ),
+				'cancel_policy_default'   => $txt( 'cancel_policy_default' ),
+				'payment_provider'        => $txt( 'payment_provider' ),
+				'stripe_mode'             => $txt( 'stripe_mode' ),
+				'stripe_publishable_key'  => $txt( 'stripe_publishable_key' ),
+				'stripe_secret_key'       => $txt( 'stripe_secret_key' ),     // vuoto = lascia quella salvata
+				'stripe_webhook_secret'   => $txt( 'stripe_webhook_secret' ),
+				'paypal_mode'             => $txt( 'paypal_mode' ),
+				'paypal_client_id'        => $txt( 'paypal_client_id' ),
+				'paypal_client_secret'    => $txt( 'paypal_client_secret' ),
 			)
 		);
-		return array( Ui::url( 'aps-settings' ), 'Impostazioni salvate.' );
+		foreach ( \ApSemplice\Settings::SECRET_KEYS as $k ) {
+			if ( ! empty( $p[ 'clear_' . $k ] ) ) {
+				Settings::clear_secret( $k );
+			}
+		}
+		$check = PaymentConfig::validate( Settings::payment_config() );
+		$msg   = 'Impostazioni salvate.';
+		if ( $check['errors'] ) {
+			$msg .= ' Attenzione ai pagamenti online: ' . implode( ' ', $check['errors'] );
+		}
+		return array( Ui::url( 'aps-settings' ), $msg );
+	}
+
+	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
+	private static function test_gateway( array $p ): array {
+		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ), true ) ? $p['provider'] : '';
+		$res      = Gateways::test( $provider, Settings::payment_config(), array( Gateways::class, 'wp_http' ) );
+		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
+		if ( ! $res['ok'] ) {
+			throw new \InvalidArgumentException( $res['message'] );
+		}
+		return array( Ui::url( 'aps-settings' ), $res['message'] );
+	}
+
+	private static function transfer_booking( array $p ): array {
+		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );
+		return array( Ui::url( 'aps-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Nominativo cambiato: il pagamento già fatto passa alla nuova persona.' );
 	}
 
 	/** Crea le pagine standard (area soci, area volontari, attività) se non esistono già. */

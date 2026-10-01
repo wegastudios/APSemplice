@@ -18,6 +18,7 @@ final class Actions {
 	const MAP = array(
 		'aps_front_book'           => 'do_book',
 		'aps_front_cancel_booking' => 'do_cancel_booking',
+		'aps_front_transfer_booking' => 'do_transfer_booking',
 		'aps_front_add_guest'      => 'do_add_guest',
 		'aps_front_profile'        => 'do_profile',
 	);
@@ -96,19 +97,55 @@ final class Actions {
 		return 'Prenotazione registrata' . ( $person ? ' per ' . $person['first_name'] : '' ) . '.';
 	}
 
+	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
 	public static function do_cancel_booking( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::require_cap( 'aps_book_for', $person_id );
-		$session = Plugin::activities()->session( (int) ( $post['session_id'] ?? 0 ) );
-		if ( ! $session ) {
+		$session_id = (int) ( $post['session_id'] ?? 0 );
+		if ( ! Plugin::activities()->session( $session_id ) ) {
 			throw new \InvalidArgumentException( 'Evento non trovato.' );
 		}
-		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
-			throw new \InvalidArgumentException( 'Non si può annullare una prenotazione di un evento già passato.' );
+		$eval = Plugin::activities()->cancellation_for( $session_id, $person_id );
+		if ( ! $eval['allowed'] ) {
+			throw new \InvalidArgumentException( $eval['message'] );
 		}
-		Plugin::activities()->cancel_booking( (int) $session['id'], $person_id );
+		Plugin::activities()->cancel_booking( $session_id, $person_id );
 		return 'Prenotazione annullata.';
+	}
+
+	/**
+	 * Cambia il nominativo di una prenotazione: a un proprio ospite già inserito, a sé stessi, oppure a un nuovo ospite
+	 * (nome e cognome). Se il nuovo partecipante ha un contributo maggiore la differenza resta da pagare.
+	 */
+	public static function do_transfer_booking( array $post ): string {
+		$actor      = self::actor();
+		$from_id    = (int) ( $post['person_id'] ?? $actor['id'] );
+		$session_id = (int) ( $post['session_id'] ?? 0 );
+		self::require_cap( 'aps_book_for', $from_id );
+		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
+			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per gestire le prenotazioni.' );
+		}
+		$to_id = (int) ( $post['to_person_id'] ?? 0 );
+		$first = trim( (string) ( $post['new_first_name'] ?? '' ) );
+		$last  = trim( (string) ( $post['new_last_name'] ?? '' ) );
+		if ( ! $to_id && ( '' !== $first || '' !== $last ) ) {
+			self::require_cap( 'aps_add_guest', (int) $actor['id'] );
+			$to_id = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) $actor['id'], 'first_name' => $first, 'last_name' => $last ) );
+		}
+		if ( ! $to_id ) {
+			throw new \InvalidArgumentException( 'Scegli a chi intestare la prenotazione, oppure indica nome e cognome di un nuovo ospite.' );
+		}
+		self::require_cap( 'aps_book_for', $to_id );
+		Plugin::activities()->transfer_booking( $session_id, $from_id, $to_id, true );
+		$b   = Plugin::activities()->bookings_for_session( $session_id );
+		$msg = 'Nominativo cambiato.';
+		foreach ( $b as $row ) {
+			if ( (int) $row['person_id'] === $to_id && $row['remaining'] > 0 ) {
+				$msg .= ' Da integrare: ' . \ApSemplice\Money::format( (int) $row['remaining'] ) . ' (si paga in sede).';
+			}
+		}
+		return $msg;
 	}
 
 	public static function do_add_guest( array $post ): string {

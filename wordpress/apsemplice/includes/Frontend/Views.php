@@ -186,7 +186,7 @@ final class Views {
 				$html .= '<li><div><strong>' . esc_html( $b['activity_name'] ) . '</strong><div class="apsf-small">' . esc_html( self::date_long( $b['session_date'] ) )
 					. ( $b['start_time'] ? ' · ore ' . esc_html( $b['start_time'] ) : '' ) . ( $b['location'] ? ' · ' . esc_html( $b['location'] ) : '' ) . '</div>'
 					. '<div class="apsf-small">Contributo ' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . ' · ' . self::booking_pay( $b ) . '</div></div>' // phpcs:ignore WordPress.Security.EscapeOutput
-					. self::form( 'aps_front_cancel_booking', self::hidden( 'session_id', $b['session_id'] ) . self::hidden( 'person_id', $p['id'] ), 'Annulla', true, 'apsf-inline' ) . '</li>';
+					. self::booking_controls( $b, $p ) . '</li>';
 			}
 			$html .= '</ul>';
 		}
@@ -209,6 +209,38 @@ final class Views {
 			$html .= '</ul></details>';
 		}
 		return $html . '</section>';
+	}
+
+	/** Annulla (se la regola lo consente) e Cambia nominativo di una prenotazione dell'area soci. */
+	private static function booking_controls( array $b, array $actor ): string {
+		$svc  = Plugin::activities();
+		$sid  = (int) $b['session_id'];
+		$pid  = (int) $b['person_id'];
+		$ev   = $svc->cancellation_for( $sid, $pid );
+		$html = '<div class="apsf-manage">';
+		if ( $ev['allowed'] ) {
+			$html .= '<div class="apsf-small apsf-muted">' . esc_html( $ev['message'] ) . '</div>'
+				. self::form( 'aps_front_cancel_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ), 'Annulla prenotazione', true, 'apsf-inline' );
+		} else {
+			$html .= '<div class="apsf-small apsf-muted">' . esc_html( $ev['message'] ) . '</div>';
+		}
+		if ( $ev['can_transfer'] ) {
+			$pool    = array_merge( array( $actor ), Plugin::people()->guests_of( (int) $actor['id'] ) );
+			$options = '';
+			foreach ( $pool as $cand ) {
+				if ( (int) $cand['id'] === $pid || $svc->has_active_booking( $sid, (int) $cand['id'] ) ) {
+					continue;
+				}
+				$options .= '<option value="' . (int) $cand['id'] . '">' . esc_html( $cand['first_name'] . ' ' . $cand['last_name'] ) . '</option>';
+			}
+			$fields = '<div class="apsf-fields">'
+				. ( '' !== $options ? '<label>Intesta a <select name="to_person_id"><option value="">— scegli —</option>' . $options . '</select></label>' : '' )
+				. '<label>' . ( '' !== $options ? 'oppure nuovo ospite: nome' : 'Nuovo ospite: nome' ) . ' <input type="text" name="new_first_name"></label><label>Cognome <input type="text" name="new_last_name"></label></div>';
+			$html  .= '<details class="apsf-details"><summary>Cambia nominativo</summary>'
+				. '<p class="apsf-small apsf-muted">Se il nuovo partecipante ha un contributo diverso (ad esempio un ospite) la differenza va integrata.</p>'
+				. self::form( 'aps_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cambia nominativo' ) . '</details>';
+		}
+		return $html . '</div>';
 	}
 
 	public static function section_guests( array $p ): string {
@@ -369,7 +401,9 @@ final class Views {
 			foreach ( $ctx['people'] as $person ) {
 				if ( $svc->has_active_booking( (int) $s['id'], (int) $person['id'] ) ) {
 					$html .= '<span class="apsf-badge apsf-badge-ok">✓ ' . esc_html( $person['first_name'] ) . '</span> '
-						. self::form( 'aps_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', true, 'apsf-inline' );
+						. ( $svc->cancellation_for( (int) $s['id'], (int) $person['id'] )['allowed']
+							? self::form( 'aps_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', true, 'apsf-inline' )
+							: '<span class="apsf-small apsf-muted">non annullabile (gestiscila nella tua area)</span>' );
 				} else {
 					$free[] = $person;
 				}

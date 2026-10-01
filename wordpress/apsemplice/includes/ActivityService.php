@@ -69,6 +69,8 @@ class ActivityService {
 				'instructor_person_id' => $d['instructor_person_id'],
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
+				'cancellable'          => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancellable'] : 0,
+				'cancel_policy'        => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancel_policy'] : null,
 				'notes'                => $d['notes'],
 				'created_at'           => Db::now(),
 			)
@@ -97,6 +99,8 @@ class ActivityService {
 				'instructor_person_id' => $d['instructor_person_id'],
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
+				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
+				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
 				'notes'                => $d['notes'],
 			),
 			array( 'id' => $id )
@@ -125,6 +129,8 @@ class ActivityService {
 			'instructor_person_id' => ! empty( $in['instructor_person_id'] ) ? (int) $in['instructor_person_id'] : null,
 			'fee_cents'            => (int) ( $in['fee_cents'] ?? 0 ),
 			'guest_fee_cents'      => $guest,
+			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
+			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'notes'                => isset( $in['notes'] ) && '' !== trim( (string) $in['notes'] ) ? trim( (string) $in['notes'] ) : null,
 		);
 	}
@@ -285,7 +291,7 @@ class ActivityService {
 		}
 		$fee = $this->fee_for( $a, $person['type'] );
 		if ( $existing ) {
-			$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null ), array( 'id' => (int) $existing['id'] ) );
+			$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
 			$id = (int) $existing['id'];
 		} else {
 			$this->db()->insert( $tbl, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'fee_due_cents' => $fee, 'created_at' => Db::now() ) );
@@ -398,6 +404,114 @@ class ActivityService {
 			),
 			ARRAY_A
 		) ?: array();
+	}
+
+	// ---------- Cancellazione e cambio di nominativo ----------
+
+	/** Riga di prenotazione grezza (anche annullata o trasferita). */
+	public function booking( int $session_id, int $person_id ): ?array {
+		$row = $this->db()->get_row(
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $session_id, $person_id ),
+			ARRAY_A
+		);
+		return $row ?: null;
+	}
+
+	/**
+	 * Cosa può fare il socio con una prenotazione attiva: annullarla (regole di {@see CancelPolicy}) e/o cambiare nominativo.
+	 *
+	 * @return array ['allowed'=>bool, 'reason'=>string, 'deadline'=>?\DateTimeImmutable, 'message'=>string, 'can_transfer'=>bool]
+	 */
+	public function cancellation_for( int $session_id, int $person_id ): array {
+		$b = $this->booking( $session_id, $person_id );
+		$s = $this->session( $session_id );
+		$a = $s ? $this->get( (int) $s['activity_id'] ) : null;
+		if ( ! $b || 'booked' !== $b['status'] || ! $s || ! $a ) {
+			return array( 'allowed' => false, 'reason' => 'none', 'deadline' => null, 'message' => 'Prenotazione non trovata.', 'can_transfer' => false );
+		}
+		$now  = current_datetime();
+		$eval = CancelPolicy::evaluate(
+			(int) $b['fee_due_cents'],
+			! empty( $a['cancellable'] ),
+			$a['cancel_policy'] ?: null,
+			(string) Settings::get( 'cancel_policy_default' ),
+			$s['session_date'],
+			$s['start_time'] ?: null,
+			$now
+		);
+		$eval['message']      = CancelPolicy::message( $eval );
+		$eval['can_transfer'] = CancelPolicy::can_transfer( $s['session_date'], $s['start_time'] ?: null, $now );
+		return $eval;
+	}
+
+	/**
+	 * Cambia nominativo: la prenotazione (e quanto già pagato) passa a un'altra persona. Se il nuovo partecipante deve
+	 * un contributo maggiore (es. un ospite) la differenza risulta "da pagare"; se è minore non c'è rimborso.
+	 * I pagamenti già registrati vengono intestati al nuovo partecipante (con una nota nella descrizione).
+	 *
+	 * @param bool $enforce_time true per i soci dal sito (non dopo l'inizio dell'evento); false per l'amministratore
+	 */
+	public function transfer_booking( int $session_id, int $from_id, int $to_id, bool $enforce_time = true ): void {
+		$s = $this->session( $session_id );
+		if ( ! $s || $s['cancelled_at'] ) {
+			throw new \InvalidArgumentException( 'Data non disponibile (inesistente o annullata).' );
+		}
+		$a    = $this->get( (int) $s['activity_id'] );
+		$from = $this->booking( $session_id, $from_id );
+		$to   = Plugin::people()->get( $to_id );
+		$from_p = Plugin::people()->get( $from_id );
+		if ( ! $a || ! $from || 'booked' !== $from['status'] ) {
+			throw new \InvalidArgumentException( 'La prenotazione da cambiare non è attiva.' );
+		}
+		if ( ! $to || ! $from_p ) {
+			throw new \InvalidArgumentException( 'Persona non trovata.' );
+		}
+		if ( $from_id === $to_id ) {
+			throw new \InvalidArgumentException( 'Scegli una persona diversa.' );
+		}
+		if ( $enforce_time && ! CancelPolicy::can_transfer( $s['session_date'], $s['start_time'] ?: null, current_datetime() ) ) {
+			throw new \InvalidArgumentException( 'L\'evento è già iniziato: non si può più cambiare il nominativo.' );
+		}
+		if ( $this->has_active_booking( $session_id, $to_id ) ) {
+			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' );
+		}
+		$tbl  = Db::t( 'bookings' );
+		$fee  = $this->fee_for( $a, $to['type'] );
+		$note = ' [intestato da ' . trim( $from_p['first_name'] . ' ' . $from_p['last_name'] ) . ' a ' . trim( $to['first_name'] . ' ' . $to['last_name'] ) . ']';
+		$this->in_transaction(
+			function () use ( $tbl, $session_id, $from, $from_id, $to_id, $fee, $note ) {
+				$this->db()->update( $tbl, array( 'status' => 'transferred', 'transferred_to' => $to_id, 'cancelled_at' => Db::now() ), array( 'id' => (int) $from['id'] ) );
+				$existing = $this->booking( $session_id, $to_id );
+				$data     = array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => $from_id );
+				if ( $existing ) {
+					$this->db()->update( $tbl, $data, array( 'id' => (int) $existing['id'] ) );
+				} else {
+					$this->db()->insert( $tbl, array_merge( $data, array( 'session_id' => $session_id, 'person_id' => $to_id, 'created_at' => Db::now() ) ) );
+				}
+				$this->db()->query(
+					$this->db()->prepare(
+						'UPDATE ' . Db::t( 'transactions' ) . " SET person_id = %d, description = LEFT(CONCAT(description, %s), 255) WHERE session_id = %d AND person_id = %d AND type = 'income' AND voided_at IS NULL",
+						$to_id,
+						$note,
+						$session_id,
+						$from_id
+					)
+				);
+			}
+		);
+		Audit::log( 'booking.transferred', 'activity', (int) $a['id'], array( 'session' => $session_id, 'from' => $from_id, 'to' => $to_id, 'fee' => $fee ) );
+	}
+
+	private function in_transaction( callable $fn ) {
+		$this->db()->query( 'START TRANSACTION' );
+		try {
+			$res = $fn();
+			$this->db()->query( 'COMMIT' );
+			return $res;
+		} catch ( \Throwable $e ) {
+			$this->db()->query( 'ROLLBACK' );
+			throw $e;
+		}
 	}
 
 	// ---------- Corsi: iscrizioni per mese ----------

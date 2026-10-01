@@ -1,8 +1,11 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\CancelPolicy;
 use ApSemplice\License;
 use ApSemplice\Money;
+use ApSemplice\PaymentConfig;
+use ApSemplice\Secrets;
 use ApSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -28,9 +31,42 @@ final class SettingsPage {
 			. (int) $lic['max_installs'] . ' installazioni attive insieme su quel dominio, ad esempio il sito e il suo staging. '
 			. ( $lic['local'] ? 'Questo è un ambiente locale: non richiede licenza. ' : '' )
 			. esc_html( $lic['note'] ) . '</p><p class="description">ID di questa installazione: <code>' . esc_html( $lic['install_id'] ) . '</code></p></td></tr>';
+		echo '</tbody></table><h2>Eventi: cancellazioni</h2><table class="form-table"><tbody>';
+		echo '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>';
+
+		echo '</tbody></table><h2>Pagamenti online</h2><table class="form-table"><tbody>';
+		echo '<tr><th>Come incassare online</th><td><select name="payment_provider" id="aps-pay-provider">' . Ui::options( PaymentConfig::providers(), $s['payment_provider'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="description">WooCommerce e Stripe/PayPal sono alternative: ne usi una. Per ora è solo la <strong>configurazione</strong>: i pagamenti restano in sede finché non attiviamo l\'integrazione.</p></td></tr>';
+		echo self::gateway_row( 'stripe_mode', 'Stripe — modalità', $s, 'select', array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'aps-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::gateway_row( 'stripe_publishable_key', 'Stripe — chiave pubblicabile', $s, 'text', array(), 'aps-pay-stripe', 'pk_test_… / pk_live_…' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::secret_row( 'stripe_secret_key', 'Stripe — chiave segreta', 'aps-pay-stripe', 'sk_test_… / sk_live_… (o rk_… con restrizioni)' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::secret_row( 'stripe_webhook_secret', 'Stripe — segreto del webhook', 'aps-pay-stripe', 'whsec_… (da Stripe → Sviluppatori → Webhook)' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr class="aps-pay-stripe"><th>Indirizzo del webhook</th><td><code>' . esc_html( rest_url( 'apsemplice/v1/webhooks/stripe' ) ) . '</code><p class="description">Da inserire in Stripe quando attiveremo i pagamenti (evento <code>checkout.session.completed</code>).</p></td></tr>';
+		echo self::gateway_row( 'paypal_mode', 'PayPal — modalità', $s, 'select', array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'aps-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::gateway_row( 'paypal_client_id', 'PayPal — Client ID', $s, 'text', array(), 'aps-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::secret_row( 'paypal_client_secret', 'PayPal — Client Secret', 'aps-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( PaymentConfig::NONE !== $s['payment_provider'] ) {
+			$check = PaymentConfig::validate( Settings::payment_config() );
+			foreach ( $check['errors'] as $e ) {
+				echo '<tr><th></th><td class="aps-neg">⚠ ' . esc_html( $e ) . '</td></tr>';
+			}
+			foreach ( $check['warnings'] as $w ) {
+				echo '<tr><th></th><td class="aps-warn">ℹ ' . esc_html( $w ) . '</td></tr>';
+			}
+		}
+		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate. '
+			. 'Per tenerle fuori dal database puoi definirle in <code>wp-config.php</code>, ad esempio <code>define( \'APS_STRIPE_SECRET_KEY\', \'sk_live_…\' );</code> (stessi nomi in maiuscolo: <code>APS_STRIPE_WEBHOOK_SECRET</code>, <code>APS_PAYPAL_CLIENT_SECRET</code>, <code>APS_STRIPE_PUBLISHABLE_KEY</code>, <code>APS_PAYPAL_CLIENT_ID</code>…). Usa chiavi di prova finché non sei sicuro.</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
+		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: Stripe legge il saldo, PayPal chiede un token di accesso.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
+		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal' ) as $prov => $label ) {
+			Ui::form_open( 'aps_test_gateway', Ui::url( 'aps-settings' ) );
+			echo Ui::hidden( 'provider', $prov ) . '<button class="button">' . esc_html( $label ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
+		echo '</div>';
 		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>APSemplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>APSemplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
 		Ui::form_open( 'aps_create_pages', Ui::url( 'aps-settings' ) );
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già dentro. Poi le impagini come vuoi.</span></p>';
@@ -45,5 +81,31 @@ final class SettingsPage {
 		echo '<h2>Informazioni</h2><p>Per ora il plugin è utilizzabile in amministrazione solo dagli utenti con ruolo Amministratore (capability <code>aps_manage</code>). '
 			. 'I soci sono utenti WordPress con ruolo "Socio APS", senza accesso a wp-admin; volontari e soci useranno l\'area riservata, che parla con l\'API REST <code>' . esc_html( rest_url( 'apsemplice/v1' ) ) . '</code>.</p>';
 		Ui::footer();
+	}
+
+	/** Riga di impostazione non segreta di un gateway (può essere una costante di wp-config.php). */
+	private static function gateway_row( string $key, string $label, array $s, string $type, array $options, string $row_class, string $placeholder = '' ): string {
+		$head = '<tr class="' . esc_attr( $row_class ) . '"><th>' . esc_html( $label ) . '</th><td>';
+		if ( Settings::is_constant( $key ) ) {
+			return $head . '<em>definita in wp-config.php (' . esc_html( Settings::constant_name( $key ) ) . ')</em></td></tr>';
+		}
+		if ( 'select' === $type ) {
+			return $head . '<select name="' . esc_attr( $key ) . '">' . Ui::options( $options, $s[ $key ] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		return $head . '<input type="text" name="' . esc_attr( $key ) . '" value="' . esc_attr( (string) $s[ $key ] ) . '" class="regular-text" placeholder="' . esc_attr( $placeholder ) . '" autocomplete="off"></td></tr>';
+	}
+
+	/** Riga di una chiave segreta: non si mostra mai il valore, solo una maschera; vuoto = non cambiare. */
+	private static function secret_row( string $key, string $label, string $row_class, string $hint ): string {
+		$head = '<tr class="' . esc_attr( $row_class ) . '"><th>' . esc_html( $label ) . '</th><td>';
+		if ( Settings::is_constant( $key ) ) {
+			return $head . '<em>definita in wp-config.php (' . esc_html( Settings::constant_name( $key ) ) . ')</em></td></tr>';
+		}
+		$has   = Settings::has_secret( $key );
+		$plain = Settings::secret( $key );
+		$ph    = $has ? ( '' !== $plain ? Secrets::mask( $plain ) . ' (salvata)' : 'salvata ma non leggibile: reinseriscila' ) : '';
+		return $head . '<input type="password" name="' . esc_attr( $key ) . '" value="" placeholder="' . esc_attr( $ph ) . '" autocomplete="new-password" class="regular-text"> '
+			. ( $has ? '<label><input type="checkbox" name="clear_' . esc_attr( $key ) . '" value="1"> rimuovi</label>' : '' )
+			. '<p class="description">Lascia vuoto per non cambiarla.' . ( '' !== $hint ? ' ' . esc_html( $hint ) : '' ) . '</p></td></tr>';
 	}
 }

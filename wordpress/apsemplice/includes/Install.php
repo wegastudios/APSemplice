@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'aps_db_version';
-	const DB_VERSION        = '3';
+	const DB_VERSION        = '4';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -101,6 +101,8 @@ final class Install {
   kind varchar(20) NOT NULL DEFAULT 'course',
   fee_cents bigint(20) NOT NULL DEFAULT 0,
   guest_fee_cents bigint(20) DEFAULT NULL,
+  cancellable tinyint(1) NOT NULL DEFAULT 0,
+  cancel_policy varchar(4) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -186,6 +188,8 @@ final class Install {
   person_id bigint(20) unsigned NOT NULL,
   status varchar(12) NOT NULL DEFAULT 'booked',
   fee_due_cents bigint(20) NOT NULL DEFAULT 0,
+  transferred_to bigint(20) unsigned DEFAULT NULL,
+  transferred_from bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   cancelled_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),

@@ -10,6 +10,9 @@ use ApSemplice\Access;
 use ApSemplice\Admin;
 use ApSemplice\Audit;
 use ApSemplice\Gatekeeper;
+use ApSemplice\Gateways;
+use ApSemplice\PaymentConfig;
+use ApSemplice\Secrets;
 use ApSemplice\License;
 use ApSemplice\Db;
 use ApSemplice\Labels;
@@ -472,8 +475,8 @@ $people->set_membership( $ord, $sy_label, false );
 aps_ok( null !== aps_throws( function () use ( $front, $s3, $ord ) { $front::do_book( array( 'session_id' => $s3, 'person_id' => $ord ) ); } ), 'sito: con la tessera scaduta non ci si prenota' );
 $people->set_membership( $ord, $sy_label, true );
 wp_set_current_user( $u_f );
-$front::do_cancel_booking( array( 'session_id' => $s3, 'person_id' => $g_id ) );
-aps_ok( ! $acts->has_active_booking( $s3, $g_id ), 'sito: il socio annulla la prenotazione del suo ospite' );
+$msg = (string) aps_throws( function () use ( $front, $s3, $g_id ) { $front::do_cancel_booking( array( 'session_id' => $s3, 'person_id' => $g_id ) ); } );
+aps_ok( false !== strpos( $msg, 'non è cancellabile' ) && $acts->has_active_booking( $s3, $g_id ), 'sito: la prenotazione a pagamento dell\'ospite non si annulla' );
 $front::do_profile( array( 'phone' => '3331112222', 'tax_code' => 'abcdef12g34h567i' ) );
 aps_ok( '3331112222' === $people->get( $founder )['phone'] && 'ABCDEF12G34H567I' === $people->get( $founder )['tax_code'], 'sito: il socio aggiorna il proprio profilo' );
 License::set_state( 'unpaid', $today );
@@ -584,6 +587,174 @@ aps_ok( class_exists( '\Elementor\Plugin' ), 'Elementor è presente nell\'ambien
 $el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types();
 aps_ok( isset( $el_widgets['apsemplice_view'] ) && isset( $el_widgets['apsemplice_reserved'] ), 'Elementor: widget APSemplice registrati' );
 aps_ok( array_key_exists( 'view', $el_widgets['apsemplice_view']->get_controls() ) && array_key_exists( 'rule', $el_widgets['apsemplice_reserved']->get_controls() ), 'Elementor: i controlli dei widget si costruiscono' );
+wp_set_current_user( 1 );
+
+// ---------- Cancellazioni, cambio di nominativo, pagamenti online (configurazione) ----------
+wp_set_current_user( 1 );
+$mkev = function ( string $name, int $fee, ?int $guest_fee, array $extra = array(), int $days = 10 ) use ( $acts, $sy_label, $today ) {
+	return $acts->create(
+		array_merge(
+			array(
+				'name' => $name, 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => $fee, 'guest_fee_cents' => $guest_fee,
+				'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . " +$days days" ) ), 'capacity' => 6 ),
+			),
+			$extra
+		)
+	);
+};
+$first_session = function ( int $activity ) use ( $acts ) {
+	return (int) $acts->sessions( $activity )[0]['id'];
+};
+wp_set_current_user( $u_f );
+$cancels = function ( int $session, int $person ) use ( $front ) {
+	return aps_throws( function () use ( $front, $session, $person ) { $front::do_cancel_booking( array( 'session_id' => $session, 'person_id' => $person ) ); } );
+};
+wp_set_current_user( 1 );
+
+// Evento gratuito: si annulla sempre
+$free_ev = $mkev( 'Aperitivo gratuito', 0, null );
+$free_s  = $first_session( $free_ev );
+wp_set_current_user( $u_f );
+$front::do_book( array( 'session_id' => $free_s, 'person_id' => $founder ) );
+aps_ok( true === $acts->cancellation_for( $free_s, $founder )['allowed'] && null === $cancels( $free_s, $founder ), 'evento gratuito: si può sempre annullare' );
+aps_ok( ! $acts->has_active_booking( $free_s, $founder ), 'evento gratuito: prenotazione annullata' );
+
+// Evento a pagamento non cancellabile: niente annullo, ma cambio di nominativo
+wp_set_current_user( 1 );
+$paid_ev = $mkev( 'Cena sociale', 500, 800 );
+$paid_s  = $first_session( $paid_ev );
+wp_set_current_user( $u_f );
+$front::do_book( array( 'session_id' => $paid_s, 'person_id' => $founder ) );
+$ev = $acts->cancellation_for( $paid_s, $founder );
+aps_ok( ! $ev['allowed'] && 'not_cancellable' === $ev['reason'] && $ev['can_transfer'], 'evento a pagamento: non cancellabile ma il nominativo si può cambiare' );
+aps_ok( false !== strpos( (string) $cancels( $paid_s, $founder ), 'non è cancellabile' ), 'evento a pagamento: l\'annullo dal sito è rifiutato' );
+wp_set_current_user( 1 );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $founder,
+	'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 500, 'activity_id' => $paid_ev, 'session_id' => $paid_s ) ) ) );
+wp_set_current_user( $u_f );
+
+// il socio cambia il nominativo a favore di un proprio ospite (contributo ospiti 8,00): integra 3,00
+$front::do_add_guest( array( 'first_name' => 'Nico', 'last_name' => 'Ospite' ) );
+$nico = 0;
+foreach ( $people->guests_of( $founder ) as $g ) {
+	if ( 'Nico' === $g['first_name'] ) {
+		$nico = (int) $g['id'];
+	}
+}
+$msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $founder, 'to_person_id' => $nico ) );
+$bk  = $by_person( $paid_s );
+aps_ok( false !== strpos( $msg, 'Da integrare' ) && false !== strpos( $msg, '3,00' ), 'cambio nominativo a un ospite: da integrare 3,00' );
+aps_ok( 800 === (int) $bk[ $nico ]['fee_due_cents'] && 500 === $bk[ $nico ]['paid'] && 300 === $bk[ $nico ]['remaining'] && 'partial' === $bk[ $nico ]['state'], 'il pagamento già fatto passa all\'ospite' );
+aps_ok( ! $bk[ $founder ]['active'] && 'transferred' === $bk[ $founder ]['status'] && 0 === $bk[ $founder ]['paid'], 'la prenotazione del socio risulta trasferita' );
+aps_ok( 1 === (int) $acts->sessions( $paid_ev )[0]['booked_count'], 'i posti occupati non cambiano' );
+aps_ok( 500 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT SUM(amount_cents) FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = %d AND person_id = %d AND voided_at IS NULL', $paid_s, $nico ) ), 'il pagamento è intestato al nuovo partecipante' );
+aps_ok( false !== strpos( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = %d AND person_id = %d LIMIT 1', $paid_s, $nico ) ), 'intestato da' ), 'nota di trasferimento nella descrizione del pagamento' );
+
+// ...e poi a un nuovo ospite indicato per nome (resta lo stesso contributo, niente da integrare)
+$msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $nico, 'new_first_name' => 'Nuovo', 'new_last_name' => 'Amico' ) );
+aps_ok( false !== strpos( $msg, 'Da integrare' ) && false !== strpos( $msg, '3,00' ), 'cambio verso un nuovo ospite indicato per nome: resta da integrare 3,00' );
+$amico = 0;
+foreach ( $people->guests_of( $founder ) as $g ) {
+	if ( 'Amico' === $g['last_name'] ) {
+		$amico = (int) $g['id'];
+	}
+}
+aps_ok( $amico > 0 && $acts->has_active_booking( $paid_s, $amico ) && ! $acts->has_active_booking( $paid_s, $nico ), 'il nuovo ospite creato dal cambio nominativo è prenotato' );
+aps_ok( null !== aps_throws( function () use ( $front, $paid_s, $amico, $guest ) { $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $amico, 'to_person_id' => $guest ) ); } ), 'non si intesta a un ospite di un altro socio' );
+aps_ok( null !== aps_throws( function () use ( $front, $paid_s, $amico ) { $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $amico ) ); } ), 'cambio nominativo senza destinatario rifiutato' );
+
+// non si cambia nominativo dopo l'inizio dell'evento
+wp_set_current_user( 1 );
+$past_ev_id = $acts->create( array( 'name' => 'Evento passato', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 500 ) );
+$past_s     = $acts->add_session( $past_ev_id, array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' -2 days' ) ) ) );
+$acts->book( $past_s, $founder );
+wp_set_current_user( $u_f );
+aps_ok( false !== stripos( (string) aps_throws( function () use ( $front, $past_s, $founder, $amico ) { $front::do_transfer_booking( array( 'session_id' => $past_s, 'person_id' => $founder, 'to_person_id' => $amico ) ); } ), 'iniziato' ), 'dopo l\'inizio il nominativo non si cambia più' );
+
+// l'amministratore può cambiare nominativo a chiunque (anche a evento iniziato)
+wp_set_current_user( 1 );
+$acts->transfer_booking( $past_s, $founder, $vol, false );
+aps_ok( $acts->has_active_booking( $past_s, $vol ) && ! $acts->has_active_booking( $past_s, $founder ), 'amministratore: cambio nominativo senza vincoli di tempo' );
+aps_ok( null !== aps_throws( function () use ( $acts, $past_s, $vol ) { $acts->transfer_booking( $past_s, $vol, $vol, false ); } ), 'non si cambia verso la stessa persona' );
+
+// Evento a pagamento cancellabile: termini 7 giorni / 24 ore / predefinito
+$can7   = $mkev( 'Gita (7 giorni)', 500, null, array( 'cancellable' => 1, 'cancel_policy' => '7d' ), 10 );
+$can7_s = $first_session( $can7 );
+$late7  = $mkev( 'Gita tardiva (7 giorni)', 500, null, array( 'cancellable' => 1, 'cancel_policy' => '7d' ), 3 );
+$late_s = $first_session( $late7 );
+$can24  = $mkev( 'Concerto (24 ore)', 500, null, array( 'cancellable' => 1, 'cancel_policy' => '24h' ), 3 );
+$c24_s  = $first_session( $can24 );
+$candef = $mkev( 'Spettacolo (predefinito)', 500, null, array( 'cancellable' => 1 ), 3 );
+$cdef_s = $first_session( $candef );
+foreach ( array( $can7_s, $late_s, $c24_s, $cdef_s ) as $sx ) {
+	$acts->book( $sx, $founder );
+}
+aps_ok( 1 === (int) $acts->get( $can7 )['cancellable'] && '7d' === $acts->get( $can7 )['cancel_policy'], 'evento cancellabile: salvato con il suo termine' );
+aps_ok( $acts->cancellation_for( $can7_s, $founder )['allowed'], 'cancellabile (7 giorni), evento tra 10 giorni: si annulla' );
+aps_ok( ! $acts->cancellation_for( $late_s, $founder )['allowed'] && 'deadline_passed' === $acts->cancellation_for( $late_s, $founder )['reason'], 'cancellabile (7 giorni), evento tra 3 giorni: termine scaduto' );
+aps_ok( $acts->cancellation_for( $c24_s, $founder )['allowed'], 'cancellabile (24 ore), evento tra 3 giorni: si annulla' );
+aps_ok( $acts->cancellation_for( $cdef_s, $founder )['allowed'], 'termine predefinito (48 ore), evento tra 3 giorni: si annulla' );
+Settings::update( array( 'cancel_policy_default' => '7d' ) );
+aps_ok( ! $acts->cancellation_for( $cdef_s, $founder )['allowed'], 'predefinito portato a una settimana: ora il termine è scaduto' );
+Settings::update( array( 'cancel_policy_default' => 'boh' ) );
+aps_ok( '48h' === Settings::get( 'cancel_policy_default' ), 'termine predefinito non valido: torna a 48 ore' );
+wp_set_current_user( $u_f );
+aps_ok( null === $cancels( $can7_s, $founder ) && ! $acts->has_active_booking( $can7_s, $founder ), 'cancellabile: l\'annullo dal sito funziona nei termini' );
+aps_ok( false !== strpos( (string) $cancels( $late_s, $founder ), 'scaduto' ), 'cancellabile: dopo il termine l\'annullo è rifiutato con il motivo' );
+wp_set_current_user( 1 );
+$acts->cancel_booking( $late_s, $founder );
+aps_ok( ! $acts->has_active_booking( $late_s, $founder ), 'amministratore: può sempre annullare' );
+$html = $as( $u_f, '[apsemplice_area_soci]' );
+aps_ok( false !== strpos( $html, 'Cambia nominativo' ) && false !== strpos( $html, 'aps_front_transfer_booking' ), 'area soci: pulsante Cambia nominativo' );
+aps_ok( false !== strpos( $html, 'non è cancellabile' ) || false !== strpos( $html, 'Puoi annullare fino al' ), 'area soci: spiega se e fino a quando si può annullare' );
+
+// Pagina attività: creazione con cancellabilità e pagina scheda
+aps_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cancellabile anche se a pagamento', array( 'id' => $can7 ) );
+aps_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cambia nominativo', array( 'id' => $paid_ev ) );
+aps_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Cancellabile anche se a pagamento' );
+$pc = new ReflectionMethod( Admin\Actions::class, 'save_activity' );
+$pc->setAccessible( true );
+$res = $pc->invoke( null, array( 'name' => 'Da modulo', 'social_year' => $sy_label, 'kind' => 'event', 'fee' => '4,00', 'guest_fee' => '6,00', 'cancellable' => '1', 'cancel_policy' => '24h', 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) ), 'start_time' => '18:30', 'capacity' => '3' ) );
+preg_match( '/id=(\d+)/', $res[0], $mm );
+$form_ev = $acts->get( (int) $mm[1] );
+aps_ok( 400 === (int) $form_ev['fee_cents'] && 600 === (int) $form_ev['guest_fee_cents'] && 1 === (int) $form_ev['cancellable'] && '24h' === $form_ev['cancel_policy'], 'modulo attività: evento cancellabile con termine e contributo ospiti' );
+$pc->invoke( null, array( 'id' => $form_ev['id'], 'name' => 'Da modulo', 'social_year' => $sy_label, 'fee' => '4,00', 'guest_fee' => '', 'cancel_policy' => '' ) );
+$form_ev = $acts->get( (int) $form_ev['id'] );
+aps_ok( 0 === (int) $form_ev['cancellable'] && null === $form_ev['cancel_policy'] && null === $form_ev['guest_fee_cents'], 'modulo attività: togliere la spunta e il contributo ospiti salva davvero' );
+
+// Impostazioni dei pagamenti: Stripe / PayPal in alternativa a WooCommerce, chiavi cifrate
+Settings::update( array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Abc1234', 'stripe_secret_key' => 'sk_test_51Abc1234', 'stripe_webhook_secret' => 'whsec_abc1234' ) );
+$raw = get_option( 'aps_settings' );
+aps_ok( Secrets::is_encrypted( $raw['stripe_secret_key'] ) && false === strpos( wp_json_encode( $raw ), 'sk_test_51Abc1234' ) && false === strpos( wp_json_encode( $raw ), 'whsec_abc1234' ), 'chiavi segrete: nel database sono cifrate' );
+aps_ok( 'sk_test_51Abc1234' === Settings::secret( 'stripe_secret_key' ) && Settings::has_secret( 'stripe_webhook_secret' ), 'chiavi segrete: si leggono in chiaro solo dal codice' );
+Settings::update( array( 'stripe_secret_key' => '' ) );
+aps_ok( 'sk_test_51Abc1234' === Settings::secret( 'stripe_secret_key' ), 'chiave segreta lasciata vuota nel modulo: resta quella salvata' );
+Settings::update( array( 'stripe_secret_key' => 'sk_test_NUOVA9876' ) );
+aps_ok( 'sk_test_NUOVA9876' === Settings::secret( 'stripe_secret_key' ), 'chiave segreta nuova: sostituisce la vecchia' );
+Settings::update( array( 'stripe_secret_key' => 'sk_test_51Abc1234' ) );
+aps_ok( array() === PaymentConfig::validate( Settings::payment_config() )['errors'], 'configurazione Stripe valida' );
+$http_seen = null;
+$fake      = function ( $method, $url, $headers, $body ) use ( &$http_seen ) {
+	$http_seen = array( $method, $url, $headers );
+	return array( 'code' => 200, 'body' => '{"livemode":false}' );
+};
+$g = Gateways::test( 'stripe', Settings::payment_config(), $fake );
+aps_ok( $g['ok'] && 'Bearer sk_test_51Abc1234' === $http_seen[2]['Authorization'], 'prova Stripe: usa la chiave salvata (rete simulata)' );
+ob_start();
+Admin\SettingsPage::render();
+$settings_html = ob_get_clean();
+aps_ok( false === strpos( $settings_html, 'sk_test_51Abc1234' ) && false !== strpos( $settings_html, '••••1234' ) && false === strpos( $settings_html, 'whsec_abc1234' ), 'impostazioni: la chiave segreta non viene mai stampata, solo la maschera' );
+aps_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (non ancora collegato)' ) && false !== strpos( $settings_html, 'Termine predefinito per annullare' ), 'impostazioni: sezione pagamenti e cancellazioni' );
+Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
+aps_ok( array() === PaymentConfig::validate( Settings::payment_config() )['errors'], 'configurazione PayPal valida' );
+Settings::update( array( 'payment_provider' => 'bogus' ) );
+aps_ok( 'none' === Settings::get( 'payment_provider' ), 'gateway non valido: si torna a "nessuno"' );
+Settings::clear_secret( 'stripe_secret_key' );
+aps_ok( ! Settings::has_secret( 'stripe_secret_key' ) && '' === Settings::secret( 'stripe_secret_key' ), 'chiave segreta rimossa' );
+aps_ok( in_array( 'settings.secret_cleared', array_column( Audit::recent( 50 ), 'action' ), true ) && false === strpos( wp_json_encode( Audit::recent( 200 ) ), 'sk_test' ), 'registro azioni: nessuna chiave dentro' );
+define( 'APS_PAYPAL_CLIENT_ID', 'COSTANTEDIPROVACLIENTIDXXXXXXXXXXXXXXXXXXXX' );
+aps_ok( Settings::is_constant( 'paypal_client_id' ) && 'COSTANTEDIPROVACLIENTIDXXXXXXXXXXXXXXXXXXXX' === Settings::payment_config()['paypal_client_id'], 'costante di wp-config.php: ha la precedenza sul database' );
+Settings::update( array( 'payment_provider' => 'none' ) );
 wp_set_current_user( 1 );
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 aps_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );
