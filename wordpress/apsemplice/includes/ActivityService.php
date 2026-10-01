@@ -45,7 +45,9 @@ class ActivityService {
 				'created_at'           => Db::now(),
 			)
 		);
-		return (int) $this->db()->insert_id;
+		$id = (int) $this->db()->insert_id;
+		Audit::log( 'activity.created', 'activity', $id, array( 'name' => $d['name'] ) );
+		return $id;
 	}
 
 	public function update( int $id, array $in ): void {
@@ -65,6 +67,7 @@ class ActivityService {
 			),
 			array( 'id' => $id )
 		);
+		Audit::log( 'activity.updated', 'activity', $id );
 	}
 
 	private function normalize( array $in ): array {
@@ -112,12 +115,14 @@ class ActivityService {
 		} else {
 			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) );
 		}
+		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );
 	}
 
 	/** Cancella dall'attività: $last_month è l'ultimo mese ancora dovuto. I pagamenti restano registrati. */
 	public function cancel( int $activity_id, int $person_id, string $last_month ): void {
 		$this->assert_month( $last_month );
 		$this->db()->update( Db::t( 'enrollments' ), array( 'end_month' => $last_month ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
+		Audit::log( 'activity.unenrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'last_month' => $last_month ) );
 	}
 
 	public function active_activity_ids( int $person_id ): array {

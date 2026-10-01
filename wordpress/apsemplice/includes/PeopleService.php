@@ -220,6 +220,7 @@ class PeopleService {
 		if ( MemberType::is_auto_renewed( $d['type'] ) ) {
 			$this->set_founder_membership( $id, $d['joined_on'] ?: Db::today() );
 		}
+		Audit::log( 'person.created', 'person', $id, array( 'type' => $d['type'] ) );
 		return $id;
 	}
 
@@ -269,6 +270,7 @@ class PeopleService {
 		} elseif ( $was_founder ) {
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $id, 'social_year' => 'FOUNDER' ) );
 		}
+		Audit::log( 'person.updated', 'person', $id, $current['type'] === $d['type'] ? array() : array( 'type' => array( $current['type'], $d['type'] ) ) );
 	}
 
 	/** Eliminazione logica: libera la tessera e il collegamento all'utente WordPress (che NON viene cancellato). */
@@ -285,6 +287,7 @@ class PeopleService {
 			array( 'deleted_at' => Db::now(), 'card_number' => null, 'wp_user_id' => null ),
 			array( 'id' => $id )
 		);
+		Audit::log( 'person.deleted', 'person', $id, array( 'type' => $p['type'] ) );
 	}
 
 	// ---------- Utenti WordPress ----------
@@ -382,6 +385,7 @@ class PeopleService {
 		} else {
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $person_id, 'social_year' => $year->label() ) );
 		}
+		Audit::log( $enabled ? 'membership.set' : 'membership.removed', 'person', $person_id, array( 'social_year' => $year->label(), 'source' => $source ) );
 	}
 
 	/** Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento). */

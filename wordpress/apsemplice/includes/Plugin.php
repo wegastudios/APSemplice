@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || exit;
+defined( 'ABSPATH' ) || defined( 'APS_TESTS' ) || exit;
 
 final class Plugin {
 
@@ -15,6 +15,9 @@ final class Plugin {
 
 	public static function init(): void {
 		Install::maybe_upgrade();
+		Access::register();      // capability meta: aps_notify_activity, aps_view_person...
+		Gatekeeper::register(); // i soci restano fuori da wp-admin
+		Rest\Api::register();    // apsemplice/v1
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}

@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\License;
 use ApSemplice\Money;
 use ApSemplice\Settings;
 
@@ -18,10 +19,17 @@ final class SettingsPage {
 		echo '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Quota associativa proposta</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
 		echo '<tr><th>Durata tessera socio fondatore</th><td><input type="number" min="1" name="founder_years" value="' . (int) $s['founder_years'] . '"> anni<p class="description">Il socio fondatore ha la tessera sempre rinnovata: la scadenza viene fissata a questo numero di anni dall\'ingresso.</p></td></tr>';
+		echo '<tr><th>Pagina area riservata</th><td>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput
+			array( 'name' => 'member_area_page_id', 'selected' => (int) $s['member_area_page_id'], 'show_option_none' => '— home del sito —', 'option_none_value' => '0', 'echo' => 0 )
+		) . '<p class="description">La pagina del sito dove soci e volontari lavorano (la creeremo con uno shortcode). Chi ha solo il ruolo "Socio APS" viene mandato qui al posto di wp-admin.</p></td></tr>';
+		$lic = License::status();
+		echo '<tr><th>Chiave di licenza</th><td><input type="text" name="license_key" value="' . esc_attr( (string) $s['license_key'] ) . '" class="regular-text" autocomplete="off">'
+			. '<p class="description">Dominio di questo sito: <code>' . esc_html( $lic['domain'] ) . '</code>. ' . esc_html( $lic['note'] ) . '</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		echo '<h2>Informazioni</h2><p>Per ora il plugin è utilizzabile solo dagli utenti con ruolo Amministratore (capability <code>aps_manage</code>). I soci sono utenti WordPress con ruolo "Socio APS", senza accesso all\'area di amministrazione.</p>';
+		echo '<h2>Informazioni</h2><p>Per ora il plugin è utilizzabile in amministrazione solo dagli utenti con ruolo Amministratore (capability <code>aps_manage</code>). '
+			. 'I soci sono utenti WordPress con ruolo "Socio APS", senza accesso a wp-admin; volontari e soci useranno l\'area riservata, che parla con l\'API REST <code>' . esc_html( rest_url( 'apsemplice/v1' ) ) . '</code>.</p>';
 		Ui::footer();
 	}
 }

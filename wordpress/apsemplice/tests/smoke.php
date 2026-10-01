@@ -6,7 +6,11 @@
  * Esce con errore al primo controllo fallito.
  */
 
+use ApSemplice\Access;
 use ApSemplice\Admin;
+use ApSemplice\Audit;
+use ApSemplice\Gatekeeper;
+use ApSemplice\License;
 use ApSemplice\Db;
 use ApSemplice\Labels;
 use ApSemplice\MemberType;
@@ -193,6 +197,63 @@ $expected = $ledger->expected_balance( (int) $cash['id'], $today );
 $diff     = $ledger->record_cash_count( (int) $cash['id'], $today, $expected + 500, true );
 aps_ok( 500 === $diff && $expected + 500 === $ledger->expected_balance( (int) $cash['id'], $today ), 'verifica cassa con rettifica riallinea il saldo' );
 
+// ---------- Permessi derivati dai dati (Access) ----------
+$u_admin = 1;
+$u_vol   = (int) $people->get( $vol )['wp_user_id'];
+$u_ord   = (int) $people->get( $ord )['wp_user_id'];
+$other   = $acts->create( array( 'name' => 'Teatro', 'social_year' => $sy->label(), 'monthly_fee_cents' => 1000 ) );
+aps_ok( user_can( $u_admin, 'aps_notify_activity', $yoga ), 'admin: può avvisare qualsiasi attività' );
+aps_ok( user_can( $u_vol, 'aps_notify_activity', $yoga ) && user_can( $u_vol, 'aps_view_participants', $yoga ), 'il volontario istruttore gestisce i suoi iscritti' );
+aps_ok( ! user_can( $u_vol, 'aps_notify_activity', $other ), 'il volontario non gestisce attività altrui' );
+aps_ok( ! user_can( $u_ord, 'aps_notify_activity', $yoga ) && ! user_can( $u_ord, 'aps_view_participants', $yoga ), 'il socio ordinario non gestisce iscritti' );
+aps_ok( user_can( $u_ord, 'aps_view_person', $ord ) && ! user_can( $u_ord, 'aps_view_person', $vol ), 'il socio vede solo sé stesso' );
+aps_ok( user_can( $u_ord, 'aps_view_activity', $yoga ) && ! user_can( $u_ord, 'aps_view_activity', $other ), 'il socio vede le attività a cui è iscritto' );
+aps_ok( user_can( $u_ord, 'aps_add_guest', $ord ) && ! user_can( $u_vol, 'aps_add_guest', $ord ), 'ogni socio aggiunge ospiti solo per sé' );
+aps_ok( ! user_can( 0, 'aps_view_person', $ord ), 'utente anonimo: nessun permesso' );
+aps_ok( ! user_can( $u_ord, Plugin::CAP ), 'un socio non ha la capability di amministrazione' );
+
+// ---------- REST API ----------
+function aps_rest( int $user, string $route ): WP_REST_Response {
+	wp_set_current_user( $user );
+	return rest_do_request( new WP_REST_Request( 'GET', $route ) );
+}
+$r = aps_rest( $u_ord, '/apsemplice/v1/me' );
+aps_ok( 200 === $r->get_status() && $ord === $r->get_data()['person']['id'] && false === $r->get_data()['is_admin'], 'REST /me: socio' );
+aps_ok( true === aps_rest( $u_admin, '/apsemplice/v1/me' )->get_data()['is_admin'], 'REST /me: amministratore' );
+aps_ok( in_array( aps_rest( 0, '/apsemplice/v1/me' )->get_status(), array( 401, 403 ), true ), 'REST /me: senza login rifiutato' );
+$r = aps_rest( $u_ord, '/apsemplice/v1/me/activities' );
+aps_ok( 200 === $r->get_status() && 1 === count( $r->get_data()['activities'] ) && 'Yoga' === $r->get_data()['activities'][0]['activity'], 'REST /me/activities' );
+aps_ok( 404 === aps_rest( 1, '/apsemplice/v1/me/activities' )->get_status(), 'REST /me/activities: utente senza socio -> 404' );
+
+$r = aps_rest( $u_vol, "/apsemplice/v1/activities/$yoga/participants" );
+aps_ok( 200 === $r->get_status() && 2 === count( $r->get_data()['participants'] ), 'REST participants: il volontario istruttore vede gli iscritti' );
+aps_ok( ! isset( $r->get_data()['participants'][0]['email'] ) && ! isset( $r->get_data()['participants'][0]['balance'] ), 'REST participants: il volontario NON vede contatti né pagamenti' );
+aps_ok( isset( aps_rest( $u_admin, "/apsemplice/v1/activities/$yoga/participants" )->get_data()['participants'][0]['email'] ), 'REST participants: l\'amministratore vede i contatti' );
+aps_ok( 403 === aps_rest( $u_ord, "/apsemplice/v1/activities/$yoga/participants" )->get_status(), 'REST participants: il socio è rifiutato' );
+aps_ok( 403 === aps_rest( $u_vol, "/apsemplice/v1/activities/$other/participants" )->get_status(), 'REST participants: attività di un altro rifiutata' );
+aps_ok( 404 === aps_rest( $u_admin, '/apsemplice/v1/activities/999999/participants' )->get_status(), 'REST participants: attività inesistente' );
+aps_ok( 200 === aps_rest( $u_ord, "/apsemplice/v1/people/$ord" )->get_status() && 403 === aps_rest( $u_ord, "/apsemplice/v1/people/$vol" )->get_status(), 'REST people: solo la propria scheda' );
+wp_set_current_user( 1 );
+
+// ---------- Area riservata: i soci restano fuori da wp-admin ----------
+wp_set_current_user( $u_ord );
+aps_ok( false === apply_filters( 'show_admin_bar', true ), 'barra di amministrazione nascosta ai soci' );
+wp_set_current_user( 1 );
+aps_ok( true === apply_filters( 'show_admin_bar', true ), 'barra di amministrazione visibile agli amministratori' );
+aps_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $u_ord ) ), 'dopo il login il socio va all\'area riservata' );
+aps_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( 1 ) ), 'l\'amministratore non viene dirottato' );
+aps_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $existing_user ) ), 'chi ha altri ruoli non viene dirottato' );
+
+// ---------- Registro azioni e licenza ----------
+$actions = array_column( Audit::recent( 1000 ), 'action' );
+foreach ( array( 'person.created', 'person.updated', 'membership.set', 'membership.removed', 'activity.created', 'activity.enrolled', 'tx.created', 'tx.voided', 'cashcount.recorded' ) as $a ) {
+	aps_ok( in_array( $a, $actions, true ), "registro azioni: $a" );
+}
+aps_ok( 1 === (int) Audit::recent( 1 )[0]['user_id'], 'il registro ricorda chi ha agito' );
+Settings::update( array( 'license_key' => '  ABC-123  ', 'member_area_page_id' => 0 ) );
+aps_ok( 'ABC-123' === License::key() && License::allows( 'online_payments' ), 'licenza: chiave salvata, funzioni consentite (standby)' );
+aps_ok( '' !== License::status()['domain'], 'licenza: dominio del sito' );
+
 // ---------- Cancellazione da attività ----------
 $acts->cancel( $yoga, $guest, $month );
 aps_ok( 1 === $acts->active_participants( $yoga ), 'cancellato dall\'attività' );
@@ -244,7 +305,8 @@ aps_render( array( Admin\LedgerPage::class, 'render' ), 'Rimborso istruttrice' )
 aps_render( array( Admin\AccountsPage::class, 'render' ), 'Verifica saldo' );
 aps_render( array( Admin\ReportsPage::class, 'render' ), 'Saldi dei conti' );
 aps_render( array( Admin\ReportsPage::class, 'render' ), 'Soci iscritti', array( 'mode' => 'social' ) );
-aps_render( array( Admin\SettingsPage::class, 'render' ), 'anno sociale' );
+aps_render( array( Admin\SettingsPage::class, 'render' ), 'Chiave di licenza' );
+aps_render( array( Admin\AuditPage::class, 'render' ), 'Registro azioni' );
 aps_render( array( Admin\ImportPage::class, 'render' ), 'Importa soci da CSV' );
 
 aps_ok( ! $GLOBALS['aps_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['aps_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['aps_warnings'], 0, 5 ) ) : '' ) );

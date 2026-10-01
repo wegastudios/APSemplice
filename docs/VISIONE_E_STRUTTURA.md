@@ -8,6 +8,22 @@ non sono una funzione del plugin: stanno nelle pagine statiche del sito.
 Riferimento: le aree funzionali di assofacile.it (soci e tesseramento, pagamenti online con ricevute e riconciliazione,
 comunicazioni email/SMS/app, corsi ed eventi con presenze, contabilità, privacy/GDPR).
 
+## 0. Decisioni prese
+
+| Tema | Decisione |
+|---|---|
+| Pagamenti online | **WooCommerce** (e i suoi gateway già collaudati). Il plugin non parla con Stripe/PayPal direttamente: quota associativa e mensilità saranno prodotti virtuali; quando un ordine WooCommerce è completato, un gestore registra l'incasso con `LedgerService::record_receipt` (stessa logica degli incassi in sede) su un conto "Online". |
+| Distribuzione | Un plugin **per singolo sito WordPress** (ogni associazione ha il suo). Nome commerciale del servizio da decidere più avanti. |
+| Comunicazioni | I volontari hanno già i gruppi WhatsApp per le comunicazioni ordinarie. Il plugin serve per gli **avvisi ufficiali dell'ultimo momento** (lezione annullata, cambio sede/orario) come **notifica PWA** agli iscritti dell'attività — non per campagne email. Meno consensi marketing, meno rischio spam. |
+| Contatti ai volontari | Non visibili: il volontario vede i nomi degli iscritti e invia l'avviso dal sistema. |
+| Wallet (Apple/Google) | Non ora; teniamo la tessera digitale con QR pronta per un'estensione. |
+| Licenza | Chiave di licenza salvata ma **non verificata** (standby). Tutto passa da `License::allows()`: quando si attiverà l'autorizzazione dei domini si cambia solo quel punto. |
+| Ruoli sociali (presidente, consiglio…) | Fuori dal plugin: pagine statiche del sito. |
+
+**Passo 1 (fondamenta) — fatto:** `Access` (permessi dai dati, con capability meta WordPress), REST API `apsemplice/v1`
+(`/me`, `/me/activities`, `/people/{id}`, `/activities/{id}/participants`), registro delle azioni, i soci "solo ruolo Socio APS"
+tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), punto unico `License`.
+
 ## 1. Chi usa cosa
 
 | Chi | Dove | Cosa può fare |
@@ -61,7 +77,7 @@ Quindi:
 | Attività, iscrizioni, situazione pagamenti | ✅ fatto | |
 | Prima nota, conti, verifica saldo, report, CSV | ✅ fatto | |
 | Import soci CSV | ✅ fatto | |
-| **Access** (permessi dai dati) + REST base | ⏳ prossimo | fondamenta di tutto il resto |
+| **Access** (permessi dai dati) + REST base + registro azioni | ✅ fatto | fondamenta di tutto il resto |
 | **Area soci**: tessera digitale (QR), profilo, attività e pagamenti, ospiti | ⏳ | prima cosa visibile ai soci |
 | **Comunicazioni** (volontari → iscritti delle loro attività; admin → gruppi) | ⏳ | vedi §4 |
 | **Consensi e privacy** (GDPR) | ⏳ | prerequisito delle comunicazioni |
@@ -71,7 +87,7 @@ Quindi:
 | PWA installabile, notifiche push | ⏳ | sopra la REST |
 | Contabilità avanzata (centri di costo, ecc.) | più avanti | le attività sono già centri di costo |
 
-## 4. Comunicazioni (il pezzo che cambia di più la struttura)
+## 4. Comunicazioni (ambito ridotto: vedi §0 — solo avvisi ufficiali via PWA; il resto di questa sezione descrive l'impostazione generale)
 
 - **Destinatari come "segmenti"**, calcolati lato server: tutti i soci · per tipo · iscritti a un'attività · soci con tessera scaduta ·
   chi ha mensilità da pagare · ospiti di un'attività. Un volontario può usare **solo** il segmento "iscritti a una mia attività".
@@ -91,7 +107,7 @@ Quindi:
 su `people`: `status` (richiesta/attivo/sospeso), indirizzo e data di nascita **solo se servono**, `card_token` (QR).
 Tutto con migrazioni versionate (oggi `Install::maybe_upgrade` ricrea lo schema con dbDelta, va bene finché si aggiunge soltanto).
 
-## 6. Decisioni aperte (cambiano il codice)
+## 6. Decisioni (risolte in §0; restano per riferimento)
 
 1. **Pagamenti online**: Stripe (carte, anche Apple/Google Pay), PayPal, Satispay, SumUp, oppure passare da WooCommerce?
    Proposta: interfaccia `PaymentGateway` e **Stripe Checkout per primo**; il webhook registra l'incasso con `LedgerService::record_receipt`

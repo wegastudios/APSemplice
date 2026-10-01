@@ -28,6 +28,7 @@ final class Admin {
 			array( 'aps-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'aps-accounts', 'Conti e cassa', array( AccountsPage::class, 'render' ) ),
 			array( 'aps-reports', 'Report', array( ReportsPage::class, 'render' ) ),
+			array( 'aps-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),
 			array( 'aps-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
 		foreach ( $subs as $s ) {

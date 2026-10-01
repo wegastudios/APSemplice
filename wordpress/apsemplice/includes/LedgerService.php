@@ -133,7 +133,9 @@ class LedgerService {
 		if ( ! $this->db()->insert( Db::t( 'transactions' ), $this->tx_defaults( $row ) ) ) {
 			throw new \RuntimeException( 'Errore del database nel salvare il movimento.' );
 		}
-		return (int) $this->db()->insert_id;
+		$id = (int) $this->db()->insert_id;
+		Audit::log( 'tx.created', 'transaction', $id, array( 'type' => $row['type'], 'cents' => (int) $row['amount_cents'], 'account' => (int) $row['account_id'] ) );
+		return $id;
 	}
 
 	private function in_transaction( callable $fn ) {
@@ -311,6 +313,7 @@ class LedgerService {
 				foreach ( $ids as $id ) {
 					$this->db()->update( $tbl, array( 'voided_at' => Db::now(), 'void_reason' => $reason ), array( 'id' => $id ) );
 					Plugin::people()->remove_membership_of_transaction( $id );
+					Audit::log( 'tx.voided', 'transaction', $id, array( 'reason' => $reason ) );
 				}
 			}
 		);
@@ -350,6 +353,7 @@ class LedgerService {
 						'difference_cents' => $diff, 'adjustment_tx_id' => $adj_id, 'notes' => $notes, 'created_at' => Db::now(),
 					)
 				);
+				Audit::log( 'cashcount.recorded', 'account', $account_id, array( 'difference' => $diff, 'adjusted' => null !== $adj_id ) );
 				return $diff;
 			}
 		);

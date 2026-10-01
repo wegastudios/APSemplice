@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'aps_db_version';
-	const DB_VERSION        = '1';
+	const DB_VERSION        = '2';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -153,6 +153,19 @@ final class Install {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY account_id (account_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}audit_log (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  created_at datetime NOT NULL,
+  user_id bigint(20) unsigned DEFAULT NULL,
+  action varchar(60) NOT NULL,
+  object_type varchar(30) NOT NULL DEFAULT '',
+  object_id bigint(20) unsigned DEFAULT NULL,
+  details text,
+  PRIMARY KEY  (id),
+  KEY created_at (created_at),
+  KEY action (action)
 ) $c;";
 
 		foreach ( $tables as $sql ) {

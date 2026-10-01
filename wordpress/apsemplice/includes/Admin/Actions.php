@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\Audit;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
 use ApSemplice\PeopleCsv;
@@ -208,6 +209,8 @@ final class Actions {
 				'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
+				'member_area_page_id'     => (int) ( $p['member_area_page_id'] ?? 0 ),
+				'license_key'             => sanitize_text_field( $p['license_key'] ?? '' ),
 			)
 		);
 		return array( Ui::url( 'aps-settings' ), 'Impostazioni salvate.' );
@@ -279,6 +282,7 @@ final class Actions {
 				$failed[] = 'riga ' . $r['line'] . ': ' . $e->getMessage();
 			}
 		}
+		Audit::log( 'import.applied', 'people', null, array( 'created' => $created, 'updated' => $updated, 'failed' => count( $failed ) ) );
 		delete_transient( $key );
 		$msg = "Import completato: $created creati, $updated aggiornati" . ( $failed ? ', ' . count( $failed ) . ' non riusciti (' . implode( '; ', array_slice( $failed, 0, 5 ) ) . ')' : '' ) . '.';
 		return array( Ui::url( 'aps-people' ), $msg );
