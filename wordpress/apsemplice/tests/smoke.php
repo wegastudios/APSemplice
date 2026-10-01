@@ -13,6 +13,7 @@ use ApSemplice\Audit;
 use ApSemplice\Gatekeeper;
 use ApSemplice\Gateways;
 use ApSemplice\ImportService;
+use ApSemplice\Wallet;
 use ApSemplice\WpAllImport;
 use ApSemplice\PaymentConfig;
 use ApSemplice\Secrets;
@@ -27,6 +28,9 @@ use ApSemplice\Settings;
 $GLOBALS['apse_warnings'] = array();
 set_error_handler(
 	function ( $no, $str, $file, $line ) {
+		if ( ! ( error_reporting() & $no ) ) {
+			return false; // avvisi soppressi con @ (es. verifiche di certificati)
+		}
 		if ( false !== strpos( str_replace( '\\', '/', $file ), '/apsemplice/' ) ) {
 			$GLOBALS['apse_warnings'][] = "$str ($file:$line)";
 		}
@@ -1593,6 +1597,90 @@ $matrix = \ApSemplice\QrCode::matrix( Settings::card_url( $founder ) );
 apse_ok( count( $matrix ) >= 29 && count( $matrix ) <= 57, 'il QR dell\'indirizzo di verifica ha dimensioni ragionevoli' );
 apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'QR della tessera', array( 'id' => $founder ) );
 apse_render( array( Admin\CardPage::class, 'render' ), 'Rigenera tutti i QR' );
+
+// ---------- Tessera nel wallet: Apple Wallet e Google Wallet ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$mk_cert = function ( string $cn ) {
+	$pk  = openssl_pkey_new( array( 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ) );
+	$csr = openssl_csr_new( array( 'commonName' => $cn, 'organizationalUnitName' => 'TEAM123456' ), $pk, array( 'digest_alg' => 'sha256' ) );
+	$x   = openssl_csr_sign( $csr, null, $pk, 365, array( 'digest_alg' => 'sha256' ) );
+	openssl_x509_export( $x, $cert );
+	openssl_pkey_export( $pk, $key );
+	return array( $cert, $key, $x, $pk );
+};
+$read_pkpass = function ( string $bin ) {
+	$tmp = tempnam( sys_get_temp_dir(), 'apsepk' );
+	file_put_contents( $tmp, $bin );
+	$zip = new ZipArchive();
+	$zip->open( $tmp );
+	$out = array( 'pass' => json_decode( $zip->getFromName( 'pass.json' ), true ), 'files' => array() );
+	for ( $i = 0; $i < $zip->numFiles; $i++ ) {
+		$out['files'][] = $zip->getNameIndex( $i );
+	}
+	$zip->close();
+	unlink( $tmp );
+	return $out;
+};
+$founder_p = $people->get( $founder );
+apse_ok( null === Wallet::apple_config() && null === Wallet::google_config() && '' === Wallet::buttons( $founder_p ), 'wallet: non configurato di default, nessun pulsante' );
+
+// Apple
+list( $a_cert, $a_key, $a_x, $a_pk ) = $mk_cert( 'Pass Type ID: pass.test.apse' );
+list( $wwdr_cert )                   = $mk_cert( 'Apple Worldwide Developer Relations' );
+openssl_pkcs12_export( $a_x, $p12, $a_pk, 'pw' );
+preg_match( '/-----BEGIN CERTIFICATE-----(.+)-----END CERTIFICATE-----/s', $wwdr_cert, $wm );
+$wwdr_der = base64_decode( $wm[1] );
+apse_ok( null !== apse_throws( function () use ( $p12 ) { Wallet::save_apple( array( 'password' => 'sbagliata' ), $p12, null ); } ) && null !== apse_throws( function () { Wallet::save_apple( array(), null, null ); } ) && null !== apse_throws( function () { Wallet::save_apple( array(), null, 'non un certificato' ); } ), 'Apple Wallet: password sbagliata, nulla da salvare o certificato WWDR non valido sono rifiutati' );
+$msg = Wallet::save_apple( array( 'password' => 'pw' ), $p12, $wwdr_der );
+$acfg = Wallet::apple_config();
+apse_ok( $acfg && 'pass.test.apse' === $acfg['pass_type'] && 'TEAM123456' === $acfg['team'] && false !== strpos( $msg, 'certificato caricato' ), 'Apple Wallet: dal file .p12 si ricavano Pass Type ID e Team ID, e il WWDR (anche in formato .cer binario) viene letto' );
+$raw = (string) wp_json_encode( get_option( Settings::OPTION ) );
+apse_ok( Settings::has_secret( 'wallet_apple_key_pem' ) && false === strpos( $raw, 'PRIVATE KEY' ) && false === strpos( wp_json_encode( Audit::recent( 400 ) ), 'PRIVATE KEY' ), 'Apple Wallet: la chiave privata è cifrata nel database e non finisce nel registro' );
+
+// tessera Apple: socio fondatore (sempre rinnovata) e socio con scadenza
+$pk1 = $read_pkpass( Wallet::apple_pass( $founder ) );
+$f1 = $pk1['files'];sort( $f1 );apse_ok( array( 'icon.png', 'icon@2x.png', 'icon@3x.png', 'manifest.json', 'pass.json', 'signature' ) === $f1, 'tessera Apple: contiene pass.json, icone, manifesto e firma' );
+apse_ok( 'apse-' . $founder === $pk1['pass']['serialNumber'] && 'pass.test.apse' === $pk1['pass']['passTypeIdentifier'] && 'Sempre rinnovata' === $pk1['pass']['generic']['auxiliaryFields'][0]['value'] && ! isset( $pk1['pass']['expirationDate'] ), 'tessera Apple: dati del socio fondatore, senza scadenza' );
+apse_ok( 'PKBarcodeFormatQR' === $pk1['pass']['barcodes'][0]['format'] && false !== strpos( $pk1['pass']['barcodes'][0]['message'], 'apse_card=' ), 'tessera Apple: con il QR della tessera attivo contiene il suo codice di verifica' );
+$pk2 = $read_pkpass( Wallet::apple_pass( $tre_p ) );
+apse_ok( ! empty( $pk2['pass']['expirationDate'] ) && preg_match( '#^\d{2}/\d{2}/\d{4}$#', $pk2['pass']['generic']['auxiliaryFields'][0]['value'] ), 'tessera Apple: un socio con scadenza ha la data di scadenza' );
+Settings::update( array( 'card_qr_enabled' => 0 ) );
+apse_ok( ! isset( $read_pkpass( Wallet::apple_pass( $founder ) )['pass']['barcodes'] ), 'tessera Apple: con il QR della tessera spento non c\'è alcun codice' );
+Settings::update( array( 'card_qr_enabled' => 1 ) );
+apse_ok( null !== apse_throws( function () use ( $guest ) { Wallet::apple_pass( $guest ); } ), 'gli ospiti non hanno tessera nel wallet' );
+
+// pulsanti nell'area soci e permessi di scarico
+$html = $as( $u_f, '[apsemplice_tessera]' );
+apse_ok( false !== strpos( $html, 'Aggiungi ad Apple Wallet' ) && false !== strpos( $html, 'apse_wallet_apple' ) && false !== strpos( $html, '_wpnonce=' ), 'area soci: pulsante per Apple Wallet con controllo dei permessi' );
+apse_ok( user_can( $u_f, 'apse_view_person', $founder ) && ! user_can( $u_tre, 'apse_view_person', $founder ) && has_action( 'admin_post_apse_wallet_apple' ), 'la tessera Apple si scarica solo per sé stessi (o da amministratore)' );
+
+// Google
+list( , $g_key ) = $mk_cert( 'google' );
+$gjson = wp_json_encode( array( 'client_email' => 'wallet@progetto.iam.gserviceaccount.com', 'private_key' => $g_key ) );
+apse_ok( null !== apse_throws( function () { Wallet::save_google( array( 'issuer' => 'abc' ), null ); } ) && null !== apse_throws( function () { Wallet::save_google( array(), '{"x":1}' ); } ), 'Google Wallet: ID emittente non numerico o JSON senza chiave sono rifiutati' );
+Wallet::save_google( array( 'issuer' => '3388000000012345678' ), $gjson );
+$gurl = Wallet::google_url( $founder );
+$jwt  = substr( $gurl, strlen( 'https://pay.google.com/gp/v/save/' ) );
+list( $jh, $jp, $js ) = explode( '.', $jwt );
+$gpub = openssl_pkey_get_details( openssl_pkey_get_private( $g_key ) )['key'];
+$gcl  = json_decode( \ApSemplice\GoogleWallet::b64url_decode( $jp ), true );
+apse_ok( 0 === strpos( $gurl, 'https://pay.google.com/gp/v/save/' ) && 1 === openssl_verify( $jh . '.' . $jp, \ApSemplice\GoogleWallet::b64url_decode( $js ), $gpub, OPENSSL_ALGO_SHA256 ), 'Google Wallet: indirizzo di salvataggio con JWT firmato (RS256)' );
+apse_ok( 'savetowallet' === $gcl['typ'] && 'wallet@progetto.iam.gserviceaccount.com' === $gcl['iss'] && false !== strpos( $gcl['payload']['genericObjects'][0]['barcode']['value'], 'apse_card=' ), 'Google Wallet: emittente, tipo e QR della tessera' );
+apse_ok( Settings::has_secret( 'wallet_google_key_pem' ) && false === strpos( wp_json_encode( get_option( Settings::OPTION ) ), 'PRIVATE KEY' ), 'Google Wallet: la chiave è cifrata nel database' );
+$html = $as( $u_f, '[apsemplice_tessera]' );
+apse_ok( false !== strpos( $html, 'Salva su Google Wallet' ) && false !== strpos( $html, 'pay.google.com/gp/v/save/' ), 'area soci: pulsante per Google Wallet' );
+
+// pagina di amministrazione
+$adm = apse_render( array( Admin\CardPage::class, 'render' ), 'Apple Wallet', array( 'test_person' => (string) $founder ) );
+apse_ok( false !== strpos( $adm, 'Google Wallet' ) && false !== strpos( $adm, 'Configurato' ) && false !== strpos( $adm, 'pass.test.apse' ) && false !== strpos( $adm, 'Scarica la tessera per Apple Wallet' ) && false === strpos( $adm, 'PRIVATE KEY' ), 'pagina Tessera e Wallet: stato, prova con un socio e nessuna chiave in chiaro' );
+apse_ok( in_array( 'wallet.apple_saved', array_column( Audit::recent( 400 ), 'action' ), true ) && in_array( 'wallet.google_saved', array_column( Audit::recent( 400 ), 'action' ), true ), 'registro azioni: configurazione dei wallet tracciata' );
+
+// rimozione
+Wallet::clear( 'apple' );
+apse_ok( null === Wallet::apple_config() && ! Settings::has_secret( 'wallet_apple_key_pem' ) && false === strpos( $as( $u_f, '[apsemplice_tessera]' ), 'Apple Wallet' ) && false !== strpos( $as( $u_f, '[apsemplice_tessera]' ), 'Google Wallet' ), 'Apple Wallet rimosso: via la chiave e il pulsante' );
+Wallet::clear( 'google' );
+apse_ok( null === Wallet::google_config() && '' === Wallet::buttons( $founder_p ), 'Google Wallet rimosso: nessun pulsante' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

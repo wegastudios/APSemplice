@@ -28,6 +28,9 @@ final class Actions {
 			'apse_set_treasurer'      => 'set_treasurer',
 			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_card'          => 'save_card',
+			'apse_save_wallet_apple'  => 'save_wallet_apple',
+			'apse_save_wallet_google' => 'save_wallet_google',
+			'apse_wallet_clear'       => 'wallet_clear',
 			'apse_save_activity'      => 'save_activity',
 			'apse_enroll'             => 'enroll',
 			'apse_cancel_enrollment'  => 'cancel_enrollment',
@@ -428,6 +431,32 @@ final class Actions {
 	private static function save_card( array $p ): array {
 		Settings::update( array( 'card_qr_enabled' => ! empty( $p['card_qr_enabled'] ) ? 1 : 0 ) );
 		return array( Ui::url( 'apse-card' ), ! empty( $p['card_qr_enabled'] ) ? 'QR della tessera attivato.' : 'QR della tessera disattivato.' );
+	}
+
+	/** Contenuto di un file caricato (null se non ne è stato scelto uno). */
+	private static function uploaded_bytes( string $key ): ?string {
+		if ( empty( $_FILES[ $key ]['tmp_name'] ) || UPLOAD_ERR_NO_FILE === (int) $_FILES[ $key ]['error'] ) { // phpcs:ignore WordPress.Security
+			return null;
+		}
+		$f = $_FILES[ $key ]; // phpcs:ignore WordPress.Security
+		if ( UPLOAD_ERR_OK !== (int) $f['error'] || ! is_uploaded_file( $f['tmp_name'] ) || (int) $f['size'] > 1048576 ) {
+			throw new \InvalidArgumentException( 'Caricamento del file non riuscito (massimo 1 MB).' );
+		}
+		return (string) file_get_contents( $f['tmp_name'] );
+	}
+
+	private static function save_wallet_apple( array $p ): array {
+		$msg = \ApSemplice\Wallet::save_apple( array( 'password' => $p['apple_password'] ?? '', 'pass_type' => $p['pass_type'] ?? '', 'team' => $p['team'] ?? '' ), self::uploaded_bytes( 'apple_p12' ), self::uploaded_bytes( 'apple_wwdr' ) );
+		return array( Ui::url( 'apse-card' ), $msg );
+	}
+
+	private static function save_wallet_google( array $p ): array {
+		return array( Ui::url( 'apse-card' ), \ApSemplice\Wallet::save_google( array( 'issuer' => $p['issuer'] ?? '' ), self::uploaded_bytes( 'google_json' ) ) );
+	}
+
+	private static function wallet_clear( array $p ): array {
+		\ApSemplice\Wallet::clear( (string) ( $p['which'] ?? '' ) );
+		return array( Ui::url( 'apse-card' ), 'Credenziali rimosse.' );
 	}
 
 	private static function regen_qr( array $p ): array {

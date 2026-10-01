@@ -9,7 +9,7 @@ final class Settings {
 	const OPTION = 'apse_settings';
 
 	/** Chiavi segrete: nel database restano cifrate e non vengono mai mostrate. */
-	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret' );
+	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret', 'wallet_apple_key_pem', 'wallet_google_key_pem' );
 
 	const DEFAULT_PAYMENT_HINT = 'Il pagamento si effettua in sede presso la segreteria.';
 
@@ -35,6 +35,14 @@ final class Settings {
 			'paypal_client_id'        => '',
 			'paypal_client_secret'    => '',   // cifrata
 			'card_qr_enabled'         => 0,     // QR sulla tessera digitale: a scelta del gestore, spento di default
+			'wallet_apple_pass_type'  => '',    // Apple Wallet: identificativo del tipo di pass (dal certificato)
+			'wallet_apple_team'       => '',
+			'wallet_apple_cert_pem'   => '',    // certificato (pubblico)
+			'wallet_apple_wwdr_pem'   => '',    // certificato intermedio di Apple (pubblico)
+			'wallet_apple_key_pem'    => '',    // cifrata
+			'wallet_google_issuer'    => '',    // Google Wallet: ID dell'emittente
+			'wallet_google_email'     => '',    // account di servizio
+			'wallet_google_key_pem'   => '',    // cifrata
 			'wpai_default_type'       => 'ordinary', // import da WP All Import: tipo socio se manca la colonna
 			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
 			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
@@ -86,6 +94,12 @@ final class Settings {
 		$clean['wpai_default_account_id'] = max( 0, (int) $clean['wpai_default_account_id'] );
 		$clean['wpai_keep_balances']      = empty( $clean['wpai_keep_balances'] ) ? 0 : 1;
 		$clean['card_qr_enabled']         = empty( $clean['card_qr_enabled'] ) ? 0 : 1;
+		foreach ( array( 'wallet_apple_cert_pem', 'wallet_apple_wwdr_pem' ) as $k ) {
+			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 12000 );
+		}
+		foreach ( array( 'wallet_apple_pass_type', 'wallet_apple_team', 'wallet_google_issuer', 'wallet_google_email' ) as $k ) {
+			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 200 );
+		}
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
 		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
 			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 200 );

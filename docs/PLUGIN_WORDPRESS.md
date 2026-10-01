@@ -179,3 +179,13 @@ Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizio
 **QR della tessera** — *Tessera e Wallet → Attiva il QR sulla tessera digitale* (spento di default). Se attivo, nella tessera digitale del socio compare un QR: chi lo scansiona (anche senza accesso al sito) apre una pagina che dice se la tessera è **valida in questo momento** (nome, tipo, numero, scadenza: niente altro). La verifica è in diretta: il QR non cambia al rinnovo. Gli ospiti non hanno tessera. Il QR contiene solo un codice firmato (HMAC) legato al sito; "Rigenera tutti i QR" invalida tutti i codici in circolazione.
 
 **Biglietto QR di una prenotazione** — nella scheda di un evento o evento ricorrente: *Biglietto QR → Genera un QR per ogni prenotazione* (spento di default, scelta per singolo evento; i corsi non hanno prenotazioni). Chi prenota trova il QR sotto la prenotazione, e il socio quelli dei propri ospiti; scansionandolo si vede se la prenotazione è valida, per quale data, se è stata annullata e se il contributo è versato. Con la licenza non in regola le verifiche sono sospese.
+
+## Tessera nel wallet (Apple Wallet e Google Wallet)
+
+Facoltativo: in *Tessera e Wallet* si caricano le credenziali dell'associazione; poi nella tessera digitale del socio compaiono "Aggiungi ad Apple Wallet" e/o "Salva su Google Wallet". Le chiavi private sono cifrate nel database (legate al sito: se il sito viene copiato altrove vanno ricaricate). Il sito non chiama mai Apple o Google: la tessera Apple è un file `.pkpass` firmato sul posto, quella Google un indirizzo con un JWT firmato.
+
+**Apple Wallet** — servono un account **Apple Developer** (a pagamento), un **Pass Type ID** con il relativo certificato esportato in un file `.p12` (con password) e il certificato intermedio **WWDR** (`.cer`, scaricabile dal sito per sviluppatori Apple). Pass Type ID e Team ID si ricavano dal certificato. Il certificato Apple dura circa un anno: la pagina avvisa quando sta per scadere.
+
+**Google Wallet** — servono un account **Google Pay & Wallet Console** con l'**ID emittente**, l'accesso ai pass "Generico" e un **account di servizio** Google Cloud con la sua chiave in formato JSON. Finché l'emittente è in prova, Google consente il salvataggio solo agli utenti di test.
+
+La tessera nel wallet mostra nome, tipo, numero e scadenza **al momento dell'emissione** (non si aggiorna da sola al rinnovo) e, se è attivo il QR della tessera, anche quel QR, che verifica sempre la validità in diretta. Gli ospiti non hanno tessera.
