@@ -73,6 +73,8 @@ I dati restano nelle tabelle anche se disattivi/elimini il plugin.
 
 ## Prossimi passi
 
+La direzione di prodotto (area soci, volontari, comunicazioni, pagamenti, PWA) è in [VISIONE_E_STRUTTURA.md](VISIONE_E_STRUTTURA.md). In sintesi:
+
 1. Prova su uno staging con dati reali; allineare le voci di rendiconto (`fiscal_group`) con il commercialista.
 2. Ruoli oltre l'amministratore (tesoriere, operatore, sola lettura) tramite capability dedicate.
 3. REST API + area soci/PWA (consultazione tessera e pagamenti, installabile).
