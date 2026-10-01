@@ -1,0 +1,203 @@
+<?php
+namespace ApSemplice\Admin;
+
+use ApSemplice\MemberType;
+use ApSemplice\Money;
+use ApSemplice\Plugin;
+use ApSemplice\Settings;
+
+defined( 'ABSPATH' ) || exit;
+
+final class PeoplePage {
+
+	public static function render_list(): void {
+		$q      = Ui::get_str( 'q' );
+		$type   = Ui::get_str( 'type' );
+		$status = Ui::get_str( 'status' );
+		$rows   = Plugin::people()->search( array( 'q' => $q, 'type' => $type, 'status' => $status ) );
+		$today  = current_time( 'Y-m-d' );
+
+		Ui::header(
+			'Soci e ospiti',
+			'<a class="page-title-action" href="' . esc_url( Ui::url( 'aps-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
+			. '<a class="page-title-action" href="' . esc_url( Ui::url( 'aps-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a> '
+			. '<a class="page-title-action" href="' . esc_url( Ui::url( 'aps-import' ) ) . '">Importa da CSV</a> '
+			. Exports::link( 'people', array(), 'Esporta CSV' )
+		);
+
+		echo '<form method="get" class="aps-filters"><input type="hidden" name="page" value="aps-people">';
+		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
+		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
+		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<button class="button">Filtra</button></form>';
+
+		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
+		echo '<table class="widefat striped"><thead><tr><th>Tessera</th><th>Nome</th><th>Tipo</th><th>Email</th><th>Stato</th><th></th></tr></thead><tbody>';
+		if ( ! $rows ) {
+			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
+		}
+		foreach ( $rows as $p ) {
+			if ( MemberType::GUEST === $p['type'] ) {
+				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] );
+			} elseif ( ! empty( $p['active_until'] ) && $p['active_until'] >= $today ) {
+				$state = '<span class="aps-ok">Valida fino al ' . Ui::date( $p['active_until'] ) . '</span>';
+			} elseif ( ! empty( $p['active_until'] ) ) {
+				$state = '<span class="aps-neg">Scaduta il ' . Ui::date( $p['active_until'] ) . '</span>';
+			} else {
+				$state = '<span class="aps-neg">Non iscritto</span>';
+			}
+			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
+			echo '<td><a href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
+			echo '<td>' . esc_html( MemberType::label( $p['type'] ) ) . '</td><td>' . esc_html( (string) $p['email'] ) . '</td><td>' . $state . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<td><a class="button button-small" href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
+		}
+		echo '</tbody></table>';
+		Ui::footer();
+	}
+
+	public static function render_edit(): void {
+		$id     = Ui::get_int( 'id' );
+		$people = Plugin::people();
+		$p      = $id ? $people->get( $id ) : null;
+		if ( $id && ! $p ) {
+			wp_die( 'Persona non trovata.' );
+		}
+		$type = $p ? $p['type'] : ( MemberType::is_valid( Ui::get_str( 'type' ) ) ? Ui::get_str( 'type' ) : MemberType::ORDINARY );
+		$val  = function ( string $k ) use ( $p ) {
+			return $p ? (string) ( $p[ $k ] ?? '' ) : '';
+		};
+		$host_id = $p ? (int) $p['host_person_id'] : Ui::get_int( 'host' );
+		$back    = Ui::url( 'aps-person', $id ? array( 'id' => $id ) : array( 'type' => $type ) );
+		$hosts   = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
+			return MemberType::is_member( $x['type'] ) && (int) $x['id'] !== $id;
+		} ) );
+
+		Ui::header( $p ? $people->full_name( $p ) : ( MemberType::GUEST === $type ? 'Nuovo ospite' : 'Nuovo socio' ), '<a class="page-title-action" href="' . esc_url( Ui::url( 'aps-people' ) ) . '">← Elenco</a>' );
+
+		echo '<div class="aps-cols"><div class="aps-col">';
+		Ui::form_open( 'aps_save_person', $back );
+		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<table class="form-table aps-form"><tbody>';
+		echo '<tr><th>Tipo</th><td><select name="type" id="aps-type">' . Ui::options( MemberType::labels(), $type ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p class="description" id="aps-type-hint"></p></td></tr>';
+		echo '<tr class="aps-row-host"><th>Socio ospitante *</th><td>' . Ui::person_select( 'host_person_id', $hosts, $host_id, '— scegli il socio —', 'aps-host' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr class="aps-row-card"><th>N. tessera</th><td><input type="text" name="card_number" id="aps-card" value="' . esc_attr( $val( 'card_number' ) ) . '" class="regular-text"> '
+			. '<button type="button" class="button" id="aps-next-card" data-next="' . esc_attr( $people->next_free_card() ) . '">Prossimo libero</button>'
+			. '<p class="description">Assegnata a mano, univoca, modificabile.</p></td></tr>';
+		echo '<tr><th>Nome *</th><td><input type="text" name="first_name" value="' . esc_attr( $val( 'first_name' ) ) . '" class="regular-text" required></td></tr>';
+		echo '<tr><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
+		echo '<tr><th>Email <span class="aps-email-req">*</span></th><td><input type="email" name="email" id="aps-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
+			. '<p class="description aps-email-note">Obbligatoria per i soci: ogni socio corrisponde a un utente WordPress.</p></td></tr>';
+		echo '<tr><th>Telefono</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"></td></tr>';
+		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"></td></tr>';
+		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
+		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
+		echo '</tbody></table>';
+		submit_button( $p ? 'Salva' : 'Crea' );
+		Ui::form_close();
+
+		if ( $p ) {
+			echo '<hr>';
+			Ui::form_open( 'aps_delete_person', $back, false, 'aps-confirm' );
+			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<button class="button button-link-delete" data-confirm="Eliminare questa persona? L\'utente WordPress collegato non viene cancellato.">Elimina persona</button>';
+			Ui::form_close();
+		}
+		echo '</div>';
+
+		if ( $p ) {
+			echo '<div class="aps-col">';
+			self::panel_membership( $p );
+			self::panel_guests( $p );
+			self::panel_activities( $p );
+			self::panel_payments( $p );
+			echo '</div>';
+		}
+		echo '</div>';
+		Ui::footer();
+	}
+
+	private static function panel_membership( array $p ): void {
+		$people = Plugin::people();
+		echo '<div class="aps-card"><h2>Tessera e iscrizione</h2>';
+		if ( MemberType::GUEST === $p['type'] ) {
+			echo '<p>Gli ospiti non sono soci: partecipano alle attività tramite un socio.</p>';
+			if ( $p['host_person_id'] ) {
+				echo '<p>Ospite di <a href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $p['host_person_id'] ) ) ) . '">' . esc_html( (string) ( $people->get( (int) $p['host_person_id'] )['last_name'] ?? '' ) ) . '</a></p>';
+			}
+			echo '</div>';
+			return;
+		}
+		$until  = $people->active_until( (int) $p['id'] );
+		$active = $until && $until >= current_time( 'Y-m-d' );
+		echo '<p>' . ( $active ? '<strong class="aps-ok">Tessera valida fino al ' . Ui::date( $until ) . '</strong>' : '<strong class="aps-neg">Tessera non valida' . ( $until ? ' (scaduta il ' . Ui::date( $until ) . ')' : '' ) . '</strong>' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
+			echo '<p class="description">Socio fondatore: la tessera è sempre rinnovata (scadenza a ' . (int) Settings::get( 'founder_years' ) . ' anni dall\'ingresso).</p></div>';
+			return;
+		}
+		$cur = Settings::social_year();
+		$opts = array( $cur->previous()->label() => $cur->previous()->label(), $cur->label() => $cur->label() . ' (corrente)', $cur->next()->label() => $cur->next()->label() );
+		Ui::form_open( 'aps_set_membership', Ui::url( 'aps-person', array( 'id' => $p['id'] ) ) );
+		echo Ui::hidden( 'id', $p['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>Anno sociale: <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<button class="button" name="enabled" value="1">Segna iscritto</button> <button class="button" name="enabled" value="0">Togli iscrizione</button></p>';
+		Ui::form_close();
+		echo '<p class="description">L\'incasso di una "Quota associativa" iscrive in automatico. Qui puoi iscrivere a mano chi ha già pagato.</p>';
+		$rows = $people->memberships( (int) $p['id'] );
+		if ( $rows ) {
+			echo '<table class="widefat striped"><thead><tr><th>Anno sociale</th><th>Dal</th><th>Al</th><th>Origine</th></tr></thead><tbody>';
+			foreach ( $rows as $m ) {
+				echo '<tr><td>' . esc_html( $m['social_year'] ) . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</tbody></table>';
+		}
+		echo '</div>';
+	}
+
+	private static function panel_guests( array $p ): void {
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			return;
+		}
+		$guests = Plugin::people()->guests_of( (int) $p['id'] );
+		echo '<div class="aps-card"><h2>Ospiti di questo socio</h2>';
+		if ( $guests ) {
+			echo '<ul>';
+			foreach ( $guests as $g ) {
+				echo '<li><a href="' . esc_url( Ui::url( 'aps-person', array( 'id' => $g['id'] ) ) ) . '">' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</a></li>';
+			}
+			echo '</ul>';
+		} else {
+			echo '<p class="description">Nessun ospite.</p>';
+		}
+		echo '<a class="button" href="' . esc_url( Ui::url( 'aps-person', array( 'type' => 'guest', 'host' => $p['id'] ) ) ) . '">Aggiungi ospite</a></div>';
+	}
+
+	private static function panel_activities( array $p ): void {
+		$statuses = Plugin::activities()->status_for_person( (int) $p['id'] );
+		echo '<div class="aps-card"><h2>Attività e pagamenti</h2>';
+		if ( ! $statuses ) {
+			echo '<p class="description">Non è iscritto a nessuna attività. Si iscrive dalla scheda dell\'attività.</p></div>';
+			return;
+		}
+		foreach ( $statuses as $s ) {
+			$e = $s['enrollment'];
+			echo '<details class="aps-detail"><summary><strong><a href="' . esc_url( Ui::url( 'aps-activity', array( 'id' => $e['activity_id'] ) ) ) . '">' . esc_html( $s['activity']['name'] ) . '</a></strong> (' . esc_html( $s['activity']['social_year'] ) . ') — ' . Ui::pay_status( $s['summary'] ) . '</summary>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<p class="description">' . ( null === $e['end_month'] ? 'Iscritto dal ' . esc_html( Ui::month( $e['start_month'] ) ) : 'Cancellato (ultimo mese dovuto: ' . esc_html( Ui::month( $e['end_month'] ) ) . ')' ) . '</p>';
+			echo Ui::months_table( $s['summary'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '</details>';
+		}
+		echo '</div>';
+	}
+
+	private static function panel_payments( array $p ): void {
+		$rows = array_slice( Plugin::ledger()->rows_of_person( (int) $p['id'] ), 0, 15 );
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="aps-card"><h2>Ultimi movimenti</h2><table class="widefat striped"><tbody>';
+		foreach ( $rows as $r ) {
+			echo '<tr><td>' . Ui::date( $r['tx_date'] ) . '</td><td>' . esc_html( $r['category_name'] . ( $r['activity_name'] ? ' · ' . $r['activity_name'] : '' ) ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</tbody></table></div>';
+	}
+}

@@ -3,7 +3,9 @@ name: Build APK
 on:
   push:
     branches: [main, "feature/**"]
+    paths-ignore: ["wordpress/**", "docs/**", ".github/workflows/plugin.yml"]
   pull_request:
+    paths-ignore: ["wordpress/**", "docs/**", ".github/workflows/plugin.yml"]
   workflow_dispatch:
 
 jobs:

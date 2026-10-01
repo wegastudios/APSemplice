@@ -1,0 +1,67 @@
+name: WordPress plugin
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    paths: ["wordpress/**", ".github/workflows/plugin.yml"]
+  pull_request:
+    paths: ["wordpress/**", ".github/workflows/plugin.yml"]
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Unit tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.1", "8.3"]
+    defaults:
+      run:
+        working-directory: wordpress/apsemplice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring
+          tools: composer
+      - name: Syntax check
+        run: |
+          find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
+      - run: composer update --no-interaction --no-progress
+      - run: vendor/bin/phpunit
+
+  smoke:
+    name: Smoke test on real WordPress
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wordpress
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Start WordPress (wp-env)
+        run: npx --yes @wordpress/env start
+      - name: Run smoke test
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke.php
+      - name: Debug log
+        if: failure()
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+  package:
+    name: Installable zip
+    needs: [unit, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zip
+        run: |
+          cd wordpress
+          zip -r ../apsemplice.zip apsemplice -x "apsemplice/tests/*" "apsemplice/vendor/*" "apsemplice/composer.*" "apsemplice/phpunit.xml.dist"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apsemplice-plugin
+          path: apsemplice.zip

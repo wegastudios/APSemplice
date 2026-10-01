@@ -1,5 +1,7 @@
 # APSemplice (APS Semplice)
 
+> **Nuova direzione:** il progetto prosegue come **plugin WordPress** (`wordpress/apsemplice/`, vedi [docs/PLUGIN_WORDPRESS.md](docs/PLUGIN_WORDPRESS.md)). L'app Android qui sotto resta come prototipo in pausa.
+
 App Android per la prima nota, la cassa e il bilancio di un'associazione di promozione sociale (APS).
 
 - **Anno solare** per la contabilità legale (rendiconto per cassa e prima nota da consegnare al commercialista).
