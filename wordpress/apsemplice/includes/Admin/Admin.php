@@ -40,6 +40,7 @@ final class Admin {
 		add_submenu_page( null, 'Scheda persona', 'Scheda persona', $cap, 'apse-person', array( PeoplePage::class, 'render_edit' ) );
 		add_submenu_page( null, 'Scheda attività', 'Scheda attività', $cap, 'apse-activity', array( ActivitiesPage::class, 'render_detail' ) );
 		add_submenu_page( null, 'Importa soci', 'Importa soci', $cap, 'apse-import', array( ImportPage::class, 'render' ) );
+		add_submenu_page( null, 'Import con WP All Import', 'Import con WP All Import', $cap, 'apse-wpai', array( WpAiPage::class, 'render' ) );
 	}
 
 	public static function assets( string $hook ): void {

@@ -51,6 +51,10 @@ final class Actions {
 			'apse_create_pages'       => 'create_pages',
 			'apse_import_preview'     => 'import_preview',
 			'apse_import_apply'       => 'import_apply',
+			'apse_save_wpai'          => 'save_wpai',
+			'apse_wpai_process'       => 'wpai_process',
+			'apse_wpai_retry'         => 'wpai_retry',
+			'apse_wpai_clear'         => 'wpai_clear',
 		);
 		add_action( 'admin_post_apse_attachment', array( Attachments::class, 'handle_download' ) );
 		foreach ( $map as $action => $method ) {
@@ -397,75 +401,70 @@ final class Actions {
 		return array( Ui::url( 'apse-settings' ), $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' );
 	}
 
-	// ---------- Import soci ----------
+	// ---------- Import (Excel / CSV) ----------
 
 	private static function import_preview( array $p ): array {
-		if ( empty( $_FILES['file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
-			throw new \InvalidArgumentException( 'Scegli un file CSV da caricare.' );
+		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Scegli un file Excel o CSV da caricare.' );
 		}
-		$bytes = file_get_contents( $_FILES['file']['tmp_name'] ); // phpcs:ignore WordPress.Security
-		$parse = PeopleCsv::parse( PeopleCsv::decode( (string) $bytes ) );
-		if ( isset( $parse['error'] ) ) {
-			throw new \InvalidArgumentException( $parse['error'] );
+		if ( (int) $f['size'] > 20 * 1048576 ) {
+			throw new \InvalidArgumentException( 'Il file supera i 20 MB: dividilo in più file.' );
 		}
-		$default  = MemberType::is_member( (string) ( $p['default_type'] ?? '' ) ) ? $p['default_type'] : MemberType::ORDINARY;
-		$existing = array();
-		foreach ( Plugin::people()->search() as $e ) {
-			$existing[] = array( 'id' => (int) $e['id'], 'card' => $e['card_number'], 'first' => $e['first_name'], 'last' => $e['last_name'], 'email' => $e['email'], 'tax' => $e['tax_code'] );
-		}
-		$plan  = PeopleCsv::plan( $parse['rows'], $existing, $default );
+		$prev  = \ApSemplice\ImportService::preview_file(
+			$f['tmp_name'],
+			(string) $f['name'],
+			array( 'default_type' => (string) ( $p['default_type'] ?? '' ), 'default_account_id' => (int) ( $p['default_account_id'] ?? 0 ) )
+		);
 		$token = wp_generate_password( 16, false );
-		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $plan, HOUR_IN_SECONDS );
+		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $prev, HOUR_IN_SECONDS );
 		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
+	}
+
+	private static function save_wpai( array $p ): array {
+		Settings::update(
+			array(
+				'wpai_default_type'       => (string) ( $p['default_type'] ?? '' ),
+				'wpai_default_account_id' => (int) ( $p['default_account_id'] ?? 0 ),
+				'wpai_keep_balances'      => ! empty( $p['keep_balances'] ) ? 1 : 0,
+				'wpai_mark_members'       => ! empty( $p['mark_members'] ) ? 1 : 0,
+			)
+		);
+		return array( Ui::url( 'apse-wpai' ), 'Impostazioni salvate.' );
+	}
+
+	private static function wpai_process( array $p ): array {
+		$r = \ApSemplice\WpAllImport::process();
+		return array( Ui::url( 'apse-wpai' ), 'Elaborazione conclusa: ' . $r['people'] . ' soci/ospiti, ' . $r['ledger'] . ' movimenti, ' . $r['duplicates'] . ' già presenti, ' . $r['errors'] . ' con errori.' );
+	}
+
+	private static function wpai_retry( array $p ): array {
+		return array( Ui::url( 'apse-wpai' ), \ApSemplice\WpAllImport::retry() . ' elementi rimessi in coda: premi "Elabora adesso".' );
+	}
+
+	private static function wpai_clear( array $p ): array {
+		return array( Ui::url( 'apse-wpai' ), \ApSemplice\WpAllImport::clear_errors() . ' elementi con errori eliminati.' );
 	}
 
 	private static function import_apply( array $p ): array {
 		$key  = 'apse_import_' . get_current_user_id() . '_' . sanitize_key( $p['token'] ?? '' );
-		$plan = get_transient( $key );
-		if ( ! is_array( $plan ) ) {
+		$prev = get_transient( $key );
+		if ( ! is_array( $prev ) ) {
 			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: ricarica il file.' );
 		}
-		$mark   = ! empty( $p['mark_members'] );
-		$year   = Settings::social_year()->label();
-		$people = Plugin::people();
-		$created = 0;
-		$updated = 0;
-		$failed  = array();
-		foreach ( $plan as $row ) {
-			if ( 'error' === $row['action'] ) {
-				continue;
-			}
-			$r    = $row['row'];
-			$data = array( 'first_name' => $r['first'], 'last_name' => $r['last'], 'email' => $r['email'] );
-			foreach ( array( 'card' => 'card_number', 'phone' => 'phone', 'tax' => 'tax_code' ) as $from => $to ) {
-				if ( null !== $r[ $from ] ) {
-					$data[ $to ] = $r[ $from ];
-				}
-			}
-			try {
-				if ( 'create' === $row['action'] ) {
-					$data['type'] = $row['type'];
-					$id           = $people->create( $data );
-					$created++;
-				} else {
-					$id = (int) $row['matched_id'];
-					if ( ! empty( $row['type_given'] ) ) {
-						$data['type'] = $row['type'];
-					}
-					$people->update( $id, $data );
-					$updated++;
-				}
-				$person = $people->get( $id );
-				if ( $mark && $person && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
-					$people->set_membership( $id, $year, true, 'import' );
-				}
-			} catch ( \InvalidArgumentException $e ) {
-				$failed[] = 'riga ' . $r['line'] . ': ' . $e->getMessage();
-			}
-		}
-		Audit::log( 'import.applied', 'people', null, array( 'created' => $created, 'updated' => $updated, 'failed' => count( $failed ) ) );
+		$res = \ApSemplice\ImportService::apply( $prev, array( 'mark_members' => ! empty( $p['mark_members'] ), 'keep_balances' => ! empty( $p['keep_balances'] ) ) );
 		delete_transient( $key );
-		$msg = "Import completato: $created creati, $updated aggiornati" . ( $failed ? ', ' . count( $failed ) . ' non riusciti (' . implode( '; ', array_slice( $failed, 0, 5 ) ) . ')' : '' ) . '.';
-		return array( Ui::url( 'apse-people' ), $msg );
+		$parts = array();
+		if ( $res['people'] ) {
+			$f       = $res['people']['failed'];
+			$parts[] = 'Soci e ospiti: ' . $res['people']['created'] . ' creati, ' . $res['people']['updated'] . ' aggiornati' . ( $f ? ', ' . count( $f ) . ' non riusciti (' . implode( '; ', array_slice( $f, 0, 5 ) ) . ')' : '' );
+		}
+		if ( $res['ledger'] ) {
+			$l       = $res['ledger'];
+			$parts[] = 'Prima nota: ' . $l['created'] . ' movimenti' . ( $l['transfers'] ? ', ' . $l['transfers'] . ' giroconti' : '' ) . ( $l['duplicates'] ? ', ' . $l['duplicates'] . ' già presenti saltati' : '' )
+				. ( $l['memberships'] ? ', ' . $l['memberships'] . ' iscrizioni registrate' : '' ) . ( $l['shifted'] ? ', saldi attuali invariati' : '' );
+		}
+		$msg = 'Import completato. ' . implode( '. ', $parts ) . '.';
+		return array( $res['people'] && ! $res['ledger'] ? Ui::url( 'apse-people' ) : Ui::url( 'apse-ledger' ), $msg );
 	}
 }

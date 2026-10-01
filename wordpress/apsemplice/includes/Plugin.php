@@ -19,6 +19,7 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
+		WpAllImport::register(); // compatibilità con WP All Import (area di appoggio)
 		add_action( 'apse_check_pending_payments', function () {
 			self::payments()->check_pending();
 		} );

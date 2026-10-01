@@ -408,6 +408,91 @@ class LedgerService {
 		return $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
 	}
 
+	// ---------- Import storico ----------
+
+	/** Esegue più operazioni in un'unica transazione del database (tutto o niente). */
+	public function in_batch( callable $fn ) {
+		return $this->in_transaction( $fn );
+	}
+
+	/**
+	 * Movimento da import (Excel/CSV): entra in prima nota così com'è, senza i controlli di un incasso dal vivo
+	 * (le regole sono già state applicate dal piano di importazione).
+	 *
+	 * @param array $d date, type (income|expense), cents, account_id, method, category_id, activity_id?, person_id?, description?, ref?, month?
+	 * @return int id del movimento
+	 */
+	public function import_row( array $d ): int {
+		$this->assert_date( (string) $d['date'] );
+		$this->assert_account_method( (int) $d['account_id'], (string) $d['method'] );
+		if ( ! in_array( $d['type'], array( 'income', 'expense' ), true ) || (int) $d['cents'] <= 0 ) {
+			throw new \InvalidArgumentException( 'Movimento non valido.' );
+		}
+		$cat = $this->category( (int) $d['category_id'] );
+		if ( ! $cat ) {
+			throw new \InvalidArgumentException( 'Voce non valida.' );
+		}
+		return $this->insert_tx(
+			array(
+				'tx_date'          => $d['date'],
+				'type'             => $d['type'],
+				'amount_cents'     => (int) $d['cents'],
+				'account_id'       => (int) $d['account_id'],
+				'method'           => $d['method'],
+				'category_id'      => (int) $cat['id'],
+				'activity_id'      => ! empty( $d['activity_id'] ) ? (int) $d['activity_id'] : null,
+				'person_id'        => ! empty( $d['person_id'] ) ? (int) $d['person_id'] : null,
+				'description'      => substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
+				'competence_month' => ! empty( $d['month'] ) ? $d['month'] : null,
+				'social_year'      => 'membership' === $cat['kind'] ? Settings::social_year( (string) $d['date'] )->label() : null,
+				'document_ref'     => ! empty( $d['ref'] ) ? substr( trim( (string) $d['ref'] ), 0, 80 ) : null,
+			)
+		);
+	}
+
+	/** Sposta il saldo iniziale di un conto (serve a non cambiare il saldo attuale dopo l'import di movimenti storici). */
+	public function shift_opening( int $account_id, int $delta ): void {
+		if ( 0 === $delta ) {
+			return;
+		}
+		$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'accounts' ) . ' SET opening_cents = opening_cents + %d WHERE id = %d', $delta, $account_id ) );
+		Audit::log( 'account.opening_shifted', 'account', $account_id, array( 'delta_cents' => $delta ) );
+	}
+
+	/** Movimenti (non annullati, non giroconti) tra due date, per riconoscere i doppioni: chiave => quanti. */
+	public function import_keys( string $from, string $to ): array {
+		$rows = $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT tx_date, account_id, type, amount_cents, description, document_ref FROM ' . Db::t( 'transactions' )
+				. " WHERE voided_at IS NULL AND type IN ('income','expense') AND tx_date BETWEEN %s AND %s",
+				$from,
+				$to
+			),
+			ARRAY_A
+		) ?: array();
+		$out = array();
+		foreach ( $rows as $r ) {
+			$k         = LedgerImport::key( $r['tx_date'], (string) (int) $r['account_id'], $r['type'], (int) $r['amount_cents'], (string) $r['description'], (string) $r['document_ref'] );
+			$out[ $k ] = ( $out[ $k ] ?? 0 ) + 1;
+		}
+		// Giroconti: un'unica chiave per coppia (conto di uscita > conto di entrata)
+		$t   = Db::t( 'transactions' );
+		$tr  = $this->db()->get_results(
+			$this->db()->prepare(
+				"SELECT o.tx_date, o.account_id AS from_id, i.account_id AS to_id, o.amount_cents, o.description FROM $t o JOIN $t i ON i.transfer_id = o.transfer_id AND i.type = 'transfer_in' "
+				. "WHERE o.type = 'transfer_out' AND o.voided_at IS NULL AND i.voided_at IS NULL AND o.tx_date BETWEEN %s AND %s",
+				$from,
+				$to
+			),
+			ARRAY_A
+		) ?: array();
+		foreach ( $tr as $r ) {
+			$k         = LedgerImport::key( $r['tx_date'], (int) $r['from_id'] . '>' . (int) $r['to_id'], 'transfer', (int) $r['amount_cents'], (string) $r['description'], '' );
+			$out[ $k ] = ( $out[ $k ] ?? 0 ) + 1;
+		}
+		return $out;
+	}
+
 	/** Ultime spese (non annullate) registrate da un utente: serve al tesoriere, che non vede il resto della prima nota. */
 	public function expenses_by_user( int $user_id, int $limit = 15 ): array {
 		$sql = 'SELECT t.*, c.name AS category_name, a.name AS account_name FROM ' . Db::t( 'transactions' ) . ' t '

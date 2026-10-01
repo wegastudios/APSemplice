@@ -12,6 +12,8 @@ use ApSemplice\Attachments;
 use ApSemplice\Audit;
 use ApSemplice\Gatekeeper;
 use ApSemplice\Gateways;
+use ApSemplice\ImportService;
+use ApSemplice\WpAllImport;
 use ApSemplice\PaymentConfig;
 use ApSemplice\Secrets;
 use ApSemplice\License;
@@ -1275,6 +1277,178 @@ foreach ( array( $tre_pdf, $tre_png, $fake2, $more ) as $f ) {
 	@unlink( $f );
 }
 
+// ---------- Import da Excel / CSV: soci, ospiti e prima nota di anni passati ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$mk_xlsx = function ( array $sheets, string $path ) {
+	$ns  = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+	$zip = new ZipArchive();
+	$zip->open( $path, ZipArchive::CREATE | ZipArchive::OVERWRITE );
+	$wb   = '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="' . $ns . '" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
+	$rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+	$n    = 0;
+	foreach ( $sheets as $name => $rows ) {
+		$n++;
+		$wb   .= '<sheet name="' . htmlspecialchars( $name, ENT_XML1 ) . '" sheetId="' . $n . '" r:id="rId' . $n . '"/>';
+		$rels .= '<Relationship Id="rId' . $n . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . $n . '.xml"/>';
+		$xml   = '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="' . $ns . '"><sheetData>';
+		foreach ( $rows as $ri => $cells ) {
+			$xml .= '<row r="' . ( $ri + 1 ) . '">';
+			foreach ( $cells as $ci => $c ) {
+				$ref = chr( 65 + $ci ) . ( $ri + 1 );
+				if ( is_array( $c ) ) { // numero (con stile facoltativo: 1 = data)
+					$xml .= '<c r="' . $ref . '"' . ( isset( $c[1] ) ? ' s="' . $c[1] . '"' : '' ) . '><v>' . $c[0] . '</v></c>';
+				} elseif ( '' !== $c ) {
+					$xml .= '<c r="' . $ref . '" t="inlineStr"><is><t>' . htmlspecialchars( $c, ENT_XML1 ) . '</t></is></c>';
+				}
+			}
+			$xml .= '</row>';
+		}
+		$zip->addFromString( 'xl/worksheets/sheet' . $n . '.xml', $xml . '</sheetData></worksheet>' );
+	}
+	$zip->addFromString( 'xl/workbook.xml', $wb . '</sheets></workbook>' );
+	$zip->addFromString( 'xl/_rels/workbook.xml.rels', $rels . '</Relationships>' );
+	$zip->addFromString( 'xl/styles.xml', '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="' . $ns . '"><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>' );
+	$zip->close();
+};
+$balances = function () use ( $ledger ) {
+	return array_column( $ledger->balances(), 'balance', 'name' );
+};
+$cash_name = $cash['name'];
+$xlsx      = sys_get_temp_dir() . '/apse-storico-' . wp_generate_password( 6, false ) . '.xlsx';
+$mk_xlsx(
+	array(
+		'Soci'        => array(
+			array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono' ),
+			array( array( 900 ), 'ordinario', 'Ida', 'Storica', 'ida.storica@example.com', '3331112222' ),
+			array( array( 901 ), 'volontario', 'Otto', 'Storico', 'otto.storico@example.com', '' ),
+		),
+		'Ospiti'      => array(
+			array( 'Tipo', 'Nome', 'Cognome', 'Ospite di' ),
+			array( 'ospite', 'Gianni', 'Storico', array( 900 ) ),
+			array( 'ospite', 'Gina', 'Storica', 'otto.storico@example.com' ),
+		),
+		'Prima nota'  => array(
+			array( 'Rendiconto 2022 (titolo sopra la tabella)' ),
+			array( 'Data', 'Tipo', 'Conto', 'Voce', 'Importo', 'Descrizione', 'N. tessera' ),
+			array( array( 44630, 1 ), 'Entrata', $cash_name, 'Quota associativa 2021/2022', array( 10 ), 'Quota storica', array( 900 ) ),
+			array( '15/04/2022', 'Uscita', 'Conto Storico 2022', 'Pulizie', array( '45.5' ), 'Sala', '' ),
+			array( '02/05/2022', 'Giroconto in uscita', $cash_name, 'Giroconto', array( 100 ), 'Versamento', '' ),
+			array( '02/05/2022', 'Giroconto in entrata', 'Conto Storico 2022', 'Giroconto', array( 100 ), 'Versamento', '' ),
+		),
+		'Note'        => array( array( 'Appunti del tesoriere' ), array( 'niente di importabile' ) ),
+	),
+	$xlsx
+);
+$bal0   = $balances();
+$prev   = ImportService::preview_file( $xlsx, 'storico.xlsx', array( 'default_type' => 'ordinary' ) );
+$pp     = $prev['people']['plan'];
+$ll     = $prev['ledger'];
+apse_ok( array( 'Note' ) === $prev['ignored'], 'import Excel: il foglio senza intestazioni riconoscibili è ignorato' );
+apse_ok( 4 === count( $pp ) && array( 'create', 'create', 'create', 'create' ) === array_column( $pp, 'action' ), 'import Excel: soci e ospiti letti da due fogli, tutti nuovi' );
+apse_ok( 'ordinary' === $pp[0]['type'] && 'volunteer' === $pp[1]['type'] && 'guest' === $pp[2]['type'] && '900' === $pp[0]['row']['card'], 'import Excel: tipi riconosciuti e tessera numerica letta come 900' );
+apse_ok( 2 === $ll['summary']['counts']['create'] && 1 === $ll['summary']['counts']['transfer'] && 0 === $ll['summary']['counts']['error'], 'import Excel: prima nota letta (2 movimenti e un giroconto accoppiato)' );
+apse_ok( '2022-03-10' === $ll['plan'][0]['data']['date'] && 1000 === $ll['plan'][0]['data']['cents'] && 'membership' === $ll['plan'][0]['data']['category_kind'], 'import Excel: data seriale di Excel, importo e voce riconosciuti (titolo sopra la tabella saltato)' );
+apse_ok( 4550 === $ll['plan'][1]['data']['cents'] && 'Conto Storico 2022' === $ll['plan'][1]['data']['new_account'] && array( 'Conto Storico 2022' ) === $ll['summary']['new_accounts'], 'import Excel: conto inesistente = conto nuovo' );
+apse_ok( $ll['plan'][0]['row']['line'] === 3, 'import Excel: gli errori indicano la riga vera del foglio' );
+$tok = 'imp' . wp_generate_password( 6, false );
+set_transient( 'apse_import_1_' . $tok, $prev, HOUR_IN_SECONDS );
+$html = apse_render( array( Admin\ImportPage::class, 'render' ), 'Prima nota', array( 'token' => $tok ) );
+apse_ok( false !== strpos( $html, 'Conto Storico 2022' ) && false !== strpos( $html, 'keep_balances' ) && false !== strpos( $html, 'Soci e ospiti' ), 'anteprima: riepilogo per conto, conto nuovo e opzione per non cambiare i saldi' );
+delete_transient( 'apse_import_1_' . $tok );
+apse_ok( false !== strpos( apse_render( array( Admin\ImportPage::class, 'render' ), 'Modelli CSV' ), 'accept=".xlsx' ), 'pagina di import: accetta file Excel' );
+
+// applicazione
+$res = ImportService::apply( $prev, array( 'keep_balances' => true ) );
+apse_ok( 4 === $res['people']['created'] && array() === $res['people']['failed'], 'import: soci e ospiti creati' );
+$ida   = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE card_number = '900'", ARRAY_A );
+$otto  = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE card_number = '901'", ARRAY_A );
+$gianni = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Gianni' AND last_name = 'Storico'", ARRAY_A );
+$gina   = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Gina' AND last_name = 'Storica'", ARRAY_A );
+apse_ok( 'ordinary' === $ida['type'] && '3331112222' === $ida['phone'] && (int) $ida['wp_user_id'] > 0 && 'volunteer' === $otto['type'], 'import: i soci hanno scheda e utente WordPress' );
+apse_ok( 'guest' === $gianni['type'] && (int) $gianni['host_person_id'] === (int) $ida['id'] && (int) $gina['host_person_id'] === (int) $otto['id'], 'import: gli ospiti sono collegati al socio (per tessera e per email, anche se il socio è nello stesso file)' );
+apse_ok( 2 === $res['ledger']['created'] && 1 === $res['ledger']['transfers'] && 1 === $res['ledger']['memberships'], 'import: movimenti, giroconto e iscrizione registrati' );
+$bal1 = $balances();
+apse_ok( $bal1[ $cash_name ] === $bal0[ $cash_name ] && 1 === $res['ledger']['shifted'], 'import storico: il saldo attuale della cassa non cambia (saldo iniziale aggiustato)' );
+apse_ok( 5450 === $bal1['Conto Storico 2022'], 'import storico: il conto nuovo ha il saldo che risulta dai movimenti (−45,50 + 100,00)' );
+$row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . " WHERE description = 'Quota storica'", ARRAY_A );
+apse_ok( $row && '2022-03-10' === $row['tx_date'] && (int) $row['person_id'] === (int) $ida['id'] && $row['social_year'] === Settings::social_year( '2022-03-10' )->label(), 'import: la quota storica è del socio e nell\'anno sociale giusto' );
+apse_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $ida['id'] . ' AND deleted_at IS NULL' ) >= 1, 'import: la quota storica registra l\'iscrizione di quell\'anno' );
+$sy_2022 = $wpdb->get_var( $wpdb->prepare( 'SELECT valid_from FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d ORDER BY id LIMIT 1', (int) $ida['id'] ) );
+apse_ok( $sy_2022 && $sy_2022 < '2023-01-01', 'import: l\'iscrizione ha la validità di quell\'anno sociale' );
+apse_ok( 'Pulizie' !== (string) $wpdb->get_var( 'SELECT description FROM ' . Db::t( 'transactions' ) . " WHERE description LIKE '%Sala%' LIMIT 1" ) && false !== strpos( (string) $wpdb->get_var( 'SELECT description FROM ' . Db::t( 'transactions' ) . " WHERE description LIKE '%Sala%' LIMIT 1" ), '[Pulizie]' ), 'import: la voce non riconosciuta resta scritta nella descrizione' );
+apse_ok( in_array( 'import.ledger', array_column( Audit::recent( 400 ), 'action' ), true ), 'registro azioni: import della prima nota tracciato' );
+
+// secondo caricamento dello stesso file: nessun doppione
+$tx_count = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+$prev2    = ImportService::preview_file( $xlsx, 'storico.xlsx', array() );
+apse_ok( array( 'update', 'update', 'update', 'update' ) === array_column( $prev2['people']['plan'], 'action' ), 'secondo import: soci e ospiti già presenti si aggiornano, non si duplicano' );
+apse_ok( 0 === $prev2['ledger']['summary']['counts']['create'] && 3 === $prev2['ledger']['summary']['counts']['duplicate'], 'secondo import: movimenti e giroconto già in prima nota sono riconosciuti come doppioni' );
+$res2 = ImportService::apply( $prev2, array( 'keep_balances' => true ) );
+apse_ok( 0 === $res2['people']['created'] && 4 === $res2['people']['updated'] && 0 === $res2['ledger']['created'] && $tx_count === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && $balances()[ $cash_name ] === $bal0[ $cash_name ], 'secondo import: nulla di nuovo in prima nota e saldi invariati' );
+
+// CSV (punto e virgola, intestazioni diverse) e conto predefinito; saldi che cambiano se non si chiede di mantenerli
+$csv_p = $mkf( 'soci.csv', "Tessera;Nome;Cognome;Email\r\n902;Csv;Prova;csv.prova@example.com\r\n" );
+$pv    = ImportService::preview_file( $csv_p, 'soci.csv', array() );
+apse_ok( null === $pv['ledger'] && 'create' === $pv['people']['plan'][0]['action'], 'import CSV: i soci si leggono come prima' );
+$csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
+$pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
+apse_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );
+$before = $balances()[ $cash_name ];
+ImportService::apply( $pv, array( 'keep_balances' => false ) );
+apse_ok( $balances()[ $cash_name ] === $before + 500, 'senza "non cambiare i saldi" il saldo segue i movimenti importati' );
+
+// file non validi
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $csv_p ) { ImportService::preview_file( $csv_p, 'vecchio.xls', array() ); } ), '.xlsx' ), 'import: il vecchio .xls viene spiegato, non letto male' );
+$junk = $mkf( 'rotto.xlsx', 'questo non è un file zip' );
+apse_ok( null !== apse_throws( function () use ( $junk ) { ImportService::preview_file( $junk, 'rotto.xlsx', array() ); } ), 'import: un .xlsx rotto è rifiutato con un messaggio' );
+$nothing = $mkf( 'altro.csv', "Colore;Forma\r\nrosso;tondo\r\n" );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $nothing ) { ImportService::preview_file( $nothing, 'altro.csv', array() ); } ), 'Non ho trovato' ), 'import: file senza soci né movimenti = messaggio con le colonne richieste' );
+
+// ---------- WP All Import: area di appoggio ----------
+apse_ok( defined( 'PMXI_VERSION' ) || class_exists( 'PMXI_Plugin' ), 'WP All Import è attivo insieme al plugin (nessun conflitto)' );
+foreach ( array( WpAllImport::TYPE_LEDGER, WpAllImport::TYPE_PEOPLE ) as $pt ) {
+	$o = get_post_type_object( $pt );
+	apse_ok( $o && $o->show_ui && ! $o->public && array_key_exists( $pt, get_post_types( array( '_builtin' => false, 'show_ui' => true ) ) ), "WP All Import vede il tipo $pt tra quelli in cui importare" );
+	apse_ok( Plugin::CAP === $o->cap->create_posts && ! user_can( $u_vol, $o->cap->create_posts ), "il tipo $pt lo gestisce solo chi amministra il plugin" );
+}
+apse_ok( has_action( 'pmxi_after_post_import' ), 'il plugin ascolta la fine di ogni importazione di WP All Import' );
+$stg = function ( string $type, array $meta, int $author = 1 ) {
+	$id = wp_insert_post( array( 'post_type' => $type, 'post_status' => 'publish', 'post_title' => 'riga di prova', 'post_author' => $author ) );
+	foreach ( $meta as $k => $v ) {
+		update_post_meta( $id, $k, $v );
+	}
+	return $id;
+};
+$bal_w0 = $balances()[ $cash_name ];
+$p_ok   = $stg( WpAllImport::TYPE_LEDGER, array( 'apse_date' => '2022-07-01', 'apse_income' => '20,00', 'apse_account' => $cash_name, 'apse_category' => 'Quota associativa', 'apse_card' => '902', 'apse_description' => 'WPAI quota' ) );
+$p_bad  = $stg( WpAllImport::TYPE_LEDGER, array( 'apse_date' => 'boh', 'apse_amount' => '5', 'apse_account' => $cash_name ) );
+$p_soc  = $stg( WpAllImport::TYPE_PEOPLE, array( 'apse_first_name' => 'Wanda', 'apse_last_name' => 'Pai', 'apse_email' => 'wanda.pai@example.com', 'apse_member_type' => 'volontario', 'apse_card_number' => '903' ) );
+$p_osp  = $stg( WpAllImport::TYPE_PEOPLE, array( 'apse_first_name' => 'Osvaldo', 'apse_last_name' => 'Pai', 'apse_member_type' => 'ospite', 'apse_host' => '903' ) );
+$p_ext  = $stg( WpAllImport::TYPE_LEDGER, array( 'apse_date' => '2022-07-02', 'apse_income' => '1,00', 'apse_account' => $cash_name ), (int) $u_vol );
+apse_ok( 5 === WpAllImport::pending_count(), 'WP All Import: elementi in attesa contati' );
+do_action( 'pmxi_after_post_import', 1 ); // come fa WP All Import a importazione finita
+apse_ok( ! get_post( $p_ok ) && ! get_post( $p_soc ) && ! get_post( $p_osp ), 'WP All Import: gli elementi riusciti vengono registrati e tolti' );
+apse_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'WPAI quota'" ), 'WP All Import: il movimento è in prima nota' );
+$wanda = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE card_number = '903'", ARRAY_A );
+$osv   = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Osvaldo'", ARRAY_A );
+apse_ok( $wanda && 'volunteer' === $wanda['type'] && $osv && (int) $osv['host_person_id'] === (int) $wanda['id'], 'WP All Import: socio e ospite collegato creati' );
+apse_ok( $balances()[ $cash_name ] === $bal_w0, 'WP All Import: i saldi attuali non cambiano (impostazione predefinita)' );
+apse_ok( get_post( $p_bad ) && 'error' === get_post_meta( $p_bad, 'apse_result', true ) && false !== strpos( (string) get_post_meta( $p_bad, 'apse_message', true ), 'Data' ), 'WP All Import: la riga sbagliata resta in coda con il motivo' );
+apse_ok( get_post( $p_ext ) && 'error' === get_post_meta( $p_ext, 'apse_result', true ) && false !== strpos( (string) get_post_meta( $p_ext, 'apse_message', true ), 'autore' ), 'WP All Import: un elemento creato da chi non amministra il plugin non viene importato' );
+$html = apse_render( array( Admin\WpAiPage::class, 'render' ), 'Elementi in coda' );
+apse_ok( false !== strpos( $html, 'apse_amount' ) && false !== strpos( $html, 'apse_host' ) && false !== strpos( $html, 'Riprova quelli con errore' ), 'pagina WP All Import: campi da usare, impostazioni e coda con errori' );
+apse_ok( 2 === WpAllImport::retry() && 2 === WpAllImport::pending_count(), 'WP All Import: riprova rimette in coda gli errori' );
+WpAllImport::process();
+apse_ok( 2 === WpAllImport::clear_errors() && 0 === WpAllImport::pending_count(), 'WP All Import: elimina gli elementi con errore' );
+$set = new ReflectionMethod( Admin\Actions::class, 'save_wpai' );
+$set->invoke( null, array( 'default_type' => 'volunteer', 'default_account_id' => (int) $cash['id'], 'mark_members' => '1' ) );
+apse_ok( 'volunteer' === Settings::get( 'wpai_default_type' ) && 0 === (int) Settings::get( 'wpai_keep_balances' ) && 1 === (int) Settings::get( 'wpai_mark_members' ), 'WP All Import: impostazioni salvate' );
+Settings::update( array( 'wpai_default_type' => 'ordinary', 'wpai_default_account_id' => 0, 'wpai_keep_balances' => 1, 'wpai_mark_members' => 0 ) );
+foreach ( array( $xlsx, $csv_p, $csv_l, $junk, $nothing ) as $f ) {
+	@unlink( $f );
+}
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );
@@ -1300,7 +1474,7 @@ apse_render( array( Admin\ReportsPage::class, 'render' ), 'Soci iscritti', array
 apse_render( array( Admin\SettingsPage::class, 'render' ), 'Chiave di licenza' );
 apse_render( array( Admin\SettingsPage::class, 'render' ), 'Crea le pagine standard' );
 apse_render( array( Admin\AuditPage::class, 'render' ), 'Registro azioni' );
-apse_render( array( Admin\ImportPage::class, 'render' ), 'Importa soci da CSV' );
+apse_render( array( Admin\ImportPage::class, 'render' ), 'Importa da Excel o CSV' );
 
 apse_ok( ! $GLOBALS['apse_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['apse_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['apse_warnings'], 0, 5 ) ) : '' ) );
 

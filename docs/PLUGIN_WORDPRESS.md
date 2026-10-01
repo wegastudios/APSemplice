@@ -158,3 +158,18 @@ Nel modulo **Nuova spesa** si possono allegare uno o più PDF o foto (campo "Doc
 - Se un file non è ammesso la spesa **non viene registrata** e il modulo resta com'era.
 - "Togli" non cancella: l'allegato esce dall'elenco ma il file resta sul disco e l'operazione è nel registro azioni.
 - Su un server diverso da Apache (es. nginx) il `.htaccess` non vale: restano nomi casuali di 128 bit senza estensione e cartella non elencabile; per una protezione piena vietare l'accesso alla cartella dalla configurazione del server.
+
+## Import da Excel o CSV (soci, ospiti, prima nota, anni passati)
+
+**Soci → Importa da Excel/CSV.** Si carica un file **.xlsx** (Excel) o **.csv**. Se il file Excel ha più fogli (per esempio "Soci", "Ospiti", "Prima nota") li legge tutti e capisce da solo a cosa serve ognuno dalle intestazioni; i fogli non riconosciuti sono ignorati. L'intestazione può stare anche sotto qualche riga di titolo. I vecchi file `.xls` vanno salvati come `.xlsx` o CSV. Prima di scrivere si vede sempre un'anteprima; gli errori indicano il numero di riga del foglio.
+
+- **Soci e ospiti** — colonne: *Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale* e, per gli ospiti, *Ospite di* (tessera, email o nome e cognome del socio, anche se il socio è nello stesso file). I soci già presenti si aggiornano (per tessera, email, codice fiscale o nome), gli ospiti già presenti dello stesso socio anche.
+- **Prima nota** — colonne: *Data* e *Importo* (oppure *Entrata* e *Uscita*), più, se si vuole, *Tipo, Conto, Modalità, Voce, Descrizione, Riferimento, N. tessera, Persona, Attività, Competenza*. Legge anche il file che esporta il plugin. Date `15/01/2024` o `2024-01-15` (o vere date di Excel), importi `1.234,56` o `1234.56`. I conti che non esistono si creano; le voci non riconosciute usano "Altra entrata" / "Costo generale" e il nome originale resta nella descrizione; i giroconti (due righe: in uscita e in entrata) si accoppiano.
+- **Doppioni**: un movimento uguale a uno già in prima nota (data, conto, tipo, importo, descrizione, riferimento) è saltato, quindi si può ricaricare lo stesso file senza duplicare.
+- **Saldi**: per le annualità passate, l'opzione *Non cambiare i saldi attuali* (attiva di default) aggiusta il saldo iniziale dei conti già esistenti, così il saldo di oggi resta com'è e la storia si completa. I conti nuovi hanno il saldo che risulta dai movimenti.
+- Le quote associative importate con un socio registrano anche l'iscrizione di quell'anno sociale. I movimenti importati si annullano uno per uno dalla Prima nota.
+- Limiti: 5000 righe per tipo e 20 MB per file; le formule di Excel si leggono col risultato salvato.
+
+## Import con WP All Import (alternativa)
+
+Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizione due "tipi di contenuto di appoggio" che WP All Import vede: **Movimenti APSemplice (import)** e **Soci e ospiti APSemplice (import)**. In WP All Import si sceglie uno dei due, e nei *Campi personalizzati* si trascinano i dati nei campi `apse_*` (elenco in *Soci → Import con WP All Import*). A importazione finita il plugin legge gli elementi, applica le stesse regole dell'import da file (compresi doppioni e saldi), li registra e toglie quelli riusciti; gli errori restano in elenco con il motivo, con i pulsanti *Riprova* ed *Elimina*. Funziona anche con le importazioni pianificate. Solo chi amministra il plugin può creare questi elementi.

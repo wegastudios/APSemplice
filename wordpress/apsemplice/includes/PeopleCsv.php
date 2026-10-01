@@ -22,60 +22,79 @@ final class PeopleCsv {
 		return $bytes;
 	}
 
+	const COLS = array(
+		'card'  => array( 'tessera', 'numerotessera', 'ntessera', 'nrtessera', 'numtessera', 'nrtess', 'numero', 'n', 'nr' ),
+		'type'  => array( 'tipo', 'tiposocio', 'categoria', 'qualifica', 'figura' ),
+		'first' => array( 'nome', 'firstname', 'name' ),
+		'last'  => array( 'cognome', 'surname', 'lastname' ),
+		'mail'  => array( 'email', 'mail', 'emailaddress', 'indirizzoemail', 'postaelettronica' ),
+		'phone' => array( 'telefono', 'tel', 'cellulare', 'cell', 'mobile', 'phone', 'telefonocellulare' ),
+		'tax'   => array( 'codicefiscale', 'cf', 'codfisc', 'codicefisc', 'fiscalcode' ),
+		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
+	);
+
+	public static function accepts_header( array $h ): bool {
+		return SheetReader::col( $h, self::COLS['first'] ) >= 0 && SheetReader::col( $h, self::COLS['last'] ) >= 0;
+	}
+
 	/**
-	 * @return array ['error'=>string] oppure ['rows'=>[ ['line','card','type_text','first','last','email','phone','tax'], ... ]]
+	 * @return array ['error'=>string] oppure ['rows'=>[ ['line','card','type_text','first','last','email','phone','tax','host'], ... ]]
 	 */
 	public static function parse( string $text ): array {
 		$table = self::read_table( $text );
 		if ( ! $table ) {
 			return array( 'error' => 'Il file è vuoto.' );
 		}
-		$header = array_map( array( Text::class, 'normalize' ), $table[0] );
-		$col    = function ( array $names ) use ( $header ) {
-			foreach ( $header as $i => $h ) {
-				if ( in_array( $h, $names, true ) ) {
-					return $i;
-				}
-			}
-			return -1;
-		};
-		$i_card  = $col( array( 'tessera', 'numerotessera', 'ntessera', 'nrtessera', 'numtessera', 'nrtess', 'numero', 'n', 'nr' ) );
-		$i_type  = $col( array( 'tipo', 'tiposocio', 'categoria', 'qualifica', 'figura' ) );
-		$i_first = $col( array( 'nome', 'firstname', 'name' ) );
-		$i_last  = $col( array( 'cognome', 'surname', 'lastname' ) );
-		$i_mail  = $col( array( 'email', 'mail', 'emailaddress', 'indirizzoemail', 'postaelettronica' ) );
-		$i_phone = $col( array( 'telefono', 'tel', 'cellulare', 'cell', 'mobile', 'phone', 'telefonocellulare' ) );
-		$i_tax   = $col( array( 'codicefiscale', 'cf', 'codfisc', 'codicefisc', 'fiscalcode' ) );
-		if ( $i_first < 0 || $i_last < 0 ) {
+		return self::parse_table( $table );
+	}
+
+	/**
+	 * @param array      $table righe di celle (l'intestazione può non essere la prima riga)
+	 * @param int[]|null $lines numero di riga originale di ogni riga della tabella
+	 */
+	public static function parse_table( array $table, ?array $lines = null, string $sheet = '' ): array {
+		if ( ! $table ) {
+			return array( 'error' => 'Il file è vuoto.' );
+		}
+		$hi = SheetReader::find_header( $table, array( __CLASS__, 'accepts_header' ) );
+		if ( null === $hi ) {
 			return array( 'error' => 'Nella prima riga servono almeno le colonne "Nome" e "Cognome". Trovate: ' . implode( ', ', $table[0] ) );
+		}
+		$header = SheetReader::normalize_header( $table[ $hi ] );
+		$col    = array();
+		foreach ( self::COLS as $k => $names ) {
+			$col[ $k ] = SheetReader::col( $header, $names );
 		}
 		$cell = function ( array $cells, int $i ) {
 			if ( $i < 0 || ! isset( $cells[ $i ] ) ) {
 				return null;
 			}
-			$v = trim( $cells[ $i ] );
+			$v = trim( (string) $cells[ $i ] );
 			return '' === $v ? null : $v;
 		};
 		$rows = array();
 		foreach ( $table as $idx => $cells ) {
-			if ( 0 === $idx ) {
+			if ( $idx <= $hi ) {
 				continue;
 			}
-			$card   = $cell( $cells, $i_card );
-			$tax    = $cell( $cells, $i_tax );
+			$card   = $cell( $cells, $col['card'] );
+			$tax    = $cell( $cells, $col['tax'] );
 			$rows[] = array(
-				'line'      => $idx + 1,
+				'line'      => $lines ? (int) ( $lines[ $idx ] ?? $idx + 1 ) : $idx + 1,
+				'sheet'     => $sheet,
 				'card'      => null === $card ? null : self::clean_card( $card ),
-				'type_text' => $cell( $cells, $i_type ),
-				'first'     => $cell( $cells, $i_first ) ?? '',
-				'last'      => $cell( $cells, $i_last ) ?? '',
-				'email'     => $cell( $cells, $i_mail ),
-				'phone'     => $cell( $cells, $i_phone ),
+				'type_text' => $cell( $cells, $col['type'] ),
+				'first'     => $cell( $cells, $col['first'] ) ?? '',
+				'last'      => $cell( $cells, $col['last'] ) ?? '',
+				'email'     => $cell( $cells, $col['mail'] ),
+				'phone'     => $cell( $cells, $col['phone'] ),
 				'tax'       => null === $tax ? null : strtoupper( str_replace( ' ', '', $tax ) ),
+				'host'      => $cell( $cells, $col['host'] ),
 			);
 		}
 		return array( 'rows' => $rows );
 	}
+
 
 	/** "123.0" (artefatto di Excel) => "123". */
 	public static function clean_card( string $raw ): string {
@@ -161,7 +180,14 @@ final class PeopleCsv {
 		$by_mail = array();
 		$by_tax  = array();
 		$by_name = array();
+		$guests_of   = array();
+		$by_name_all = array();
 		foreach ( $existing as $e ) {
+			if ( MemberType::GUEST === ( $e['type'] ?? '' ) ) {
+				// Gli ospiti non sono soci: non si riconoscono per tessera o email, ma per ospitante e nome.
+				$guests_of[ (int) ( $e['host_id'] ?? 0 ) ][ Text::normalize( $e['first'] . $e['last'] ) ] = $e;
+				continue;
+			}
 			if ( ! empty( $e['card'] ) ) {
 				$by_card[ Text::lower( $e['card'] ) ] = $e;
 			}
@@ -172,6 +198,8 @@ final class PeopleCsv {
 				$by_tax[ strtoupper( $e['tax'] ) ] = $e;
 			}
 			$by_name[ Text::normalize( $e['first'] ) . '|' . Text::normalize( $e['last'] ) ][] = $e;
+			$by_name_all[ Text::normalize( $e['first'] . $e['last'] ) ][]                     = $e;
+			$by_name_all[ Text::normalize( $e['last'] . $e['first'] ) ][]                     = $e;
 		}
 		$label = function ( array $e ) {
 			return trim( $e['first'] . ' ' . $e['last'] );
@@ -182,6 +210,7 @@ final class PeopleCsv {
 		$tax_in_file   = array();
 		$touched       = array();
 		$plans         = array();
+		$deferred      = array();
 
 		foreach ( $rows as $r ) {
 			$err = function ( string $msg ) use ( $r ) {
@@ -201,7 +230,8 @@ final class PeopleCsv {
 				}
 			}
 			if ( MemberType::GUEST === $type ) {
-				$plans[] = $err( 'Gli ospiti non si importano: si aggiungono dalla scheda del socio che li ospita' );
+				$deferred[ count( $plans ) ] = $r; // si risolve dopo i soci: l'ospitante può essere nello stesso file
+				$plans[]                     = null;
 				continue;
 			}
 			$email = $r['email'];
@@ -280,6 +310,87 @@ final class PeopleCsv {
 				$tax_in_file[ $tax ] = $r['line'];
 			}
 			$plans[] = array( 'row' => $r, 'type' => $type, 'type_given' => null !== $r['type_text'], 'action' => $act, 'message' => $msg, 'matched_id' => $match ? $match['id'] : null );
+		}
+		if ( $deferred ) {
+			// Soci già presenti e soci del file, per trovare l'ospitante di ogni ospite.
+			$file_by_card = array();
+			$file_by_mail = array();
+			$file_by_name = array();
+			foreach ( $plans as $p ) {
+				if ( ! $p || 'error' === $p['action'] || MemberType::GUEST === $p['type'] ) {
+					continue;
+				}
+				$fr = $p['row'];
+				if ( null !== $fr['card'] ) {
+					$file_by_card[ Text::lower( $fr['card'] ) ][] = $fr['line'];
+				}
+				if ( null !== $fr['email'] ) {
+					$file_by_mail[ Text::lower( $fr['email'] ) ][] = $fr['line'];
+				}
+				$file_by_name[ Text::normalize( $fr['first'] . $fr['last'] ) ][]  = $fr['line'];
+				$file_by_name[ Text::normalize( $fr['last'] . $fr['first'] ) ][] = $fr['line'];
+			}
+			$guests_in_file = array();
+			foreach ( $deferred as $idx => $r ) {
+				$err = function ( string $msg ) use ( $r ) {
+					return array( 'row' => $r, 'type' => null, 'action' => 'error', 'message' => $msg, 'matched_id' => null );
+				};
+				$host = null === $r['host'] ? '' : trim( $r['host'] );
+				if ( '' === $host ) {
+					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome)' );
+					continue;
+				}
+				if ( null !== $r['email'] && ! filter_var( $r['email'], FILTER_VALIDATE_EMAIL ) ) {
+					$plans[ $idx ] = $err( 'Email non valida: ' . $r['email'] );
+					continue;
+				}
+				// Chi è l'ospitante: tessera, email oppure nome e cognome (in uno dei due ordini).
+				$existing_ids = array();
+				$file_lines   = array();
+				$hl           = Text::lower( PeopleCsv::clean_card( $host ) );
+				if ( false !== strpos( $host, '@' ) ) {
+					$hm = Text::lower( $host );
+					if ( isset( $by_mail[ $hm ] ) ) {
+						$existing_ids[ $by_mail[ $hm ]['id'] ] = $by_mail[ $hm ];
+					}
+					$file_lines = $file_by_mail[ $hm ] ?? array();
+				} else {
+					if ( isset( $by_card[ $hl ] ) ) {
+						$existing_ids[ $by_card[ $hl ]['id'] ] = $by_card[ $hl ];
+					}
+					$file_lines = $file_by_card[ $hl ] ?? array();
+					if ( ! $existing_ids && ! $file_lines ) {
+						$hn = Text::normalize( $host );
+						foreach ( $by_name_all[ $hn ] ?? array() as $e ) {
+							$existing_ids[ $e['id'] ] = $e;
+						}
+						$file_lines = $file_by_name[ $hn ] ?? array();
+					}
+				}
+				$found = $existing_ids ? count( $existing_ids ) : count( array_unique( $file_lines ) );
+				if ( 0 === $found ) {
+					$plans[ $idx ] = $err( 'Socio ospitante non trovato: "' . $host . '"' );
+					continue;
+				}
+				if ( $found > 1 ) {
+					$plans[ $idx ] = $err( 'Socio ospitante ambiguo: "' . $host . '" (indica la tessera)' );
+					continue;
+				}
+				$host_id   = $existing_ids ? (int) array_keys( $existing_ids )[0] : 0;
+				$host_line = $host_id ? 0 : (int) $file_lines[0];
+				$gkey      = ( $host_id ? 'id' . $host_id : 'riga' . $host_line ) . '|' . Text::normalize( $r['first'] . $r['last'] );
+				if ( isset( $guests_in_file[ $gkey ] ) ) {
+					$plans[ $idx ] = $err( 'Lo stesso ospite è già alla riga ' . $guests_in_file[ $gkey ] . ' del file' );
+					continue;
+				}
+				$guests_in_file[ $gkey ] = $r['line'];
+				$match                   = $host_id ? ( $guests_of[ $host_id ][ Text::normalize( $r['first'] . $r['last'] ) ] ?? null ) : null;
+				$plans[ $idx ]           = array(
+					'row' => $r, 'type' => MemberType::GUEST, 'type_given' => true, 'action' => $match ? 'update' : 'create',
+					'message' => $match ? 'Ospite esistente' : null, 'matched_id' => $match ? (int) $match['id'] : null,
+					'host_text' => $host, 'host_id' => $host_id ?: null,
+				);
+			}
 		}
 		return $plans;
 	}

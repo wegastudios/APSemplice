@@ -34,6 +34,10 @@ final class Settings {
 			'paypal_mode'             => 'sandbox',
 			'paypal_client_id'        => '',
 			'paypal_client_secret'    => '',   // cifrata
+			'wpai_default_type'       => 'ordinary', // import da WP All Import: tipo socio se manca la colonna
+			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
+			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
+			'wpai_mark_members'       => 0,         // ... segna i soci come iscritti all'anno sociale corrente
 		);
 	}
 
@@ -77,6 +81,10 @@ final class Settings {
 		$clean['payment_provider']        = PaymentConfig::is_valid( (string) $clean['payment_provider'] ) ? (string) $clean['payment_provider'] : PaymentConfig::NONE;
 		$clean['stripe_mode']             = 'live' === $clean['stripe_mode'] ? 'live' : 'test';
 		$clean['paypal_mode']             = 'live' === $clean['paypal_mode'] ? 'live' : 'sandbox';
+		$clean['wpai_default_type']       = MemberType::is_member( (string) $clean['wpai_default_type'] ) ? (string) $clean['wpai_default_type'] : MemberType::ORDINARY;
+		$clean['wpai_default_account_id'] = max( 0, (int) $clean['wpai_default_account_id'] );
+		$clean['wpai_keep_balances']      = empty( $clean['wpai_keep_balances'] ) ? 0 : 1;
+		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
 		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
 			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
