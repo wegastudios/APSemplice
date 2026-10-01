@@ -390,6 +390,11 @@ class PeopleService {
 
 	/** Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento). */
 	public function remove_membership_of_transaction( int $tx_id ): void {
+		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT person_id, social_year FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A );
+		if ( ! $row ) {
+			return;
+		}
 		$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'transaction_id' => $tx_id ) );
+		Audit::log( 'membership.removed', 'person', (int) $row['person_id'], array( 'social_year' => $row['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
 	}
 }
