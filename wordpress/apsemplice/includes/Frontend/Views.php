@@ -422,7 +422,14 @@ final class Views {
 						$tickets .= '<div class="apsf-small">' . esc_html( $b['activity_name'] ) . ' · ' . esc_html( self::date_long( $b['session_date'] ) ) . '</div>' . self::ticket_qr( $b );
 					}
 				}
-				$html .= '<li><div><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong>' . $tickets . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				$st      = Plugin::activities()->guest_status( (int) $g['id'] );
+				$seen    = array();
+				foreach ( array_slice( $st['items'], 0, 3 ) as $it ) {
+					$seen[] = $it['activity_name'];
+				}
+				$status = '<div class="apsf-small ' . ( $st['at_limit'] ? 'apsf-bad' : 'apsf-muted' ) . '">Partecipazioni: ' . (int) $st['count'] . ( $st['max'] > 0 ? ' di ' . (int) $st['max'] : '' )
+					. ( $seen ? ' (' . esc_html( implode( ', ', $seen ) ) . ')' : '' ) . ( $st['at_limit'] ? ' — per partecipare ancora deve iscriversi come socio: rivolgiti alla segreteria' : '' ) . '</div>';
+				$html .= '<li><div><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong>' . $status . $tickets . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 			$html .= '</ul>';
 		}
@@ -527,7 +534,12 @@ final class Views {
 		$present  = 0;
 		$unpaid   = 0;
 		$cancel   = 0;
-		foreach ( $svc->bookings_for_session( (int) $s['id'] ) as $b ) {
+		$all_bookings = $svc->bookings_for_session( (int) $s['id'] );
+		$gcounts      = $svc->participation_counts( array_column( array_filter( $all_bookings, function ( $x ) {
+			return MemberType::GUEST === $x['type'] && $x['active'];
+		} ), 'person_id' ) );
+		$glimit       = $svc->guest_limit();
+		foreach ( $all_bookings as $b ) {
 			if ( ! $b['active'] ) {
 				$cancel++;
 				continue;
@@ -554,7 +566,8 @@ final class Views {
 				: self::form( 'apse_front_checkin', $ids, 'Registra ingresso', false, 'apsf-inline' );
 			$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
 			$list .= '<li class="apsf-booked" data-name="' . esc_attr( Text::normalize( $name ) ) . '" data-state="' . ( $in ? 'in' : 'out' ) . '"><div><strong>' . esc_html( $name ) . '</strong>'
-				. '<div class="apsf-small apsf-muted">' . esc_html( MemberType::GUEST === $b['type'] ? 'Ospite' . $host : MemberType::label( $b['type'] ) ) . '</div>' . $pay . '</div><div class="apsf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<div class="apsf-small apsf-muted">' . esc_html( MemberType::GUEST === $b['type'] ? 'Ospite' . $host : MemberType::label( $b['type'] ) ) . '</div>'
+				. ( MemberType::GUEST === $b['type'] ? self::guest_note( (int) ( $gcounts[ (int) $b['person_id'] ] ?? 0 ), $glimit ) : '' ) . $pay . '</div><div class="apsf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		$can_scan = ! empty( $a['booking_qr'] ) && $s['session_date'] === $today;
 		$scan     = '';
@@ -576,6 +589,18 @@ final class Views {
 			. '<span class="apsf-filters"><button type="button" class="apsf-chip is-on" data-filter="all">Tutti</button><button type="button" class="apsf-chip" data-filter="out">Da registrare</button><button type="button" class="apsf-chip" data-filter="in">Presenti</button></span></div>'
 			. '<ul class="apsf-list apsf-booked-list">' . $list . '</ul>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. ( $cancel ? '<p class="apsf-small apsf-muted">' . (int) $cancel . ' prenotazioni annullate non sono in elenco.</p>' : '' ) . '</section>';
+	}
+
+	/** "2ª partecipazione come ospite" / "…: poi deve iscriversi": per chi accoglie all'ingresso e per i soci che portano ospiti. */
+	public static function guest_note( int $count, int $limit ): string {
+		$txt = $count . 'ª partecipazione come ospite';
+		if ( $limit > 0 && $count > $limit ) {
+			return '<div class="apsf-small apsf-bad">' . esc_html( $txt . ': oltre il limite (' . $limit . '), deve iscriversi' ) . '</div>';
+		}
+		if ( $limit > 0 && $count >= $limit ) {
+			return '<div class="apsf-small apsf-bad">' . esc_html( $txt . ': l\'ultima consentita, poi deve iscriversi' ) . '</div>';
+		}
+		return '<div class="apsf-small apsf-muted">' . esc_html( $txt ) . '</div>';
 	}
 
 	public static function checkin(): string {

@@ -347,6 +347,10 @@ final class ActivitiesPage {
 		foreach ( $sessions as $s ) {
 			$cancelled = ! empty( $s['cancelled_at'] );
 			$bookings  = Plugin::activities()->bookings_for_session( (int) $s['id'] );
+			$gcounts   = Plugin::activities()->participation_counts( array_column( array_filter( $bookings, function ( $x ) {
+				return MemberType::GUEST === $x['type'] && $x['active'];
+			} ), 'person_id' ) );
+			$glimit    = Plugin::activities()->guest_limit();
 			$booked    = array();
 			foreach ( $bookings as $b ) {
 				if ( $b['active'] ) {
@@ -362,7 +366,7 @@ final class ActivitiesPage {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
-					echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . '</td>'
+					echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( (int) ( $gcounts[ (int) $b['person_id'] ] ?? 0 ), $glimit ) : '' ) . '</td>'
 						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="apse-warn">trasferita ad altra persona' : '<span class="apse-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 					self::checkin_cell( $b, (int) $s['id'], $id, $back, $cancelled );
 					echo '</td><td>';

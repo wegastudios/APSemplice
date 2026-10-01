@@ -36,6 +36,15 @@ final class DashboardPage {
 		echo '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
+		$at_limit = \ApSemplice\Plugin::people()->guests_at_limit();
+		if ( $at_limit ) {
+			echo '<div class="apse-card"><h2>Ospiti da invitare a iscriversi (' . count( $at_limit ) . ')</h2><p class="description">Hanno già usato tutte le partecipazioni ammesse ai non soci.</p><ul>';
+			foreach ( array_slice( $at_limit, 0, 10 ) as $g ) {
+				echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $g['id'] ) ) ) . '">' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</a> <span class="description">ospite di ' . esc_html( (string) $g['host_name'] ) . ' · ' . (int) $g['participations'] . ' partecipazioni</span></li>';
+			}
+			echo '</ul><p><a href="' . esc_url( Ui::url( 'apse-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) ) . '">Vedi tutti →</a></p></div>';
+		}
+
 		if ( $r['activities'] ) {
 			echo '<h2>Attività</h2><div class="apse-grid">';
 			foreach ( $r['activities'] as $a ) {

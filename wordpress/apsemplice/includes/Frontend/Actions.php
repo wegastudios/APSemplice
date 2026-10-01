@@ -288,6 +288,17 @@ final class Actions {
 	public static function do_add_guest( array $post ): string {
 		$actor = self::actor();
 		self::require_cap( 'apse_add_guest', (int) $actor['id'] );
+		// Lo stesso ospite non si registra due volte (neanche da soci diversi): si perderebbe il conto delle sue partecipazioni.
+		foreach ( Plugin::people()->find_homonyms( (string) ( $post['first_name'] ?? '' ), (string) ( $post['last_name'] ?? '' ) ) as $h ) {
+			if ( MemberType::is_member( $h['type'] ) ) {
+				throw new \InvalidArgumentException( trim( $h['first_name'] . ' ' . $h['last_name'] ) . ' è già socio: va prenotato come socio, non come tuo ospite.' );
+			}
+			if ( (int) $h['host_person_id'] === (int) $actor['id'] ) {
+				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
+			}
+			$n = Plugin::activities()->guest_status( (int) $h['id'] )['count'];
+			throw new \InvalidArgumentException( 'Questa persona risulta già come ospite di un altro socio e ha già partecipato a ' . $n . ' attività: rivolgiti alla segreteria per collegarla a te.' );
+		}
 		Plugin::people()->create(
 			array(
 				'type'           => MemberType::GUEST,

@@ -20,6 +20,7 @@ final class Settings {
 			'social_year_start_month' => 9,     // l'anno sociale inizia a settembre
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
+			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
 			'license_key'             => '',    // chiave di licenza (verifica in standby, vedi License)
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
@@ -81,6 +82,7 @@ final class Settings {
 		$clean['social_year_start_month'] = max( 1, min( 12, (int) $clean['social_year_start_month'] ) );
 		$clean['membership_fee_cents']    = max( 0, (int) $clean['membership_fee_cents'] );
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
+		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['license_key']             = substr( trim( (string) $clean['license_key'] ), 0, 120 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;

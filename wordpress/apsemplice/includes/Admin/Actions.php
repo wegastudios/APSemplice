@@ -42,6 +42,7 @@ final class Actions {
 			'apse_event_staff_add'    => 'event_staff_add',
 			'apse_event_staff_remove' => 'event_staff_remove',
 			'apse_checkin'            => 'checkin',
+			'apse_promote_guest'      => 'promote_guest',
 			'apse_walk_in'            => 'walk_in',
 			'apse_transfer_booking'   => 'transfer_booking',
 			'apse_test_gateway'       => 'test_gateway',
@@ -234,6 +235,11 @@ final class Actions {
 					if ( ! $host ) {
 						throw new \InvalidArgumentException( 'Indica il socio che ospita il nuovo ospite.' );
 					}
+					$twins = $people->find_homonyms( $first, $last );
+					if ( $twins ) {
+						$t = $twins[0];
+						throw new \InvalidArgumentException( trim( $t['first_name'] . ' ' . $t['last_name'] ) . ' esiste già in anagrafica (' . MemberType::label( $t['type'] ) . '): sceglilo dall\'elenco, così le sue partecipazioni restano collegate.' );
+					}
 					$pid = $people->create( array( 'type' => MemberType::GUEST, 'host_person_id' => $host, 'first_name' => $first, 'last_name' => $last ) );
 				}
 				if ( ! $pid ) {
@@ -272,6 +278,12 @@ final class Actions {
 			}
 		);
 		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), $msg );
+	}
+
+	private static function promote_guest( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		Plugin::people()->promote_guest( $id, array( 'email' => $p['email'] ?? '', 'type' => $p['type'] ?? '', 'card_number' => $p['card_number'] ?? '', 'membership' => ! empty( $p['membership'] ) ) );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Ora è socio: la sua storia (eventi, corsi e pagamenti) è rimasta nella scheda.' );
 	}
 
 	private static function event_staff_add( array $p ): array {
@@ -409,6 +421,7 @@ final class Actions {
 				'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
+				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
 				'member_area_page_id'     => (int) ( $p['member_area_page_id'] ?? 0 ),
 				'license_key'             => $txt( 'license_key' ),
 				'cancel_policy_default'   => $txt( 'cancel_policy_default' ),

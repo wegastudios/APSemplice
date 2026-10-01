@@ -224,6 +224,61 @@ class PeopleService {
 		return $id;
 	}
 
+	/** Persone con lo stesso nome e cognome (senza maiuscole né accenti): serve a non registrare due volte lo stesso ospite. */
+	public function find_homonyms( string $first, string $last, ?int $except_id = null ): array {
+		$key = Text::normalize( $first . $last );
+		$out = array();
+		foreach ( $this->search( array( 'q' => $last ) ) as $p ) {
+			if ( (int) $p['id'] !== (int) $except_id && Text::normalize( $p['first_name'] . $p['last_name'] ) === $key ) {
+				$out[] = $p;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Un ospite diventa socio: la sua scheda resta la stessa, quindi tutte le sue partecipazioni (eventi, corsi, pagamenti) restano collegate.
+	 *
+	 * @param array $in email (obbligatoria), type (ordinary|volunteer), card_number (facoltativo), membership (bool: segna l'iscrizione all'anno sociale corrente)
+	 * @throws \InvalidArgumentException
+	 */
+	public function promote_guest( int $id, array $in ): void {
+		$p = $this->get( $id );
+		if ( ! $p || MemberType::GUEST !== $p['type'] ) {
+			throw new \InvalidArgumentException( 'Solo un ospite può essere iscritto come socio da qui.' );
+		}
+		$type = MemberType::is_member( (string) ( $in['type'] ?? '' ) ) && ! MemberType::is_auto_renewed( (string) $in['type'] ) ? (string) $in['type'] : MemberType::ORDINARY;
+		$this->update(
+			$id,
+			array(
+				'type' => $type, 'email' => trim( (string) ( $in['email'] ?? '' ) ), 'card_number' => isset( $in['card_number'] ) && '' !== trim( (string) $in['card_number'] ) ? trim( (string) $in['card_number'] ) : null,
+				'host_person_id' => null, 'joined_on' => Db::today(),
+			)
+		);
+		if ( ! empty( $in['membership'] ) ) {
+			$this->set_membership( $id, Settings::social_year()->label(), true, 'manual' );
+		}
+		Audit::log( 'person.promoted', 'person', $id, array( 'from' => 'guest', 'to' => $type ) );
+	}
+
+	/** Ospiti che non possono più partecipare senza iscriversi (hanno usato tutte le partecipazioni ammesse). @return array[] persone con 'participations' */
+	public function guests_at_limit(): array {
+		$limit = Plugin::activities()->guest_limit();
+		if ( $limit <= 0 ) {
+			return array();
+		}
+		$guests = $this->search( array( 'type' => MemberType::GUEST ) );
+		$counts = Plugin::activities()->participation_counts( array_column( $guests, 'id' ) );
+		$out    = array();
+		foreach ( $guests as $g ) {
+			if ( ( $counts[ (int) $g['id'] ] ?? 0 ) >= $limit ) {
+				$g['participations'] = $counts[ (int) $g['id'] ];
+				$out[]               = $g;
+			}
+		}
+		return $out;
+	}
+
 	public function update( int $id, array $input ): void {
 		$current = $this->get( $id );
 		if ( ! $current ) {

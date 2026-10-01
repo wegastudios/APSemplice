@@ -286,6 +286,7 @@ class ActivityService {
 		if ( $existing && 'booked' === $existing['status'] ) {
 			throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
 		}
+		$this->assert_guest_may_join( $person );
 		if ( null !== $s['capacity'] ) {
 			$taken = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
 			if ( $taken >= (int) $s['capacity'] ) {
@@ -394,6 +395,100 @@ class ActivityService {
 		return (bool) $this->db()->get_var(
 			$this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND person_id = %d AND status = 'booked'", $session_id, $person_id )
 		);
+	}
+
+	// ---------- Partecipazioni degli ospiti (limite prima di doversi iscrivere) ----------
+
+	/** Quante volte un non socio può partecipare (0 = nessun limite). */
+	public function guest_limit(): int {
+		return max( 0, (int) Settings::get( 'guest_max_events' ) );
+	}
+
+	/**
+	 * Tutto ciò a cui una persona partecipa: eventi prenotati (date non annullate) e corsi a cui è iscritta. Le più recenti per prime.
+	 *
+	 * @return array[] type (event|course), activity_id, activity_name, when (data o mese), session_id, checked_in (bool), ended (bool)
+	 */
+	public function participations( int $person_id ): array {
+		$db  = $this->db();
+		$out = array();
+		foreach ( $db->get_results(
+			$db->prepare(
+				'SELECT b.session_id, b.checked_in_at, s.session_date, s.start_time, a.id AS activity_id, a.name FROM ' . Db::t( 'bookings' ) . ' b '
+				. 'JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id AND s.cancelled_at IS NULL '
+				. 'JOIN ' . Db::t( 'activities' ) . " a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.person_id = %d AND b.status = 'booked'",
+				$person_id
+			),
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[] = array(
+				'type' => 'event', 'activity_id' => (int) $r['activity_id'], 'activity_name' => $r['name'], 'when' => $r['session_date'], 'time' => $r['start_time'],
+				'session_id' => (int) $r['session_id'], 'checked_in' => ! empty( $r['checked_in_at'] ), 'ended' => $r['session_date'] < current_time( 'Y-m-d' ),
+			);
+		}
+		foreach ( $db->get_results(
+			$db->prepare(
+				'SELECT e.activity_id, e.start_month, e.end_month, a.name FROM ' . Db::t( 'enrollments' ) . ' e JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d',
+				$person_id
+			),
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[] = array(
+				'type' => 'course', 'activity_id' => (int) $r['activity_id'], 'activity_name' => $r['name'], 'when' => $r['start_month'], 'time' => null,
+				'session_id' => 0, 'checked_in' => false, 'ended' => null !== $r['end_month'],
+			);
+		}
+		usort( $out, function ( $a, $b ) {
+			return strcmp( (string) $b['when'], (string) $a['when'] );
+		} );
+		return $out;
+	}
+
+	/** @param int[] $person_ids @return array<int,int> persona => numero di partecipazioni (una sola interrogazione per più persone) */
+	public function participation_counts( array $person_ids ): array {
+		$ids = array_values( array_filter( array_map( 'intval', $person_ids ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$in  = implode( ',', $ids );
+		$db  = $this->db();
+		$out = array_fill_keys( $ids, 0 );
+		foreach ( $db->get_results(
+			'SELECT b.person_id, COUNT(*) AS n FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id AND s.cancelled_at IS NULL '
+			. 'JOIN ' . Db::t( 'activities' ) . " a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.status = 'booked' AND b.person_id IN ($in) GROUP BY b.person_id",
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[ (int) $r['person_id'] ] += (int) $r['n'];
+		}
+		foreach ( $db->get_results(
+			'SELECT e.person_id, COUNT(*) AS n FROM ' . Db::t( 'enrollments' ) . ' e JOIN ' . Db::t( 'activities' ) . " a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id IN ($in) GROUP BY e.person_id",
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[ (int) $r['person_id'] ] += (int) $r['n'];
+		}
+		return $out;
+	}
+
+	/** @return array count, max (0 = nessun limite), at_limit (non può partecipare ancora), last (ha usato l'ultima partecipazione), items */
+	public function guest_status( int $person_id ): array {
+		$items = $this->participations( $person_id );
+		$max   = $this->guest_limit();
+		$n     = count( $items );
+		return array( 'count' => $n, 'max' => $max, 'at_limit' => $max > 0 && $n >= $max, 'over' => $max > 0 && $n > $max, 'items' => $items );
+	}
+
+	/** Un ospite che ha già usato le sue partecipazioni non può prenotarsi né iscriversi ancora: deve diventare socio. @throws \InvalidArgumentException */
+	private function assert_guest_may_join( array $person ): void {
+		if ( MemberType::GUEST !== $person['type'] || 0 === $this->guest_limit() ) {
+			return;
+		}
+		$n = count( $this->participations( (int) $person['id'] ) );
+		if ( $n >= $this->guest_limit() ) {
+			throw new \InvalidArgumentException(
+				trim( $person['first_name'] . ' ' . $person['last_name'] ) . ' è ospite e ha già partecipato a ' . $n . ' attività'
+				. ' (il limite per i non soci è ' . $this->guest_limit() . '): per partecipare ancora deve iscriversi come socio.'
+			);
+		}
 	}
 
 	// ---------- Gestori dell'evento e registrazione degli ingressi ----------
@@ -573,6 +668,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' );
 		}
 		$tbl  = Db::t( 'bookings' );
+		$this->assert_guest_may_join( $to );
 		$fee  = $this->fee_for( $a, $to['type'] );
 		$note = ' [intestato da ' . trim( $from_p['first_name'] . ' ' . $from_p['last_name'] ) . ' a ' . trim( $to['first_name'] . ' ' . $to['last_name'] ) . ']';
 		$this->in_transaction(
@@ -629,7 +725,8 @@ class ActivityService {
 		if ( ActivityKind::COURSE !== $a['kind'] ) {
 			throw new \InvalidArgumentException( 'Agli eventi ci si prenota a una data: usa la prenotazione.' );
 		}
-		if ( ! Plugin::people()->get( $person_id ) ) {
+		$enrollee = Plugin::people()->get( $person_id );
+		if ( ! $enrollee ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
 		$tbl = Db::t( 'enrollments' );
@@ -637,6 +734,7 @@ class ActivityService {
 		if ( $row ) {
 			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ), array( 'id' => (int) $row['id'] ) );
 		} else {
+			$this->assert_guest_may_join( $enrollee );
 			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) );
 		}
 		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );

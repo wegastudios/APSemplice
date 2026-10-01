@@ -15,6 +15,16 @@ final class PeoplePage {
 		$type   = Ui::get_str( 'type' );
 		$status = Ui::get_str( 'status' );
 		$rows   = Plugin::people()->search( array( 'q' => $q, 'type' => $type, 'status' => $status ) );
+		$at_limit = '1' === Ui::get_str( 'at_limit' );
+		$gcounts  = Plugin::activities()->participation_counts( array_column( array_filter( $rows, function ( $x ) {
+			return MemberType::GUEST === $x['type'];
+		} ), 'id' ) );
+		$glimit   = Plugin::activities()->guest_limit();
+		if ( $at_limit ) {
+			$rows = array_values( array_filter( $rows, function ( $x ) use ( $gcounts, $glimit ) {
+				return MemberType::GUEST === $x['type'] && $glimit > 0 && ( $gcounts[ (int) $x['id'] ] ?? 0 ) >= $glimit;
+			} ) );
+		}
 		$today  = current_time( 'Y-m-d' );
 
 		Ui::header(
@@ -29,6 +39,7 @@ final class PeoplePage {
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
 		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti che devono iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
@@ -38,7 +49,8 @@ final class PeoplePage {
 		}
 		foreach ( $rows as $p ) {
 			if ( MemberType::GUEST === $p['type'] ) {
-				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] );
+				$n     = (int) ( $gcounts[ (int) $p['id'] ] ?? 0 );
+				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $n, $glimit );
 			} elseif ( ! empty( $p['active_until'] ) && $p['active_until'] >= $today ) {
 				$state = '<span class="apse-ok">Valida fino al ' . Ui::date( $p['active_until'] ) . '</span>';
 			} elseif ( ! empty( $p['active_until'] ) ) {
@@ -107,6 +119,7 @@ final class PeoplePage {
 
 		if ( $p ) {
 			echo '<div class="apse-col">';
+			self::panel_guest_status( $p );
 			self::panel_membership( $p );
 			self::panel_card_qr( $p );
 			self::panel_treasurer( $p );
@@ -154,6 +167,48 @@ final class PeoplePage {
 			}
 			echo '</tbody></table>';
 		}
+		echo '</div>';
+	}
+
+	/** "2 di 2 partecipazioni — deve iscriversi" (in rosso quando ha raggiunto il limite). */
+	public static function guest_badge( int $count, int $limit ): string {
+		$txt = $count . ( $limit > 0 ? ' di ' . $limit : '' ) . ( 1 === $count && 0 === $limit ? ' partecipazione' : ' partecipazioni' );
+		if ( $limit > 0 && $count >= $limit ) {
+			return '<strong class="apse-neg">' . esc_html( $txt . ' — deve iscriversi' ) . '</strong>';
+		}
+		return '<span class="description">' . esc_html( $txt ) . '</span>';
+	}
+
+	/** Scheda di un ospite: a cosa è già venuto (eventi e corsi), quante partecipazioni gli restano e l'iscrizione come socio. */
+	private static function panel_guest_status( array $p ): void {
+		if ( MemberType::GUEST !== $p['type'] ) {
+			return;
+		}
+		$st = Plugin::activities()->guest_status( (int) $p['id'] );
+		echo '<div class="apse-card"><h2>Partecipazioni come ospite</h2><p>' . self::guest_badge( $st['count'], $st['max'] ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( $st['at_limit'] ) {
+			echo '<p class="apse-neg">Ha usato tutte le partecipazioni ammesse ai non soci: per partecipare ancora (e anche per l\'assicurazione) deve iscriversi come socio.</p>';
+		} elseif ( $st['max'] > 0 ) {
+			echo '<p class="description">Gli restano ' . (int) ( $st['max'] - $st['count'] ) . ' partecipazioni prima di doversi iscrivere.</p>';
+		}
+		if ( $st['items'] ) {
+			echo '<table class="widefat striped"><thead><tr><th>Quando</th><th>A cosa</th><th>Stato</th></tr></thead><tbody>';
+			foreach ( $st['items'] as $i ) {
+				$when  = 'event' === $i['type'] ? Ui::date( $i['when'] ) . ( $i['time'] ? ' ' . esc_html( $i['time'] ) : '' ) : 'dal ' . esc_html( $i['when'] );
+				$state = 'event' === $i['type'] ? ( $i['checked_in'] ? '<span class="apse-ok">✔ è venuto</span>' : ( $i['ended'] ? 'prenotato, ingresso non registrato' : 'prenotato' ) ) : ( $i['ended'] ? 'corso concluso' : 'iscritto al corso' );
+				echo '<tr><td>' . $when . '</td><td><a href="' . esc_url( Ui::url( 'apse-activity', array( 'id' => $i['activity_id'] ) ) ) . '">' . esc_html( $i['activity_name'] ) . '</a> <span class="description">' . ( 'event' === $i['type'] ? 'evento' : 'corso' ) . '</span></td><td>' . $state . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</tbody></table>';
+		} else {
+			echo '<p class="description">Non ha ancora partecipato a nulla.</p>';
+		}
+		Ui::form_open( 'apse_promote_guest', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), false, 'apse-confirm' );
+		echo '<details style="margin-top:10px"' . ( $st['at_limit'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p>Email (obbligatoria) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '" required> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
+			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
+			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \ApSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>';
+		Ui::form_close();
 		echo '</div>';
 	}
 
