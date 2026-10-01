@@ -23,4 +23,17 @@ final class CardTokenTest extends TestCase {
 		$this->assertNull( CardToken::parse( '7.' . str_repeat( 'a', 21 ) ) );
 		$this->assertNull( CardToken::parse( "7.' OR 1=1" ) );
 	}
+
+	public function test_ticket_token_binds_session_and_person(): void {
+		$t = CardToken::ticket_make( 5, 9, 's' );
+		$this->assertTrue( CardToken::ticket_valid( 5, 9, $t, 's' ) );
+		$this->assertFalse( CardToken::ticket_valid( 6, 9, $t, 's' ), 'altra data' );
+		$this->assertFalse( CardToken::ticket_valid( 5, 10, $t, 's' ), 'altra persona' );
+		$this->assertFalse( CardToken::ticket_valid( 5, 9, $t, 'x' ), 'QR rigenerati' );
+		$this->assertNotSame( CardToken::make( 5, 's' ), CardToken::ticket_make( 5, 9, 's' ), 'un biglietto non è una tessera' );
+		$this->assertSame( array( 5, 9, $t ), CardToken::ticket_parse( CardToken::ticket_param( 5, 9, 's' ) ) );
+		$this->assertNull( CardToken::ticket_parse( '5.9' ) );
+		$this->assertNull( CardToken::ticket_parse( '5.9.zz' ) );
+		$this->assertNull( CardToken::ticket_parse( CardToken::param( 5, 's' ) ), 'una tessera non si legge come biglietto' );
+	}
 }

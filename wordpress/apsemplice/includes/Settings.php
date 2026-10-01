@@ -34,6 +34,7 @@ final class Settings {
 			'paypal_mode'             => 'sandbox',
 			'paypal_client_id'        => '',
 			'paypal_client_secret'    => '',   // cifrata
+			'card_qr_enabled'         => 0,     // QR sulla tessera digitale: a scelta del gestore, spento di default
 			'wpai_default_type'       => 'ordinary', // import da WP All Import: tipo socio se manca la colonna
 			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
 			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
@@ -84,6 +85,7 @@ final class Settings {
 		$clean['wpai_default_type']       = MemberType::is_member( (string) $clean['wpai_default_type'] ) ? (string) $clean['wpai_default_type'] : MemberType::ORDINARY;
 		$clean['wpai_default_account_id'] = max( 0, (int) $clean['wpai_default_account_id'] );
 		$clean['wpai_keep_balances']      = empty( $clean['wpai_keep_balances'] ) ? 0 : 1;
+		$clean['card_qr_enabled']         = empty( $clean['card_qr_enabled'] ) ? 0 : 1;
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
 		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
 			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 200 );
@@ -109,6 +111,15 @@ final class Settings {
 	public static function regenerate_card_salt(): void {
 		update_option( self::CARD_SALT_OPTION, bin2hex( random_bytes( 16 ) ), false );
 		Audit::log( 'card.qr_regenerated', 'settings' );
+	}
+
+	public static function card_qr_enabled(): bool {
+		return ! empty( self::get( 'card_qr_enabled' ) );
+	}
+
+	/** Indirizzo di verifica del biglietto di una prenotazione (quello che c'è scritto nel QR dell'evento). */
+	public static function ticket_url( int $session_id, int $person_id ): string {
+		return add_query_arg( 'apse_ticket', CardToken::ticket_param( $session_id, $person_id, self::card_secret() ), home_url( '/' ) );
 	}
 
 	/** Indirizzo di verifica della tessera di una persona (quello che c'è scritto nel QR). */

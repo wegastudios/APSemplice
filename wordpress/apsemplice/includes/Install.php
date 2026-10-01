@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '7';
+	const DB_VERSION        = '8';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -103,6 +103,7 @@ final class Install {
   guest_fee_cents bigint(20) DEFAULT NULL,
   cancellable tinyint(1) NOT NULL DEFAULT 0,
   cancel_policy varchar(4) DEFAULT NULL,
+  booking_qr tinyint(1) NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,

@@ -71,6 +71,7 @@ class ActivityService {
 				'guest_fee_cents'      => $d['guest_fee_cents'],
 				'cancellable'          => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancel_policy'] : null,
+				'booking_qr'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['booking_qr'] : 0,
 				'notes'                => $d['notes'],
 				'created_at'           => Db::now(),
 			)
@@ -101,6 +102,7 @@ class ActivityService {
 				'guest_fee_cents'      => $d['guest_fee_cents'],
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
+				'booking_qr'           => ActivityKind::uses_sessions( $current['kind'] ) ? $d['booking_qr'] : 0,
 				'notes'                => $d['notes'],
 			),
 			array( 'id' => $id )
@@ -131,6 +133,7 @@ class ActivityService {
 			'guest_fee_cents'      => $guest,
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
+			'booking_qr'           => ! empty( $in['booking_qr'] ) ? 1 : 0,
 			'notes'                => isset( $in['notes'] ) && '' !== trim( (string) $in['notes'] ) ? trim( (string) $in['notes'] ) : null,
 		);
 	}
@@ -350,7 +353,7 @@ class ActivityService {
 	public function bookings_for_person( int $person_id ): array {
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT b.*, s.session_date, s.start_time, s.location, s.cancelled_at AS session_cancelled_at, s.activity_id, a.name AS activity_name, a.kind '
+				'SELECT b.*, s.session_date, s.start_time, s.location, s.cancelled_at AS session_cancelled_at, s.activity_id, a.name AS activity_name, a.kind, a.booking_qr '
 				. 'FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.person_id = %d ORDER BY s.session_date DESC, s.id DESC',
 				$person_id

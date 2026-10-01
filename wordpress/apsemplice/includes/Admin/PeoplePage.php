@@ -159,7 +159,7 @@ final class PeoplePage {
 
 	/** QR di verifica della tessera: si può stampare o girare al socio (è lo stesso che vede nella sua area riservata). */
 	private static function panel_card_qr( array $p ): void {
-		if ( ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! \ApSemplice\Settings::card_qr_enabled() || ! MemberType::is_member( $p['type'] ) ) {
 			return;
 		}
 		$url = \ApSemplice\Settings::card_url( (int) $p['id'] );

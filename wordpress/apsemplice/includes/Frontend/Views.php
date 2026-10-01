@@ -136,7 +136,7 @@ final class Views {
 
 	/** QR della tessera (si verifica al momento, anche se la tessera nel frattempo scade o si rinnova). */
 	private static function card_qr( array $p ): string {
-		if ( ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! Settings::card_qr_enabled() || ! MemberType::is_member( $p['type'] ) ) {
 			return '';
 		}
 		$url = Settings::card_url( (int) $p['id'] );
@@ -203,7 +203,7 @@ final class Views {
 				$html .= '<li><div><strong>' . esc_html( $b['activity_name'] ) . '</strong><div class="apsf-small">' . esc_html( self::date_long( $b['session_date'] ) )
 					. ( $b['start_time'] ? ' · ore ' . esc_html( $b['start_time'] ) : '' ) . ( $b['location'] ? ' · ' . esc_html( $b['location'] ) : '' ) . '</div>'
 					. '<div class="apsf-small">Contributo ' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . ' · ' . self::booking_pay( $b ) . '</div></div>' // phpcs:ignore WordPress.Security.EscapeOutput
-					. self::booking_controls( $b, $p ) . '</li>';
+					. self::ticket_qr( $b ) . self::booking_controls( $b, $p ) . '</li>';
 			}
 			$html .= '</ul>';
 		}
@@ -228,6 +228,21 @@ final class Views {
 			$html .= '</ul></details>';
 		}
 		return $html . '</section>';
+	}
+
+	/** Biglietto QR di una prenotazione: solo per gli eventi per cui il gestore l'ha attivato. */
+	private static function ticket_qr( array $b ): string {
+		if ( empty( $b['booking_qr'] ) || empty( $b['active'] ) ) {
+			return '';
+		}
+		$url = Settings::ticket_url( (int) $b['session_id'], (int) $b['person_id'] );
+		try {
+			$svg = \ApSemplice\QrCode::svg( $url, 4, 'Biglietto QR: ' . $b['activity_name'] );
+		} catch ( \InvalidArgumentException $e ) {
+			return '';
+		}
+		return '<details class="apsf-details apsf-ticket"><summary>Biglietto QR</summary><div class="apsf-memcard-qr">' . $svg
+			. '<div class="apsf-small">Mostralo all\'ingresso: si vede se la prenotazione è valida e se il contributo è versato. <a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div></div></details>';
 	}
 
 	/** Annulla (se la regola lo consente) e Cambia nominativo di una prenotazione dell'area soci. */
@@ -398,8 +413,15 @@ final class Views {
 		$html  .= '<p class="apsf-muted">Gli ospiti possono partecipare alle attività senza essere soci: puoi prenotarli agli eventi.</p>';
 		if ( $guests ) {
 			$html .= '<ul class="apsf-list">';
+			$today = current_time( 'Y-m-d' );
 			foreach ( $guests as $g ) {
-				$html .= '<li><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong></li>';
+				$tickets = '';
+				foreach ( Plugin::activities()->bookings_for_person( (int) $g['id'] ) as $b ) { // biglietti QR degli eventi che li prevedono
+					if ( $b['active'] && $b['session_date'] >= $today && ! empty( $b['booking_qr'] ) ) {
+						$tickets .= '<div class="apsf-small">' . esc_html( $b['activity_name'] ) . ' · ' . esc_html( self::date_long( $b['session_date'] ) ) . '</div>' . self::ticket_qr( $b );
+					}
+				}
+				$html .= '<li><div><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong>' . $tickets . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 			$html .= '</ul>';
 		}

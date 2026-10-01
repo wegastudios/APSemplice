@@ -12,6 +12,7 @@ final class Front {
 		Actions::register();
 		PayReturn::register();
 		CardVerify::register();
+		TicketVerify::register();
 		Blocks::register();
 		ElementorSupport::register();
 	}

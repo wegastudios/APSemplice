@@ -23,6 +23,13 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
+	/** Riga del modulo: biglietto QR per le prenotazioni (solo eventi ed eventi ricorrenti, spento di default). */
+	private static function qr_row( ?array $a, string $row_class ): string {
+		$on = $a && ! empty( $a['booking_qr'] );
+		return '<tr class="' . esc_attr( $row_class ) . '"><th>Biglietto QR</th><td><label><input type="checkbox" name="booking_qr" value="1"' . checked( $on, true, false ) . '> Genera un QR per ogni prenotazione</label>'
+			. '<p class="description">Chi prenota (e ogni suo ospite) trova nell\'area riservata un QR: scansionandolo all\'ingresso si vede subito se la prenotazione è valida, per quale data e se il contributo è stato versato. Facoltativo, scelta per singolo evento.</p></td></tr>';
+	}
+
 	/** "Contributo 5,00 € a evento · ospiti 8,00 €" oppure "Gratuito". */
 	private static function fee_text( array $a ): string {
 		$fee   = (int) $a['fee_cents'];
@@ -86,6 +93,7 @@ final class ActivitiesPage {
 		echo '<tr class="apse-row-event"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
 		echo '<tr class="apse-row-event"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
 		echo self::cancel_rows( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::qr_row( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th><span class="apse-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
@@ -138,6 +146,7 @@ final class ActivitiesPage {
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo self::qr_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );

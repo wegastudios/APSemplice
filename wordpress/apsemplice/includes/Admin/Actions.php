@@ -27,6 +27,7 @@ final class Actions {
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
 			'apse_regen_qr'           => 'regen_qr',
+			'apse_save_card'          => 'save_card',
 			'apse_save_activity'      => 'save_activity',
 			'apse_enroll'             => 'enroll',
 			'apse_cancel_enrollment'  => 'cancel_enrollment',
@@ -158,6 +159,7 @@ final class Actions {
 			'guest_fee_cents'      => self::fee_field( $p, 'guest_fee' ),
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
+			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
 			'notes'                => $p['notes'] ?? '',
 		);
 		$id = (int) ( $p['id'] ?? 0 );
@@ -421,6 +423,11 @@ final class Actions {
 		$token = wp_generate_password( 16, false );
 		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $prev, HOUR_IN_SECONDS );
 		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
+	}
+
+	private static function save_card( array $p ): array {
+		Settings::update( array( 'card_qr_enabled' => ! empty( $p['card_qr_enabled'] ) ? 1 : 0 ) );
+		return array( Ui::url( 'apse-card' ), ! empty( $p['card_qr_enabled'] ) ? 'QR della tessera attivato.' : 'QR della tessera disattivato.' );
 	}
 
 	private static function regen_qr( array $p ): array {

@@ -173,3 +173,9 @@ Nel modulo **Nuova spesa** si possono allegare uno o più PDF o foto (campo "Doc
 ## Import con WP All Import (alternativa)
 
 Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizione due "tipi di contenuto di appoggio" che WP All Import vede: **Movimenti APSemplice (import)** e **Soci e ospiti APSemplice (import)**. In WP All Import si sceglie uno dei due, e nei *Campi personalizzati* si trascinano i dati nei campi `apse_*` (elenco in *Soci → Import con WP All Import*). A importazione finita il plugin legge gli elementi, applica le stesse regole dell'import da file (compresi doppioni e saldi), li registra e toglie quelli riusciti; gli errori restano in elenco con il motivo, con i pulsanti *Riprova* ed *Elimina*. Funziona anche con le importazioni pianificate. Solo chi amministra il plugin può creare questi elementi.
+
+## QR della tessera e biglietti QR degli eventi (facoltativi)
+
+**QR della tessera** — *Tessera e Wallet → Attiva il QR sulla tessera digitale* (spento di default). Se attivo, nella tessera digitale del socio compare un QR: chi lo scansiona (anche senza accesso al sito) apre una pagina che dice se la tessera è **valida in questo momento** (nome, tipo, numero, scadenza: niente altro). La verifica è in diretta: il QR non cambia al rinnovo. Gli ospiti non hanno tessera. Il QR contiene solo un codice firmato (HMAC) legato al sito; "Rigenera tutti i QR" invalida tutti i codici in circolazione.
+
+**Biglietto QR di una prenotazione** — nella scheda di un evento o evento ricorrente: *Biglietto QR → Genera un QR per ogni prenotazione* (spento di default, scelta per singolo evento; i corsi non hanno prenotazioni). Chi prenota trova il QR sotto la prenotazione, e il socio quelli dei propri ospiti; scansionandolo si vede se la prenotazione è valida, per quale data, se è stata annullata e se il contributo è versato. Con la licenza non in regola le verifiche sono sospese.
