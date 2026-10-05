@@ -2499,7 +2499,8 @@ $mb_fy = new ReflectionMethod( Admin\Actions::class, 'save_income' );
 $mb_fy->setAccessible( true );
 $mb_q = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Prossima', 'email' => 'tessera.prossima@example.com' ) );
 $mb_fy->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $mb_q, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::membership_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
-apse_ok( ( (int) substr( $today, 0, 4 ) + 1 ) . '-12-31' === $people->active_until( $mb_q ), 'tessera: pagata per l\'anno dopo, vale fino al 31 dicembre dell\'anno dopo' );
+$next_y = (int) substr( $today, 0, 4 ) + 1;
+apse_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_q ) && $next_y . '-12-31' === $people->active_until( $mb_q, $next_y . '-01-02' ), 'tessera: anno in corso gratis fino al 31 dicembre, poi quella pagata vale fino al 31 dicembre dell\'anno dopo' );
 $founder_until = $people->active_until( $founder );
 apse_ok( null !== $founder_until && $founder_until > ( (int) substr( $today, 0, 4 ) + 5 ) . '-01-01', 'tessera: il socio fondatore resta fuori da questa regola' );
 
