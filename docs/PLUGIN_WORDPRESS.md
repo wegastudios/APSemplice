@@ -217,3 +217,14 @@ Chi tiene un'attività (istruttore), chi gestisce un evento e gli amministratori
 - Arriva **per email a ciascun iscritto** (singolarmente: nessuno vede gli indirizzi degli altri) e resta nella **bacheca "Avvisi"** dell'area riservata (45 giorni). Per i corsi sono gli iscritti attivi; per gli eventi i prenotati delle date non ancora passate (o di una sola data). Gli ospiti senza email ricevono l'avviso tramite il socio che li ospita, che lo vede anche in bacheca.
 - Titolo fino a 120 caratteri, testo fino a 2000; al massimo 5 avvisi al giorno per attività. Con la licenza non in regola l'invio è sospeso. Nel registro azioni restano solo i conteggi, mai il testo.
 - Le notifiche push sul telefono richiedono la PWA installata (service worker): non sono ancora attive.
+
+## Primo accesso e soci senza email
+
+Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**: il socio indica nome, email e cellulare.
+
+- **Email già di un socio** → gli arriva il link per scegliere la password.
+- **Cellulare di un solo socio senza accesso** → si crea l'utente con l'email indicata e arriva il link; in dashboard compare la voce "da controllare".
+- **Cellulare di un socio con accesso già attivo (altra email)** → nessuna modifica automatica (il cellulare non è un segreto): la richiesta va in dashboard e la segreteria sceglie *Approva nuova email* o *rifiuta*.
+- **Nessuno dei due** → la richiesta va in dashboard con il pulsante per scrivere su WhatsApp.
+
+La risposta al socio è sempre la stessa, così non si scopre chi è socio. Limite: 10 tentativi l'ora per indirizzo IP.

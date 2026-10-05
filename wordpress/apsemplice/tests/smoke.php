@@ -2122,7 +2122,9 @@ apse_ok( false !== strpos( $dash, 'Mario Sconosciuto' ) && false !== strpos( $da
 $act = new ReflectionMethod( Admin\Actions::class, 'access_approve' );
 $act->setAccessible( true );
 $act->invoke( null, array( 'id' => $chg[0]['id'] ) );
-apse_ok( 'quinto.nuova@example.com' === strtolower( (string) $people->get( $q )['email'] ) && ! isset( $AR::all()[ $chg[0]['id'] ] ) && count( $fa_ml ) === $n_ml + 1, 'riepilogo: approvando il cambio, l\'email si aggiorna e parte il link' );
+apse_ok( 'quinto.nuova@example.com' === strtolower( (string) $people->get( $q )['email'] ), 'riepilogo: approvando il cambio, l\'email del socio si aggiorna' );
+apse_ok( 'quinto.nuova@example.com' === strtolower( (string) get_userdata( (int) $people->get( $q )['wp_user_id'] )->user_email ), 'riepilogo: approvando il cambio, si aggiorna anche l\'utente WordPress (ruoli: ' . implode( ',', get_userdata( (int) $people->get( $q )['wp_user_id'] )->roles ) . ')' );
+apse_ok( ! isset( $AR::all()[ $chg[0]['id'] ] ) && count( $fa_ml ) === $n_ml + 1, 'riepilogo: approvando il cambio, la richiesta si chiude e parte il link (' . ( count( $fa_ml ) - $n_ml ) . ' email)' );
 $unk = array_values( array_filter( $AR::pending(), function ( $p ) { return 'unknown' === $p['kind']; } ) );
 $done = new ReflectionMethod( Admin\Actions::class, 'access_done' );
 $done->setAccessible( true );
