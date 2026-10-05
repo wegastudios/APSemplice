@@ -27,6 +27,9 @@ final class Wallet {
 
 	/** @return array|null credenziali complete per Apple Wallet, oppure null */
 	public static function apple_config(): ?array {
+		if ( ! Settings::wallet_enabled() ) {
+			return null;
+		}
 		$c = array(
 			'pass_type' => (string) Settings::get( 'wallet_apple_pass_type' ), 'team' => (string) Settings::get( 'wallet_apple_team' ),
 			'cert'      => (string) Settings::get( 'wallet_apple_cert_pem' ), 'wwdr' => (string) Settings::get( 'wallet_apple_wwdr_pem' ),
@@ -42,6 +45,9 @@ final class Wallet {
 
 	/** @return array|null credenziali complete per Google Wallet, oppure null */
 	public static function google_config(): ?array {
+		if ( ! Settings::wallet_enabled() ) {
+			return null;
+		}
 		$c = array( 'issuer' => (string) Settings::get( 'wallet_google_issuer' ), 'email' => (string) Settings::get( 'wallet_google_email' ), 'key' => Settings::secret( 'wallet_google_key_pem' ) );
 		foreach ( $c as $v ) {
 			if ( '' === $v ) {

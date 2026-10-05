@@ -35,6 +35,9 @@ final class ActivitiesPage {
 
 	/** Riga del modulo: biglietto QR per le prenotazioni (solo eventi ed eventi ricorrenti, spento di default). */
 	private static function qr_row( ?array $a, string $row_class ): string {
+		if ( ! \ApSemplice\Settings::tickets_enabled() ) {
+			return ''; // i biglietti QR sono spenti: Impostazioni > Tessera, QR e Wallet
+		}
 		$on = $a && ! empty( $a['booking_qr'] );
 		return '<tr class="' . esc_attr( $row_class ) . '"><th>Biglietto QR</th><td><label><input type="checkbox" name="booking_qr" value="1"' . checked( $on, true, false ) . '> Genera un QR per ogni prenotazione</label>'
 			. '<p class="description">Chi prenota (e ogni suo ospite) trova nell\'area riservata un QR: scansionandolo all\'ingresso si vede subito se la prenotazione è valida, per quale data e se il contributo è stato versato. Facoltativo, scelta per singolo evento.</p></td></tr>';

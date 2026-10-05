@@ -40,7 +40,7 @@ final class PeoplePage {
 		echo '<button class="button">Filtra</button></form>';
 
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
-		echo '<table class="widefat striped"><thead><tr><th>Tessera</th><th>Nome</th><th>Tipo</th><th>Email</th><th>Stato</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Tessera</th><th>Nome</th><th>Tipo</th><th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
 		}
@@ -59,7 +59,7 @@ final class PeoplePage {
 			}
 			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
 			echo '<td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
-			echo '<td>' . esc_html( MemberType::label( $p['type'] ) ) . '</td><td>' . esc_html( (string) $p['email'] ) . '</td><td>' . $state . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<td>' . esc_html( MemberType::label( $p['type'] ) ) . '</td><td>' . ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ) . '</td><td>' . $state . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<td><a class="button button-small" href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
 		}
 		echo '</tbody></table>';

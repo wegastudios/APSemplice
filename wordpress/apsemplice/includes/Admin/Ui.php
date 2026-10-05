@@ -23,8 +23,22 @@ final class Ui {
 		return isset( $_GET[ $key ] ) ? sanitize_text_field( wp_unslash( $_GET[ $key ] ) ) : $default; // phpcs:ignore WordPress.Security.NonceVerification
 	}
 
+	/** Link per scrivere a una persona: email (mailto) e WhatsApp (se ha il cellulare). */
+	public static function contact_links( array $p ): string {
+		$out = array();
+		if ( ! empty( $p['email'] ) ) {
+			$out[] = '<a href="' . esc_url( 'mailto:' . $p['email'] ) . '" title="' . esc_attr( (string) $p['email'] ) . '">✉ Email</a>';
+		}
+		$wa = ! empty( $p['phone'] ) ? \ApSemplice\Phone::whatsapp( (string) $p['phone'] ) : '';
+		if ( '' !== $wa ) {
+			$out[] = '<a href="' . esc_url( 'https://wa.me/' . $wa ) . '" target="_blank" rel="noopener" title="' . esc_attr( (string) $p['phone'] ) . '">💬 WhatsApp</a>';
+		}
+		return implode( ' · ', $out );
+	}
+
 	public static function header( string $title, string $actions_html = '' ): void {
 		echo '<div class="wrap apse"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.EscapeOutput
 		self::notices();
 	}
 

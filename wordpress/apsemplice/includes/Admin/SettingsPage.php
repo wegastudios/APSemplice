@@ -44,45 +44,9 @@ final class SettingsPage {
 			. '<p class="description">Mostrato ai soci che hanno importi da pagare (finché i pagamenti online non sono attivi).</p></td></tr>';
 		echo '<tr><th>Messaggio sui contenuti riservati</th><td><input type="text" name="gate_message" value="' . esc_attr( (string) $s['gate_message'] ) . '" class="large-text" placeholder="Automatico: «Contenuto riservato ai soci.»">'
 			. '<p class="description">Se lo compili sostituisce il messaggio automatico mostrato a chi non può vedere un contenuto riservato.</p></td></tr>';
-		echo '</tbody></table><h2>Pagamenti online</h2><table class="form-table"><tbody>';
-		echo '<tr><th>Come incassare online</th><td><select name="payment_provider" id="apse-pay-provider">' . Ui::options( PaymentConfig::providers(), $s['payment_provider'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p class="description">WooCommerce e Stripe/PayPal sono alternative: ne usi una. Con Stripe o PayPal i soci pagano dall\'area soci su una <strong>pagina ospitata dal gateway</strong> (i dati della carta non passano dal sito) e l\'incasso entra da solo in prima nota sul conto "Stripe" o "PayPal". Prima di usarli in modo reale prova con le chiavi di prova.</p></td></tr>';
-		echo self::gateway_row( 'stripe_mode', 'Stripe — modalità', $s, 'select', array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'apse-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::gateway_row( 'stripe_publishable_key', 'Stripe — chiave pubblicabile', $s, 'text', array(), 'apse-pay-stripe', 'pk_test_… / pk_live_…' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::secret_row( 'stripe_secret_key', 'Stripe — chiave segreta', 'apse-pay-stripe', 'sk_test_… / sk_live_… (o rk_… con restrizioni)' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::secret_row( 'stripe_webhook_secret', 'Stripe — segreto del webhook', 'apse-pay-stripe', 'whsec_… (da Stripe → Sviluppatori → Webhook)' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr class="apse-pay-stripe"><th>Indirizzo del webhook</th><td><code>' . esc_html( rest_url( 'apsemplice/v1/webhooks/stripe' ) ) . '</code><p class="description">In Stripe (Sviluppatori → Webhook) aggiungi questo indirizzo con gli eventi <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code> e <code>checkout.session.expired</code>, poi incolla qui il segreto <code>whsec_…</code>. È una rete di sicurezza: il pagamento si conferma anche quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
-		echo '<tr class="apse-pay-paypal"><th>Conferma dei pagamenti</th><td><p class="description">PayPal non richiede configurazioni aggiuntive: il pagamento si conferma quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
-		echo self::gateway_row( 'paypal_mode', 'PayPal — modalità', $s, 'select', array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'apse-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::gateway_row( 'paypal_client_id', 'PayPal — Client ID', $s, 'text', array(), 'apse-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::secret_row( 'paypal_client_secret', 'PayPal — Client Secret', 'apse-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		if ( PaymentConfig::NONE !== $s['payment_provider'] ) {
-			$check = PaymentConfig::validate( Settings::payment_config() );
-			foreach ( $check['errors'] as $e ) {
-				echo '<tr><th></th><td class="apse-neg">⚠ ' . esc_html( $e ) . '</td></tr>';
-			}
-			foreach ( $check['warnings'] as $w ) {
-				echo '<tr><th></th><td class="apse-warn">ℹ ' . esc_html( $w ) . '</td></tr>';
-			}
-		}
-		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
-			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. È voluto: lo staging non può usare per sbaglio le chiavi reali. Usa chiavi di prova finché non sei sicuro.</p></td></tr>';
-		foreach ( \ApSemplice\Settings::SECRET_KEYS as $sk ) {
-			if ( Settings::secret_unreadable( $sk ) ) {
-				echo '<tr><th></th><td class="apse-warn">⚠ Una chiave è salvata ma non è leggibile su questo sito: reinseriscila.</td></tr>';
-				break;
-			}
-		}
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: Stripe legge il saldo, PayPal chiede un token di accesso.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
-		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal' ) as $prov => $label ) {
-			Ui::form_open( 'apse_test_gateway', Ui::url( 'apse-settings' ) );
-			echo Ui::hidden( 'provider', $prov ) . '<button class="button">' . esc_html( $label ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
-			Ui::form_close();
-		}
-		echo '</div>';
 		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>APSemplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>APSemplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
 		Ui::form_open( 'apse_create_pages', Ui::url( 'apse-settings' ) );
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già dentro. Poi le impagini come vuoi.</span></p>';
@@ -100,7 +64,7 @@ final class SettingsPage {
 	}
 
 	/** Riga di impostazione non segreta di un gateway. */
-	private static function gateway_row( string $key, string $label, array $s, string $type, array $options, string $row_class, string $placeholder = '' ): string {
+	public static function gateway_row( string $key, string $label, array $s, string $type, array $options, string $row_class, string $placeholder = '' ): string {
 		$head = '<tr class="' . esc_attr( $row_class ) . '"><th>' . esc_html( $label ) . '</th><td>';
 		if ( 'select' === $type ) {
 			return $head . '<select name="' . esc_attr( $key ) . '">' . Ui::options( $options, $s[ $key ] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -109,7 +73,7 @@ final class SettingsPage {
 	}
 
 	/** Riga di una chiave segreta: non si mostra mai il valore, solo una maschera; vuoto = non cambiare. */
-	private static function secret_row( string $key, string $label, string $row_class, string $hint ): string {
+	public static function secret_row( string $key, string $label, string $row_class, string $hint ): string {
 		$head = '<tr class="' . esc_attr( $row_class ) . '"><th>' . esc_html( $label ) . '</th><td>';
 		$has   = Settings::has_secret( $key );
 		$plain = Settings::secret( $key );

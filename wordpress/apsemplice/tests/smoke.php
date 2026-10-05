@@ -86,6 +86,7 @@ $acts     = Plugin::activities();
 $ledger   = Plugin::ledger();
 $reports  = Plugin::reports();
 $today    = Db::today();
+Settings::update( array( 'ticket_qr_enabled' => 1, 'wallet_enabled' => 1 ) ); // spenti di default: i test li accendono
 $year     = substr( $today, 0, 4 );
 $sy       = Settings::social_year();
 $month    = $sy->clamp( substr( $today, 0, 7 ) );
@@ -750,10 +751,13 @@ $fake      = function ( $method, $url, $headers, $body ) use ( &$http_seen ) {
 $g = Gateways::test( 'stripe', Settings::payment_config(), $fake );
 apse_ok( $g['ok'] && 'Bearer sk_test_51Abc1234' === $http_seen[2]['Authorization'], 'prova Stripe: usa la chiave salvata (rete simulata)' );
 ob_start();
-Admin\SettingsPage::render();
+Admin\PaymentsPage::render();
 $settings_html = ob_get_clean();
+ob_start();
+Admin\SettingsPage::render();
+$general_html = ob_get_clean();
 apse_ok( false === strpos( $settings_html, 'sk_test_51Abc1234' ) && false !== strpos( $settings_html, '••••1234' ) && false === strpos( $settings_html, 'whsec_abc1234' ), 'impostazioni: la chiave segreta non viene mai stampata, solo la maschera' );
-apse_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (non ancora collegato)' ) && false !== strpos( $settings_html, 'Termine predefinito per annullare' ), 'impostazioni: sezione pagamenti e cancellazioni' );
+apse_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (non ancora collegato)' ) && false !== strpos( $general_html, 'Termine predefinito per annullare' ) && false === strpos( $general_html, 'Verifica connessione Stripe' ), 'impostazioni: i pagamenti stanno nella loro scheda, le cancellazioni nel generale' );
 Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
 apse_ok( array() === PaymentConfig::validate( Settings::payment_config() )['errors'], 'configurazione PayPal valida' );
 Settings::update( array( 'payment_provider' => 'bogus' ) );
@@ -794,17 +798,22 @@ $ss->setAccessible( true );
 $form = array(
 	'association_name' => 'APS Prova', 'social_year_start_month' => '9', 'membership_fee' => '12,00', 'founder_years' => '99',
 	'member_area_page_id' => (string) Settings::get( 'member_area_page_id' ), 'cancel_policy_default' => '24h',
-	'payment_hint' => 'Ciao', 'gate_message' => '', 'payment_provider' => 'stripe', 'stripe_mode' => 'test',
-	'stripe_publishable_key' => 'pk_test_51Zzz', 'stripe_secret_key' => 'sk_test_51Zzz', 'stripe_webhook_secret' => 'whsec_zzz',
+	'payment_hint' => 'Ciao', 'gate_message' => '',
 	'accent_custom' => '1', 'accent_color' => '#336699',
 );
+$ps = new ReflectionMethod( Admin\Actions::class, 'save_payment_settings' );
+$ps->setAccessible( true );
+$pform = array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Zzz', 'stripe_secret_key' => 'sk_test_51Zzz', 'stripe_webhook_secret' => 'whsec_zzz' );
 $ss->invoke( null, $form );
+$ps->invoke( null, $pform );
 apse_ok( '#336699' === Settings::get( 'accent_color' ) && 'Ciao' === Settings::payment_hint() && '24h' === Settings::get( 'cancel_policy_default' ) && 1200 === (int) Settings::get( 'membership_fee_cents' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo impostazioni: salva aspetto, messaggi, termini e chiavi' );
-$form2 = array_merge( $form, array( 'stripe_secret_key' => '', 'stripe_webhook_secret' => '' ) );
+$form2 = $form;
 unset( $form2['accent_custom'] );
+$pform2 = array_merge( $pform, array( 'stripe_secret_key' => '', 'stripe_webhook_secret' => '' ) );
 $ss->invoke( null, $form2 );
+$ps->invoke( null, $pform2 );
 apse_ok( '' === Settings::get( 'accent_color' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo senza la spunta del colore: torna al tema; chiave lasciata vuota: resta quella salvata' );
-$ss->invoke( null, array_merge( $form2, array( 'clear_stripe_secret_key' => '1' ) ) );
+$ps->invoke( null, array_merge( $pform2, array( 'clear_stripe_secret_key' => '1' ) ) );
 apse_ok( ! Settings::has_secret( 'stripe_secret_key' ) && Settings::has_secret( 'stripe_webhook_secret' ), 'modulo: la spunta "rimuovi" toglie solo quella chiave' );
 
 // una chiave cifrata da un altro sito (database copiato) non si legge qui, e il pannello lo dice
@@ -813,10 +822,13 @@ $opt['stripe_secret_key']    = Secrets::encrypt( 'sk_test_ALTRO', 'sale-di-un-al
 update_option( 'apse_settings', $opt );
 apse_ok( Settings::has_secret( 'stripe_secret_key' ) && Settings::secret_unreadable( 'stripe_secret_key' ) && '' === Settings::secret( 'stripe_secret_key' ), 'chiave cifrata da un altro sito: segnalata come non leggibile' );
 ob_start();
-Admin\SettingsPage::render();
+Admin\PaymentsPage::render();
 $h = ob_get_clean();
+ob_start();
+Admin\SettingsPage::render();
+$h_general = ob_get_clean();
 apse_ok( false !== strpos( $h, 'non è leggibile su questo sito' ) && false === strpos( $h, 'wp-config' ) && false === strpos( $h, 'sk_test_ALTRO' ), 'pannello: avviso sulla chiave illeggibile, nessun file da modificare' );
-apse_ok( false !== strpos( $h, 'Aspetto e messaggi del sito' ) && false !== strpos( $h, 'type="color"' ), 'pannello: sezione aspetto con selettore colore' );
+apse_ok( false !== strpos( $h_general, 'Aspetto e messaggi del sito' ) && false !== strpos( $h_general, 'type="color"' ), 'pannello: sezione aspetto con selettore colore' );
 Settings::clear_secret( 'stripe_secret_key' );
 Settings::clear_secret( 'stripe_webhook_secret' );
 Settings::update( array( 'payment_provider' => 'none', 'accent_color' => '', 'cancel_policy_default' => '48h' ) );
@@ -1093,7 +1105,7 @@ $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\PaymentsPage::class, 'render' ), 'Verifica i pagamenti in sospeso' );
 $adm = apse_render( array( Admin\PaymentsPage::class, 'render' ), 'da controllare', array( 'review' => '1' ) );
 apse_ok( false !== strpos( $adm, 'Pagamento online' ) || false !== strpos( $adm, 'Importo pagato' ), 'amministrazione: i pagamenti da controllare mostrano il motivo' );
-apse_render( array( Admin\SettingsPage::class, 'render' ), 'checkout.session.async_payment_succeeded' );
+apse_render( array( Admin\PaymentsPage::class, 'render' ), 'checkout.session.async_payment_succeeded' );
 $audit_all = Audit::recent( 400 );
 $audit     = array_column( $audit_all, 'action' );
 apse_ok( in_array( 'payment.created', $audit, true ) && in_array( 'payment.paid', $audit, true ) && false === strpos( wp_json_encode( $audit_all ), 'sk_test_51Smoke1' ), 'registro azioni: pagamenti tracciati, senza chiavi' );
@@ -1536,7 +1548,7 @@ apse_ok( 0 === (int) Settings::get( 'card_qr_enabled' ) && ! Settings::card_qr_e
 apse_ok( false === strpos( $as( $u_f, '[apsemplice_tessera]' ), '<svg' ), 'QR della tessera spento: la tessera digitale non lo mostra' );
 apse_ok( 'disabled' === \ApSemplice\Frontend\CardVerify::result( \ApSemplice\CardToken::param( $founder, Settings::card_secret() ) )['status'] && false !== strpos( \ApSemplice\Frontend\CardVerify::page( 'boh' ), 'Verifica non attiva' ), 'QR della tessera spento: la pagina di verifica non è attiva' );
 $save_card = new ReflectionMethod( Admin\Actions::class, 'save_card' );
-$save_card->invoke( null, array( 'card_qr_enabled' => '1' ) );
+$save_card->invoke( null, array( 'card_qr_enabled' => '1', 'ticket_qr_enabled' => '1', 'wallet_enabled' => '1' ) );
 apse_ok( Settings::card_qr_enabled(), 'il gestore attiva il QR della tessera dalle impostazioni' );
 $card_html = $as( $u_f, '[apsemplice_tessera]' );
 apse_ok( false !== strpos( $card_html, '<svg' ) && false !== strpos( $card_html, 'apse_card=' ) && false !== strpos( $card_html, 'Mostra questo codice' ), 'tessera digitale: mostra il QR' );
@@ -2246,6 +2258,50 @@ apse_ok(
 );
 apse_render( array( Admin\AccountsPage::class, 'render' ), 'Conti' );
 apse_render( array( Admin\ReportsPage::class, 'render' ), 'Disponibilità reale' );
+
+// ---------- Menu a cinque voci, schede, interruttori, cassa rapida ----------
+wp_set_current_user( 1 );
+apse_ok( 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
+$tabs = Admin\Admin::tabs( 'apse-income' );
+apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && '' === Admin\Admin::tabs( 'apse-activities' ), 'menu: la Contabilità ha le sue schede, la Bacheca e i corsi no' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Pagamenti online' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Registro azioni' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
+$GLOBALS['submenu'] = array();
+Admin\Admin::menu();
+$visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
+apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Contabilità', 'Impostazioni' ) === $visible, 'menu: solo cinque voci (' . implode( ', ', $visible ) . ')' );
+
+// interruttori: tutto spento di default
+Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
+apse_ok( null === Wallet::apple_config() && null === Wallet::google_config() && '' === Wallet::buttons( $people->get( $founder ) ), 'wallet spento: nessuna configurazione attiva e nessun pulsante' );
+$card_off = apse_render( array( Admin\CardPage::class, 'render' ), 'Cosa vuoi usare' );
+apse_ok( false === strpos( $card_off, 'Google Wallet</h2>' ) && false !== strpos( $card_off, 'Biglietti QR delle prenotazioni' ), 'impostazioni: con il wallet spento non si mostrano le credenziali' );
+$ticket_off = apse_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Crea attività' );
+apse_ok( false === strpos( $ticket_off, 'Genera un QR per ogni prenotazione' ), 'biglietti QR spenti: l\'opzione non compare nella scheda evento' );
+Settings::update( array( 'wallet_enabled' => 1, 'ticket_qr_enabled' => 1 ) );
+$ticket_on = apse_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Crea attività' );
+apse_ok( false !== strpos( $ticket_on, 'Genera un QR per ogni prenotazione' ), 'biglietti QR accesi: l\'opzione compare' );
+
+// cassa rapida
+$qc = new ReflectionMethod( Admin\Actions::class, 'quick_cash' );
+$qc->setAccessible( true );
+$bal_now = function () use ( $ledger ) {
+	return array_sum( array_column( $ledger->balances(), 'balance' ) );
+};
+$b0 = $bal_now();
+$qc->invoke( null, array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount' => '12,50', 'description' => 'Offerta in cassa', 'method' => 'cash', 'account_id' => (int) $cash['id'] ) );
+apse_ok( $b0 + 1250 === $bal_now(), 'cassa rapida: l\'incasso entra in cassa' );
+$qc->invoke( null, array( 'category_id' => $ledger->category_id_of_kind( 'general_cost' ), 'amount' => '5,00', 'description' => 'Cancelleria', 'method' => 'cash', 'account_id' => (int) $cash['id'] ) );
+apse_ok( $b0 + 750 === $bal_now(), 'cassa rapida: la spesa esce dalla cassa' );
+$threw = false;
+try {
+	$qc->invoke( null, array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount' => '5,00', 'description' => 'x', 'method' => 'cash', 'account_id' => (int) $cash['id'] ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'cassa rapida: le quote e le attività si registrano dall\'incasso completo' );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Cassa rapida' );
+apse_ok( false !== strpos( $dash, 'apse_quick_cash' ), 'bacheca: la cassa rapida è in prima pagina' );
+apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Contatti' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

@@ -13,32 +13,38 @@ defined( 'ABSPATH' ) || exit;
 final class CardPage {
 
 	public static function render(): void {
-		Ui::header( 'Tessera digitale: QR e Wallet' );
-		self::qr_card();
-		echo '<div class="apse-cols"><div class="apse-col">';
-		self::apple_card();
-		echo '</div><div class="apse-col">';
-		self::google_card();
-		echo '</div></div>';
-		self::test_card();
+		Ui::header( 'Impostazioni: tessera, QR e Wallet' );
+		self::switches_card();
+		if ( Settings::wallet_enabled() ) {
+			echo '<div class="apse-cols"><div class="apse-col">';
+			self::apple_card();
+			echo '</div><div class="apse-col">';
+			self::google_card();
+			echo '</div></div>';
+			self::test_card();
+		}
 		Ui::footer();
 	}
 
-	private static function qr_card(): void {
-		$on = Settings::card_qr_enabled();
-		echo '<div class="apse-card"><h2>QR della tessera</h2>'
-			. '<p>Se lo attivi, ogni socio trova nella sua area riservata un QR sulla tessera digitale. Chi lo scansiona (anche senza accedere al sito) vede subito se la tessera è <strong>valida in questo momento</strong>, con nome, tipo, numero e scadenza: niente altro. '
-			. 'Il QR non cambia quando la tessera si rinnova, perché la verifica è sempre in diretta. È <strong>spento di default</strong>.</p>';
+	/** Interruttori generali: tutto spento di default, si accende solo ciò che serve. */
+	private static function switches_card(): void {
+		echo '<div class="apse-card"><h2>Cosa vuoi usare</h2><p class="description">Tutto è spento di default. Ciò che non serve resta invisibile ai soci e nelle schede degli eventi.</p>';
 		Ui::form_open( 'apse_save_card', Ui::url( 'apse-card' ) );
-		echo '<p><label><input type="checkbox" name="card_qr_enabled" value="1"' . checked( $on, true, false ) . '> <strong>Attiva il QR sulla tessera digitale</strong></label></p>';
+		echo '<p><label><input type="checkbox" name="card_qr_enabled" value="1"' . checked( Settings::card_qr_enabled(), true, false ) . '> <strong>QR sulla tessera digitale</strong></label><br>'
+			. '<span class="description">Ogni socio trova nella sua area riservata un QR: chi lo scansiona (anche senza accedere al sito) vede subito se la tessera è <strong>valida in questo momento</strong>, con nome, tipo, numero e scadenza e nient\'altro. Il QR non cambia quando la tessera si rinnova. Gli ospiti non hanno tessera.</span></p>';
+		echo '<p><label><input type="checkbox" name="ticket_qr_enabled" value="1"' . checked( Settings::tickets_enabled(), true, false ) . '> <strong>Biglietti QR delle prenotazioni</strong></label><br>'
+			. '<span class="description">Rende disponibile, nella scheda di ogni evento, l\'opzione "Biglietto QR" (da attivare evento per evento) e la lettura dei QR all\'ingresso.</span></p>';
+		echo '<p><label><input type="checkbox" name="wallet_enabled" value="1"' . checked( Settings::wallet_enabled(), true, false ) . '> <strong>Apple Wallet e Google Wallet</strong></label><br>'
+			. '<span class="description">Aggiunge i pulsanti per salvare la tessera nel telefono. Richiede le credenziali di Apple e/o Google, da inserire qui sotto dopo averlo attivato.</span></p>';
 		submit_button( 'Salva', 'primary', 'submit', false );
 		Ui::form_close();
-		echo '<p class="description">Gli ospiti non hanno tessera. Il QR contiene solo un codice di verifica firmato (non dati personali) e non si può costruire a mano per un altro socio. '
-			. 'I <strong>biglietti QR delle prenotazioni</strong> sono un\'impostazione a parte, per singolo evento: si attivano nella scheda dell\'evento.</p>';
-		Ui::form_open( 'apse_regen_qr', Ui::url( 'apse-card' ), false, 'apse-inline' );
-		echo '<button class="button" data-confirm="Rigenerare tutti i QR? Quelli già stampati o salvati nei telefoni (tessere e biglietti) smetteranno di funzionare e i soci dovranno prendere il nuovo dalla loro area riservata.">Rigenera tutti i QR</button>';
-		Ui::form_close();
-		echo ' <span class="description">Da usare solo se un QR è stato diffuso per errore (vale anche per i biglietti degli eventi).</span></div>';
+		if ( Settings::card_qr_enabled() || Settings::tickets_enabled() ) {
+			Ui::form_open( 'apse_regen_qr', Ui::url( 'apse-card' ), false, 'apse-inline' );
+			echo '<p><button class="button" data-confirm="Rigenerare tutti i QR? Quelli già stampati o salvati nei telefoni (tessere e biglietti) smetteranno di funzionare e i soci dovranno prendere il nuovo dalla loro area riservata.">Rigenera tutti i QR</button> '
+				. '<span class="description">Da usare solo se un QR è stato diffuso per errore (vale anche per i biglietti degli eventi).</span></p>';
+			Ui::form_close();
+		}
+		echo '</div>';
 	}
 
 	private static function apple_card(): void {

@@ -42,6 +42,10 @@ final class DashboardPage {
 		echo '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
+		self::quick_cash();
+		self::renewals();
+		self::expected_guests();
+
 		$requests = \ApSemplice\AccessRequests::pending();
 		if ( $requests ) {
 			echo '<div class="apse-card"><h2>Richieste di accesso (' . count( $requests ) . ')</h2><p class="description">Dal "Primo accesso" del sito: chi non è stato riconosciuto, chi chiede di cambiare email e chi si è attivato col solo cellulare.</p><ul>';
@@ -89,5 +93,83 @@ final class DashboardPage {
 			echo '</div>';
 		}
 		Ui::footer();
+	}
+
+	/** Cassa rapida: un incasso o una spesa semplici in pochi campi (per il resto c'è la Contabilità). */
+	private static function quick_cash(): void {
+		$ledger   = Plugin::ledger();
+		$accounts = array();
+		foreach ( $ledger->accounts() as $a ) {
+			$accounts[ $a['id'] ] = $a['name'];
+		}
+		$cats = array();
+		foreach ( array( 'donation', 'other_income', 'general_cost' ) as $k ) {
+			$id = $ledger->category_id_of_kind( $k );
+			if ( $id ) {
+				$cats[ $id ] = ( \ApSemplice\Labels::category_kinds()[ $k ][2] ? 'Spesa: ' : 'Incasso: ' ) . \ApSemplice\Labels::category_kinds()[ $k ][0];
+			}
+		}
+		$default = $ledger->default_account_for( 'cash' );
+		echo '<div class="apse-card"><h2>Cassa rapida</h2>';
+		Ui::form_open( 'apse_quick_cash', Ui::url( 'apse' ) );
+		echo '<p><select name="category_id" required>' . Ui::options( $cats, null ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<input type="text" name="amount" inputmode="decimal" placeholder="0,00" size="8" required> € </p>'
+			. '<p><input type="text" name="description" class="regular-text" placeholder="Descrizione" required></p>'
+			. '<p><select name="method">' . Ui::options( \ApSemplice\Labels::methods(), 'cash' ) . '</select> sul conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><button class="button button-primary">Registra</button> <a href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Incasso completo (quote, attività)</a> · <a href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Spesa completa</a></p>';
+		Ui::form_close();
+		echo '</div>';
+	}
+
+	/** Soci con la tessera scaduta o in scadenza nei prossimi 30 giorni. */
+	private static function renewals(): void {
+		$today = current_time( 'Y-m-d' );
+		$soon  = gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) );
+		$list  = array();
+		foreach ( Plugin::people()->search() as $p ) {
+			if ( MemberType::GUEST === $p['type'] || empty( $p['active_until'] ) || MemberType::is_auto_renewed( $p['type'] ) ) {
+				continue;
+			}
+			if ( $p['active_until'] <= $soon ) {
+				$list[] = $p;
+			}
+		}
+		if ( ! $list ) {
+			return;
+		}
+		usort( $list, function ( $a, $b ) {
+			return strcmp( $a['active_until'], $b['active_until'] );
+		} );
+		echo '<div class="apse-card"><h2>Soci da rinnovare (' . count( $list ) . ')</h2><p class="description">Tessera scaduta o in scadenza entro 30 giorni.</p><ul>';
+		foreach ( array_slice( $list, 0, 10 ) as $p ) {
+			$expired = $p['active_until'] < $today;
+			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">'
+				. ( $expired ? 'scaduta il ' : 'scade il ' ) . esc_html( Ui::date( $p['active_until'] ) ) . '</span> ' . Ui::contact_links( $p ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</ul>' . ( count( $list ) > 10 ? '<p><a href="' . esc_url( Ui::url( 'apse-people', array( 'status' => 'inactive' ) ) ) . '">Vedi tutti →</a></p>' : '' ) . '</div>';
+	}
+
+	/** Ospiti prenotati ai prossimi eventi che hanno già raggiunto la soglia: da invitare a iscriversi. */
+	private static function expected_guests(): void {
+		$acts = Plugin::activities();
+		$ov   = Plugin::people()->guest_overview();
+		$rows = array();
+		foreach ( $acts->upcoming_sessions( 5 ) as $s ) {
+			foreach ( $acts->bookings_for_session( (int) $s['id'] ) as $b ) {
+				if ( MemberType::GUEST === $b['type'] && 'booked' === $b['status'] && ! empty( $ov[ (int) $b['person_id'] ]['flag'] ) ) {
+					$rows[] = array( 'session' => $s, 'booking' => $b, 'overview' => $ov[ (int) $b['person_id'] ] );
+				}
+			}
+		}
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="apse-card"><h2>Ospiti attesi che dovrebbero iscriversi (' . count( $rows ) . ')</h2><p class="description">Prenotati ai prossimi eventi, hanno già raggiunto la soglia di partecipazioni per i non soci.</p><ul>';
+		foreach ( $rows as $r ) {
+			$b = $r['booking'];
+			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $b['first_name'] . ' ' . $b['last_name'] ) . '</a> <span class="description">a '
+				. esc_html( $r['session']['activity_name'] ) . ' il ' . esc_html( Ui::date( $r['session']['session_date'] ) ) . ' · ' . (int) $r['overview']['total'] . ' partecipazioni</span> ' . Ui::contact_links( $b ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</ul></div>';
 	}
 }

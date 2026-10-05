@@ -50,7 +50,7 @@ final class TicketVerify {
 		$activity = $session ? $acts->get( (int) $session['activity_id'] ) : null;
 		$person   = Plugin::people()->get( $parsed[1] );
 		$booking  = $acts->booking( $parsed[0], $parsed[1] );
-		if ( ! $session || ! $activity || empty( $activity['booking_qr'] ) || ! $person || ! $booking ) {
+		if ( ! Settings::tickets_enabled() || ! $session || ! $activity || empty( $activity['booking_qr'] ) || ! $person || ! $booking ) {
 			return array_merge( $none, array( 'status' => 'invalid' ) );
 		}
 		$row = null;

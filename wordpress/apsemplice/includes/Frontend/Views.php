@@ -233,7 +233,7 @@ final class Views {
 
 	/** Biglietto QR di una prenotazione: solo per gli eventi per cui il gestore l'ha attivato. */
 	private static function ticket_qr( array $b ): string {
-		if ( empty( $b['booking_qr'] ) || empty( $b['active'] ) ) {
+		if ( ! Settings::tickets_enabled() || empty( $b['booking_qr'] ) || empty( $b['active'] ) ) {
 			return '';
 		}
 		$url = Settings::ticket_url( (int) $b['session_id'], (int) $b['person_id'] );
@@ -418,7 +418,7 @@ final class Views {
 			foreach ( $guests as $g ) {
 				$tickets = '';
 				foreach ( Plugin::activities()->bookings_for_person( (int) $g['id'] ) as $b ) { // biglietti QR degli eventi che li prevedono
-					if ( $b['active'] && $b['session_date'] >= $today && ! empty( $b['booking_qr'] ) ) {
+					if ( $b['active'] && $b['session_date'] >= $today && Settings::tickets_enabled() && ! empty( $b['booking_qr'] ) ) {
 						$tickets .= '<div class="apsf-small">' . esc_html( $b['activity_name'] ) . ' · ' . esc_html( self::date_long( $b['session_date'] ) ) . '</div>' . self::ticket_qr( $b );
 					}
 				}
@@ -566,7 +566,7 @@ final class Views {
 				. '<div class="apsf-small apsf-muted">' . esc_html( MemberType::GUEST === $b['type'] ? 'Ospite' . $host : MemberType::label( $b['type'] ) ) . '</div>'
 				. ( MemberType::GUEST === $b['type'] ? self::guest_note( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . $pay . '</div><div class="apsf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		$can_scan = ! empty( $a['booking_qr'] ) && $s['session_date'] === $today;
+		$can_scan = Settings::tickets_enabled() && ! empty( $a['booking_qr'] ) && $s['session_date'] === $today;
 		$scan     = '';
 		if ( $can_scan ) {
 			$scan = '<div class="apsf-scan"><button type="button" class="apsf-btn" data-apsf-scan>📷 Scansiona il QR del biglietto</button> '

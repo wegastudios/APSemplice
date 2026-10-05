@@ -66,6 +66,8 @@ final class Actions {
 			'apse_fund_settle'        => 'fund_settle',
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
+			'apse_quick_cash'         => 'quick_cash',
+			'apse_save_payment_settings' => 'save_payment_settings',
 			'apse_create_pages'       => 'create_pages',
 			'apse_import_preview'     => 'import_preview',
 			'apse_import_apply'       => 'import_apply',
@@ -472,6 +474,33 @@ final class Actions {
 
 	// ---------- Impostazioni ----------
 
+	/** Cassa rapida della Bacheca: un incasso o una spesa semplici. */
+	private static function quick_cash( array $p ): array {
+		$ledger = Plugin::ledger();
+		$cents  = Money::parse( $p['amount'] ?? '' );
+		if ( null === $cents || $cents <= 0 ) {
+			throw new \InvalidArgumentException( 'Indica un importo maggiore di zero.' );
+		}
+		$cat = null;
+		foreach ( $ledger->categories() as $c ) {
+			if ( (int) $c['id'] === (int) ( $p['category_id'] ?? 0 ) ) {
+				$cat = $c;
+			}
+		}
+		if ( ! $cat || ! in_array( $cat['kind'], array( 'donation', 'other_income', 'general_cost' ), true ) ) {
+			throw new \InvalidArgumentException( 'Scegli cosa registrare.' );
+		}
+		$date   = current_time( 'Y-m-d' );
+		$common = array( 'date' => $date, 'account_id' => (int) ( $p['account_id'] ?? 0 ), 'method' => (string) ( $p['method'] ?? 'cash' ) );
+		$desc   = trim( (string) ( $p['description'] ?? '' ) );
+		if ( 'general_cost' === $cat['kind'] ) {
+			$ledger->record_expense( $common + array( 'category_id' => (int) $cat['id'], 'amount_cents' => $cents, 'description' => $desc ) );
+			return array( Ui::url( 'apse' ), 'Spesa registrata: ' . Money::format( $cents ) . '.' );
+		}
+		$ledger->record_receipt( $common + array( 'lines' => array( array( 'category_id' => (int) $cat['id'], 'amount_cents' => $cents, 'description' => $desc ) ) ) );
+		return array( Ui::url( 'apse' ), 'Incasso registrato: ' . Money::format( $cents ) . '.' );
+	}
+
 	private static function save_settings( array $p ): array {
 		$txt = function ( string $k ) use ( $p ) {
 			return sanitize_text_field( $p[ $k ] ?? '' );
@@ -490,6 +519,17 @@ final class Actions {
 				'accent_color'            => ! empty( $p['accent_custom'] ) ? $txt( 'accent_color' ) : '',
 				'payment_hint'            => sanitize_textarea_field( $p['payment_hint'] ?? '' ),
 				'gate_message'            => $txt( 'gate_message' ),
+			)
+		);
+		return array( Ui::url( 'apse-settings' ), 'Impostazioni salvate.' );
+	}
+
+	private static function save_payment_settings( array $p ): array {
+		$txt = function ( string $k ) use ( $p ) {
+			return sanitize_text_field( $p[ $k ] ?? '' );
+		};
+		Settings::update(
+			array(
 				'payment_provider'        => $txt( 'payment_provider' ),
 				'stripe_mode'             => $txt( 'stripe_mode' ),
 				'stripe_publishable_key'  => $txt( 'stripe_publishable_key' ),
@@ -506,11 +546,11 @@ final class Actions {
 			}
 		}
 		$check = PaymentConfig::validate( Settings::payment_config() );
-		$msg   = 'Impostazioni salvate.';
+		$msg   = 'Impostazioni dei pagamenti salvate.';
 		if ( $check['errors'] ) {
-			$msg .= ' Attenzione ai pagamenti online: ' . implode( ' ', $check['errors'] );
+			$msg .= ' Attenzione: ' . implode( ' ', $check['errors'] );
 		}
-		return array( Ui::url( 'apse-settings' ), $msg );
+		return array( Ui::url( 'apse-payments' ), $msg );
 	}
 
 	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
@@ -521,7 +561,7 @@ final class Actions {
 		if ( ! $res['ok'] ) {
 			throw new \InvalidArgumentException( $res['message'] );
 		}
-		return array( Ui::url( 'apse-settings' ), $res['message'] );
+		return array( Ui::url( 'apse-payments' ), $res['message'] );
 	}
 
 	private static function check_payments( array $p ): array {
@@ -589,8 +629,8 @@ final class Actions {
 	}
 
 	private static function save_card( array $p ): array {
-		Settings::update( array( 'card_qr_enabled' => ! empty( $p['card_qr_enabled'] ) ? 1 : 0 ) );
-		return array( Ui::url( 'apse-card' ), ! empty( $p['card_qr_enabled'] ) ? 'QR della tessera attivato.' : 'QR della tessera disattivato.' );
+		Settings::update( array( 'card_qr_enabled' => ! empty( $p['card_qr_enabled'] ) ? 1 : 0, 'ticket_qr_enabled' => ! empty( $p['ticket_qr_enabled'] ) ? 1 : 0, 'wallet_enabled' => ! empty( $p['wallet_enabled'] ) ? 1 : 0 ) );
+		return array( Ui::url( 'apse-card' ), 'Impostazioni salvate.' );
 	}
 
 	/** Contenuto di un file caricato (null se non ne è stato scelto uno). */
