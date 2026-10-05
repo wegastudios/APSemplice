@@ -90,6 +90,9 @@ class PeopleService {
 						if ( MemberType::GUEST === $r['type'] ) {
 							return false;
 						}
+						if ( 'noaccess' === $f['status'] ) {
+							return empty( $r['wp_user_id'] );
+						}
 						$active = ! empty( $r['active_until'] ) && $r['active_until'] >= $today;
 						return 'active' === $f['status'] ? $active : ! $active;
 					}
@@ -191,7 +194,7 @@ class PeopleService {
 		$this->assert_valid( $d, null );
 
 		$user_id = null;
-		if ( MemberType::is_member( $d['type'] ) ) {
+		if ( MemberType::is_member( $d['type'] ) && null !== $d['email'] ) { // senza email: nessun utente finché il socio non si attiva col suo link
 			$user_id = $this->ensure_wp_user( $d, null );
 		}
 		$now = Db::now();
@@ -222,6 +225,43 @@ class PeopleService {
 		}
 		Audit::log( 'person.created', 'person', $id, array( 'type' => $d['type'] ) );
 		return $id;
+	}
+
+	/**
+	 * Attiva l'accesso di un socio registrato senza email: crea il suo utente WordPress con l'email e la password scelte da lui.
+	 *
+	 * @return int id dell'utente WordPress
+	 * @throws \InvalidArgumentException
+	 */
+	public function activate( int $id, string $email, string $phone, string $password ): int {
+		$p = $this->get( $id );
+		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Socio non trovato.' );
+		}
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			throw new \InvalidArgumentException( 'L\'accesso è già attivo.' );
+		}
+		$email = strtolower( trim( $email ) );
+		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+			throw new \InvalidArgumentException( 'Inserisci un indirizzo email valido.' );
+		}
+		if ( ! Phone::is_valid( $phone ) ) {
+			throw new \InvalidArgumentException( 'Inserisci il tuo numero di cellulare.' );
+		}
+		if ( strlen( $password ) < 8 ) {
+			throw new \InvalidArgumentException( 'La password deve avere almeno 8 caratteri.' );
+		}
+		if ( get_user_by( 'email', $email ) ) {
+			throw new \InvalidArgumentException( 'Questa email è già registrata sul sito: usa "Password dimenticata" oppure scrivi alla segreteria.' );
+		}
+		$this->update( $id, array( 'email' => $email, 'phone' => trim( $phone ) ) ); // crea l'utente WordPress
+		$uid = (int) ( $this->get( $id )['wp_user_id'] ?? 0 );
+		if ( ! $uid ) {
+			throw new \InvalidArgumentException( 'Non è stato possibile creare l\'accesso: riprova o scrivi alla segreteria.' );
+		}
+		wp_set_password( $password, $uid );
+		Audit::log( 'person.activated', 'person', $id );
+		return $uid;
 	}
 
 	/** Persone (soci e ospiti) con lo stesso cellulare, comunque sia scritto (+39, spazi, trattini). */
@@ -359,7 +399,9 @@ class PeopleService {
 		$user_id = $current['wp_user_id'] ? (int) $current['wp_user_id'] : null;
 		if ( MemberType::is_member( $d['type'] ) ) {
 			if ( null === $user_id ) {
-				$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio
+				if ( null !== $d['email'] ) {
+					$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio, o socio che ha dato l'email
+				}
 			} else {
 				$this->sync_wp_user( $user_id, $d );
 			}

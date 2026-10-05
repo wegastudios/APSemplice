@@ -73,9 +73,9 @@
 			var t = typeSel.value, guest = t === 'guest';
 			$$('.apse-row-host').forEach(function (r) { r.style.display = guest ? '' : 'none'; });
 			$$('.apse-row-card').forEach(function (r) { r.style.display = guest ? 'none' : ''; });
-			$$('.apse-email-req, .apse-email-note').forEach(function (r) { r.style.display = guest ? 'none' : ''; });
+			$$('.apse-email-note').forEach(function (r) { r.style.display = guest ? 'none' : ''; });
 			var hint = $('#apse-type-hint'); if (hint) { hint.textContent = hints[t] || ''; }
-			var mail = $('#apse-email'); if (mail) { mail.required = !guest; }
+			var mail = $('#apse-email'); if (mail) { mail.required = false; }
 		};
 		typeSel.addEventListener('change', applyType);
 		applyType();

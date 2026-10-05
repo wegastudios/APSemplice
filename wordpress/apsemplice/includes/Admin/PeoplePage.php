@@ -35,7 +35,7 @@ final class PeoplePage {
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-people">';
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
-		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata' ), $status, 'Qualsiasi stato' ) . '</select> ';
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
@@ -53,6 +53,9 @@ final class PeoplePage {
 				$state = '<span class="apse-neg">Scaduta il ' . Ui::date( $p['active_until'] ) . '</span>';
 			} else {
 				$state = '<span class="apse-neg">Non iscritto</span>';
+			}
+			if ( MemberType::is_member( $p['type'] ) && empty( $p['wp_user_id'] ) ) {
+				$state .= '<br>' . self::invite_link( $p );
 			}
 			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
 			echo '<td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
@@ -94,8 +97,8 @@ final class PeoplePage {
 			. '<p class="description">Assegnata a mano, univoca, modificabile.</p></td></tr>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="first_name" value="' . esc_attr( $val( 'first_name' ) ) . '" class="regular-text" required></td></tr>';
 		echo '<tr><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
-		echo '<tr><th>Email <span class="apse-email-req">*</span></th><td><input type="email" name="email" id="apse-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
-			. '<p class="description apse-email-note">Obbligatoria per i soci: ogni socio corrisponde a un utente WordPress.</p></td></tr>';
+		echo '<tr><th>Email</th><td><input type="email" name="email" id="apse-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
+			. '<p class="description apse-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area riservata. Senza, serve almeno il cellulare o il numero di tessera, e il socio si attiva dopo con un link (da mandare su WhatsApp).</p></td></tr>';
 		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
@@ -115,6 +118,7 @@ final class PeoplePage {
 
 		if ( $p ) {
 			echo '<div class="apse-col">';
+			self::panel_access( $p );
 			self::panel_guest_status( $p );
 			self::panel_membership( $p );
 			self::panel_card_qr( $p );
@@ -162,6 +166,37 @@ final class PeoplePage {
 				echo '<tr><td>' . esc_html( $m['social_year'] ) . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 			echo '</tbody></table>';
+		}
+		echo '</div>';
+	}
+
+	/** Per un socio senza accesso: segnalazione e pulsante che apre WhatsApp con il link di attivazione già pronto. */
+	private static function invite_link( array $p ): string {
+		$wa = \ApSemplice\Phone::whatsapp( (string) $p['phone'] );
+		if ( '' === $wa ) {
+			return '<span class="apse-warn">Senza accesso</span> <span class="description">(senza cellulare: apri la scheda per il link)</span>';
+		}
+		return '<span class="apse-warn">Senza accesso</span> <a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \ApSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia link</a>';
+	}
+
+	/** Accesso all'area riservata di un socio: attivo, oppure link di attivazione da mandare (WhatsApp o copia). */
+	private static function panel_access( array $p ): void {
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			return;
+		}
+		echo '<div class="apse-card"><h2>Accesso all\'area riservata</h2>';
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			echo '<p><strong class="apse-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . '</p></div>';
+			return;
+		}
+		$url = \ApSemplice\Frontend\Activation::url( (int) $p['id'] );
+		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e si attiva da solo (vale ' . (int) \ApSemplice\ActivationToken::VALID_DAYS . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
+			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
+		$wa = \ApSemplice\Phone::whatsapp( (string) $p['phone'] );
+		if ( '' !== $wa ) {
+			echo '<p><a class="button button-primary" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \ApSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia il link su WhatsApp</a></p>';
+		} else {
+			echo '<p class="description">Senza cellulare: copia il link e mandalo come preferisci. Oppure aggiungi l\'email qui sopra: l\'accesso si crea subito.</p>';
 		}
 		echo '</div>';
 	}

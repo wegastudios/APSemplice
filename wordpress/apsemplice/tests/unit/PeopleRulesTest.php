@@ -48,6 +48,29 @@ final class RulesTest extends TestCase {
 		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'email' => 'non-una-email' ) ) ) );
 	}
 
+	public function test_member_without_email_needs_phone_or_card_number(): void {
+		foreach ( array( 'founder', 'ordinary', 'volunteer' ) as $t ) {
+			$this->assertSame( array(), Rules::validate_person( $this->person( array( 'type' => $t, 'email' => '', 'phone' => '333 1234567' ) ) ), "$t con il cellulare" );
+			$this->assertSame( array(), Rules::validate_person( $this->person( array( 'type' => $t, 'email' => '', 'card_number' => '57' ) ) ), "$t con la tessera" );
+		}
+		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'email' => '', 'phone' => '123' ) ) ), 'un cellulare non valido non basta' );
+	}
+
+	public function test_import_members_without_email(): void {
+		$plan = function ( string $csv, array $existing = array() ) {
+			return PeopleCsv::plan( PeopleCsv::parse( $csv )['rows'], $existing );
+		};
+		$this->assertSame( 'create', $plan( "Nome;Cognome;Cellulare\nLuca;Neri;333 1234567" )[0]['action'] );
+		$this->assertSame( 'create', $plan( "Tessera;Nome;Cognome\n30;Luca;Neri" )[0]['action'] );
+		$this->assertSame( 'error', $plan( "Nome;Cognome;Cellulare\nLuca;Neri;12" )[0]['action'], 'senza email né tessera il cellulare deve essere valido' );
+		$existing = array( array( 'id' => 5, 'card' => null, 'first' => 'Luca', 'last' => 'Nerone', 'email' => null, 'tax' => null, 'phone' => '+39 333 1234567' ) );
+		$p        = $plan( "Nome;Cognome;Cellulare\nLuca;Neri;333-1234567", $existing );
+		$this->assertSame( 'update', $p[0]['action'], 'senza email il cellulare riconosce il socio già presente' );
+		$this->assertSame( 5, $p[0]['matched_id'] );
+		$two = $plan( "Nome;Cognome;Cellulare\nLuca;Neri;333 1111111\nPaola;Gialli;333 2222222" );
+		$this->assertSame( array( 'create', 'create' ), array_column( $two, 'action' ), 'più soci senza email nello stesso file non si scontrano' );
+	}
+
 	public function test_guest_needs_a_member_host_and_no_card(): void {
 		$guest = $this->person( array( 'type' => 'guest', 'email' => '', 'phone' => '333 1234567', 'host_person_id' => 5 ) );
 		$this->assertNotEmpty( Rules::validate_person( $guest, null ) );

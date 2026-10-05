@@ -22,12 +22,12 @@ final class Rules {
 		}
 
 		$email = trim( (string) ( $d['email'] ?? '' ) );
-		if ( '' === $email ) {
-			if ( MemberType::requires_email( $type ) ) {
-				$errors[] = 'L\'email è obbligatoria per i soci: ogni socio corrisponde a un utente WordPress.';
-			}
-		} elseif ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+		if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
 			$errors[] = 'L\'email non è valida.';
+		} elseif ( '' === $email && MemberType::requires_email( $type )
+			&& '' === trim( (string) ( $d['card_number'] ?? '' ) ) && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
+			// L'email non è obbligatoria: un socio senza email si attiva dopo con un link. Serve però un modo per riconoscerlo.
+			$errors[] = 'Per un socio servono almeno l\'email, il cellulare o il numero di tessera.';
 		}
 
 		$card = trim( (string) ( $d['card_number'] ?? '' ) );

@@ -1991,6 +1991,76 @@ apse_ok( false !== strpos( $det2, 'Invia un avviso agli iscritti' ) && false !==
 remove_all_filters( 'pre_wp_mail' );
 wp_set_current_user( 1 );
 
+// ---------- Soci senza email: attivazione dell'accesso con un link ----------
+wp_set_current_user( 1 );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$Act = '\ApSemplice\Frontend\Activation';
+apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Senza', 'last_name' => 'Nulla' ) ); } ), 'soci: senza email, cellulare né tessera non si può registrare' );
+$nm = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Nora', 'last_name' => 'Senzamail', 'phone' => '334 1234567', 'card_number' => '881' ) );
+$cm = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Carlo', 'last_name' => 'Soloturnessera', 'card_number' => '882' ) );
+$np = $people->get( $nm );
+apse_ok( empty( $np['wp_user_id'] ) && null === $np['email'] && empty( $people->get( $cm )['wp_user_id'] ), 'soci senza email: registrati con cellulare o con la sola tessera, senza utente WordPress finché non si attivano' );
+apse_ok( ! $people->is_active_member( $nm ), 'socio senza email: nessun utente fittizio e nessuna email finta' );
+
+// il link
+$link  = $Act::url( $nm );
+parse_str( (string) wp_parse_url( $link, PHP_URL_QUERY ), $q_act );
+$param = (string) $q_act['apse_activate'];
+apse_ok( 'ok' === $Act::resolve( $param )['status'] && false !== strpos( $Act::page( $param ), 'Ciao Nora' ) && false !== strpos( $Act::page( $param ), 'name="password2"' ) && false !== strpos( $Act::page( $param ), '334 1234567' ), 'link di attivazione: pagina con email, cellulare (già compilato) e password' );
+apse_ok( 'expired' === $Act::resolve( $param, time() + 40 * DAY_IN_SECONDS )['status'] && 'invalid' === $Act::resolve( 'boh' )['status'] && 'invalid' === $Act::resolve( preg_replace( '/^\d+\./', ( $nm + 1 ) . '.', $param ) )['status'], 'link: scaduto dopo 30 giorni, falso o di un altro socio = non vale' );
+apse_ok( false !== strpos( $Act::page( 'boh' ), 'Attivazione non disponibile' ), 'link non valido: pagina di errore' );
+License::set_state( 'unpaid', $today );
+apse_ok( 'suspended' === $Act::resolve( $param )['status'], 'licenza non in regola: l\'attivazione è sospesa' );
+delete_option( License::OPT_STATE );
+
+// l'attivazione: controlli
+$ok_post = array( 'email' => 'Nora.Senzamail@Example.com', 'phone' => '334 1234567', 'password' => 'Segreta123!', 'password2' => 'Segreta123!' );
+$bad     = function ( array $over ) use ( $Act, $param, $ok_post ) {
+	$r = $Act::complete( $param, array_merge( $ok_post, $over ) );
+	return $r['ok'] ? '' : $r['error'];
+};
+apse_ok( false !== strpos( $bad( array( 'password2' => 'diversa' ) ), 'non coincidono' ) && false !== strpos( $bad( array( 'password' => 'corta', 'password2' => 'corta' ) ), '8 caratteri' ) && false !== strpos( $bad( array( 'email' => 'non-una-email' ) ), 'email valido' ) && false !== strpos( $bad( array( 'phone' => '12' ) ), 'cellulare' ), 'attivazione: password diverse o corte, email o cellulare non validi sono rifiutati' );
+apse_ok( false !== strpos( $bad( array( 'email' => 'esistente@example.com' ) ), 'già registrata' ) && empty( $people->get( $nm )['wp_user_id'] ), 'attivazione: un\'email già di un utente del sito è rifiutata (non si collega nessun account esistente)' );
+
+// l'attivazione riesce
+$res = $Act::complete( $param, $ok_post );
+$u   = get_userdata( (int) $res['user_id'] );
+$np2 = $people->get( $nm );
+apse_ok( $res['ok'] && $u && 'nora.senzamail@example.com' === $u->user_email && in_array( Plugin::ROLE_MEMBER, (array) $u->roles, true ) && (int) $np2['wp_user_id'] === (int) $u->ID && 'nora.senzamail@example.com' === $np2['email'], 'attivazione: nasce l\'utente WordPress (ruolo socio) con l\'email scelta, collegato al socio' );
+apse_ok( wp_check_password( 'Segreta123!', $u->user_pass, $u->ID ), 'attivazione: la password è quella scelta dal socio' );
+apse_ok( 'done' === $Act::resolve( $param )['status'] && false !== strpos( $Act::page( $param ), 'Attivazione non disponibile' ), 'attivazione: il link non serve più dopo l\'uso' );
+apse_ok( false !== strpos( $as( (int) $u->ID, '[apsemplice_tessera]' ), 'Nora' ), 'attivazione: il socio vede subito la sua area riservata' );
+apse_ok( in_array( 'person.activated', array_column( Audit::recent( 500 ), 'action' ), true ), 'registro azioni: attivazione tracciata' );
+
+// amministrazione: elenco, filtro e scheda
+wp_set_current_user( 1 );
+$list = apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Soloturnessera', array( 'status' => 'noaccess' ) );
+apse_ok( false !== strpos( $list, 'Senza accesso' ) && false === strpos( $list, 'Senzamail' ), 'elenco soci: il filtro "Senza accesso" mostra chi non si è ancora attivato (non chi l\'ha fatto)' );
+$ed = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area riservata', array( 'id' => $cm ) );
+apse_ok( false !== strpos( $ed, 'apse_activate=' ) && false !== strpos( $ed, 'Senza cellulare' ), 'scheda socio senza cellulare: il link da copiare' );
+$people->update( $cm, array( 'phone' => '335 7654321' ) );
+$ed2 = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area riservata', array( 'id' => $cm ) );
+apse_ok( false !== strpos( $ed2, 'https://wa.me/393357654321?text=' ), 'scheda socio: pulsante WhatsApp con il messaggio di invito' );
+$list2 = apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Invia link', array( 'status' => 'noaccess' ) );
+apse_ok( false !== strpos( $list2, 'wa.me/393357654321' ), 'elenco soci: pulsante "Invia link" su WhatsApp accanto a chi è senza accesso' );
+$inv = $Act::invite_text( $people->get( $cm ) );
+apse_ok( false !== strpos( $inv, 'apse_activate=' ) && false !== strpos( $inv, 'Carlo' ), 'messaggio di invito: nome e link' );
+apse_ok( false !== strpos( apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Facoltativa', array( 'type' => 'ordinary' ) ), 'Senza, serve almeno il cellulare' ), 'modulo socio: l\'email non è più obbligatoria' );
+
+// aggiungere l'email dopo: l'accesso si crea subito
+$people->update( $cm, array( 'email' => 'carlo.soloturnessera@example.com' ) );
+apse_ok( ! empty( $people->get( $cm )['wp_user_id'] ), 'se poi si aggiunge l\'email l\'utente WordPress si crea subito' );
+
+// import di soci senza email
+$csv     = $mkf( 'senzamail.csv', "Nome;Cognome;Cellulare;Tessera\r\nElio;Telefonico;336 1112233;\r\nPia;Tesserata;;883\r\nNora;Senzamail;334 1234567;\r\n" );
+$pv      = ImportService::preview_file( $csv, 'senzamail.csv', array() );
+$acts_pv = array_column( $pv['people']['plan'], 'action' );
+apse_ok( array( 'create', 'create', 'update' ) === $acts_pv, 'import: soci senza email creati col cellulare o la tessera; chi ha già il cellulare si riconosce (aggiorna)' );
+ImportService::apply( $pv, array() );
+$elio = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE last_name = 'Telefonico'", ARRAY_A );
+apse_ok( $elio && empty( $elio['wp_user_id'] ) && null === $elio['email'], 'import: socio senza email registrato, senza utente fittizio' );
+@unlink( $csv );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

@@ -13,6 +13,7 @@ final class Front {
 		PayReturn::register();
 		CardVerify::register();
 		TicketVerify::register();
+		Activation::register();
 		\ApSemplice\Wallet::register();
 		Blocks::register();
 		ElementorSupport::register();

@@ -73,7 +73,7 @@ final class ImportService {
 		foreach ( Plugin::people()->search() as $e ) {
 			$out[] = array(
 				'id' => (int) $e['id'], 'card' => $e['card_number'], 'first' => $e['first_name'], 'last' => $e['last_name'], 'email' => $e['email'],
-				'tax' => $e['tax_code'], 'type' => $e['type'], 'host_id' => (int) $e['host_person_id'],
+				'tax' => $e['tax_code'], 'phone' => $e['phone'], 'type' => $e['type'], 'host_id' => (int) $e['host_person_id'],
 			);
 		}
 		return $out;

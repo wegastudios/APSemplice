@@ -179,6 +179,7 @@ final class PeopleCsv {
 		$by_card = array();
 		$by_mail = array();
 		$by_tax  = array();
+		$by_phone = array();
 		$by_name = array();
 		$guests_of   = array();
 		$by_name_all = array();
@@ -196,6 +197,9 @@ final class PeopleCsv {
 			}
 			if ( ! empty( $e['tax'] ) ) {
 				$by_tax[ strtoupper( $e['tax'] ) ] = $e;
+			}
+			if ( ! empty( $e['phone'] ) && Phone::is_valid( (string) $e['phone'] ) ) {
+				$by_phone[ Phone::key( (string) $e['phone'] ) ] = $e;
 			}
 			$by_name[ Text::normalize( $e['first'] ) . '|' . Text::normalize( $e['last'] ) ][] = $e;
 			$by_name_all[ Text::normalize( $e['first'] . $e['last'] ) ][]                     = $e;
@@ -235,19 +239,24 @@ final class PeopleCsv {
 				continue;
 			}
 			$email = $r['email'];
-			if ( null === $email || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
-				$plans[] = $err( null === $email ? 'Email mancante (obbligatoria per i soci)' : 'Email non valida: ' . $email );
+			if ( null !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+				$plans[] = $err( 'Email non valida: ' . $email );
+				continue;
+			}
+			// L'email non è obbligatoria: un socio senza email si attiva dopo (link su WhatsApp). Serve però un modo per riconoscerlo.
+			if ( null === $email && null === $r['card'] && ! Phone::is_valid( (string) $r['phone'] ) ) {
+				$plans[] = $err( 'Servono almeno l\'email, il cellulare o il numero di tessera' );
 				continue;
 			}
 
 			$card = null === $r['card'] ? null : Text::lower( $r['card'] );
-			$mail = Text::lower( $email );
+			$mail = null === $email ? null : Text::lower( $email );
 			$tax  = $r['tax'];
 			if ( null !== $card && isset( $cards_in_file[ $card ] ) ) {
 				$plans[] = $err( 'Tessera ' . $r['card'] . ' già usata alla riga ' . $cards_in_file[ $card ] . ' del file' );
 				continue;
 			}
-			if ( isset( $mails_in_file[ $mail ] ) ) {
+			if ( null !== $mail && isset( $mails_in_file[ $mail ] ) ) {
 				$plans[] = $err( 'Email già presente alla riga ' . $mails_in_file[ $mail ] . ' del file' );
 				continue;
 			}
@@ -257,8 +266,10 @@ final class PeopleCsv {
 			}
 
 			$card_holder = null !== $card ? ( $by_card[ $card ] ?? null ) : null;
-			$mail_holder = $by_mail[ $mail ] ?? null;
+			$mail_holder = null !== $mail ? ( $by_mail[ $mail ] ?? null ) : null;
 			$tax_holder  = null !== $tax ? ( $by_tax[ $tax ] ?? null ) : null;
+			// Senza email, il cellulare riconosce un socio già presente.
+			$phone_holder = null === $mail && Phone::is_valid( (string) $r['phone'] ) ? ( $by_phone[ Phone::key( (string) $r['phone'] ) ] ?? null ) : null;
 			$name_key    = Text::normalize( $r['first'] ) . '|' . Text::normalize( $r['last'] );
 			$by_name_rows = $by_name[ $name_key ] ?? array();
 
@@ -269,18 +280,18 @@ final class PeopleCsv {
 				continue;
 			}
 			$holders = array();
-			foreach ( array( $card_holder, $mail_holder, $tax_holder ) as $h ) {
+			foreach ( array( $card_holder, $mail_holder, $tax_holder, $phone_holder ) as $h ) {
 				if ( $h ) {
 					$holders[ $h['id'] ] = $h;
 				}
 			}
 			if ( count( $holders ) > 1 ) {
 				$names = implode( ' / ', array_map( $label, array_values( $holders ) ) );
-				$plans[] = $err( 'Tessera, email e codice fiscale indicano persone diverse: ' . $names );
+				$plans[] = $err( 'Tessera, email, cellulare e codice fiscale indicano persone diverse: ' . $names );
 				continue;
 			}
 			$match = $holders ? reset( $holders ) : null;
-			$how   = $card_holder ? 'per tessera' : ( $mail_holder ? 'per email' : 'per codice fiscale' );
+			$how   = $card_holder ? 'per tessera' : ( $mail_holder ? 'per email' : ( $phone_holder ? 'per cellulare' : 'per codice fiscale' ) );
 			if ( ! $match && 1 === count( $by_name_rows ) ) {
 				$match = $by_name_rows[0];
 				$how   = 'per nome e cognome';
@@ -305,7 +316,9 @@ final class PeopleCsv {
 			if ( null !== $card ) {
 				$cards_in_file[ $card ] = $r['line'];
 			}
-			$mails_in_file[ $mail ] = $r['line'];
+			if ( null !== $mail ) {
+				$mails_in_file[ $mail ] = $r['line'];
+			}
 			if ( null !== $tax ) {
 				$tax_in_file[ $tax ] = $r['line'];
 			}
