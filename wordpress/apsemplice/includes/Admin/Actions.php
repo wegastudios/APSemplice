@@ -59,6 +59,9 @@ final class Actions {
 			'apse_save_transfer'      => 'save_transfer',
 			'apse_void_tx'            => 'void_tx',
 			'apse_add_account'        => 'add_account',
+			'apse_update_account'     => 'update_account',
+			'apse_close_account'      => 'close_account',
+			'apse_reopen_account'     => 'reopen_account',
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_create_pages'       => 'create_pages',
@@ -408,8 +411,23 @@ final class Actions {
 	// ---------- Conti ----------
 
 	private static function add_account( array $p ): array {
-		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
+		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0, (string) ( $p['kind'] ?? 'real' ) );
 		return array( Ui::url( 'apse-accounts' ), 'Conto aggiunto.' );
+	}
+
+	private static function update_account( array $p ): array {
+		Plugin::ledger()->update_account( (int) ( $p['id'] ?? 0 ), (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), (string) ( $p['kind'] ?? 'real' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
+		return array( Ui::url( 'apse-accounts' ), 'Conto aggiornato: i saldi sono stati ricalcolati.' );
+	}
+
+	private static function close_account( array $p ): array {
+		Plugin::ledger()->close_account( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'apse-accounts' ), 'Conto chiuso.' );
+	}
+
+	private static function reopen_account( array $p ): array {
+		Plugin::ledger()->reopen_account( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'apse-accounts' ), 'Conto riaperto.' );
 	}
 
 	private static function cash_count( array $p ): array {

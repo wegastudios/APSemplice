@@ -2135,6 +2135,67 @@ apse_ok( false !== strpos( $as( 0, '[apsemplice_area_soci]' ), 'Primo accesso' )
 remove_all_filters( 'pre_wp_mail' );
 wp_set_current_user( 1 );
 
+// ---------- Conti: rinomina, saldo di partenza, chiusura, fondi ----------
+wp_set_current_user( 1 );
+$acc_id = $ledger->add_account( 'Conto prova', 'bank', 10000 );
+$bal_of = function ( int $id, bool $closed = false ) use ( $ledger ) {
+	foreach ( $ledger->balances( null, $closed ) as $b ) {
+		if ( (int) $b['id'] === $id ) {
+			return $b['balance'];
+		}
+	}
+	return null;
+};
+$ledger->update_account( $acc_id, 'Conto rinominato', 'cash', 'real', 25000 );
+apse_ok( 'Conto rinominato' === $ledger->account( $acc_id )['name'] && 'cash' === $ledger->account( $acc_id )['type'] && 25000 === $bal_of( $acc_id ), 'conti: si rinominano e il saldo di partenza cambia il saldo attuale' );
+$threw = false;
+try {
+	$ledger->update_account( $acc_id, '  ', 'cash', 'real', 0 );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'conti: il nome è obbligatorio' );
+$threw = false;
+try {
+	$ledger->close_account( $acc_id );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw && null !== $ledger->account( $acc_id ), 'conti: non si chiude un conto con dei soldi dentro' );
+$ledger->update_account( $acc_id, 'Conto rinominato', 'cash', 'real', 0 );
+$ledger->close_account( $acc_id );
+apse_ok( null === $ledger->account( $acc_id ) && ! in_array( $acc_id, array_map( 'intval', array_column( $ledger->accounts(), 'id' ) ), true ) && in_array( $acc_id, array_map( 'intval', array_column( $ledger->accounts( true ), 'id' ) ), true ), 'conti: chiuso, esce dagli elenchi dei movimenti ma resta consultabile' );
+$threw = false;
+try {
+	$ledger->record_expense( array( 'date' => $today, 'account_id' => $acc_id, 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'x' ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'conti: un conto chiuso non accetta movimenti' );
+$ledger->reopen_account( $acc_id );
+apse_ok( null !== $ledger->account( $acc_id ), 'conti: si può riaprire' );
+
+// fondo: soldi in cassa non dell'associazione
+$real_before = array_sum( array_column( array_filter( $ledger->balances(), function ( $b ) {
+	return 'fund' !== $b['kind'];
+} ), 'balance' ) );
+$fund_id     = $ledger->add_account( 'Fondo rimborso Mario', 'cash', 0, 'fund' );
+$rep0        = Plugin::reports()->period( $today, $today );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => $fund_id, 'method' => 'cash', 'person_id' => $guest, 'lines' => array( array( 'category_id' => $cat['other_income'], 'amount_cents' => 3000 ) ) ) );
+$real_after = array_sum( array_column( array_filter( $ledger->balances(), function ( $b ) {
+	return 'fund' !== $b['kind'];
+} ), 'balance' ) );
+$rep1        = Plugin::reports()->period( $today, $today );
+apse_ok( $real_before === $real_after && 3000 === $bal_of( $fund_id ) && $rep1['total_income'] === $rep0['total_income'] && $rep1['closing_total'] === $rep0['closing_total'] && 3000 === $rep1['funds_closing'], 'fondi: i soldi nel fondo non contano nelle disponibilità né nelle entrate del rendiconto' );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Fondo rimborso Mario' );
+apse_ok( false !== strpos( $dash, 'non dell\'associazione' ), 'fondi: la dashboard li mostra a parte' );
+apse_render( array( Admin\AccountsPage::class, 'render' ), 'Fondi (soldi di altri)' );
+$ledger->record_expense( array( 'date' => $today, 'account_id' => $fund_id, 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 3000, 'description' => 'Rimborso a Mario' ) );
+$ledger->close_account( $fund_id );
+apse_ok( 0 === $bal_of( $fund_id, true ) && null === $ledger->account( $fund_id ), 'fondi: pagato il rimborso il fondo è a zero e si chiude' );
+apse_render( array( Admin\AccountsPage::class, 'render' ), 'Conti chiusi' );
+apse_render( array( Admin\ReportsPage::class, 'render' ), 'fondo' );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

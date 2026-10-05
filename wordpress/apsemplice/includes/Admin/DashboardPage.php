@@ -10,7 +10,13 @@ defined( 'ABSPATH' ) || exit;
 final class DashboardPage {
 
 	public static function render(): void {
-		$balances = Plugin::ledger()->balances();
+		$all      = Plugin::ledger()->balances();
+		$balances = array_values( array_filter( $all, function ( $b ) {
+			return 'fund' !== $b['kind'];
+		} ) );
+		$funds    = array_values( array_filter( $all, function ( $b ) {
+			return 'fund' === $b['kind'];
+		} ) );
 		$year     = Settings::social_year();
 		$r        = Plugin::reports()->social_year( $year );
 		$name     = (string) Settings::get( 'association_name' );
@@ -27,7 +33,15 @@ final class DashboardPage {
 		foreach ( $balances as $b ) {
 			echo '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '</table><p><a href="' . esc_url( Ui::url( 'apse-accounts' ) ) . '">Conti e verifica saldi →</a></p></div>';
+		echo '</table>';
+		if ( $funds ) {
+			echo '<p class="description" style="margin-bottom:2px">Fondi (soldi in cassa non dell\'associazione): ' . Ui::money( array_sum( array_column( $funds, 'balance' ) ) ) . '</p><table class="apse-kv">'; // phpcs:ignore WordPress.Security.EscapeOutput
+			foreach ( $funds as $b ) {
+				echo '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</table>';
+		}
+		echo '<p><a href="' . esc_url( Ui::url( 'apse-accounts' ) ) . '">Conti e verifica saldi →</a></p></div>';
 
 		echo '<div class="apse-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="apse-kv">';
 		foreach ( MemberType::member_types() as $t ) {

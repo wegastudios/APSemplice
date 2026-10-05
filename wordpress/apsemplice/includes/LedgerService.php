@@ -21,16 +21,29 @@ class LedgerService {
 
 	// ---------- Conti e categorie ----------
 
-	public function accounts(): array {
-		return $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'accounts' ) . ' WHERE deleted_at IS NULL ORDER BY sort_order, name', ARRAY_A ) ?: array();
+	/** Conti aperti (di default) oppure anche quelli chiusi. */
+	public function accounts( bool $with_closed = false ): array {
+		return $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'accounts' ) . ' WHERE deleted_at IS NULL' . ( $with_closed ? '' : ' AND closed_at IS NULL' ) . ' ORDER BY sort_order, name', ARRAY_A ) ?: array();
 	}
 
+	/** Un conto aperto (i conti chiusi non accettano nuovi movimenti). */
 	public function account( int $id ): ?array {
+		$row = $this->account_any( $id );
+		return $row && null === $row['closed_at'] ? $row : null;
+	}
+
+	/** Un conto anche se chiuso. */
+	public function account_any( int $id ): ?array {
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'accounts' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
 		return $row ?: null;
 	}
 
-	public function add_account( string $name, string $type, int $opening_cents ): int {
+	/** Id dei fondi: soldi che l'associazione ha in mano ma che non sono suoi (es. quote raccolte per un rimborso). */
+	public function fund_ids(): array {
+		return array_map( 'intval', $this->db()->get_col( 'SELECT id FROM ' . Db::t( 'accounts' ) . " WHERE deleted_at IS NULL AND kind = 'fund'" ) ?: array() );
+	}
+
+	private function check_account_fields( string $name, string $type, string $kind ): string {
 		$name = trim( $name );
 		if ( '' === $name ) {
 			throw new \InvalidArgumentException( 'Il nome del conto è obbligatorio.' );
@@ -38,8 +51,63 @@ class LedgerService {
 		if ( ! isset( Labels::account_types()[ $type ] ) ) {
 			throw new \InvalidArgumentException( 'Tipo di conto non valido.' );
 		}
-		$this->db()->insert( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'opening_cents' => $opening_cents, 'sort_order' => count( $this->accounts() ) ) );
+		if ( ! isset( Labels::account_kinds()[ $kind ] ) ) {
+			throw new \InvalidArgumentException( 'Scegli se è un conto reale o un fondo.' );
+		}
+		return $name;
+	}
+
+	public function add_account( string $name, string $type, int $opening_cents, string $kind = 'real' ): int {
+		$name = $this->check_account_fields( $name, $type, $kind );
+		$this->db()->insert( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'kind' => $kind, 'opening_cents' => $opening_cents, 'sort_order' => count( $this->accounts( true ) ) ) );
 		return (int) $this->db()->insert_id;
+	}
+
+	/** Rinomina e cambia tipo, natura (conto/fondo) e saldo di partenza: i saldi si ricalcolano da soli. */
+	public function update_account( int $id, string $name, string $type, string $kind, int $opening_cents ): void {
+		$old = $this->account_any( $id );
+		if ( ! $old ) {
+			throw new \InvalidArgumentException( 'Conto non trovato.' );
+		}
+		$name = $this->check_account_fields( $name, $type, $kind );
+		$this->db()->update( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'kind' => $kind, 'opening_cents' => $opening_cents ), array( 'id' => $id ) );
+		$details = array();
+		foreach ( array( 'name' => $name, 'type' => $type, 'kind' => $kind ) as $k => $v ) {
+			if ( $old[ $k ] !== $v ) {
+				$details[ $k ] = array( $old[ $k ], $v );
+			}
+		}
+		if ( (int) $old['opening_cents'] !== $opening_cents ) {
+			$details['opening_cents'] = array( (int) $old['opening_cents'], $opening_cents );
+		}
+		Audit::log( 'account.updated', 'account', $id, $details );
+	}
+
+	/** Chiude un conto: deve essere a zero (altrimenti sposta prima i soldi con un giroconto). */
+	public function close_account( int $id ): void {
+		$acc = $this->account( $id );
+		if ( ! $acc ) {
+			throw new \InvalidArgumentException( 'Conto non trovato o già chiuso.' );
+		}
+		$balance = 0;
+		foreach ( $this->balances() as $b ) {
+			if ( (int) $b['id'] === $id ) {
+				$balance = $b['balance'];
+			}
+		}
+		if ( 0 !== $balance ) {
+			throw new \InvalidArgumentException( 'Il conto ha ancora ' . Money::format( $balance ) . ': spostali con un giroconto (o rettifica il saldo) prima di chiuderlo.' );
+		}
+		$this->db()->update( Db::t( 'accounts' ), array( 'closed_at' => Db::now() ), array( 'id' => $id ) );
+		Audit::log( 'account.closed', 'account', $id );
+	}
+
+	public function reopen_account( int $id ): void {
+		if ( ! $this->account_any( $id ) ) {
+			throw new \InvalidArgumentException( 'Conto non trovato.' );
+		}
+		$this->db()->update( Db::t( 'accounts' ), array( 'closed_at' => null ), array( 'id' => $id ) );
+		Audit::log( 'account.reopened', 'account', $id );
 	}
 
 	/** Conto "Stripe" / "PayPal" in cui entrano gli incassi online (creato al primo pagamento). */
@@ -94,10 +162,10 @@ class LedgerService {
 	}
 
 	/** Conti con il saldo calcolato (a oggi, oppure fino a una data inclusa). */
-	public function balances( ?string $up_to = null ): array {
+	public function balances( ?string $up_to = null, bool $with_closed = false ): array {
 		$deltas = $this->deltas( $up_to );
 		$out    = array();
-		foreach ( $this->accounts() as $a ) {
+		foreach ( $this->accounts( $with_closed ) as $a ) {
 			$a['balance'] = (int) $a['opening_cents'] + ( $deltas[ (int) $a['id'] ] ?? 0 );
 			$out[]        = $a;
 		}
@@ -124,7 +192,7 @@ class LedgerService {
 
 	private function assert_account_method( int $account_id, string $method ): void {
 		if ( ! $this->account( $account_id ) ) {
-			throw new \InvalidArgumentException( 'Conto non valido.' );
+			throw new \InvalidArgumentException( $this->account_any( $account_id ) ? 'Il conto è chiuso: riaprilo per registrare movimenti.' : 'Conto non valido.' );
 		}
 		if ( ! isset( Labels::methods()[ $method ] ) ) {
 			throw new \InvalidArgumentException( 'Modalità di pagamento non valida.' );
@@ -369,7 +437,7 @@ class LedgerService {
 		$this->assert_date( $date );
 		$account = $this->account( $account_id );
 		if ( ! $account ) {
-			throw new \InvalidArgumentException( 'Conto non valido.' );
+			throw new \InvalidArgumentException( $this->account_any( $account_id ) ? 'Il conto è chiuso: riaprilo per registrare movimenti.' : 'Conto non valido.' );
 		}
 		return $this->in_transaction(
 			function () use ( $account, $account_id, $date, $counted_cents, $adjust, $notes ) {

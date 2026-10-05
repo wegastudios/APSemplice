@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '10';
+	const DB_VERSION        = '11';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -78,6 +78,8 @@ final class Install {
   name varchar(120) NOT NULL,
   type varchar(20) NOT NULL,
   opening_cents bigint(20) NOT NULL DEFAULT 0,
+  kind varchar(10) NOT NULL DEFAULT 'real',
+  closed_at datetime DEFAULT NULL,
   sort_order int(11) NOT NULL DEFAULT 0,
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id)

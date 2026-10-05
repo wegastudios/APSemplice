@@ -38,9 +38,9 @@ final class ReportsPage {
 
 		echo '<h3>Saldi dei conti</h3><table class="widefat striped"><thead><tr><th>Conto</th><th>Iniziale</th><th>Entrate</th><th>Uscite</th><th>Giroconti</th><th>Finale</th></tr></thead><tbody>';
 		foreach ( $r['accounts'] as $a ) {
-			echo '<tr><td>' . esc_html( $a['account']['name'] ) . '</td><td>' . Ui::money( $a['opening'] ) . '</td><td>' . Ui::money( $a['income'] ) . '</td><td>' . Ui::money( $a['expense'] ) . '</td><td>' . Ui::money( $a['transfers'] ) . '</td><td><strong>' . Ui::money( $a['closing'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<tr><td>' . esc_html( $a['account']['name'] ) . ( ! empty( $a['fund'] ) ? ' <span class="description">(fondo, non conta nel totale)</span>' : '' ) . '</td><td>' . Ui::money( $a['opening'] ) . '</td><td>' . Ui::money( $a['income'] ) . '</td><td>' . Ui::money( $a['expense'] ) . '</td><td>' . Ui::money( $a['transfers'] ) . '</td><td><strong>' . Ui::money( $a['closing'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '<tr><td><strong>Totale</strong></td><td>' . Ui::money( $r['opening_total'] ) . '</td><td>' . Ui::money( $r['total_income'] ) . '</td><td>' . Ui::money( $r['total_expense'] ) . '</td><td></td><td><strong>' . Ui::money( $r['closing_total'] ) . '</strong></td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><td><strong>Totale conti dell\'associazione</strong></td><td>' . Ui::money( $r['opening_total'] ) . '</td><td>' . Ui::money( $r['total_income'] ) . '</td><td>' . Ui::money( $r['total_expense'] ) . '</td><td></td><td><strong>' . Ui::money( $r['closing_total'] ) . '</strong></td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		foreach ( array( 'Entrate' => array( $r['income'], $r['total_income'] ), 'Uscite' => array( $r['expenses'], $r['total_expense'] ) ) as $title => $pair ) {
 			echo '<h3>' . esc_html( $title ) . '</h3><table class="widefat striped"><thead><tr><th>Voce</th><th>Voce di rendiconto</th><th>Importo</th></tr></thead><tbody>';
