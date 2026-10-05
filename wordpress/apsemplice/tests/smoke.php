@@ -1390,7 +1390,7 @@ $bal1 = $balances();
 apse_ok( $bal1[ $cash_name ] === $bal0[ $cash_name ] && 1 === $res['ledger']['shifted'], 'import storico: il saldo attuale della cassa non cambia (saldo iniziale aggiustato)' );
 apse_ok( 5450 === $bal1['Conto Storico 2022'], 'import storico: il conto nuovo ha il saldo che risulta dai movimenti (−45,50 + 100,00)' );
 $row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . " WHERE description = 'Quota storica'", ARRAY_A );
-apse_ok( $row && '2022-03-10' === $row['tx_date'] && (int) $row['person_id'] === (int) $ida['id'] && $row['social_year'] === Settings::social_year( '2022-03-10' )->label(), 'import: la quota storica è del socio e nell\'anno sociale giusto' );
+apse_ok( $row && '2022-03-10' === $row['tx_date'] && (int) $row['person_id'] === (int) $ida['id'] && $row['social_year'] === Settings::membership_year( '2022-03-10' )->label(), 'import: la quota storica è del socio e nell\'anno della tessera giusto' );
 apse_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $ida['id'] . ' AND deleted_at IS NULL' ) >= 1, 'import: la quota storica registra l\'iscrizione di quell\'anno' );
 $sy_2022 = $wpdb->get_var( $wpdb->prepare( 'SELECT valid_from FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d ORDER BY id LIMIT 1', (int) $ida['id'] ) );
 apse_ok( $sy_2022 && $sy_2022 < '2023-01-01', 'import: l\'iscrizione ha la validità di quell\'anno sociale' );
