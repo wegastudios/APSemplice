@@ -24,10 +24,10 @@ final class Rules {
 		$email = trim( (string) ( $d['email'] ?? '' ) );
 		if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
 			$errors[] = 'L\'email non è valida.';
-		} elseif ( '' === $email && MemberType::requires_email( $type )
-			&& '' === trim( (string) ( $d['card_number'] ?? '' ) ) && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
-			// L'email non è obbligatoria: un socio senza email si attiva dopo con un link. Serve però un modo per riconoscerlo.
-			$errors[] = 'Per un socio servono almeno l\'email, il cellulare o il numero di tessera.';
+		}
+		// L'email non è obbligatoria: un socio senza email (e magari senza cellulare) si registra lo stesso e si attiva dopo con un link.
+		if ( '' !== trim( (string) ( $d['phone'] ?? '' ) ) && ! Phone::is_valid( (string) $d['phone'] ) ) {
+			$errors[] = 'Il numero di cellulare non è valido.';
 		}
 
 		$card = trim( (string) ( $d['card_number'] ?? '' ) );

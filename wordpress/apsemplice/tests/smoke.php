@@ -2007,7 +2007,8 @@ wp_set_current_user( 1 );
 wp_set_current_user( 1 );
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $Act = '\ApSemplice\Frontend\Activation';
-apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Senza', 'last_name' => 'Nulla' ) ); } ), 'soci: senza email, cellulare né tessera non si può registrare' );
+$nulla = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Senza', 'last_name' => 'Nulla' ) );
+apse_ok( empty( $people->get( $nulla )['wp_user_id'] ) && null === $people->get( $nulla )['email'], 'soci: anche senza email, cellulare e tessera si può registrare (si completa dopo)' );
 $nm = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Nora', 'last_name' => 'Senzamail', 'phone' => '334 1234567', 'card_number' => '881' ) );
 $cm = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Carlo', 'last_name' => 'Soloturnessera', 'card_number' => '882' ) );
 $np = $people->get( $nm );
@@ -2057,7 +2058,7 @@ $list2 = apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Invia li
 apse_ok( false !== strpos( $list2, 'wa.me/393357654321' ), 'elenco soci: pulsante "Invia link" su WhatsApp accanto a chi è senza accesso' );
 $inv = $Act::invite_text( $people->get( $cm ) );
 apse_ok( false !== strpos( $inv, 'apse_activate=' ) && false !== strpos( $inv, 'Carlo' ), 'messaggio di invito: nome e link' );
-apse_ok( false !== strpos( apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Facoltativa', array( 'type' => 'ordinary' ) ), 'Senza, serve almeno il cellulare' ), 'modulo socio: l\'email non è più obbligatoria' );
+apse_ok( false !== strpos( apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Facoltativa', array( 'type' => 'ordinary' ) ), 'Facoltativa' ), 'modulo socio: l\'email non è più obbligatoria' );
 
 // aggiungere l'email dopo: l'accesso si crea subito
 $people->update( $cm, array( 'email' => 'carlo.soloturnessera@example.com' ) );

@@ -41,9 +41,9 @@ final class RulesTest extends TestCase {
 		$this->assertSame( array(), Rules::validate_person( $this->person() ) );
 	}
 
-	public function test_member_requires_email(): void {
+	public function test_member_email_is_optional_but_must_be_valid(): void {
 		foreach ( array( 'founder', 'ordinary', 'volunteer' ) as $t ) {
-			$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'type' => $t, 'email' => '' ) ) ), $t );
+			$this->assertSame( array(), Rules::validate_person( $this->person( array( 'type' => $t, 'email' => '' ) ) ), $t );
 		}
 		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'email' => 'non-una-email' ) ) ) );
 	}
