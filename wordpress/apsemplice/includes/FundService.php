@@ -88,6 +88,40 @@ class FundService {
 		return $cents;
 	}
 
+	/** Crea un fondo a mano (ad esempio "Gita sociale"): facoltativamente con una somma già accantonata. */
+	public function create( string $name, int $initial_cents = 0, ?int $person_id = null, string $date = '' ): int {
+		$name = trim( $name );
+		if ( '' === $name ) {
+			throw new \InvalidArgumentException( 'Dai un nome al fondo.' );
+		}
+		if ( $initial_cents < 0 ) {
+			throw new \InvalidArgumentException( 'L\'importo non può essere negativo.' );
+		}
+		if ( $person_id && ! Plugin::people()->get( $person_id ) ) {
+			throw new \InvalidArgumentException( 'Persona non trovata.' );
+		}
+		$this->db()->insert( Db::t( 'funds' ), array( 'name' => substr( $name, 0, 200 ), 'person_id' => $person_id ?: null, 'created_at' => Db::now() ) );
+		$id = (int) $this->db()->insert_id;
+		Audit::log( 'fund.created', 'fund', $id, array( 'name' => $name ) );
+		if ( $initial_cents > 0 ) {
+			$this->deposit( $id, $initial_cents, '' !== $date ? $date : Db::today(), 'Somma iniziale' );
+		}
+		return $id;
+	}
+
+	/** Accantona a mano una somma in un fondo (si sottrae dalla disponibilità reale). */
+	public function deposit( int $fund_id, int $cents, string $date, string $note = '' ): void {
+		$f = $this->get( $fund_id );
+		if ( ! $f || null !== $f['closed_at'] ) {
+			throw new \InvalidArgumentException( 'Fondo non trovato o già estinto.' );
+		}
+		if ( $cents <= 0 ) {
+			throw new \InvalidArgumentException( 'Indica un importo maggiore di zero.' );
+		}
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => substr( '' !== $note ? $note : 'Somma accantonata', 0, 255 ), 'created_at' => Db::now() ) );
+		Audit::log( 'fund.deposited', 'fund', $fund_id, array( 'cents' => $cents ) );
+	}
+
 	/** Libera parte del fondo: torna nella disponibilità dell'associazione (nessun movimento di cassa). */
 	public function release( int $fund_id, int $cents, string $date, string $note = '' ): void {
 		$f = $this->get( $fund_id );
@@ -116,7 +150,7 @@ class FundService {
 		if ( $f['balance'] > 0 ) {
 			$tx_id = $ledger->record_expense(
 				array(
-					'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => $ledger->category_id_of_kind( 'instructor_reimbursement' ),
+					'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => $ledger->category_id_of_kind( $f['person_id'] ? 'instructor_reimbursement' : 'general_cost' ),
 					'amount_cents' => $f['balance'], 'activity_id' => $f['activity_id'] ? (int) $f['activity_id'] : null, 'person_id' => $f['person_id'] ? (int) $f['person_id'] : null,
 					'description' => substr( $f['name'] . ' (fondo estinto)', 0, 255 ),
 				)

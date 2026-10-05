@@ -56,6 +56,11 @@ final class AccountsPage {
 			$accounts[ $a['id'] ] = $a['name'];
 		}
 		echo '<div class="apse-card"><h2>' . esc_html( $f['name'] ) . '</h2><p class="apse-big">' . Ui::money( $f['balance'] ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<details><summary>Accantona una somma</summary><p class="description">Aggiunge soldi al fondo: si sottraggono dalla disponibilità reale.</p>';
+		Ui::form_open( 'apse_fund_deposit', $back );
+		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ) . '<p><input type="text" name="amount" inputmode="decimal" required placeholder="0,00"> € <button class="button">Accantona</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		Ui::form_close();
+		echo '</details>';
 		echo '<details><summary>Libera una quota</summary><p class="description">Restituisce una parte all\'associazione: torna nella disponibilità reale. Non muove contanti né conti.</p>';
 		Ui::form_open( 'apse_fund_release', $back );
 		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ) . '<p><input type="text" name="amount" inputmode="decimal" required placeholder="0,00"> € <button class="button">Libera</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -103,7 +108,7 @@ final class AccountsPage {
 			}
 			echo '</div>';
 		} else {
-			echo '<p>Nessun fondo aperto. Si creano da soli quando incassi un corso o un evento con una quota per il rimborso (si imposta nella scheda dell\'attività).</p>';
+			echo '<p>Nessun fondo aperto. Si creano da soli quando incassi un corso o un evento con una quota per il rimborso (si imposta nella scheda dell\'attività), oppure a mano con "Nuovo fondo" qui sotto.</p>';
 		}
 
 		if ( $closed ) {
@@ -113,6 +118,15 @@ final class AccountsPage {
 			}
 			echo '</div>';
 		}
+
+		echo '<div class="apse-card"><h2>Nuovo fondo</h2><p class="description">Per mettere da parte una somma che hai in cassa ma non è tua (una gita, un rimborso, una raccolta…). Si sottrae dalla disponibilità reale finché non lo estingui.</p>';
+		Ui::form_open( 'apse_fund_create', $back );
+		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Rimborso Mario — Gita"></td></tr>'
+			. '<tr><th>Somma già accantonata</th><td><input type="text" name="amount" inputmode="decimal" placeholder="0,00"> €</td></tr>'
+			. '<tr><th>Da rimborsare a</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno —' ) . '<p class="description">Facoltativo: il volontario o socio che riceverà il rimborso.</p></td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		submit_button( 'Crea il fondo' );
+		Ui::form_close();
+		echo '</div>';
 
 		echo '<div class="apse-card"><h2>Nuovo conto</h2>';
 		Ui::form_open( 'apse_add_account', $back );

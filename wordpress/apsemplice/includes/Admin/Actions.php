@@ -62,6 +62,8 @@ final class Actions {
 			'apse_update_account'     => 'update_account',
 			'apse_close_account'      => 'close_account',
 			'apse_reopen_account'     => 'reopen_account',
+			'apse_fund_create'        => 'fund_create',
+			'apse_fund_deposit'       => 'fund_deposit',
 			'apse_fund_release'       => 'fund_release',
 			'apse_fund_settle'        => 'fund_settle',
 			'apse_cash_count'         => 'cash_count',
@@ -436,6 +438,16 @@ final class Actions {
 	private static function update_account( array $p ): array {
 		Plugin::ledger()->update_account( (int) ( $p['id'] ?? 0 ), (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
 		return array( Ui::url( 'apse-accounts' ), 'Conto aggiornato: i saldi sono stati ricalcolati.' );
+	}
+
+	private static function fund_create( array $p ): array {
+		Plugin::funds()->create( (string) ( $p['name'] ?? '' ), Money::parse( $p['amount'] ?? '' ) ?? 0, ! empty( $p['person_id'] ) ? (int) $p['person_id'] : null );
+		return array( Ui::url( 'apse-accounts' ), 'Fondo creato.' );
+	}
+
+	private static function fund_deposit( array $p ): array {
+		Plugin::funds()->deposit( (int) ( $p['id'] ?? 0 ), Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
+		return array( Ui::url( 'apse-accounts' ), 'Somma accantonata nel fondo.' );
 	}
 
 	private static function fund_release( array $p ): array {
