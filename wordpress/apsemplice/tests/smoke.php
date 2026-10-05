@@ -2362,9 +2362,9 @@ apse_ok( $threw, 'incasso: importo zero senza sconto non vale' );
 $fy_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Fine', 'last_name' => 'Anno', 'email' => 'fine.anno@example.com' ) );
 $si   = new ReflectionMethod( Admin\Actions::class, 'save_income' );
 $si->setAccessible( true );
-$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_p, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::social_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
+$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_p, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::membership_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
 $fy_years = $wpdb->get_col( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $fy_p . ' AND deleted_at IS NULL ORDER BY social_year' );
-apse_ok( 2 === count( $fy_years ) && in_array( Settings::social_year()->label(), $fy_years, true ) && in_array( Settings::social_year()->next()->label(), $fy_years, true ), 'iscrizione a fine anno: si paga il prossimo anno e quello in corso è gratuito (' . implode( ',', $fy_years ) . ')' );
+apse_ok( 2 === count( $fy_years ) && in_array( Settings::membership_year()->label(), $fy_years, true ) && in_array( Settings::membership_year()->next()->label(), $fy_years, true ), 'iscrizione a fine anno: si paga il prossimo anno e quello in corso è gratuito (' . implode( ',', $fy_years ) . ')' );
 apse_ok( $people->is_active_member( $fy_p ), 'iscrizione a fine anno: il socio è attivo subito' );
 
 // iscrizione rapida dalla Bacheca
