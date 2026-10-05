@@ -947,7 +947,7 @@ $pev   = $mkev( 'Cena online', 500, 800 );
 $pev_s = $first_session( $pev );
 $acts->book( $pev_s, $pm );
 $acts->book( $pev_s, $pg );
-$k_q   = "q:$pm:$sy_label";
+$k_q   = "q:$pm:" . Settings::membership_year()->label();
 $k_mon = "m:$pcourse:$pm:$month";
 $k_ev  = "b:$pev_s:$pm";
 $k_gm  = "m:$pcourse:$pg:$month";
@@ -1061,7 +1061,7 @@ $html = $as( $uq, '[apsemplice_pagamenti]' );
 apse_ok( false !== strpos( $html, 'apse_front_pay' ) && false !== strpos( $html, 'Paga con carta' ) && false !== strpos( $html, 'data-cents' ), 'area soci: elenco da pagare con il pulsante "Paga con carta"' );
 apse_ok( false !== strpos( $as( $uq, '[apsemplice_area_soci]' ), 'apsf-pay' ), 'l\'area soci completa include la sezione pagamenti' );
 wp_set_current_user( $uq );
-$redirect = \ApSemplice\Frontend\Actions::do_pay( array( 'items' => array( "q:$q:$sy_label" ) ) );
+$redirect = \ApSemplice\Frontend\Actions::do_pay( array( 'items' => array( "q:$q:" . Settings::membership_year()->label() ) ) );
 apse_ok( 0 === strpos( $redirect, 'https://checkout.stripe.com/' ), 'azione dal sito: porta alla pagina di pagamento ospitata' );
 $open = $latest();
 
@@ -2446,6 +2446,62 @@ $cal_html = apse_render( array( Admin\CalendarPage::class, 'render' ), 'Collegam
 apse_ok( false !== strpos( $cal_html, \ApSemplice\Calendar::token() ) && false !== strpos( $cal_html, 'Scrittura creativa' ), 'calendario: la pagina mostra il mese e l\'indirizzo da incollare in Google Calendar' );
 $save_ical->invoke( null, array() );
 apse_ok( ! \ApSemplice\Calendar::enabled(), 'calendario: spento di default / si può spegnere' );
+
+// ---------- Più lezioni a settimana, link ai calendari, tessera fino al 31 dicembre ----------
+$ms_c = $acts->create( array( 'name' => 'Teatro doppio', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 4000, 'lesson_slots' => array( array( 'day' => 4, 'start' => '19:00', 'end' => '20:00' ), array( 'day' => 1, 'start' => '20:00', 'end' => '21:30' ) ) ) );
+$ms = \ApSemplice\ActivityService::slots( $acts->get( $ms_c ) );
+apse_ok( 2 === count( $ms ) && 1 === $ms[0]['day'] && '20:00' === $ms[0]['start'] && 4 === $ms[1]['day'] && '19:00' === $ms[1]['start'], 'corso: più giorni a settimana (lunedì alle 20 e giovedì alle 19), in ordine' );
+$ms_occ = array_values(
+	array_filter(
+		\ApSemplice\Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +14 days' ) ) ),
+		function ( $o ) use ( $ms_c ) {
+			return (int) $o['activity_id'] === $ms_c;
+		}
+	)
+);
+$ms_days = array_unique(
+	array_map(
+		function ( $o ) {
+			return (int) ( new DateTimeImmutable( $o['date'] ) )->format( 'N' );
+		},
+		$ms_occ
+	)
+);
+sort( $ms_days );
+apse_ok( count( $ms_occ ) >= 3 && array( 1, 4 ) === array_values( $ms_days ), 'calendario: il corso compare in tutti e due i giorni (' . count( $ms_occ ) . ' lezioni in due settimane)' );
+$acts->update( $ms_c, array( 'lesson_slots' => array( array( 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+apse_ok( 1 === count( \ApSemplice\ActivityService::slots( $acts->get( $ms_c ) ) ) && 2 === (int) $acts->get( $ms_c )['lesson_weekday'], 'corso: le lezioni si modificano' );
+$acts->update( $ms_c, array( 'lesson_weekday' => 5 ) );
+apse_ok( array( 5 ) === \ApSemplice\ActivityService::slot_days( $acts->get( $ms_c ) ), 'corso: la modifica con il solo giorno resta valida' );
+$form_html = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Giorni e orari', array( 'id' => $ms_c ) );
+apse_ok( 2 <= substr_count( $form_html, 'name="slot_day[]"' ), 'scheda corso: righe per più giorni e orari' );
+$pos_enrolled = strpos( $form_html, 'Iscritti e pagamenti' );
+$pos_data     = strpos( $form_html, 'Dati dell' );
+apse_ok( false !== strpos( $form_html, 'Iscrivi un socio o un ospite' ) && false !== $pos_enrolled && $pos_enrolled < $pos_data, 'scheda corso: gli iscritti stanno nella prima colonna, sotto il modulo di iscrizione' );
+
+Settings::update( array( 'ical_enabled' => 1 ) );
+$one_url = \ApSemplice\Calendar::feed_url( $once_c );
+$all_url = \ApSemplice\Calendar::feed_url();
+apse_ok( false !== strpos( $one_url, '&a=' . $once_c ) && false === strpos( $all_url, '&a=' ), 'calendario: indirizzo per la singola attività e per tutte' );
+apse_ok( 0 === strpos( \ApSemplice\Calendar::webcal_url( 'https://sito.example/?apse_ical=x' ), 'webcal://' ) && 0 === strpos( \ApSemplice\Calendar::google_add_url( $all_url ), 'https://calendar.google.com/calendar/r?cid=webcal' ), 'calendario: link per Google, Apple e Outlook' );
+$ics_one = \ApSemplice\Calendar::ics( null, $once_c );
+apse_ok( false !== strpos( $ics_one, 'Scrittura creativa' ) && false === strpos( $ics_one, 'SUMMARY:Teatro doppio' ) && false !== strpos( \ApSemplice\Calendar::ics(), 'SUMMARY:Teatro doppio' ), 'calendario: il file di una sola attività contiene solo quella' );
+$det = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Solo questa attività', array( 'id' => $once_c ) );
+apse_ok( false !== strpos( $det, 'calendar.google.com' ) && false !== strpos( $det, 'Tutte le attività' ), 'scheda attività: link al suo calendario e a quello di tutte' );
+Settings::update( array( 'ical_enabled' => 0 ) );
+
+// tessera associativa: scade sempre il 31 dicembre
+$mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Dicembre', 'email' => 'tessera.dicembre@example.com' ) );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mb_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) );
+apse_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_p ), 'tessera: la scadenza è il 31 dicembre (' . $people->active_until( $mb_p ) . ')' );
+apse_ok( substr( $today, 0, 4 ) === Settings::membership_year()->label() && ( (int) substr( $today, 0, 4 ) + 1 ) . '' === Settings::membership_year()->next()->label(), 'tessera: l\'anno della tessera è l\'anno solare' );
+$mb_fy = new ReflectionMethod( Admin\Actions::class, 'save_income' );
+$mb_fy->setAccessible( true );
+$mb_q = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Prossima', 'email' => 'tessera.prossima@example.com' ) );
+$mb_fy->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $mb_q, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::membership_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
+apse_ok( ( (int) substr( $today, 0, 4 ) + 1 ) . '-12-31' === $people->active_until( $mb_q ), 'tessera: pagata per l\'anno dopo, vale fino al 31 dicembre dell\'anno dopo' );
+$founder_until = $people->active_until( $founder );
+apse_ok( null !== $founder_until && $founder_until > ( (int) substr( $today, 0, 4 ) + 5 ) . '-01-01', 'tessera: il socio fondatore resta fuori da questa regola' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
