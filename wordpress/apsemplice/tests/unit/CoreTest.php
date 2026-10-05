@@ -97,6 +97,29 @@ final class PaymentCalcTest extends TestCase {
 		$this->assertSame( PaymentCalc::PARTIAL, $s['months'][1]['state'] );
 	}
 
+	public function test_first_lesson_of_the_month(): void {
+		$this->assertSame( '2025-10-07', PaymentCalc::first_lesson( '2025-10', 2 ) ); // il 1° ottobre 2025 è un mercoledì: primo martedì = 7
+		$this->assertSame( '2025-10-01', PaymentCalc::first_lesson( '2025-10', 3 ) );
+		$this->assertSame( '2025-10-05', PaymentCalc::first_lesson( '2025-10', 7 ) );
+		$this->assertSame( '2025-10-01', PaymentCalc::first_lesson( '2025-10', 0 ), 'senza giorno indicato: dal 1° del mese' );
+	}
+
+	public function test_new_month_is_due_from_the_first_lesson(): void {
+		$year = new SocialYear( 2025, 9 );
+		$s    = PaymentCalc::compute( 1000, '2025-09', null, '2025-10', $year, array( '2025-09' => 1000 ), 2, '2025-10-03' );
+		$this->assertSame( 1000, $s['total_due'], 'ottobre non è ancora dovuto: la prima lezione è il 7' );
+		$this->assertTrue( $s['regular'] );
+		$this->assertSame( array( 'month' => '2025-10', 'date' => '2025-10-07', 'fee' => 1000 ), $s['upcoming'] );
+		$s = PaymentCalc::compute( 1000, '2025-09', null, '2025-10', $year, array( '2025-09' => 1000 ), 2, '2025-10-07' );
+		$this->assertSame( 2000, $s['total_due'], 'il giorno della prima lezione la mensilità è dovuta' );
+		$this->assertFalse( $s['regular'] );
+		$this->assertNull( $s['upcoming'] );
+		$s = PaymentCalc::compute( 1000, '2025-09', null, '2025-10', $year, array( '2025-09' => 1000, '2025-10' => 1000 ), 2, '2025-10-03' );
+		$this->assertSame( PaymentCalc::ADVANCE, $s['months'][1]['state'], 'pagata in anticipo' );
+		$s = PaymentCalc::compute( 1000, '2025-09', null, '2025-10', $year, array( '2025-09' => 1000 ) );
+		$this->assertSame( 2000, $s['total_due'], 'senza giorno della lezione: dal 1° del mese, come prima' );
+	}
+
 	public function test_cancelled_enrollment_stops_owing(): void {
 		$s = PaymentCalc::compute( 1000, '2025-10', '2025-11', '2026-03', new SocialYear( 2025, 9 ), array() );
 		$this->assertSame( 2000, $s['total_due'] );

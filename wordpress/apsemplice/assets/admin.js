@@ -109,6 +109,7 @@
 			var k = kindSel.value;
 			$$('.apse-row-event').forEach(function (r) { r.style.display = k === 'event' ? '' : 'none'; });
 			$$('.apse-row-sessions').forEach(function (r) { r.style.display = k === 'course' ? 'none' : ''; });
+			$$('.apse-row-course').forEach(function (r) { r.style.display = k === 'course' ? '' : 'none'; });
 			$$('.apse-row-event input[name="session_date"]').forEach(function (i) { i.required = k === 'event'; });
 			$$('.apse-fee-label').forEach(function (l) { l.textContent = k === 'course' ? 'Contributo soci (al mese)' : 'Contributo soci (a evento)'; });
 			var hint = $('#apse-kind-hint'); if (hint) { hint.textContent = kindHints[k] || ''; }
@@ -280,6 +281,7 @@
 	}
 	$('#apse-person-select').addEventListener('change', loadContext);
 	$('#apse-date').addEventListener('change', loadContext);
+	if ($('#apse-person-select').value) { loadContext(); }
 
 	/* Modalità di pagamento: propone il conto giusto */
 	$('#apse-account').addEventListener('change', update);	$('#apse-tendered').addEventListener('input', update);

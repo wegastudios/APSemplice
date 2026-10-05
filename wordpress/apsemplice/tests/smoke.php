@@ -2383,6 +2383,24 @@ apse_ok( $threw, 'bacheca: serve scegliere a cosa iscrivere' );
 $dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Iscrizione a corsi ed eventi' );
 apse_ok( false === strpos( $dash, '>Giroconto<' ) && false !== strpos( $dash, 'apse_quick_enroll' ), 'bacheca: niente giroconto, c\'è l\'iscrizione' );
 
+// ---------- Corsi: rinnovo automatico, dovuto dalla prima lezione del mese ----------
+$wd_c = $acts->create( array( 'name' => 'Corso Martedì', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 3000, 'lesson_weekday' => 2 ) );
+apse_ok( 2 === (int) $acts->get( $wd_c )['lesson_weekday'], 'corso: il giorno della lezione si salva' );
+$acts->update( $wd_c, array( 'lesson_weekday' => 4 ) );
+apse_ok( 4 === (int) $acts->get( $wd_c )['lesson_weekday'], 'corso: il giorno della lezione si modifica' );
+$acts->enroll( $wd_c, $fy_p, $month );
+$wd_s = $acts->status_for_person( $fy_p );
+$wd_row = array_values( array_filter( $wd_s, function ( $r ) use ( $wd_c ) {
+	return (int) $r['activity']['id'] === $wd_c;
+} ) )[0];
+$first = \ApSemplice\PaymentCalc::first_lesson( substr( $today, 0, 7 ), 4 );
+apse_ok( $first <= $today ? 3000 === $wd_row['summary']['total_due'] : ( 0 === $wd_row['summary']['total_due'] && $first === $wd_row['summary']['upcoming']['date'] ), 'corso: la mensilità del mese in corso è dovuta solo dalla prima lezione (' . $first . ')' );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Mensilità da incassare' );
+apse_ok( false !== strpos( $dash, 'Corso Rapido' ) && false !== strpos( $dash, 'apse-income' ), 'bacheca: le mensilità già dovute compaiono con il pulsante per incassare' );
+$inc_page = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p ) );
+apse_ok( false !== strpos( $inc_page, 'value="' . $fy_p . '" selected' ) || false !== strpos( $inc_page, "value='" . $fy_p . "' selected" ) || false !== strpos( $inc_page, 'selected=\'selected\'' ), 'incasso: la persona arriva già scelta dalla bacheca' );
+apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Disdici il rinnovo', array( 'id' => $wd_c ) );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

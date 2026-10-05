@@ -2,6 +2,7 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\MemberType;
+use ApSemplice\Money;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
 
@@ -43,6 +44,7 @@ final class DashboardPage {
 
 		self::quick_cash();
 		self::quick_enroll();
+		self::course_dues();
 		self::renewals();
 		self::expected_guests();
 
@@ -144,6 +146,36 @@ final class DashboardPage {
 			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Poi incassa il contributo →</a></p>';
 		Ui::form_close();
 		echo '</div>';
+	}
+
+	/** Corsi: iscritti che hanno una mensilità già dovuta (prima lezione del mese passata) e non ancora pagata. */
+	private static function course_dues(): void {
+		$acts = Plugin::activities();
+		$rows = array();
+		foreach ( $acts->for_year( Settings::social_year()->label() ) as $a ) {
+			if ( 'course' !== $a['kind'] ) {
+				continue;
+			}
+			foreach ( $acts->status_for_activity( (int) $a['id'] ) as $s ) {
+				if ( null === $s['enrollment']['end_month'] && $s['summary']['unpaid_months'] ) {
+					$rows[] = array( 'activity' => $a, 'enrollment' => $s['enrollment'], 'summary' => $s['summary'] );
+				}
+			}
+		}
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="apse-card"><h2>Mensilità da incassare (' . count( $rows ) . ')</h2><p class="description">Corsi che si rinnovano ogni mese: la mensilità è dovuta dalla prima lezione del mese.</p><ul>';
+		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
+			$e       = $r['enrollment'];
+			$missing = max( 0, -$r['summary']['balance'] );
+			$months  = implode( ', ', array_map( function ( $m ) {
+				return Ui::month( $m['month'] );
+			}, $r['summary']['unpaid_months'] ) );
+			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $e['person_id'] ) ) ) . '">' . esc_html( $e['first_name'] . ' ' . $e['last_name'] ) . '</a> <span class="description">' . esc_html( $r['activity']['name'] . ' · ' . $months ) . '</span> <strong>' . esc_html( Money::format( $missing ) ) . '</strong> '
+				. '<a class="button button-small" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => $e['person_id'] ) ) ) . '">Incassa</a> ' . Ui::contact_links( $e ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '. Li trovi nelle schede dei corsi.</p>' : '' ) . '</div>';
 	}
 
 	/** Soci con la tessera scaduta o in scadenza nei prossimi 30 giorni. */

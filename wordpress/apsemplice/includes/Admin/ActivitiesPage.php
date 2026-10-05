@@ -23,6 +23,13 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
+	/** Riga del modulo: giorno della lezione e rinnovo automatico (solo corsi). */
+	private static function weekday_row( ?array $a, string $row_class ): string {
+		$days = array( 0 => 'Non indicato (mensilità dovuta dal 1° del mese)', 1 => 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica' );
+		return '<tr class="' . esc_attr( $row_class ) . '"><th>Giorno della lezione</th><td><select name="lesson_weekday">' . Ui::options( $days, $a ? (int) $a['lesson_weekday'] : 0 ) . '</select>'
+			. '<p class="description"><strong>Il corso si rinnova da solo ogni mese</strong> finché l\'iscritto non lo cancella. Ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>: indica il giorno della settimana e il programma sa da quando chiedere il pagamento.</p></td></tr>';
+	}
+
 	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
 	private static function fund_row( ?array $a ): string {
 		$mode  = $a ? (string) $a['fund_mode'] : '';
@@ -107,6 +114,7 @@ final class ActivitiesPage {
 		echo '<tr class="apse-row-event"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
 		echo self::cancel_rows( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::qr_row( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::weekday_row( null, 'apse-row-course' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th><span class="apse-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
@@ -162,6 +170,8 @@ final class ActivitiesPage {
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo self::qr_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		} else {
+			echo self::weekday_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr>';
 		echo self::fund_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -200,11 +210,11 @@ final class ActivitiesPage {
 		$candidates = array_values( array_filter( Plugin::people()->search(), function ( $p ) use ( $enrolled_ids ) {
 			return ! in_array( (int) $p['id'], $enrolled_ids, true );
 		} ) );
-		echo '<div class="apse-card"><h2>Iscrivi un socio o un ospite</h2>';
+		echo '<div class="apse-card"><h2>Iscrivi un socio o un ospite</h2><p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>';
 		Ui::form_open( 'apse_enroll', $back );
 		echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'apse-enroll-person' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Quota dovuta dal mese: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>Primo mese dovuto: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Iscrivi', 'secondary' );
 		Ui::form_close();
 		echo '</div>';
@@ -230,7 +240,7 @@ final class ActivitiesPage {
 			echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( $active ) {
 				echo '<p>Ultimo mese dovuto: <select name="last_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
-				echo '<button class="button">Cancella dall\'attività</button></p><p class="description">I mesi successivi non saranno più dovuti. I pagamenti già fatti restano registrati.</p>';
+				echo '<button class="button">Disdici il rinnovo</button></p><p class="description">L\'iscrizione smette di rinnovarsi: i mesi dopo quello indicato non saranno più dovuti. I pagamenti già fatti restano registrati.</p>';
 			} else {
 				echo '<p>Riattiva dal mese: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> <button class="button">Riattiva iscrizione</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}

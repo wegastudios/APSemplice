@@ -193,6 +193,7 @@ final class Actions {
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
+			'lesson_weekday'       => (int) ( $p['lesson_weekday'] ?? 0 ),
 			'fund_mode'            => (string) ( $p['fund_mode'] ?? '' ),
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',

@@ -107,7 +107,7 @@ final class IncomePage {
 			$acc_map[ $a['id'] ] = $a['name'];
 		}
 		echo '<select name="account_id" id="apse-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / anonimo —', 'apse-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'apse-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. ' <a href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '" target="_blank">+ nuovo socio</a>'
 			. '<div id="apse-person-info" class="apse-info"></div></td></tr>';
 		echo '</tbody></table>';

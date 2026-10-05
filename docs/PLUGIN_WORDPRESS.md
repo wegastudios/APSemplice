@@ -256,3 +256,7 @@ Le **Impostazioni** hanno le schede *Generale*, *Pagamenti online*, *Tessera, QR
 - **Sconto / promozione / arrotondamento**: in ogni voce dell'incasso c'è il campo *sconto* (con il motivo, es. "open day") e il pulsante *Gratis*. La voce conta come pagata per intero, ma nel rendiconto entra solo ciò che è stato davvero incassato.
 - **Iscrizione a fine anno**: nella quota associativa dell'anno successivo si può spuntare "anno in corso gratis": il socio risulta iscritto subito, per l'anno in corso senza pagare e per il prossimo con la quota versata.
 - La **Bacheca** ha l'iscrizione rapida a un corso o la prenotazione a un evento; il giroconto sta solo in Contabilità.
+
+## Corsi: rinnovo automatico
+
+Un corso si **rinnova da solo ogni mese** finché l'iscritto non viene "disdetto" (la scheda del corso indica l'ultimo mese dovuto; i mesi successivi non sono più dovuti e i pagamenti restano registrati). Nei dati del corso si indica il **giorno della lezione**: ogni mensilità è dovuta **dalla prima lezione del mese**; prima di quel giorno il mese risulta "in arrivo" e dopo diventa da pagare. Senza giorno indicato la mensilità è dovuta dal 1° del mese. La Bacheca elenca le mensilità già dovute con il pulsante *Incassa* (che apre l'incasso con la persona già scelta).

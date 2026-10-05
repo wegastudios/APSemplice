@@ -112,20 +112,21 @@ final class Ui {
 	}
 
 	public static function pay_status( array $summary ): string {
+		$up = ! empty( $summary['upcoming'] ) ? ' <span class="description">· ' . esc_html( self::month( $summary['upcoming']['month'] ) ) . ' dovuto dalla lezione del ' . esc_html( self::date( $summary['upcoming']['date'] ) ) . '</span>' : '';
 		if ( $summary['balance'] < 0 ) {
-			return '<strong class="apse-neg">Da versare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</strong>';
+			return '<strong class="apse-neg">Da versare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</strong>' . $up;
 		}
 		if ( $summary['balance'] > 0 ) {
-			return '<strong class="apse-ok">In regola (credito ' . esc_html( Money::format( $summary['balance'] ) ) . ')</strong>';
+			return '<strong class="apse-ok">In regola (credito ' . esc_html( Money::format( $summary['balance'] ) ) . ')</strong>' . $up;
 		}
-		return '<strong class="apse-ok">In regola</strong>';
+		return '<strong class="apse-ok">In regola</strong>' . $up;
 	}
 
 	public static function months_table( array $summary ): string {
 		if ( ! $summary['months'] ) {
 			return '<p class="description">Nessuna mensilità dovuta finora.</p>';
 		}
-		$labels = array( PaymentCalc::PAID => array( 'pagato', 'apse-ok' ), PaymentCalc::PARTIAL => array( 'parziale', 'apse-warn' ), PaymentCalc::UNPAID => array( 'da pagare', 'apse-neg' ), PaymentCalc::ADVANCE => array( 'versato fuori periodo', '' ) );
+		$labels = array( PaymentCalc::PAID => array( 'pagato', 'apse-ok' ), PaymentCalc::PARTIAL => array( 'parziale', 'apse-warn' ), PaymentCalc::UNPAID => array( 'da pagare', 'apse-neg' ), PaymentCalc::ADVANCE => array( 'pagato in anticipo', '' ) );
 		$html   = '<table class="widefat striped apse-months"><thead><tr><th>Mese</th><th>Versato</th><th>Dovuto</th><th>Stato</th></tr></thead><tbody>';
 		foreach ( $summary['months'] as $m ) {
 			$l     = $labels[ $m['state'] ];
