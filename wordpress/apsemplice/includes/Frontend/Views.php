@@ -648,6 +648,50 @@ final class Views {
 		return $html . '</ul></section>';
 	}
 
+	/** Calendario del mese: lezioni dei corsi e date degli eventi, con in evidenza le attività a cui partecipa il socio. */
+	public static function section_calendar( array $p ): string {
+		$month = isset( $_GET['apsf_m'] ) ? sanitize_text_field( wp_unslash( $_GET['apsf_m'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) ) {
+			$month = substr( current_time( 'Y-m-d' ), 0, 7 );
+		}
+		$first = new \DateTimeImmutable( $month . '-01' );
+		$mine  = array_map( 'intval', Plugin::activities()->person_activity_ids( (int) $p['id'] ) );
+		$by    = array();
+		foreach ( \ApSemplice\Calendar::occurrences( $first->format( 'Y-m-d' ), $first->modify( 'last day of this month' )->format( 'Y-m-d' ) ) as $o ) {
+			$by[ $o['date'] ][] = $o;
+		}
+		$prev = $first->modify( '-1 month' )->format( 'Y-m' );
+		$next = $first->modify( '+1 month' )->format( 'Y-m' );
+		$html = '<section class="apsf-section apsf-calendar"><h3>Calendario</h3><p class="apsf-small">'
+			. '<a href="' . esc_url( add_query_arg( 'apsf_m', $prev ) ) . '">&lsaquo; ' . esc_html( self::MONTHS[ (int) $first->modify( '-1 month' )->format( 'n' ) ] ) . '</a> &nbsp; <strong>'
+			. esc_html( self::MONTHS[ (int) $first->format( 'n' ) ] . ' ' . $first->format( 'Y' ) ) . '</strong> &nbsp; '
+			. '<a href="' . esc_url( add_query_arg( 'apsf_m', $next ) ) . '">' . esc_html( self::MONTHS[ (int) $first->modify( '+1 month' )->format( 'n' ) ] ) . ' &rsaquo;</a></p>';
+		if ( ! $by ) {
+			$html .= '<p class="apsf-muted">Nessuna lezione o evento in questo mese.</p>';
+		} else {
+			$html .= '<ul class="apsf-list">';
+			foreach ( $by as $date => $items ) {
+				$html .= '<li><div><strong>' . esc_html( self::date_long( $date ) ) . '</strong>';
+				foreach ( $items as $o ) {
+					$html .= '<div class="apsf-small">' . ( $o['start'] ? esc_html( $o['start'] . ( $o['end'] ? '-' . $o['end'] : '' ) ) . ' &middot; ' : '' ) . esc_html( $o['title'] )
+						. ( $o['location'] ? ' <span class="apsf-muted">&middot; ' . esc_html( $o['location'] ) . '</span>' : '' )
+						. ( in_array( (int) $o['activity_id'], $mine, true ) ? ' <strong>&middot; la tua</strong>' : '' ) . '</div>';
+				}
+				$html .= '</div></li>';
+			}
+			$html .= '</ul>';
+		}
+		if ( \ApSemplice\Calendar::enabled() ) {
+			$feed = \ApSemplice\Calendar::feed_url();
+			$html .= '<p class="apsf-small"><a href="' . esc_url( \ApSemplice\Calendar::google_add_url( $feed ) ) . '" target="_blank" rel="noopener">Aggiungi a Google Calendar</a> &middot; <a href="' . esc_url( \ApSemplice\Calendar::webcal_url( $feed ) ) . '">Apple / Outlook</a></p>';
+		}
+		return $html . '</section>';
+	}
+
+	public static function calendar(): string {
+		return self::with_person( array( __CLASS__, 'section_calendar' ) );
+	}
+
 	public static function notices(): string {
 		return self::with_person(
 			function ( $p ) {
@@ -718,11 +762,11 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,avvisi,pagamenti,ospiti,profilo,volontario,ingressi,spese' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,volontario,ingressi,spese' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
-					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
+					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
 					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';

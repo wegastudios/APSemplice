@@ -93,6 +93,7 @@ final class IncomePage {
 			'membershipFee' => (int) Settings::get( 'membership_fee_cents' ),
 			'socialYear'    => Settings::membership_year( $today )->label(),
 			'nextYear'      => Settings::membership_year( $today )->next()->label(),
+			'yearEnd'       => Settings::membership_year( $today )->end()->format( 'Y-m-d' ),
 			'accountTypes'  => $account_types,
 		);
 

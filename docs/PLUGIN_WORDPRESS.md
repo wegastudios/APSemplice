@@ -273,3 +273,6 @@ Un corso si **rinnova da solo ogni mese** finché l'iscritto non viene "disdetto
 ## Tessera associativa
 
 La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti tranne i soci fondatori (tessera sempre rinnovata). Chi si iscrive a fine anno può pagare la tessera dell'anno dopo e avere gratis quella in corso.
+
+- **Calendario nel sito**: lo shortcode `[apsemplice_calendario]` (blocco/widget "Calendario") mostra ai soci il mese con lezioni ed eventi, evidenziando le loro attività; è anche una sezione dell'area soci. Se il collegamento calendario è acceso, ci sono i link per aggiungerlo a Google Calendar, Apple o Outlook.
+- **Fine anno**: "anno in corso gratis" vale solo quando si compra la tessera dell'anno prossimo e il socio non ha già quella in corso.

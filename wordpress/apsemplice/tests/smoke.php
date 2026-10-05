@@ -2504,6 +2504,36 @@ apse_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_q ) &&
 $founder_until = $people->active_until( $founder );
 apse_ok( null !== $founder_until && $founder_until > ( (int) substr( $today, 0, 4 ) + 5 ) . '-01-01', 'tessera: il socio fondatore resta fuori da questa regola' );
 
+// ---------- Fine anno: l'anno in corso gratis solo se ora si compra l'anno prossimo ----------
+$cur_label  = Settings::membership_year()->label();
+$next_label = Settings::membership_year()->next()->label();
+$count_mb   = function ( int $pid ) use ( $wpdb ) {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $pid . ' AND deleted_at IS NULL' );
+};
+$fy_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Corrente', 'email' => 'anno.corrente@example.com' ) );
+$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_a, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => $cur_label, 'free_current_year' => '1' ) ) ) );
+apse_ok( 1 === $count_mb( $fy_a ), 'fine anno: comprando la tessera in corso non c\'è nessun anno gratis' );
+$fy_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Coperto', 'email' => 'anno.coperto@example.com' ) );
+$people->set_membership( $fy_b, $cur_label, true, 'manual' );
+$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_b, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => $next_label, 'free_current_year' => '1' ) ) ) );
+apse_ok( 2 === $count_mb( $fy_b ), 'fine anno: se la tessera in corso c\'è già, l\'anno prossimo non regala nulla (2 tessere, non 3)' );
+$fy_c = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Senza', 'email' => 'anno.senza@example.com' ) );
+$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_c, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => $next_label ) ) ) );
+apse_ok( 1 === $count_mb( $fy_c ), 'fine anno: senza la spunta si compra solo l\'anno prossimo' );
+$inc_js = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data' );
+apse_ok( false !== strpos( $inc_js, '"yearEnd"' ), 'incasso: la pagina conosce la fine dell\'anno della tessera' );
+
+// ---------- Calendario nell'area soci ----------
+apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
+$cal_front = $as( $u_ord, '[apsemplice_calendario]' );
+apse_ok( false !== strpos( $cal_front, 'apsf-calendar' ) && false !== strpos( $cal_front, 'Calendario' ), 'sito: il socio vede il calendario del mese' );
+$_GET['apsf_m'] = substr( $today, 0, 7 );
+$cal_month = $as( $u_ord, '[apsemplice_calendario]' );
+apse_ok( false !== strpos( $cal_month, 'Scrittura creativa' ) || false !== strpos( $cal_month, 'Nessuna lezione' ) || false !== strpos( $cal_month, 'Teatro' ) || false !== strpos( $cal_month, 'apsf-list' ), 'sito: il calendario elenca le lezioni del mese' );
+unset( $_GET['apsf_m'] );
+apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_soci]' ), 'apsf-calendar' ), 'sito: il calendario è anche nell\'area soci' );
+apse_ok( false === strpos( $as( 0, '[apsemplice_calendario]' ), 'apsf-calendar' ), 'sito: senza accesso il calendario non si vede' );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

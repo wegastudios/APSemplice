@@ -397,8 +397,12 @@ final class Actions {
 					$cat = $c;
 				}
 			}
-			$current = Settings::membership_year( (string) ( $p['date'] ?? '' ) ?: current_time( 'Y-m-d' ) )->label();
-			if ( ! empty( $l['free_current_year'] ) && $cat && 'membership' === $cat['kind'] && ( $l['social_year'] ?? '' ) !== $current ) {
+			$on_date = (string) ( $p['date'] ?? '' ) ?: current_time( 'Y-m-d' );
+			$current = Settings::membership_year( $on_date )->label();
+			$next    = Settings::membership_year( $on_date )->next();
+			$covered = ! empty( $p['person_id'] ) && (string) Plugin::people()->active_until( (int) $p['person_id'], $on_date ) >= Settings::membership_year( $on_date )->end()->format( 'Y-m-d' );
+			// vale solo se ora si compra proprio la tessera dell'anno prossimo e quella in corso non c'è già
+			if ( ! empty( $l['free_current_year'] ) && $cat && 'membership' === $cat['kind'] && ( $l['social_year'] ?? '' ) === $next->label() && ! $covered ) {
 				$lines[] = array(
 					'category_id' => (int) $cat['id'], 'amount_cents' => 0, 'social_year' => $current,
 					'discount_cents' => (int) Settings::get( 'membership_fee_cents' ), 'discount_note' => 'iscrizione a fine anno: anno in corso gratuito',

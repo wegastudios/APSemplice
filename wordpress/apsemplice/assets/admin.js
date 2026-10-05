@@ -150,7 +150,8 @@
 				});
 				ys.addEventListener('change', function () { l.socialYear = ys.value; render(); });
 				row.appendChild(ys);
-				if (l.socialYear !== D.socialYear) {
+				var covered = !!(ctx && ctx.active_until && ctx.active_until >= D.yearEnd);
+				if (l.socialYear === D.nextYear && !covered) {
 					var fc = el('input', { type: 'checkbox', name: n + '[free_current_year]', value: '1' });
 					if (l.freeCurrent) { fc.checked = true; }
 					fc.addEventListener('change', function () { l.freeCurrent = fc.checked; });

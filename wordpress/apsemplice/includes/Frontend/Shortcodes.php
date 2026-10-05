@@ -28,6 +28,7 @@ final class Shortcodes {
 		'ospiti'          => 'I miei ospiti',
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività che tengo)',
+		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
 		'accesso'         => 'Accesso / login',
@@ -48,9 +49,11 @@ final class Shortcodes {
 	public static function render_view( string $view, array $atts = array() ): string {
 		switch ( $view ) {
 			case 'area_soci':
-				return Views::area( shortcode_atts( array( 'sezioni' => 'tessera,attivita,avvisi,pagamenti,ospiti,profilo,volontario,ingressi,spese' ), $atts ) );
+				return Views::area( shortcode_atts( array( 'sezioni' => 'tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,volontario,ingressi,spese' ), $atts ) );
 			case 'tessera':
 				return Views::card();
+			case 'calendario':
+				return Views::calendar();
 			case 'avvisi':
 				return Views::notices();
 			case 'ingressi':
