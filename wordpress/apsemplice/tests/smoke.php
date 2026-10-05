@@ -2124,7 +2124,7 @@ $act->setAccessible( true );
 $act->invoke( null, array( 'id' => $chg[0]['id'] ) );
 apse_ok( 'quinto.nuova@example.com' === strtolower( (string) $people->get( $q )['email'] ), 'riepilogo: approvando il cambio, l\'email del socio si aggiorna' );
 apse_ok( 'quinto.nuova@example.com' === strtolower( (string) get_userdata( (int) $people->get( $q )['wp_user_id'] )->user_email ), 'riepilogo: approvando il cambio, si aggiorna anche l\'utente WordPress (ruoli: ' . implode( ',', get_userdata( (int) $people->get( $q )['wp_user_id'] )->roles ) . ')' );
-apse_ok( ! isset( $AR::all()[ $chg[0]['id'] ] ) && count( $fa_ml ) === $n_ml + 1, 'riepilogo: approvando il cambio, la richiesta si chiude e parte il link (' . ( count( $fa_ml ) - $n_ml ) . ' email)' );
+apse_ok( ! isset( $AR::all()[ $chg[0]['id'] ] ) && count( array_filter( $fa_ml, function ( $m ) { return 'quinto.nuova@example.com' === (string) ( (array) $m['to'] )[0] && false !== strpos( (string) $m['message'], 'scegli la tua password' ); } ) ) === 1, 'riepilogo: approvando il cambio, la richiesta si chiude e il link va alla nuova email' );
 $unk = array_values( array_filter( $AR::pending(), function ( $p ) { return 'unknown' === $p['kind']; } ) );
 $done = new ReflectionMethod( Admin\Actions::class, 'access_done' );
 $done->setAccessible( true );
