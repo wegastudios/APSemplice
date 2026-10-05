@@ -8,10 +8,10 @@ final class WalletCredentials {
 
 	/** Certificato o chiave in PEM; se arriva in formato binario (DER, es. il .cer di Apple) lo converte. */
 	public static function to_pem( string $bytes, string $label = 'CERTIFICATE' ): string {
-		$bytes = trim( $bytes );
 		if ( false !== strpos( $bytes, '-----BEGIN' ) ) {
-			return str_replace( "\r\n", "\n", $bytes ) . "\n";
+			return str_replace( "\r\n", "\n", trim( $bytes ) ) . "\n";
 		}
+		// DER binario: mai trim(), toglierebbe un ultimo byte "bianco" (0x00, 0x09, 0x0a, 0x0d, 0x20) e il certificato risulterebbe troncato.
 		return '-----BEGIN ' . $label . "-----\n" . chunk_split( base64_encode( $bytes ), 64, "\n" ) . '-----END ' . $label . "-----\n";
 	}
 
