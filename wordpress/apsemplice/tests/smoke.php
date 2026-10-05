@@ -1509,7 +1509,7 @@ apse_ok( 0 === $tx_of( $bid ) && $ru_undo['voided'] >= 3, 'annullamento: tutti i
 apse_ok( $balances()[ $cash_name ] === $bal_u0[ $cash_name ] - 100 && (int) $ledger->account( (int) $cash['id'] )['opening_cents'] === (int) $cash_row0['opening_cents'], 'annullamento: il saldo iniziale della cassa torna com\'era e il saldo attuale non cambia' );
 apse_ok( ! array_key_exists( 'Conto Annullabile', $balances() ) && 1 === $ru_undo['accounts_removed'], 'annullamento: il conto creato dall\'import, rimasto vuoto, viene tolto' );
 apse_ok( $ida_before['phone'] === $wpdb->get_var( 'SELECT phone FROM ' . Db::t( 'people' ) . " WHERE email = 'ida.storica@example.com'" ) && 1 === $ru_undo['people_restored'], 'annullamento: i dati del socio aggiornato tornano quelli di prima' );
-apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $ida_before['id'] . ' AND social_year = \'' . esc_sql( Settings::social_year()->label() ) . '\' AND deleted_at IS NULL' ), 'annullamento: l\'iscrizione segnata dall\'import viene tolta' );
+apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $ida_before['id'] . ' AND social_year = \'' . esc_sql( Settings::membership_year()->label() ) . '\' AND deleted_at IS NULL' ), 'annullamento: l\'iscrizione segnata dall\'import viene tolta' );
 $uma_del = $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'people' ) . " WHERE email = 'uma.annullabile@example.com'" );
 $osp_del = $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Ugo' AND last_name = 'Ospite'" );
 apse_ok( $uma_del && $osp_del && 2 === $ru_undo['people_removed'], 'annullamento: socio e ospite creati e mai usati vengono rimossi (prima l\'ospite, poi il socio)' );
@@ -2408,7 +2408,7 @@ $oc = $acts->get( $once_c );
 apse_ok( 'once' === $oc['billing'] && '18:30' === $oc['lesson_start'] && 'Sala Rossa' === $oc['location'] && $today === $oc['starts_on'], 'corso: pagamento unico, orario, luogo e date si salvano' );
 $threw = false;
 try {
-	$acts->create( array( 'name' => 'Orario sbagliato', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 100, 'lesson_start' => '20:00', 'lesson_end' => '19:00' ) );
+	$acts->create( array( 'name' => 'Orario sbagliato', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 100, 'lesson_weekday' => 2, 'lesson_start' => '20:00', 'lesson_end' => '19:00' ) );
 } catch ( \InvalidArgumentException $e ) {
 	$threw = true;
 }
