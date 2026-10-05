@@ -43,6 +43,7 @@ final class Actions {
 			'apse_event_staff_remove' => 'event_staff_remove',
 			'apse_checkin'            => 'checkin',
 			'apse_promote_guest'      => 'promote_guest',
+			'apse_access_done'        => 'access_done',
 			'apse_send_notice'        => 'send_notice',
 			'apse_walk_in'            => 'walk_in',
 			'apse_transfer_booking'   => 'transfer_booking',
@@ -280,6 +281,11 @@ final class Actions {
 		$aid = (int) ( $p['activity_id'] ?? 0 );
 		$r   = \ApSemplice\Notices::send( $aid, ! empty( $p['session_id'] ) ? (int) $p['session_id'] : null, (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) );
 		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ' persone (' . $r['emailed'] . ' email partite).' );
+	}
+
+	private static function access_done( array $p ): array {
+		\ApSemplice\AccessRequests::remove( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'apse' ), 'Richiesta chiusa.' );
 	}
 
 	private static function promote_guest( array $p ): array {

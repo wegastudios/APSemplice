@@ -2087,7 +2087,29 @@ apse_ok( false === $FA::request( 'sconosciuta@example.com' ) && false === $FA::r
 License::set_state( 'unpaid', $today );
 apse_ok( false === $FA::request( $q_mail ) && count( $fa_ml ) === $n, 'primo accesso: con la licenza non in regola è sospeso' );
 delete_option( License::OPT_STATE );
-apse_ok( false !== strpos( $FA::page( \ApSemplice\Frontend\FirstAccess::MESSAGE ), 'Se l\'email è quella di un socio' ) && false !== strpos( $FA::page(), 'Mandami il link' ) && false !== strpos( $FA::page(), 'name="email"' ), 'primo accesso: pagina con il modulo e la risposta uguale per tutti' );
+apse_ok( false !== strpos( $FA::page( \ApSemplice\Frontend\FirstAccess::MESSAGE ), 'Se i dati sono quelli di un socio' ) && false !== strpos( $FA::page(), 'Mandami il link' ) && false !== strpos( $FA::page(), 'name="who"' ), 'primo accesso: pagina con il modulo (email o cellulare) e la risposta uguale per tutti' );
+
+// primo accesso col cellulare: con l'email arriva il link, senza email la richiesta va alla segreteria (WhatsApp)
+$AR     = '\ApSemplice\AccessRequests';
+$n_ml   = count( $fa_ml );
+apse_ok( 'emailed' === $FA::request_phone( '+39 334 123 4567' ) && count( $fa_ml ) === $n_ml + 1 && 'nora.senzamail@example.com' === (string) ( (array) $fa_ml[ $n_ml ]['to'] )[0], 'primo accesso col cellulare: se il socio ha l\'email il link arriva alla SUA email (mai a chi scrive)' );
+$elio_id = (int) $elio['id'];
+apse_ok( 'queued' === $FA::request_phone( '336-1112233' ) && 'queued' === $FA::request_any( '+39 336 1112233' ) && 1 === count( array_filter( $AR::pending(), function ( $p ) use ( $elio_id ) { return (int) $p['id'] === $elio_id; } ) ) && count( $fa_ml ) === $n_ml + 1, 'primo accesso col cellulare: senza email la richiesta va in coda per la segreteria (una sola, nessuna email)' );
+$dup1 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dup', 'last_name' => 'Uno', 'phone' => '337 0000001' ) );
+$dup2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dup', 'last_name' => 'Due', 'phone' => '337 0000001' ) );
+apse_ok( 'none' === $FA::request_phone( '337 0000001' ) && 'none' === $FA::request_phone( '338 9999999' ) && 'none' === $FA::request_phone( '12' ) && 'none' === $FA::request_phone( (string) $people->get( $g_id )['phone'] ), 'primo accesso col cellulare: numeri sconosciuti, di più soci o di un ospite non fanno nulla' );
+License::set_state( 'unpaid', $today );
+apse_ok( 'none' === $FA::request_phone( '336 1112233' ), 'primo accesso col cellulare: sospeso con la licenza non in regola' );
+delete_option( License::OPT_STATE );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Richieste di primo accesso' );
+apse_ok( false !== strpos( $dash, 'Telefonico' ) && false !== strpos( $dash, 'wa.me/393361112233' ) && false !== strpos( $dash, 'apse_activate' ) || false !== strpos( $dash, rawurlencode( 'apse_activate' ) ), 'riepilogo: le richieste di primo accesso con il pulsante WhatsApp e il link già dentro' );
+$elio_link = $Act::url( $elio_id );
+parse_str( (string) wp_parse_url( $elio_link, PHP_URL_QUERY ), $q_el );
+$Act::complete( (string) $q_el['apse_activate'], array( 'email' => 'elio.telefonico@example.com', 'phone' => '336 1112233', 'password' => 'Segreta123!', 'password2' => 'Segreta123!' ) );
+apse_ok( array() === array_filter( $AR::pending(), function ( $p ) use ( $elio_id ) { return (int) $p['id'] === $elio_id; } ), 'riepilogo: chi si è attivato esce da solo dalle richieste' );
+$AR::add( $dup1 );
+( new ReflectionMethod( Admin\Actions::class, 'access_done' ) )->invoke( null, array( 'id' => $dup1 ) );
+apse_ok( ! isset( $AR::all()[ $dup1 ] ), 'riepilogo: "fatto" chiude la richiesta' );
 apse_ok( false !== strpos( (string) apply_filters( 'login_message', '' ), 'Primo accesso' ) && false !== strpos( (string) apply_filters( 'login_message', '' ), 'apse_first_access=1' ), 'primo accesso: il link compare nella pagina di accesso di WordPress' );
 apse_ok( false !== strpos( $as( 0, '[apsemplice_area_soci]' ), 'Primo accesso' ), 'primo accesso: il link compare anche nell\'area riservata, prima di "Password dimenticata"' );
 remove_all_filters( 'pre_wp_mail' );

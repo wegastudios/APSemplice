@@ -36,6 +36,23 @@ final class DashboardPage {
 		echo '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
+		$requests = \ApSemplice\AccessRequests::pending();
+		if ( $requests ) {
+			echo '<div class="apse-card"><h2>Richieste di primo accesso (' . count( $requests ) . ')</h2><p class="description">Soci senza email che hanno chiesto di entrare con il cellulare: rispondi su WhatsApp con il link di attivazione.</p><ul>';
+			foreach ( $requests as $r ) {
+				$wa = \ApSemplice\Phone::whatsapp( (string) $r['phone'] );
+				echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['first_name'] . ' ' . $r['last_name'] ) . '</a> <span class="description">' . esc_html( mysql2date( 'd/m H:i', gmdate( 'Y-m-d H:i:s', $r['requested_at'] ) ) ) . '</span> ';
+				if ( '' !== $wa ) {
+					echo '<a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \ApSemplice\Frontend\Activation::invite_text( $r ) ) ) . '">💬 Invia link</a> ';
+				}
+				Ui::form_open( 'apse_access_done', Ui::url( 'apse' ), false, 'apse-inline' );
+				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button-link">fatto</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo '</li>';
+			}
+			echo '</ul></div>';
+		}
+
 		$at_limit = \ApSemplice\Plugin::people()->guests_to_invite();
 		if ( $at_limit ) {
 			echo '<div class="apse-card"><h2>Ospiti da invitare a iscriversi (' . count( $at_limit ) . ')</h2><p class="description">Hanno raggiunto la soglia di partecipazioni per i non soci (sommando le registrazioni dello stesso cellulare, email o nome). Nessun blocco: decidi tu.</p><ul>';
