@@ -118,6 +118,56 @@
 		applyKind();
 	}
 
+	/* Scorciatoie dei giorni: "tutti i giorni", "lun-ven", "nessuno" */
+	document.addEventListener('click', function (e) {
+		var a = e.target.closest ? e.target.closest('.apse-days-set') : null;
+		if (!a) { return; }
+		e.preventDefault();
+		var set = a.getAttribute('data-set') ? a.getAttribute('data-set').split(',') : [];
+		$$('input[type="checkbox"]', a.closest('.apse-days-row')).forEach(function (c) { c.checked = set.indexOf(c.value) > -1; });
+	});
+
+	/* Programma a regole: date uniche e giorni ricorrenti con data di fine */
+	$$('.apse-when').forEach(function (wrap) {
+		var rows = $('.apse-when-rows', wrap), seq = 0;
+		var DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+		function field(label, input) { var l = el('label', { style: 'margin-right:10px' }); l.appendChild(document.createTextNode(label + ' ')); l.appendChild(input); return l; }
+		function add(type) {
+			var i = seq++, n = 'when[' + i + ']';
+			var row = el('div', { 'class': 'apse-when-row', style: 'border:1px solid #ccd0d4;border-radius:6px;padding:8px;margin:6px 0;background:#fff' });
+			row.appendChild(el('input', { type: 'hidden', name: n + '[type]', value: type }));
+			if (type === 'single') {
+				row.appendChild(el('strong', { text: 'Data unica  ' }));
+				row.appendChild(field('Giorno', el('input', { type: 'date', name: n + '[date]' })));
+			} else {
+				row.appendChild(el('strong', { text: 'Ogni  ' }));
+				var span = el('span', { 'class': 'apse-days-row' });
+				DAYS.forEach(function (d, k) {
+					var c = el('input', { type: 'checkbox', name: n + '[days][]', value: String(k + 1) });
+					var l = el('label', { style: 'margin-right:6px' }); l.appendChild(c); l.appendChild(document.createTextNode(' ' + d)); span.appendChild(l);
+				});
+				[['tutti i giorni', '1,2,3,4,5,6,7'], ['lun-ven', '1,2,3,4,5'], ['nessuno', '']].forEach(function (p, k) {
+					if (k) { span.appendChild(document.createTextNode(' · ')); }
+					span.appendChild(el('a', { href: '#', 'class': 'apse-days-set', 'data-set': p[1], text: p[0] }));
+				});
+				row.appendChild(span);
+			}
+			row.appendChild(el('br'));
+			row.appendChild(field('dalle', el('input', { type: 'time', name: n + '[from]' })));
+			row.appendChild(field('alle', el('input', { type: 'time', name: n + '[to]' })));
+			if (type === 'weekly') {
+				row.appendChild(field('dal', el('input', { type: 'date', name: n + '[start]' })));
+				row.appendChild(field('fino al (data di fine)', el('input', { type: 'date', name: n + '[end]' })));
+			}
+			var rm = el('button', { type: 'button', 'class': 'button-link-delete', text: 'Togli' });
+			rm.addEventListener('click', function () { row.parentNode.removeChild(row); });
+			row.appendChild(rm);
+			rows.appendChild(row);
+		}
+		$$('[data-add]', wrap).forEach(function (b) { b.addEventListener('click', function () { add(b.getAttribute('data-add')); }); });
+		add('single');
+	});
+
 	/* Calcolatrice del resto: dove si incassa in contanti (conto di tipo cassa) si scrive quanto si è ricevuto e dice il resto */
 	$$('[data-apse-change]').forEach(function (wrap) {
 		var types = JSON.parse(wrap.getAttribute('data-types') || '{}');

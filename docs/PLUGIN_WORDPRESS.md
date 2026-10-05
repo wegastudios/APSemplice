@@ -276,3 +276,10 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 
 - **Calendario nel sito**: lo shortcode `[apsemplice_calendario]` (blocco/widget "Calendario") mostra ai soci il mese con lezioni ed eventi, evidenziando le loro attività; è anche una sezione dell'area soci. Se il collegamento calendario è acceso, ci sono i link per aggiungerlo a Google Calendar, Apple o Outlook.
 - **Fine anno**: "anno in corso gratis" vale solo quando si compra la tessera dell'anno prossimo e il socio non ha già quella in corso.
+
+## Programma di eventi e corsi
+
+- **Eventi** (nuova attività o scheda dell evento ricorrente): costruttore dinamico con *+ Data unica* (giorno, dalle, alle) e *+ Giorni ricorrenti, con data di fine* (giorni della settimana, orario, da quando e fino a quando). Esempi: *20 settembre dalle 15 alle 20* (open day); *tutti i martedì e venerdì dalle 19 alle 20 fino al 31 luglio*. Le date già presenti non si duplicano. Un evento una tantum ha una sola data; per più date si usa l evento ricorrente.
+- **Corsi**: le lezioni settimanali si indicano con caselle dei giorni, anche *tutti i giorni* o *lun-ven*, e un orario per riga.
+- Le date degli eventi hanno anche l orario di fine, che compare nel calendario e nel file per Google Calendar.
+- **Calcolatrice del resto**: nella Bacheca (cassa rapida), nell incasso e nell ingresso sul posto, quando il conto è di tipo cassa contanti si scrive quanto si è ricevuto e il programma dice il resto (con i tagli).

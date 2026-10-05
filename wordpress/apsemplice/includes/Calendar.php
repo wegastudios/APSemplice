@@ -54,7 +54,7 @@ final class Calendar {
 		) ?: array();
 		foreach ( $rows as $s ) {
 			$out[] = array(
-				'date' => $s['session_date'], 'start' => $s['start_time'], 'end' => null, 'title' => $s['name'], 'location' => (string) $s['location'],
+				'date' => $s['session_date'], 'start' => $s['start_time'], 'end' => $s['end_time'], 'title' => $s['name'], 'location' => (string) $s['location'],
 				'kind' => $s['kind'], 'activity_id' => (int) $s['activity_id'], 'session_id' => (int) $s['id'],
 			);
 		}

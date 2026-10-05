@@ -37,6 +37,7 @@ final class Actions {
 			'apse_add_session'        => 'add_session',
 			'apse_update_session'     => 'update_session',
 			'apse_generate_sessions'  => 'generate_sessions',
+			'apse_add_dates'          => 'add_dates',
 			'apse_cancel_session'     => 'cancel_session',
 			'apse_book'               => 'book',
 			'apse_event_staff_add'    => 'event_staff_add',
@@ -167,6 +168,7 @@ final class Actions {
 		return array(
 			'session_date' => (string) ( $p['session_date'] ?? '' ),
 			'start_time'   => (string) ( $p['start_time'] ?? '' ),
+			'end_time'     => (string) ( $p['end_time'] ?? '' ),
 			'location'     => (string) ( $p['location'] ?? '' ),
 			'capacity'     => (string) ( $p['capacity'] ?? '' ),
 		);
@@ -186,13 +188,34 @@ final class Actions {
 
 	/** Lezioni settimanali dal modulo: righe giorno / dalle / alle (le righe senza giorno si ignorano). */
 	private static function lesson_slots( array $p ): array {
-		$out = array();
-		foreach ( (array) ( $p['slot_day'] ?? array() ) as $i => $day ) {
-			if ( (int) $day >= 1 ) {
-				$out[] = array( 'day' => (int) $day, 'start' => (string) ( $p['slot_start'][ $i ] ?? '' ), 'end' => (string) ( $p['slot_end'][ $i ] ?? '' ) );
-			}
+		$rows = array();
+		foreach ( (array) ( $p['slot_days'] ?? array() ) as $i => $days ) { // ogni riga: più giorni con lo stesso orario
+			$rows[] = array( 'days' => (array) $days, 'from' => (string) ( $p['slot_start'][ $i ] ?? '' ), 'to' => (string) ( $p['slot_end'][ $i ] ?? '' ) );
 		}
-		return $out;
+		return \ApSemplice\Schedule::slots( $rows );
+	}
+
+	/** Righe "quando" del modulo eventi: date uniche e giorni ricorrenti con data di fine. */
+	private static function when_rows( array $p ): array {
+		$rows = array();
+		foreach ( (array) ( $p['when'] ?? array() ) as $w ) {
+			$w = (array) $w;
+			if ( 'single' === ( $w['type'] ?? '' ) && '' === trim( (string) ( $w['date'] ?? '' ) ) ) {
+				continue; // riga lasciata vuota
+			}
+			$rows[] = array(
+				'type' => (string) ( $w['type'] ?? '' ), 'date' => (string) ( $w['date'] ?? '' ), 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ),
+				'days' => (array) ( $w['days'] ?? array() ), 'start' => (string) ( $w['start'] ?? '' ), 'end' => (string) ( $w['end'] ?? '' ),
+			);
+		}
+		return $rows;
+	}
+
+	private static function add_dates( array $p ): array {
+		$aid = (int) $p['activity_id'];
+		$cap = isset( $p['capacity'] ) && '' !== trim( (string) $p['capacity'] ) ? (int) $p['capacity'] : null;
+		$n   = Plugin::activities()->add_dates( $aid, self::when_rows( $p ), self::opt( $p, 'location' ), $cap );
+		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), 0 === $n ? 'Nessuna data nuova: erano già tutte presenti.' : $n . ( 1 === $n ? ' data aggiunta.' : ' date aggiunte.' ) );
 	}
 
 	private static function save_activity( array $p ): array {
@@ -206,7 +229,7 @@ final class Actions {
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
-			'lesson_slots'         => isset( $p['slot_day'] ) ? self::lesson_slots( $p ) : null,
+			'lesson_slots'         => isset( $p['slot_days'] ) ? self::lesson_slots( $p ) : null,
 			'lesson_weekday'       => (int) ( $p['lesson_weekday'] ?? 0 ),
 			'billing'              => (string) ( $p['billing'] ?? 'monthly' ),
 			'location'             => (string) ( $p['location'] ?? '' ),
@@ -221,10 +244,25 @@ final class Actions {
 			Plugin::activities()->update( $id, $data );
 			return array( Ui::url( 'apse-activity', array( 'id' => $id ) ), 'Attività salvata.' );
 		}
+		$when = self::when_rows( $p );
 		if ( 'event' === $data['kind'] ) {
 			$data['session'] = self::session_fields( $p );
+			if ( $when ) { // programma a regole: l'evento una tantum ha una sola data
+				$dates = \ApSemplice\Schedule::expand( $when );
+				if ( count( $dates ) > 1 ) {
+					throw new \InvalidArgumentException( 'Un evento una tantum ha una sola data: per più date scegli "Evento ricorrente".' );
+				}
+				if ( $dates ) {
+					$data['session'] = array( 'session_date' => $dates[0]['date'], 'start_time' => (string) $dates[0]['start'], 'end_time' => (string) $dates[0]['end'], 'location' => (string) ( $p['location'] ?? '' ), 'capacity' => (string) ( $p['capacity'] ?? '' ) );
+				}
+			}
 		}
 		$id = Plugin::activities()->create( $data );
+		if ( 'recurring' === $data['kind'] && $when ) {
+			$cap = isset( $p['capacity'] ) && '' !== trim( (string) $p['capacity'] ) ? (int) $p['capacity'] : null;
+			$n   = Plugin::activities()->add_dates( $id, $when, self::opt( $p, 'location' ), $cap );
+			return array( Ui::url( 'apse-activity', array( 'id' => $id ) ), 'Attività creata con ' . $n . ( 1 === $n ? ' data.' : ' date.' ) );
+		}
 		return array( Ui::url( 'apse-activity', array( 'id' => $id ) ), 'Attività creata.' );
 	}
 

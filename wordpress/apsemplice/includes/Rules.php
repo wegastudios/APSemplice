@@ -97,6 +97,12 @@ final class Rules {
 		if ( '' !== $time && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $time ) ) {
 			$errors[] = 'L\'orario non è valido (usa il formato HH:MM).';
 		}
+		$end = (string) ( $s['end_time'] ?? '' );
+		if ( '' !== $end && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $end ) ) {
+			$errors[] = 'L\'orario di fine non è valido (usa il formato HH:MM).';
+		} elseif ( '' !== $end && '' !== $time && $end <= $time ) {
+			$errors[] = 'L\'orario di fine deve essere dopo quello di inizio.';
+		}
 		if ( isset( $s['capacity'] ) && '' !== $s['capacity'] && (int) $s['capacity'] < 1 ) {
 			$errors[] = 'I posti disponibili devono essere almeno 1 (lascia vuoto per nessun limite).';
 		}

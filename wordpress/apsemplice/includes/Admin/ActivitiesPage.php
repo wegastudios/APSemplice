@@ -24,17 +24,34 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
-	/** Righe "giorno + dalle + alle" per le lezioni settimanali (una in più di quelle presenti, almeno due). */
+	/** Casella dei giorni della settimana (lunedì…domenica) con le scorciatoie "tutti i giorni" e "lun-ven". */
+	private static function days_picker( string $name, array $checked ): string {
+		$short = array( 1 => 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
+		$html  = '<span class="apse-days-row">';
+		foreach ( $short as $n => $label ) {
+			$html .= '<label style="margin-right:6px"><input type="checkbox" name="' . esc_attr( $name ) . '[]" value="' . $n . '"' . checked( in_array( $n, $checked, true ), true, false ) . '> ' . esc_html( $label ) . '</label>';
+		}
+		return $html . '<a href="#" class="apse-days-set" data-set="1,2,3,4,5,6,7">tutti i giorni</a> · <a href="#" class="apse-days-set" data-set="1,2,3,4,5">lun-ven</a> · <a href="#" class="apse-days-set" data-set="">nessuno</a></span>';
+	}
+
+	/** Righe "giorni + dalle + alle" per le lezioni settimanali del corso (anche tutti i giorni): una riga per ogni orario diverso, più una vuota. */
 	private static function slot_inputs( ?array $a, array $days ): string {
-		$slots = $a ? ActivityService::slots( $a ) : array();
-		$n     = max( 2, min( 7, count( $slots ) + 1 ) );
-		$days  = array( 0 => '— nessun giorno —' ) + array_slice( $days, 1, null, true );
-		$html  = '';
+		$rows = $a ? \ApSemplice\Schedule::rows_from_slots( ActivityService::slots( $a ) ) : array();
+		$n    = max( 2, min( 6, count( $rows ) + 1 ) );
+		$html = '';
 		for ( $i = 0; $i < $n; $i++ ) {
-			$s     = $slots[ $i ] ?? array( 'day' => 0, 'start' => '', 'end' => '' );
-			$html .= '<p style="margin:2px 0"><select name="slot_day[]">' . Ui::options( $days, (int) $s['day'] ) . '</select> dalle <input type="time" name="slot_start[]" value="' . esc_attr( (string) $s['start'] ) . '"> alle <input type="time" name="slot_end[]" value="' . esc_attr( (string) $s['end'] ) . '"></p>';
+			$r     = $rows[ $i ] ?? array( 'days' => array(), 'from' => '', 'to' => '' );
+			$html .= '<p style="margin:4px 0">' . self::days_picker( 'slot_days[' . $i . ']', $r['days'] ) . '<br>dalle <input type="time" name="slot_start[' . $i . ']" value="' . esc_attr( (string) $r['from'] ) . '"> alle <input type="time" name="slot_end[' . $i . ']" value="' . esc_attr( (string) $r['to'] ) . '"></p>';
 		}
 		return $html;
+	}
+
+	/** Programma a regole: date uniche e giorni ricorrenti con data di fine (le righe si aggiungono con i pulsanti). */
+	private static function when_builder(): string {
+		return '<div class="apse-when"><div class="apse-when-rows"></div><p>'
+			. '<button type="button" class="button" data-add="single">+ Data unica</button> '
+			. '<button type="button" class="button" data-add="weekly">+ Giorni ricorrenti, con data di fine</button></p>'
+			. '<p class="description">Es.: <em>20 settembre dalle 15 alle 20</em> (data unica); <em>tutti i martedì e venerdì dalle 19 alle 20, fino al 31 luglio</em> (giorni ricorrenti). Puoi aggiungere quante righe vuoi.</p></div>';
 	}
 
 	/** Righe del modulo: come si paga e quando si tiene il corso (solo corsi). */
@@ -132,9 +149,9 @@ final class ActivitiesPage {
 		echo '<tr><th>Tipo *</th><td><select name="kind" id="apse-kind">' . Ui::options( ActivityKind::labels(), ActivityKind::COURSE ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description" id="apse-kind-hint"></p></td></tr>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Yoga, Serata di giochi"></td></tr>';
-		echo '<tr class="apse-row-event"><th>Data *</th><td><input type="date" name="session_date"> ore <input type="time" name="start_time"></td></tr>';
-		echo '<tr class="apse-row-event"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
-		echo '<tr class="apse-row-event"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
+		echo '<tr class="apse-row-sessions"><th>Quando *</th><td>' . self::when_builder() . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr class="apse-row-sessions"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
+		echo '<tr class="apse-row-sessions"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
 		echo self::cancel_rows( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::qr_row( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::weekday_row( null, 'apse-row-course' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -317,16 +334,10 @@ final class ActivitiesPage {
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
 			echo '<div class="apse-card"><h2>Aggiungi date</h2>';
-			Ui::form_open( 'apse_add_session', $back );
-			echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<p>Una data: <input type="date" name="session_date" required> ore <input type="time" name="start_time"> luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> '
-				. '<button class="button">Aggiungi</button></p>';
-			Ui::form_close();
-			Ui::form_open( 'apse_generate_sessions', $back );
-			echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<p><strong>Ogni settimana</strong> dal <input type="date" name="from" required> al <input type="date" name="to" required> ore <input type="time" name="start_time"> '
-				. 'luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <button class="button">Genera date</button></p>'
-				. '<p class="description">Una data ogni 7 giorni (massimo 120). Le date già presenti non vengono duplicate.</p>';
+			Ui::form_open( 'apse_add_dates', $back );
+			echo Ui::hidden( 'activity_id', $id ) . self::when_builder(); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<p>Luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <span class="description">(per le date che aggiungi; posti vuoti = nessun limite)</span></p>'
+				. '<p><button class="button button-primary">Aggiungi le date</button> <span class="description">Le date già presenti non si duplicano (massimo 400 alla volta).</span></p>';
 			Ui::form_close();
 			echo '</div>';
 		}

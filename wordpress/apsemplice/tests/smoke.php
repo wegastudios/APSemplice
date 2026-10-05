@@ -2474,7 +2474,7 @@ apse_ok( 1 === count( \ApSemplice\ActivityService::slots( $acts->get( $ms_c ) ) 
 $acts->update( $ms_c, array( 'lesson_weekday' => 5 ) );
 apse_ok( array( 5 ) === \ApSemplice\ActivityService::slot_days( $acts->get( $ms_c ) ), 'corso: la modifica con il solo giorno resta valida' );
 $form_html = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Giorni e orari', array( 'id' => $ms_c ) );
-apse_ok( 2 <= substr_count( $form_html, 'name="slot_day[]"' ), 'scheda corso: righe per più giorni e orari' );
+apse_ok( 2 <= substr_count( $form_html, 'name="slot_start[' ) && 14 <= substr_count( $form_html, 'name="slot_days[' ), 'scheda corso: righe per più giorni e orari' );
 $pos_enrolled = strpos( $form_html, 'Iscritti e pagamenti' );
 $pos_data     = strpos( $form_html, 'Dati dell' );
 apse_ok( false !== strpos( $form_html, 'Iscrivi un socio o un ospite' ) && false !== $pos_enrolled && $pos_enrolled < $pos_data, 'scheda corso: gli iscritti stanno nella prima colonna, sotto il modulo di iscrizione' );
@@ -2540,6 +2540,71 @@ apse_ok( false !== strpos( $dash_c, 'data-apse-change' ) && false !== strpos( $d
 $walk_c = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ingresso senza prenotazione', array( 'id' => $event ) );
 apse_ok( false !== strpos( $walk_c, 'data-guest-fee' ) && false !== strpos( $walk_c, 'apse-cashbox' ), 'ingresso sul posto: calcolatrice del resto con il contributo di soci e ospiti' );
 apse_ok( false !== strpos( apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data' ), 'id="apse-cash"' ), 'incasso: la calcolatrice del resto c\'è già' );
+
+// ---------- Date dinamiche: date uniche, giorni ricorrenti, data di fine ----------
+$rec_c = $acts->create( array( 'name' => 'Laboratorio serale', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 500 ) );
+$base_d = gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) );
+$end_d  = gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) );
+$n_add  = $acts->add_dates( $rec_c, array( array( 'type' => 'weekly', 'days' => array( 2, 5 ), 'from' => '19:00', 'to' => '20:00', 'start' => $base_d, 'end' => $end_d ) ), 'Sala Blu', 20 );
+$rec_s  = $acts->sessions( $rec_c );
+$wd_ok  = true;
+foreach ( $rec_s as $s ) {
+	$wd = (int) ( new DateTimeImmutable( $s['session_date'] ) )->format( 'N' );
+	$wd_ok = $wd_ok && ( 2 === $wd || 5 === $wd ) && '19:00' === $s['start_time'] && '20:00' === $s['end_time'] && 'Sala Blu' === $s['location'] && 20 === (int) $s['capacity'];
+}
+apse_ok( $n_add >= 8 && $n_add <= 10 && count( $rec_s ) === $n_add && $wd_ok, 'date: tutti i martedì e venerdì dalle 19 alle 20 fino alla data di fine (' . $n_add . ' date)' );
+$again = $acts->add_dates( $rec_c, array( array( 'type' => 'weekly', 'days' => array( 2, 5 ), 'from' => '19:00', 'to' => '20:00', 'start' => $base_d, 'end' => $end_d ), array( 'type' => 'single', 'date' => $end_d, 'from' => '10:00', 'to' => '11:00' ) ) );
+apse_ok( $again <= 1, 'date: le date già presenti non si duplicano' );
+$threw = false;
+try {
+	$acts->add_dates( $rec_c, array( array( 'type' => 'weekly', 'days' => array( 1 ), 'start' => $base_d ) ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'date: i giorni ricorrenti vogliono la data di fine' );
+$ad = new ReflectionMethod( Admin\Actions::class, 'add_dates' );
+$ad->setAccessible( true );
+$ad->invoke( null, array( 'activity_id' => (string) $rec_c, 'when' => array( array( 'type' => 'single', 'date' => gmdate( 'Y-m-d', strtotime( $today . ' +200 days' ) ), 'from' => '15:00', 'to' => '20:00' ), array( 'type' => 'single', 'date' => '' ) ), 'location' => 'Piazza', 'capacity' => '' ) );
+$open = array_values( array_filter( $acts->sessions( $rec_c ), function ( $s ) {
+	return 'Piazza' === $s['location'];
+} ) );
+apse_ok( 1 === count( $open ) && '15:00' === $open[0]['start_time'] && '20:00' === $open[0]['end_time'], 'date: una data unica dalle 15 alle 20 dal modulo (la riga vuota si ignora)' );
+
+// creazione dal modulo con il programma a regole
+$sa = new ReflectionMethod( Admin\Actions::class, 'save_activity' );
+$sa->setAccessible( true );
+$od_date = gmdate( 'Y-m-d', strtotime( $today . ' +40 days' ) );
+$res_od  = $sa->invoke( null, array( 'name' => 'Open day', 'social_year' => $sy_label, 'kind' => 'event', 'fee' => '0', 'when' => array( array( 'type' => 'single', 'date' => $od_date, 'from' => '15:00', 'to' => '20:00' ) ), 'location' => 'Sede' ) );
+$od_id   = (int) preg_replace( '/\D/', '', (string) wp_parse_url( $res_od[0], PHP_URL_QUERY ) ?: '0' );
+parse_str( (string) wp_parse_url( $res_od[0], PHP_URL_QUERY ), $q_od );
+$od_s = $acts->sessions( (int) $q_od['id'] );
+apse_ok( 1 === count( $od_s ) && $od_date === $od_s[0]['session_date'] && '20:00' === $od_s[0]['end_time'] && 'Sede' === $od_s[0]['location'], 'evento: open day del 20 settembre dalle 15 alle 20 creato dal modulo' );
+$threw = false;
+try {
+	$sa->invoke( null, array( 'name' => 'Evento doppio', 'social_year' => $sy_label, 'kind' => 'event', 'fee' => '0', 'when' => array( array( 'type' => 'single', 'date' => $od_date ), array( 'type' => 'single', 'date' => gmdate( 'Y-m-d', strtotime( $od_date . ' +1 day' ) ) ) ) ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'evento una tantum: una sola data (per più date serve l\'evento ricorrente)' );
+$res_rc = $sa->invoke( null, array( 'name' => 'Corso serale a date', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee' => '5,00', 'when' => array( array( 'type' => 'weekly', 'days' => array( '2', '5' ), 'from' => '19:00', 'to' => '20:00', 'start' => $base_d, 'end' => $end_d ) ) ) );
+parse_str( (string) wp_parse_url( $res_rc[0], PHP_URL_QUERY ), $q_rc );
+apse_ok( count( $acts->sessions( (int) $q_rc['id'] ) ) >= 8 && false !== strpos( $res_rc[1], 'date' ), 'evento ricorrente: creato con le date dei martedì e venerdì' );
+
+// il calendario conosce l'orario di fine delle date
+$occ_end = array_values( array_filter( \ApSemplice\Calendar::occurrences( $od_date, $od_date ), function ( $o ) use ( $q_od ) {
+	return (int) $o['activity_id'] === (int) $q_od['id'];
+} ) );
+apse_ok( 1 === count( $occ_end ) && '20:00' === $occ_end[0]['end'], 'calendario: le date degli eventi hanno anche l\'orario di fine' );
+
+// corso tutti i giorni dal modulo
+$ev_c = $sa->invoke( null, array( 'name' => 'Corso ogni giorno', 'social_year' => $sy_label, 'kind' => 'course', 'fee' => '30', 'slot_days' => array( array( '1', '2', '3', '4', '5', '6', '7' ), array( '3' ) ), 'slot_start' => array( '10:00', '' ), 'slot_end' => array( '11:00', '' ) ) );
+parse_str( (string) wp_parse_url( $ev_c[0], PHP_URL_QUERY ), $q_ev );
+$evd = \ApSemplice\ActivityService::slot_days( $acts->get( (int) $q_ev['id'] ) );
+apse_ok( array( 1, 2, 3, 4, 5, 6, 7 ) === $evd, 'corso: si può tenere tutti i giorni' );
+$cform = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Giorni e orari', array( 'id' => (int) $q_ev['id'] ) );
+apse_ok( false !== strpos( $cform, 'name="slot_days[0][]"' ) && false !== strpos( $cform, 'tutti i giorni' ), 'scheda corso: caselle dei giorni con la scorciatoia "tutti i giorni"' );
+$nform = apse_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Quando *' );
+apse_ok( false !== strpos( $nform, 'apse-when' ) && false !== strpos( $nform, 'Giorni ricorrenti' ), 'nuova attività: costruttore del programma (data unica, giorni ricorrenti, data di fine)' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

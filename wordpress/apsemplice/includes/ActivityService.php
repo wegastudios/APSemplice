@@ -255,6 +255,7 @@ class ActivityService {
 		return array(
 			'session_date' => (string) ( $s['session_date'] ?? '' ),
 			'start_time'   => $t( 'start_time' ),
+			'end_time'     => $t( 'end_time' ),
 			'location'     => $t( 'location' ),
 			'capacity'     => $cap,
 			'notes'        => $t( 'notes' ),
@@ -321,6 +322,38 @@ class ActivityService {
 		$this->validate_session( $n );
 		$this->db()->update( Db::t( 'sessions' ), $n, array( 'id' => $session_id ) );
 		Audit::log( 'session.updated', 'activity', (int) $cur['activity_id'], array( 'session' => $session_id ) );
+	}
+
+	/**
+	 * Aggiunge le date descritte da regole (date uniche, giorni ricorrenti con data di fine): vedi {@see Schedule::expand()}.
+	 * Le date già presenti (stesso giorno e orario) non si duplicano. Un evento una tantum ha una sola data.
+	 *
+	 * @return int date create
+	 */
+	public function add_dates( int $activity_id, array $rows, ?string $location = null, ?int $capacity = null ): int {
+		$a     = $this->assert_uses_sessions( $this->get( $activity_id ) );
+		$dates = Schedule::expand( $rows );
+		if ( ! $dates ) {
+			throw new \InvalidArgumentException( 'Aggiungi almeno una data.' );
+		}
+		if ( ActivityKind::EVENT === $a['kind'] && ( count( $dates ) > 1 || $this->sessions( $activity_id ) ) ) {
+			throw new \InvalidArgumentException( 'Un evento una tantum ha una sola data: per più date scegli "Evento ricorrente".' );
+		}
+		$have = array();
+		foreach ( $this->sessions( $activity_id ) as $s ) {
+			$have[ $s['session_date'] . '|' . (string) $s['start_time'] ] = true;
+		}
+		$made = 0;
+		foreach ( $dates as $d ) {
+			if ( isset( $have[ $d['date'] . '|' . (string) $d['start'] ] ) ) {
+				continue;
+			}
+			$n = $this->normalize_session( array( 'session_date' => $d['date'], 'start_time' => $d['start'], 'end_time' => $d['end'], 'location' => $location, 'capacity' => $capacity ) );
+			$this->validate_session( $n );
+			$this->insert_session( $activity_id, $n );
+			$made++;
+		}
+		return $made;
 	}
 
 	/** Crea una data ogni 7 giorni da $from a $to compresi (max 120). @return int date create */
