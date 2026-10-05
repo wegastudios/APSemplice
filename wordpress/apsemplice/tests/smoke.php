@@ -2179,9 +2179,10 @@ apse_ok( null !== $ledger->account( $acc_id ), 'conti: si può riaprire' );
 $real_before = array_sum( array_column( array_filter( $ledger->balances(), function ( $b ) {
 	return 'fund' !== $b['kind'];
 } ), 'balance' ) );
+$fund_payer  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pagante', 'last_name' => 'Fondo', 'email' => 'pagante.fondo@example.com' ) );
 $fund_id     = $ledger->add_account( 'Fondo rimborso Mario', 'cash', 0, 'fund' );
 $rep0        = Plugin::reports()->period( $today, $today );
-$ledger->record_receipt( array( 'date' => $today, 'account_id' => $fund_id, 'method' => 'cash', 'person_id' => $ord, 'lines' => array( array( 'category_id' => $cat['other_income'], 'amount_cents' => 3000 ) ) ) );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => $fund_id, 'method' => 'cash', 'person_id' => $fund_payer, 'lines' => array( array( 'category_id' => $cat['other_income'], 'amount_cents' => 3000 ) ) ) );
 $real_after = array_sum( array_column( array_filter( $ledger->balances(), function ( $b ) {
 	return 'fund' !== $b['kind'];
 } ), 'balance' ) );
