@@ -253,7 +253,7 @@ final class PeoplePage {
 		}
 		Ui::form_open( 'apse_promote_guest', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), false, 'apse-confirm' );
 		echo '<details style="margin-top:10px"' . ( $ov && $ov['flag'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p>Email (obbligatoria) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '" required> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
+			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
 			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
 			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \ApSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>';

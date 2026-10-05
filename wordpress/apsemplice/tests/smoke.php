@@ -1896,7 +1896,7 @@ apse_ok( 1 === count( $people->find_homonyms( 'olga', 'occasionale' ) ) && array
 
 // iscrizione come socio: la storia resta
 $before = $acts->guest_status( $gx )['items'];
-apse_ok( null !== apse_throws( function () use ( $people, $gx ) { $people->promote_guest( $gx, array( 'email' => '' ) ); } ) && null !== apse_throws( function () use ( $people, $founder ) { $people->promote_guest( $founder, array( 'email' => 'x@example.com' ) ); } ), 'iscrizione come socio: serve l\'email e vale solo per gli ospiti' );
+apse_ok( null !== apse_throws( function () use ( $people, $founder ) { $people->promote_guest( $founder, array( 'email' => 'x@example.com' ) ); } ) && null !== apse_throws( function () use ( $people, $gx ) { $people->promote_guest( $gx, array( 'email' => 'non-una-email' ) ); } ), 'iscrizione come socio: vale solo per gli ospiti e se c è l email deve essere valida' );
 $people->promote_guest( $gx, array( 'email' => 'olga.occasionale@example.com', 'type' => 'volunteer', 'card_number' => '777', 'membership' => '1' ) );
 $olga = $people->get( $gx );
 apse_ok( 'volunteer' === $olga['type'] && empty( $olga['host_person_id'] ) && '777' === $olga['card_number'] && ! empty( $olga['wp_user_id'] ) && $people->is_active_member( $gx ), 'iscrizione come socio: tipo, tessera, utente WordPress e iscrizione all\'anno sociale' );
