@@ -2534,6 +2534,13 @@ unset( $_GET['apsf_m'] );
 apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_soci]' ), 'apsf-calendar' ), 'sito: il calendario è anche nell\'area soci' );
 apse_ok( false === strpos( $as( 0, '[apsemplice_calendario]' ), 'apsf-calendar' ), 'sito: senza accesso il calendario non si vede' );
 
+// ---------- Calcolatrice del resto ----------
+$dash_c = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Cassa rapida' );
+apse_ok( false !== strpos( $dash_c, 'data-apse-change' ) && false !== strpos( $dash_c, 'apse-cashbox' ) && false !== strpos( $dash_c, 'apse-tendered' ), 'cassa rapida: c\'è la calcolatrice del resto per i contanti' );
+$walk_c = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ingresso senza prenotazione', array( 'id' => $event ) );
+apse_ok( false !== strpos( $walk_c, 'data-guest-fee' ) && false !== strpos( $walk_c, 'apse-cashbox' ), 'ingresso sul posto: calcolatrice del resto con il contributo di soci e ospiti' );
+apse_ok( false !== strpos( apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data' ), 'id="apse-cash"' ), 'incasso: la calcolatrice del resto c\'è già' );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

@@ -118,6 +118,56 @@
 		applyKind();
 	}
 
+	/* Calcolatrice del resto: dove si incassa in contanti (conto di tipo cassa) si scrive quanto si è ricevuto e dice il resto */
+	$$('[data-apse-change]').forEach(function (wrap) {
+		var types = JSON.parse(wrap.getAttribute('data-types') || '{}');
+		var income = wrap.getAttribute('data-income');
+		income = income ? JSON.parse(income) : null;
+		var box = $('.apse-cashbox', wrap), tendered = $('.apse-tendered', wrap), out = $('.apse-change-out', wrap), quick = $('.apse-quick', wrap);
+		var amountEl = $('[name="amount"]', wrap), acc = $('[name="account_id"]', wrap), cat = $('[name="category_id"]', wrap);
+		var DEN = [50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
+		var fixedFee = wrap.getAttribute('data-fee');
+		var guestIds = JSON.parse(wrap.getAttribute('data-guest-ids') || '[]');
+		var personEl = $('[name="person_id"]', wrap), newEl = $('[name="new_first_name"]', wrap), payEl = $('[name="pay"]', wrap);
+		function due() {
+			if (fixedFee === null) { return parseMoney(amountEl.value) || 0; }
+			if (payEl && !payEl.checked) { return 0; }
+			var guest = (newEl && newEl.value.trim() !== '') || (personEl && guestIds.indexOf(parseInt(personEl.value, 10)) > -1);
+			return parseInt(guest ? wrap.getAttribute('data-guest-fee') : fixedFee, 10) || 0;
+		}
+		function active() {
+			return types[acc.value] === 'cash' && due() > 0 && (!income || !cat || income.indexOf(parseInt(cat.value, 10)) > -1);
+		}
+		function refresh() {
+			var on = active();
+			box.style.display = on ? '' : 'none';
+			if (!on) { return; }
+			var t = due(), got = parseMoney(tendered.value);
+			quick.innerHTML = '';
+			var q = [t]; [500, 1000, 2000, 5000, 10000, 20000].forEach(function (x) { if (x >= t && q.indexOf(x) < 0) { q.push(x); } });
+			q.slice(0, 4).forEach(function (v) {
+				var b = el('button', { type: 'button', 'class': 'button', text: v === t ? 'Esatto' : eur(v).replace(',00', '') });
+				b.addEventListener('click', function () { tendered.value = plain(v); refresh(); });
+				quick.appendChild(b);
+			});
+			if (got == null) { out.className = 'apse-change-out description'; out.textContent = 'Scrivi quanto ti hanno dato.'; return; }
+			if (got < t) { out.className = 'apse-change-out apse-neg'; out.textContent = 'Mancano ' + eur(t - got); return; }
+			var rest = got - t, parts = [];
+			DEN.forEach(function (d) { var k = Math.floor(rest / d); if (k > 0) { parts.push(k + ' × ' + eur(d)); rest -= k * d; } });
+			out.className = 'apse-change-out apse-ok';
+			out.textContent = 'Resto da dare: ' + eur(got - t) + (parts.length ? ' (' + parts.join(' · ') + ')' : '');
+		}
+		[amountEl, acc, cat, tendered, personEl, newEl, payEl].forEach(function (x) { if (x) { x.addEventListener('input', refresh); x.addEventListener('change', refresh); } });
+		var form = wrap.closest('form');
+		if (form) {
+			form.addEventListener('submit', function (e) {
+				var got = parseMoney(tendered.value);
+				if (active() && got != null && got < due()) { e.preventDefault(); window.alert('I contanti ricevuti non bastano.'); }
+			});
+		}
+		refresh();
+	});
+
 	/* Incasso multi-voce con calcolo del resto */
 	var dataEl = $('#apse-income-data');
 	if (!dataEl) { return; }

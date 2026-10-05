@@ -347,14 +347,26 @@ final class ActivitiesPage {
 		$fee   = (int) $activity['fee_cents'];
 		$guest = null === $activity['guest_fee_cents'] || '' === $activity['guest_fee_cents'] ? $fee : (int) $activity['guest_fee_cents'];
 		echo '<details class="apse-detail" style="margin-top:8px"><summary><strong>Ingresso senza prenotazione (sul posto)</strong></summary>';
+		$types     = array();
+		foreach ( $ledger->accounts() as $acc ) {
+			$types[ (int) $acc['id'] ] = $acc['type'];
+		}
+		$guest_ids = array();
+		foreach ( $candidates as $c ) {
+			if ( MemberType::GUEST === $c['type'] ) {
+				$guest_ids[] = (int) $c['id'];
+			}
+		}
 		Ui::form_open( 'apse_walk_in', $back );
 		echo Ui::hidden( 'activity_id', $activity['id'] ) . Ui::hidden( 'session_id', $sid ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<div data-apse-change data-fee="' . (int) $fee . '" data-guest-fee="' . (int) $guest . '" data-guest-ids="' . esc_attr( wp_json_encode( $guest_ids ) ) . '" data-types="' . esc_attr( wp_json_encode( $types ) ) . '">';
 		echo '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'apse-walk-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> cellulare <input type="text" name="new_phone" placeholder="333 1234567"> del socio '
 			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'apse-walkhost-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><label><input type="checkbox" name="pay" value="1" checked> Incassa ora il contributo</label> (soci ' . esc_html( Money::format( $fee ) ) . ', ospiti ' . esc_html( Money::format( $guest ) ) . ') — '
 			. 'sul conto '
 			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<div class="apse-cashbox" style="display:none"><p>Contanti ricevuti <input type="text" class="apse-tendered" inputmode="decimal" placeholder="importo esatto" size="8"> € <span class="apse-quick"></span></p><p class="apse-change-out"></p></div></div>'
 			. '<p><label><input type="checkbox" name="checkin" value="1" checked> Registra subito l\'ingresso</label> <button class="button button-primary">Prenota sul posto</button></p>'
 			. '<p class="description">Il nuovo ospite viene creato (il cellulare è obbligatorio: serve a riconoscerlo) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>';
 		Ui::form_close();

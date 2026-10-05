@@ -104,9 +104,17 @@ final class DashboardPage {
 		foreach ( $ledger->accounts() as $a ) {
 			$accounts[ $a['id'] ] = $a['name'];
 		}
-		$cats = array();
+		$cats         = array();
+		$income_ids   = array();
+		$account_types = array();
+		foreach ( $ledger->accounts() as $a ) {
+			$account_types[ (int) $a['id'] ] = $a['type'];
+		}
 		foreach ( array( 'donation', 'other_income', 'general_cost' ) as $k ) {
 			$id = $ledger->category_id_of_kind( $k );
+			if ( $id && ! \ApSemplice\Labels::category_kinds()[ $k ][2] ) {
+				$income_ids[] = (int) $id;
+			}
 			if ( $id ) {
 				$cats[ $id ] = ( \ApSemplice\Labels::category_kinds()[ $k ][2] ? 'Spesa: ' : 'Incasso: ' ) . \ApSemplice\Labels::category_kinds()[ $k ][0];
 			}
@@ -114,10 +122,12 @@ final class DashboardPage {
 		$default = $ledger->default_account_for( 'cash' );
 		echo '<div class="apse-card"><h2>Cassa rapida</h2>';
 		Ui::form_open( 'apse_quick_cash', Ui::url( 'apse' ) );
+		echo '<div data-apse-change data-types="' . esc_attr( wp_json_encode( $account_types ) ) . '" data-income="' . esc_attr( wp_json_encode( $income_ids ) ) . '">';
 		echo '<p><select name="category_id" required>' . Ui::options( $cats, null ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<input type="text" name="amount" inputmode="decimal" placeholder="0,00" size="8" required> € </p>'
 			. '<p><input type="text" name="description" class="regular-text" placeholder="Descrizione" required></p>'
 			. '<p>Sul conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<div class="apse-cashbox" style="display:none"><p>Contanti ricevuti <input type="text" class="apse-tendered" inputmode="decimal" placeholder="importo esatto" size="8"> € <span class="apse-quick"></span></p><p class="apse-change-out"></p></div></div>'
 			. '<p><button class="button button-primary">Registra</button> <a href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Incasso completo (quote, attività)</a> · <a href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Spesa completa</a></p>';
 		Ui::form_close();
 		echo '</div>';
