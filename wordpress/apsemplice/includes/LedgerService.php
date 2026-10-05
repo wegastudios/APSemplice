@@ -37,7 +37,6 @@ class LedgerService {
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'accounts' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
 		return $row ?: null;
 	}
-	}
 
 	private function check_account_fields( string $name, string $type ): string {
 		$name = trim( $name );
