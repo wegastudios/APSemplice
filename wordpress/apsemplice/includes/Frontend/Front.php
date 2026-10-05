@@ -14,6 +14,7 @@ final class Front {
 		CardVerify::register();
 		TicketVerify::register();
 		Activation::register();
+		FirstAccess::register();
 		\ApSemplice\Wallet::register();
 		Blocks::register();
 		ElementorSupport::register();

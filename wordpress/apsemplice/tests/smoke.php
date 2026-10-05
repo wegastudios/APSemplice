@@ -2061,6 +2061,38 @@ $elio = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE last_name
 apse_ok( $elio && empty( $elio['wp_user_id'] ) && null === $elio['email'], 'import: socio senza email registrato, senza utente fittizio' );
 @unlink( $csv );
 
+// ---------- Primo accesso: il socio sceglie la sua password ----------
+wp_set_current_user( 1 );
+$FA    = '\ApSemplice\Frontend\FirstAccess';
+$fa_ml = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$fa_ml ) {
+		$fa_ml[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$q_mail = (string) $people->get( $q )['email'];
+apse_ok( true === $FA::request( $q_mail ) && 1 === count( $fa_ml ) && $q_mail === (string) ( (array) $fa_ml[0]['to'] )[0], 'primo accesso: a un socio con accesso arriva la email con il link' );
+apse_ok( false !== strpos( (string) $fa_ml[0]['subject'], 'Primo accesso' ) && false !== strpos( (string) $fa_ml[0]['message'], 'scegli la tua password' ) && 0 === strpos( (string) $fa_ml[0]['message'], 'Ciao Quinto' ), 'primo accesso: email con le parole giuste (non "recupero password")' );
+preg_match( '/key=([A-Za-z0-9]+)&login=([^\s]+)/', (string) $fa_ml[0]['message'], $km );
+$chk = check_password_reset_key( $km[1], rawurldecode( $km[2] ) );
+apse_ok( $chk instanceof WP_User && (int) $chk->ID === (int) $people->get( $q )['wp_user_id'], 'primo accesso: il link è quello valido di WordPress per scegliere la password di quel socio' );
+$n = count( $fa_ml );
+$admin_mail = (string) get_userdata( 1 )->user_email;
+$plain_id   = wp_create_user( 'soloutente', 'x-Pass-123456', 'solo.utente@example.com' );
+apse_ok( false === $FA::request( 'sconosciuta@example.com' ) && false === $FA::request( 'non-una-email' ) && false === $FA::request( '' ) && false === $FA::request( $admin_mail ) && false === $FA::request( 'solo.utente@example.com' ) && count( $fa_ml ) === $n, 'primo accesso: email sconosciute, amministratori e utenti che non sono soci non ricevono nulla' );
+License::set_state( 'unpaid', $today );
+apse_ok( false === $FA::request( $q_mail ) && count( $fa_ml ) === $n, 'primo accesso: con la licenza non in regola è sospeso' );
+delete_option( License::OPT_STATE );
+apse_ok( false !== strpos( $FA::page( \ApSemplice\Frontend\FirstAccess::MESSAGE ), 'Se l\'email è quella di un socio' ) && false !== strpos( $FA::page(), 'Mandami il link' ) && false !== strpos( $FA::page(), 'name="email"' ), 'primo accesso: pagina con il modulo e la risposta uguale per tutti' );
+apse_ok( false !== strpos( (string) apply_filters( 'login_message', '' ), 'Primo accesso' ) && false !== strpos( (string) apply_filters( 'login_message', '' ), 'apse_first_access=1' ), 'primo accesso: il link compare nella pagina di accesso di WordPress' );
+apse_ok( false !== strpos( $as( 0, '[apsemplice_area_soci]' ), 'Primo accesso' ), 'primo accesso: il link compare anche nell\'area riservata, prima di "Password dimenticata"' );
+remove_all_filters( 'pre_wp_mail' );
+wp_set_current_user( 1 );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );
