@@ -69,6 +69,8 @@ final class Actions {
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_quick_cash'         => 'quick_cash',
+			'apse_save_ical'          => 'save_ical',
+			'apse_regen_ical'         => 'regen_ical',
 			'apse_quick_enroll'       => 'quick_enroll',
 			'apse_save_payment_settings' => 'save_payment_settings',
 			'apse_create_pages'       => 'create_pages',
@@ -194,6 +196,12 @@ final class Actions {
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
 			'lesson_weekday'       => (int) ( $p['lesson_weekday'] ?? 0 ),
+			'billing'              => (string) ( $p['billing'] ?? 'monthly' ),
+			'lesson_start'         => (string) ( $p['lesson_start'] ?? '' ),
+			'lesson_end'           => (string) ( $p['lesson_end'] ?? '' ),
+			'location'             => (string) ( $p['location'] ?? '' ),
+			'starts_on'            => (string) ( $p['starts_on'] ?? '' ),
+			'ends_on'              => (string) ( $p['ends_on'] ?? '' ),
 			'fund_mode'            => (string) ( $p['fund_mode'] ?? '' ),
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
@@ -681,6 +689,16 @@ final class Actions {
 		$token = wp_generate_password( 16, false );
 		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $prev, HOUR_IN_SECONDS );
 		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
+	}
+
+	private static function save_ical( array $p ): array {
+		Settings::update( array( 'ical_enabled' => ! empty( $p['ical_enabled'] ) ? 1 : 0 ) );
+		return array( Ui::url( 'apse-calendar' ), ! empty( $p['ical_enabled'] ) ? 'Calendario pubblicato: copia l\'indirizzo qui sotto.' : 'Calendario non più pubblicato.' );
+	}
+
+	private static function regen_ical( array $p ): array {
+		\ApSemplice\Calendar::regenerate_token();
+		return array( Ui::url( 'apse-calendar' ), 'Nuovo indirizzo del calendario: aggiorna il collegamento in Google Calendar.' );
 	}
 
 	private static function save_card( array $p ): array {

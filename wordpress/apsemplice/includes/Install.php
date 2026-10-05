@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '14';
+	const DB_VERSION        = '15';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -131,6 +131,12 @@ final class Install {
   cancel_policy varchar(4) DEFAULT NULL,
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
+  billing varchar(8) NOT NULL DEFAULT 'monthly',
+  lesson_start char(5) DEFAULT NULL,
+  lesson_end char(5) DEFAULT NULL,
+  location varchar(190) DEFAULT NULL,
+  starts_on date DEFAULT NULL,
+  ends_on date DEFAULT NULL,
   fund_mode varchar(8) NOT NULL DEFAULT '',
   fund_value bigint(20) NOT NULL DEFAULT 0,
   notes text,

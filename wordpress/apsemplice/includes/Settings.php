@@ -38,6 +38,7 @@ final class Settings {
 			'card_qr_enabled'         => 0,     // QR sulla tessera digitale: a scelta del gestore, spento di default
 			'ticket_qr_enabled'       => 0,     // biglietti QR delle prenotazioni (poi si scelgono per singolo evento)
 			'wallet_enabled'          => 0,     // pulsanti Apple/Google Wallet
+			'ical_enabled'            => 0,     // indirizzo del calendario per Google Calendar e simili
 			'wallet_apple_pass_type'  => '',    // Apple Wallet: identificativo del tipo di pass (dal certificato)
 			'wallet_apple_team'       => '',
 			'wallet_apple_cert_pem'   => '',    // certificato (pubblico)
@@ -100,6 +101,7 @@ final class Settings {
 		$clean['card_qr_enabled']         = empty( $clean['card_qr_enabled'] ) ? 0 : 1;
 		$clean['ticket_qr_enabled']       = empty( $clean['ticket_qr_enabled'] ) ? 0 : 1;
 		$clean['wallet_enabled']          = empty( $clean['wallet_enabled'] ) ? 0 : 1;
+		$clean['ical_enabled']            = empty( $clean['ical_enabled'] ) ? 0 : 1;
 		foreach ( array( 'wallet_apple_cert_pem', 'wallet_apple_wwdr_pem' ) as $k ) {
 			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 12000 );
 		}

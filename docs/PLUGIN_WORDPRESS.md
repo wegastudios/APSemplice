@@ -1,7 +1,6 @@
 # APSemplice per WordPress
 
-Il progetto riparte da un **plugin WordPress** (cartella `wordpress/apsemplice/`). L'app Android nativa
-(cartella `app/`) resta nel repository come prototipo "in pausa": il modello contabile è lo stesso.
+Plugin WordPress per la gestione di un'associazione (cartella `wordpress/apsemplice/`). La vecchia app Android è stata rimossa dal repository (resta nella cronologia di git).
 
 Obiettivo di lungo periodo: una PWA/area soci sopra lo stesso plugin, pagamenti online, ruoli diversi.
 Per ora il plugin è **solo per amministratori** (capability `apse_manage`, assegnata al ruolo Amministratore).
@@ -260,3 +259,10 @@ Le **Impostazioni** hanno le schede *Generale*, *Pagamenti online*, *Tessera, QR
 ## Corsi: rinnovo automatico
 
 Un corso si **rinnova da solo ogni mese** finché l'iscritto non viene "disdetto" (la scheda del corso indica l'ultimo mese dovuto; i mesi successivi non sono più dovuti e i pagamenti restano registrati). Nei dati del corso si indica il **giorno della lezione**: ogni mensilità è dovuta **dalla prima lezione del mese**; prima di quel giorno il mese risulta "in arrivo" e dopo diventa da pagare. Senza giorno indicato la mensilità è dovuta dal 1° del mese. La Bacheca elenca le mensilità già dovute con il pulsante *Incassa* (che apre l'incasso con la persona già scelta).
+
+## Corsi: pagamento unico, date e calendario
+
+- **Come si paga**: *rinnovo mensile automatico* oppure *pagamento unico* (es. "Scrittura creativa, 10 incontri a 120 €": la quota è il totale, dovuta all'iscrizione e versabile anche a rate; se l'iscrizione viene cancellata prima di qualunque pagamento non è dovuto nulla).
+- Un corso può avere **giorno, orario, luogo e date di inizio e fine**; con la data di fine le mensilità non sono più dovute dopo quel mese.
+- **Calendario** (scheda *Corsi ed eventi › Calendario*): vista mensile con le lezioni settimanali dei corsi e le date degli eventi.
+- **Google Calendar**: nella stessa pagina si può pubblicare il calendario con un **indirizzo segreto** (spento di default, rigenerabile). In Google Calendar: *Altri calendari › Da URL*. Il collegamento è in sola lettura e contiene solo nomi, giorni, orari e luoghi.

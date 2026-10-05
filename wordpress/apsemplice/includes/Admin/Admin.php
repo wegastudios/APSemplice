@@ -20,7 +20,7 @@ final class Admin {
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */
 	const GROUPS = array(
 		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import' ) ),
-		'apse-activities' => array( 'Corsi ed eventi', array() ),
+		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-reports' => 'Report' ) ),
 		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-audit' => 'Registro azioni' ) ),
 	);
@@ -56,6 +56,7 @@ final class Admin {
 		}
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
+			array( 'apse-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
 			array( 'apse-income', 'Nuovo incasso', array( IncomePage::class, 'render' ) ),
 			array( 'apse-expense', 'Nuova spesa', array( ExpensePage::class, 'render' ) ),
 			array( 'apse-transfer', 'Giroconto', array( TransferPage::class, 'render' ) ),

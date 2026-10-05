@@ -73,6 +73,12 @@ class ActivityService {
 				'cancel_policy'        => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['booking_qr'] : 0,
 				'lesson_weekday'       => ActivityKind::COURSE === $d['kind'] ? $d['lesson_weekday'] : 0,
+				'billing'              => ActivityKind::COURSE === $d['kind'] ? $d['billing'] : 'monthly',
+				'lesson_start'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_start'] : null,
+				'lesson_end'          => ActivityKind::COURSE === $d['kind'] ? $d['lesson_end'] : null,
+				'location'            => ActivityKind::COURSE === $d['kind'] ? $d['location'] : null,
+				'starts_on'           => ActivityKind::COURSE === $d['kind'] ? $d['starts_on'] : null,
+				'ends_on'             => ActivityKind::COURSE === $d['kind'] ? $d['ends_on'] : null,
 				'fund_mode'            => $d['fund_mode'],
 				'fund_value'           => $d['fund_value'],
 				'notes'                => $d['notes'],
@@ -107,6 +113,12 @@ class ActivityService {
 				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $current['kind'] ) ? $d['booking_qr'] : 0,
 				'lesson_weekday'       => ActivityKind::COURSE === $d['kind'] ? $d['lesson_weekday'] : 0,
+				'billing'              => ActivityKind::COURSE === $d['kind'] ? $d['billing'] : 'monthly',
+				'lesson_start'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_start'] : null,
+				'lesson_end'          => ActivityKind::COURSE === $d['kind'] ? $d['lesson_end'] : null,
+				'location'            => ActivityKind::COURSE === $d['kind'] ? $d['location'] : null,
+				'starts_on'           => ActivityKind::COURSE === $d['kind'] ? $d['starts_on'] : null,
+				'ends_on'             => ActivityKind::COURSE === $d['kind'] ? $d['ends_on'] : null,
 				'fund_mode'            => $d['fund_mode'],
 				'fund_value'           => $d['fund_value'],
 				'notes'                => $d['notes'],
@@ -125,6 +137,17 @@ class ActivityService {
 		return $in;
 	}
 
+	private static function clean_time( $v ): ?string {
+		$v = trim( (string) $v );
+		return preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $v ) ? $v : null;
+	}
+
+	private static function clean_date( $v ): ?string {
+		$v  = trim( (string) $v );
+		$dt = \DateTime::createFromFormat( 'Y-m-d', $v );
+		return $dt && $dt->format( 'Y-m-d' ) === $v ? $v : null;
+	}
+
 	private function normalize( array $in ): array {
 		$guest = null;
 		if ( array_key_exists( 'guest_fee_cents', $in ) && null !== $in['guest_fee_cents'] && '' !== $in['guest_fee_cents'] ) {
@@ -141,6 +164,12 @@ class ActivityService {
 			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'booking_qr'           => ! empty( $in['booking_qr'] ) ? 1 : 0,
 			'lesson_weekday'       => max( 0, min( 7, (int) ( $in['lesson_weekday'] ?? 0 ) ) ),
+			'billing'              => isset( $in['billing'] ) && 'once' === $in['billing'] ? 'once' : 'monthly',
+			'lesson_start'        => self::clean_time( $in['lesson_start'] ?? '' ),
+			'lesson_end'          => self::clean_time( $in['lesson_end'] ?? '' ),
+			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? substr( trim( (string) $in['location'] ), 0, 190 ) : null,
+			'starts_on'           => self::clean_date( $in['starts_on'] ?? '' ),
+			'ends_on'             => self::clean_date( $in['ends_on'] ?? '' ),
 			'fund_mode'            => isset( $in['fund_mode'] ) && in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE,
 			'fund_value'           => max( 0, (int) ( $in['fund_value'] ?? 0 ) ),
 			'notes'                => isset( $in['notes'] ) && '' !== trim( (string) $in['notes'] ) ? trim( (string) $in['notes'] ) : null,
@@ -151,6 +180,12 @@ class ActivityService {
 		$instructor = $d['instructor_person_id'] ? Plugin::people()->get( $d['instructor_person_id'] ) : null;
 		$errors     = Rules::validate_activity( $d, $instructor );
 		$errors      = array_merge( $errors, FundShare::validate( $d['fund_mode'], $d['fund_value'], null !== $instructor ) );
+		if ( $d['lesson_start'] && $d['lesson_end'] && $d['lesson_end'] <= $d['lesson_start'] ) {
+			$errors[] = 'L\x27orario di fine deve essere dopo quello di inizio.';
+		}
+		if ( $d['starts_on'] && $d['ends_on'] && $d['ends_on'] < $d['starts_on'] ) {
+			$errors[] = 'La data di fine del corso è prima di quella di inizio.';
+		}
 		if ( '' === $d['social_year'] ) {
 			$errors[] = 'Anno sociale mancante.';
 		}
@@ -785,10 +820,19 @@ class ActivityService {
 	}
 
 	private function summarize( array $activity, array $enrollment, array $paid_by_month, string $person_type ): array {
+		$fee = $this->fee_for( $activity, $person_type );
+		if ( 'once' === ( $activity['billing'] ?? 'monthly' ) ) {
+			return PaymentCalc::compute_once( $fee, $enrollment['start_month'], $enrollment['end_month'], $paid_by_month );
+		}
+		$end = $enrollment['end_month'];
+		if ( ! empty( $activity['ends_on'] ) ) { // il corso ha una data di fine: dopo quel mese non si rinnova più
+			$last = substr( (string) $activity['ends_on'], 0, 7 );
+			$end  = null === $end ? $last : min( $end, $last );
+		}
 		return PaymentCalc::compute(
-			$this->fee_for( $activity, $person_type ),
+			$fee,
 			$enrollment['start_month'],
-			$enrollment['end_month'],
+			$end,
 			substr( Db::today(), 0, 7 ),
 			SocialYear::from_label( $activity['social_year'], Settings::start_month() ),
 			$paid_by_month,
@@ -838,7 +882,7 @@ class ActivityService {
 		}
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday FROM ' . Db::t( 'enrollments' ) . ' e '
+				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.billing, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d ORDER BY a.social_year DESC, a.name',
 				$person_id
 			),
@@ -849,7 +893,7 @@ class ActivityService {
 		foreach ( $rows as $e ) {
 			$activity = array(
 				'id' => $e['activity_id'], 'name' => $e['activity_name'], 'social_year' => $e['social_year'], 'kind' => $e['kind'],
-				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'],
+				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'billing' => $e['billing'], 'ends_on' => $e['ends_on'],
 			);
 			$out[]    = array(
 				'enrollment' => $e,

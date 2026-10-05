@@ -111,7 +111,8 @@
 			$$('.apse-row-sessions').forEach(function (r) { r.style.display = k === 'course' ? 'none' : ''; });
 			$$('.apse-row-course').forEach(function (r) { r.style.display = k === 'course' ? '' : 'none'; });
 			$$('.apse-row-event input[name="session_date"]').forEach(function (i) { i.required = k === 'event'; });
-			$$('.apse-fee-label').forEach(function (l) { l.textContent = k === 'course' ? 'Contributo soci (al mese)' : 'Contributo soci (a evento)'; });
+			$$('.apse-fee-label').forEach(function (l) { var once = $('.apse-billing') && $('.apse-billing').value === 'once'; l.textContent = k === 'course' ? (once ? 'Contributo soci (in unica soluzione)' : 'Contributo soci (al mese)') : 'Contributo soci (a evento)'; });
+			$$('.apse-billing').forEach(function (b) { b.onchange = applyKind; });
 			var hint = $('#apse-kind-hint'); if (hint) { hint.textContent = kindHints[k] || ''; }
 		};
 		kindSel.addEventListener('change', applyKind);

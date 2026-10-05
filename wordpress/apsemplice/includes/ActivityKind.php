@@ -38,8 +38,11 @@ final class ActivityKind {
 		return self::EVENT === $kind || self::RECURRING === $kind;
 	}
 
-	/** Il contributo si intende "al mese" per i corsi, "a evento" per gli altri. */
-	public static function fee_unit( string $kind ): string {
-		return self::COURSE === $kind ? 'al mese' : 'a evento';
+	/** Il contributo si intende "al mese" per i corsi (o "in unica soluzione" se si paga tutto subito), "a evento" per gli altri. */
+	public static function fee_unit( string $kind, string $billing = 'monthly' ): string {
+		if ( self::COURSE === $kind ) {
+			return 'once' === $billing ? 'in unica soluzione' : 'al mese';
+		}
+		return 'a evento';
 	}
 }

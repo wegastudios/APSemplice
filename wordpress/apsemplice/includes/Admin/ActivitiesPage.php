@@ -23,11 +23,20 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
-	/** Riga del modulo: giorno della lezione e rinnovo automatico (solo corsi). */
+	/** Righe del modulo: come si paga e quando si tiene il corso (solo corsi). */
 	private static function weekday_row( ?array $a, string $row_class ): string {
-		$days = array( 0 => 'Non indicato (mensilità dovuta dal 1° del mese)', 1 => 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica' );
-		return '<tr class="' . esc_attr( $row_class ) . '"><th>Giorno della lezione</th><td><select name="lesson_weekday">' . Ui::options( $days, $a ? (int) $a['lesson_weekday'] : 0 ) . '</select>'
-			. '<p class="description"><strong>Il corso si rinnova da solo ogni mese</strong> finché l\'iscritto non lo cancella. Ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>: indica il giorno della settimana e il programma sa da quando chiedere il pagamento.</p></td></tr>';
+		$days   = array( 0 => 'Non indicato (mensilità dovuta dal 1° del mese)', 1 => 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica' );
+		$billing = $a ? (string) $a['billing'] : 'monthly';
+		$val    = function ( string $k ) use ( $a ) {
+			return $a && ! empty( $a[ $k ] ) ? esc_attr( (string) $a[ $k ] ) : '';
+		};
+		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
+		return $tr . '<th>Come si paga</th><td><select name="billing" class="apse-billing">' . Ui::options( array( 'monthly' => 'Rinnovo mensile automatico', 'once' => 'Pagamento unico (tutti gli incontri insieme)' ), $billing ) . '</select>'
+			. '<p class="description"><strong>Mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>. <strong>Unico:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione.</p></td></tr>'
+			. $tr . '<th>Giorno e orario</th><td><select name="lesson_weekday">' . Ui::options( $days, $a ? (int) $a['lesson_weekday'] : 0 ) . '</select> dalle <input type="time" name="lesson_start" value="' . $val( 'lesson_start' ) . '"> alle <input type="time" name="lesson_end" value="' . $val( 'lesson_end' ) . '">'
+			. '<p class="description">Serve per il calendario (e per sapere da quando chiedere la mensilità).</p></td></tr>'
+			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
+			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data non si rinnova più</span></td></tr>';
 	}
 
 	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
@@ -54,7 +63,7 @@ final class ActivitiesPage {
 	private static function fee_text( array $a ): string {
 		$fee   = (int) $a['fee_cents'];
 		$guest = null === $a['guest_fee_cents'] || '' === $a['guest_fee_cents'] ? null : (int) $a['guest_fee_cents'];
-		$unit  = ActivityKind::fee_unit( $a['kind'] );
+		$unit  = ActivityKind::fee_unit( $a['kind'], (string) ( $a['billing'] ?? 'monthly' ) );
 		$txt   = 0 === $fee ? 'Gratuito per i soci' : 'Soci ' . Money::format( $fee ) . ' ' . $unit;
 		if ( null !== $guest ) {
 			$txt .= ' · ' . ( 0 === $guest ? 'ospiti: gratuito' : 'ospiti ' . Money::format( $guest ) . ' ' . $unit );
@@ -164,7 +173,7 @@ final class ActivitiesPage {
 		Ui::form_open( 'apse_save_activity', $back );
 		echo Ui::hidden( 'id', $activity['id'] ) . Ui::hidden( 'social_year', $activity['social_year'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" value="' . esc_attr( $activity['name'] ) . '" class="regular-text" required></td></tr>';
-		echo '<tr><th>Contributo soci (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
+		echo '<tr><th>Contributo soci (' . esc_html( ActivityKind::fee_unit( $activity['kind'], (string) $activity['billing'] ) ) . ')</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
 		$guest = null === $activity['guest_fee_cents'] ? '' : Money::plain( (int) $activity['guest_fee_cents'] );
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
@@ -210,7 +219,9 @@ final class ActivitiesPage {
 		$candidates = array_values( array_filter( Plugin::people()->search(), function ( $p ) use ( $enrolled_ids ) {
 			return ! in_array( (int) $p['id'], $enrolled_ids, true );
 		} ) );
-		echo '<div class="apse-card"><h2>Iscrivi un socio o un ospite</h2><p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>';
+		echo '<div class="apse-card"><h2>Iscrivi un socio o un ospite</h2>' . ( 'once' === $activity['billing']
+			? '<p class="description">Corso a <strong>pagamento unico</strong>: la quota è dovuta per intero all\'iscrizione (si può versare anche a rate).</p>'
+			: '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' );
 		Ui::form_open( 'apse_enroll', $back );
 		echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'apse-enroll-person' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput

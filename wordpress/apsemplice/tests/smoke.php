@@ -2280,7 +2280,7 @@ apse_render( array( Admin\ReportsPage::class, 'render' ), 'Disponibilità reale'
 wp_set_current_user( 1 );
 apse_ok( 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
 $tabs = Admin\Admin::tabs( 'apse-income' );
-apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && '' === Admin\Admin::tabs( 'apse-activities' ), 'menu: la Contabilità ha le sue schede, la Bacheca e i corsi no' );
+apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-activities' ), 'Calendario' ), 'menu: la Contabilità ha le sue schede, i corsi elenco e calendario, la Bacheca nessuna' );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Pagamenti online' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Registro azioni' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
@@ -2400,6 +2400,52 @@ apse_ok( false !== strpos( $dash, 'Corso Rapido' ) && false !== strpos( $dash, '
 $inc_page = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p ) );
 apse_ok( false !== strpos( $inc_page, 'value="' . $fy_p . '" selected' ) || false !== strpos( $inc_page, "value='" . $fy_p . "' selected" ) || false !== strpos( $inc_page, 'selected=\'selected\'' ), 'incasso: la persona arriva già scelta dalla bacheca' );
 apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Disdici il rinnovo', array( 'id' => $wd_c ) );
+
+// ---------- Corsi a pagamento unico, date di fine, calendario ----------
+$once_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Scrittura', 'last_name' => 'Creativa', 'email' => 'scrittura.creativa@example.com' ) );
+$once_c = $acts->create( array( 'name' => 'Scrittura creativa', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 12000, 'billing' => 'once', 'lesson_weekday' => 3, 'lesson_start' => '18:30', 'lesson_end' => '20:00', 'location' => 'Sala Rossa', 'starts_on' => $today, 'ends_on' => gmdate( 'Y-m-d', strtotime( $today . ' +70 days' ) ) ) );
+$oc = $acts->get( $once_c );
+apse_ok( 'once' === $oc['billing'] && '18:30' === $oc['lesson_start'] && 'Sala Rossa' === $oc['location'] && $today === $oc['starts_on'], 'corso: pagamento unico, orario, luogo e date si salvano' );
+$threw = false;
+try {
+	$acts->create( array( 'name' => 'Orario sbagliato', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 100, 'lesson_start' => '20:00', 'lesson_end' => '19:00' ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'corso: l\'orario di fine deve essere dopo quello di inizio' );
+$acts->enroll( $once_c, $once_p, $month );
+$os = $acts->status_for_person( $once_p )[0]['summary'];
+apse_ok( 12000 === $os['total_due'] && empty( $os['regular'] ), 'pagamento unico: la quota intera è dovuta subito all\'iscrizione' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $once_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 5000, 'activity_id' => $once_c, 'competence_month' => $month ) ) ) );
+$os = $acts->status_for_person( $once_p )[0]['summary'];
+apse_ok( 5000 === $os['total_paid'] && -7000 === $os['balance'], 'pagamento unico: si può versare a rate' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $once_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 7000, 'activity_id' => $once_c, 'competence_month' => $month ) ) ) );
+apse_ok( ! empty( $acts->status_for_person( $once_p )[0]['summary']['regular'] ), 'pagamento unico: completato il totale è in regola' );
+apse_ok( false !== strpos( apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'pagamento unico', array( 'id' => $once_c ) ), 'unica soluzione' ), 'scheda corso: si legge che è a pagamento unico' );
+
+$wk = \ApSemplice\Calendar::weekly_dates( '2026-01-01', '2026-01-31', 3 );
+apse_ok( array( '2026-01-07', '2026-01-14', '2026-01-21', '2026-01-28' ) === $wk && array() === \ApSemplice\Calendar::weekly_dates( '2026-02-01', '2026-01-01', 3 ), 'calendario: i mercoledì di gennaio 2026' );
+$occ = \ApSemplice\Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) );
+$mine = array_values( array_filter( $occ, function ( $o ) use ( $once_c ) {
+	return (int) $o['activity_id'] === $once_c;
+} ) );
+$last_end = gmdate( 'Y-m-d', strtotime( $today . ' +70 days' ) );
+apse_ok( count( $mine ) >= 9 && count( $mine ) <= 11 && $mine[0]['date'] >= $today && end( $mine )['date'] <= $last_end && '18:30' === $mine[0]['start'] && 'Sala Rossa' === $mine[0]['location'], 'calendario: le lezioni del corso vanno dall\'inizio alla fine indicati (' . count( $mine ) . ' incontri)' );
+Settings::update( array( 'ical_enabled' => 0 ) );
+$token1 = \ApSemplice\Calendar::token();
+apse_ok( 32 === strlen( $token1 ) && $token1 === \ApSemplice\Calendar::token() && false !== strpos( \ApSemplice\Calendar::feed_url(), $token1 ), 'calendario: indirizzo segreto stabile' );
+\ApSemplice\Calendar::regenerate_token();
+apse_ok( \ApSemplice\Calendar::token() !== $token1, 'calendario: si può cambiare l\'indirizzo' );
+$ics = \ApSemplice\Calendar::ics();
+apse_ok( 0 === strpos( $ics, "BEGIN:VCALENDAR\r\n" ) && false !== strpos( $ics, 'SUMMARY:Scrittura creativa' ) && false !== strpos( $ics, 'LOCATION:Sala Rossa' ) && false === strpos( $ics, 'scrittura.creativa@example.com' ), 'calendario: il file iCalendar ha i corsi ma nessun dato personale' );
+$save_ical = new ReflectionMethod( Admin\Actions::class, 'save_ical' );
+$save_ical->setAccessible( true );
+$save_ical->invoke( null, array( 'ical_enabled' => '1' ) );
+apse_ok( \ApSemplice\Calendar::enabled(), 'calendario: il gestore lo pubblica dalle impostazioni' );
+$cal_html = apse_render( array( Admin\CalendarPage::class, 'render' ), 'Collegamento a Google Calendar' );
+apse_ok( false !== strpos( $cal_html, \ApSemplice\Calendar::token() ) && false !== strpos( $cal_html, 'Scrittura creativa' ), 'calendario: la pagina mostra il mese e l\'indirizzo da incollare in Google Calendar' );
+$save_ical->invoke( null, array() );
+apse_ok( ! \ApSemplice\Calendar::enabled(), 'calendario: spento di default / si può spegnere' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

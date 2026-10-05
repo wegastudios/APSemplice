@@ -22,6 +22,33 @@ final class PaymentCalc {
 	}
 
 	/**
+	 * Corso a pagamento unico (es. "10 incontri a 120 €"): la quota è dovuta per intero dall'iscrizione e si può versare anche a rate.
+	 * Se l'iscrizione viene cancellata prima di qualunque pagamento, non è dovuto nulla.
+	 *
+	 * @param array $paid_by_month tutto ciò che è stato versato, per mese di competenza
+	 */
+	public static function compute_once( int $fee, string $start, ?string $end, array $paid_by_month ): array {
+		$paid = (int) array_sum( $paid_by_month );
+		$due  = ( null !== $end && 0 === $paid ) ? 0 : $fee;
+		$rows = array();
+		if ( $due > 0 || $paid > 0 ) {
+			$state  = $paid >= $due ? ( 0 === $due ? self::ADVANCE : self::PAID ) : ( $paid > 0 ? self::PARTIAL : self::UNPAID );
+			$rows[] = array( 'month' => $start, 'due' => $due, 'paid' => $paid, 'state' => $state, 'missing' => max( 0, $due - $paid ) );
+		}
+		return array(
+			'months'        => $rows,
+			'total_due'     => $due,
+			'total_paid'    => $paid,
+			'balance'       => $paid - $due,
+			'regular'       => $paid >= $due,
+			'unpaid_months' => array_values( array_filter( $rows, function ( $x ) {
+				return self::UNPAID === $x['state'] || self::PARTIAL === $x['state'];
+			} ) ),
+			'upcoming'      => null,
+		);
+	}
+
+	/**
 	 * Mesi dovuti = da $start fino a $end (se cancellato) o fino al mese corrente, dentro l'anno sociale.
 	 * I pagamenti sono attribuiti al mese di competenza.
 	 *
