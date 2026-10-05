@@ -17,7 +17,8 @@ class ReportService {
 	/** Rendiconto per cassa: saldi per conto, entrate e uscite per voce di rendiconto, avanzo. */
 	public function period( string $from, string $to ): array {
 		$ledger   = Plugin::ledger();
-		$before   = $ledger->balances( ( new \DateTimeImmutable( $from ) )->modify( '-1 day' )->format( 'Y-m-d' ) );
+		$before   = $ledger->balances( ( new \DateTimeImmutable( $from ) )->modify( '-1 day' )->format( 'Y-m-d' ), true );
+		$funds    = $ledger->fund_ids();
 		$rows     = $ledger->rows( $from, $to, null, true );
 		$accounts = array();
 		foreach ( $before as $a ) {
