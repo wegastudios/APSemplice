@@ -37,13 +37,9 @@ class LedgerService {
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'accounts' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
 		return $row ?: null;
 	}
-
-	/** Id dei fondi: soldi che l'associazione ha in mano ma che non sono suoi (es. quote raccolte per un rimborso). */
-	public function fund_ids(): array {
-		return array_map( 'intval', $this->db()->get_col( 'SELECT id FROM ' . Db::t( 'accounts' ) . " WHERE deleted_at IS NULL AND kind = 'fund'" ) ?: array() );
 	}
 
-	private function check_account_fields( string $name, string $type, string $kind ): string {
+	private function check_account_fields( string $name, string $type ): string {
 		$name = trim( $name );
 		if ( '' === $name ) {
 			throw new \InvalidArgumentException( 'Il nome del conto è obbligatorio.' );
@@ -51,28 +47,25 @@ class LedgerService {
 		if ( ! isset( Labels::account_types()[ $type ] ) ) {
 			throw new \InvalidArgumentException( 'Tipo di conto non valido.' );
 		}
-		if ( ! isset( Labels::account_kinds()[ $kind ] ) ) {
-			throw new \InvalidArgumentException( 'Scegli se è un conto reale o un fondo.' );
-		}
 		return $name;
 	}
 
-	public function add_account( string $name, string $type, int $opening_cents, string $kind = 'real' ): int {
-		$name = $this->check_account_fields( $name, $type, $kind );
-		$this->db()->insert( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'kind' => $kind, 'opening_cents' => $opening_cents, 'sort_order' => count( $this->accounts( true ) ) ) );
+	public function add_account( string $name, string $type, int $opening_cents ): int {
+		$name = $this->check_account_fields( $name, $type );
+		$this->db()->insert( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'opening_cents' => $opening_cents, 'sort_order' => count( $this->accounts( true ) ) ) );
 		return (int) $this->db()->insert_id;
 	}
 
-	/** Rinomina e cambia tipo, natura (conto/fondo) e saldo di partenza: i saldi si ricalcolano da soli. */
-	public function update_account( int $id, string $name, string $type, string $kind, int $opening_cents ): void {
+	/** Rinomina e cambia tipo e saldo di partenza: i saldi si ricalcolano da soli. */
+	public function update_account( int $id, string $name, string $type, int $opening_cents ): void {
 		$old = $this->account_any( $id );
 		if ( ! $old ) {
 			throw new \InvalidArgumentException( 'Conto non trovato.' );
 		}
-		$name = $this->check_account_fields( $name, $type, $kind );
-		$this->db()->update( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'kind' => $kind, 'opening_cents' => $opening_cents ), array( 'id' => $id ) );
+		$name = $this->check_account_fields( $name, $type );
+		$this->db()->update( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'opening_cents' => $opening_cents ), array( 'id' => $id ) );
 		$details = array();
-		foreach ( array( 'name' => $name, 'type' => $type, 'kind' => $kind ) as $k => $v ) {
+		foreach ( array( 'name' => $name, 'type' => $type ) as $k => $v ) {
 			if ( $old[ $k ] !== $v ) {
 				$details[ $k ] = array( $old[ $k ], $v );
 			}
@@ -337,6 +330,12 @@ class LedgerService {
 					);
 					if ( 'membership' === $p['cat']['kind'] ) {
 						Plugin::people()->set_membership( (int) $person['id'], $p['social_year'], true, 'payment', $tx_id );
+					}
+					if ( $p['activity_id'] ) {
+						$activity = Plugin::activities()->get( (int) $p['activity_id'] );
+						if ( $activity ) {
+							Plugin::funds()->attribute( $tx_id, $activity, $p['cents'], $date ); // quota per il rimborso del volontario (se prevista)
+						}
 					}
 				}
 				return count( $prepared );

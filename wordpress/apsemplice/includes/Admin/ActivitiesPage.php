@@ -23,6 +23,16 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
+	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
+	private static function fund_row( ?array $a ): string {
+		$mode  = $a ? (string) $a['fund_mode'] : '';
+		$value = $a ? (int) $a['fund_value'] : 0;
+		$shown = \ApSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
+		return '<tr><th>Quota per il rimborso</th><td><select name="fund_mode">' . Ui::options( \ApSemplice\FundShare::modes(), $mode ) . '</select> '
+			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span>'
+			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (istruttore) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la quota è accantonata e si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare l\'istruttore.</p></td></tr>';
+	}
+
 	/** Riga del modulo: biglietto QR per le prenotazioni (solo eventi ed eventi ricorrenti, spento di default). */
 	private static function qr_row( ?array $a, string $row_class ): string {
 		$on = $a && ! empty( $a['booking_qr'] );
@@ -98,6 +108,7 @@ final class ActivitiesPage {
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Le attività possono essere tenute solo da soci e volontari.</p></td></tr>';
+		echo self::fund_row( null ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>';
 		submit_button( 'Crea attività' );
 		Ui::form_close();
@@ -149,7 +160,9 @@ final class ActivitiesPage {
 			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo self::qr_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr>';
+		echo self::fund_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );
 		Ui::form_close();
 		echo '</div>';

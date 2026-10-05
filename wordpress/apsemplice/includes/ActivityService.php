@@ -72,6 +72,8 @@ class ActivityService {
 				'cancellable'          => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['booking_qr'] : 0,
+				'fund_mode'            => $d['fund_mode'],
+				'fund_value'           => $d['fund_value'],
 				'notes'                => $d['notes'],
 				'created_at'           => Db::now(),
 			)
@@ -103,6 +105,8 @@ class ActivityService {
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $current['kind'] ) ? $d['booking_qr'] : 0,
+				'fund_mode'            => $d['fund_mode'],
+				'fund_value'           => $d['fund_value'],
 				'notes'                => $d['notes'],
 			),
 			array( 'id' => $id )
@@ -134,6 +138,8 @@ class ActivityService {
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'booking_qr'           => ! empty( $in['booking_qr'] ) ? 1 : 0,
+			'fund_mode'            => isset( $in['fund_mode'] ) && in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE,
+			'fund_value'           => max( 0, (int) ( $in['fund_value'] ?? 0 ) ),
 			'notes'                => isset( $in['notes'] ) && '' !== trim( (string) $in['notes'] ) ? trim( (string) $in['notes'] ) : null,
 		);
 	}
@@ -141,6 +147,7 @@ class ActivityService {
 	private function validate( array $d ): void {
 		$instructor = $d['instructor_person_id'] ? Plugin::people()->get( $d['instructor_person_id'] ) : null;
 		$errors     = Rules::validate_activity( $d, $instructor );
+		$errors      = array_merge( $errors, FundShare::validate( $d['fund_mode'], $d['fund_value'], null !== $instructor ) );
 		if ( '' === $d['social_year'] ) {
 			$errors[] = 'Anno sociale mancante.';
 		}

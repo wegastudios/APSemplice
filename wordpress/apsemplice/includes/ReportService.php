@@ -18,7 +18,6 @@ class ReportService {
 	public function period( string $from, string $to ): array {
 		$ledger   = Plugin::ledger();
 		$before   = $ledger->balances( ( new \DateTimeImmutable( $from ) )->modify( '-1 day' )->format( 'Y-m-d' ), true );
-		$funds    = $ledger->fund_ids();
 		$rows     = $ledger->rows( $from, $to, null, true );
 		$accounts = array();
 		foreach ( $before as $a ) {
@@ -45,14 +44,13 @@ class ReportService {
 			$accounts[] = array(
 				'account' => $a, 'opening' => $a['balance'], 'income' => $income, 'expense' => $expense, 'transfers' => $transfers,
 				'closing' => $a['balance'] + $income - $expense + $transfers,
-				'fund' => in_array( (int) $a['id'], $funds, true ),
 			);
 		}
 
-		$group = function ( string $type ) use ( $rows, $funds ) {
+		$group = function ( string $type ) use ( $rows ) {
 			$by = array();
 			foreach ( $rows as $r ) {
-				if ( $r['type'] !== $type || in_array( (int) $r['account_id'], $funds, true ) ) {
+				if ( $r['type'] !== $type ) {
 					continue;
 				}
 				$key = $r['category_id'];
@@ -75,20 +73,15 @@ class ReportService {
 		$ti       = array_sum( array_column( $income, 'cents' ) );
 		$te       = array_sum( array_column( $expenses, 'cents' ) );
 
-		$real      = array_filter( $accounts, function ( $a ) {
-			return empty( $a['fund'] );
-		} );
-		$fund_rows = array_filter( $accounts, function ( $a ) {
-			return ! empty( $a['fund'] );
-		} );
+		$funds = Plugin::funds()->available( $to );
 
 		return array(
 			'from' => $from, 'to' => $to, 'accounts' => $accounts, 'income' => $income, 'expenses' => $expenses,
 			'total_income' => $ti, 'total_expense' => $te, 'result' => $ti - $te,
-			'opening_total' => array_sum( array_column( $real, 'opening' ) ),
-			'closing_total' => array_sum( array_column( $real, 'closing' ) ),
-			'funds_opening' => array_sum( array_column( $fund_rows, 'opening' ) ),
-			'funds_closing' => array_sum( array_column( $fund_rows, 'closing' ) ),
+			'opening_total' => array_sum( array_column( $accounts, 'opening' ) ),
+			'closing_total' => array_sum( array_column( $accounts, 'closing' ) ),
+			'funds_total'   => $funds['funds'],
+			'available'     => array_sum( array_column( $accounts, 'closing' ) ) - $funds['funds'],
 		);
 	}
 
@@ -123,11 +116,10 @@ class ReportService {
 		}
 
 		// Movimenti generali: nel periodo dell'anno sociale, non legati ad attività e non giroconti
-		$funds   = Plugin::ledger()->fund_ids();
 		$general = array_filter(
 			Plugin::ledger()->rows( $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ), null, true ),
-			function ( $r ) use ( $funds ) {
-				return empty( $r['activity_id'] ) && ! Labels::is_transfer( $r['type'] ) && ! in_array( (int) $r['account_id'], $funds, true );
+			function ( $r ) {
+				return empty( $r['activity_id'] ) && ! Labels::is_transfer( $r['type'] );
 			}
 		);
 		$group = function ( string $type ) use ( $general ) {

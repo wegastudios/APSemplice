@@ -62,6 +62,8 @@ final class Actions {
 			'apse_update_account'     => 'update_account',
 			'apse_close_account'      => 'close_account',
 			'apse_reopen_account'     => 'reopen_account',
+			'apse_fund_release'       => 'fund_release',
+			'apse_fund_settle'        => 'fund_settle',
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_create_pages'       => 'create_pages',
@@ -163,6 +165,18 @@ final class Actions {
 		);
 	}
 
+	/** Quota per il rimborso: euro (fisso) o percentuale, in centesimi / centesimi di punto percentuale. */
+	private static function fund_value( array $p ): int {
+		$raw = trim( (string) ( $p['fund_value'] ?? '' ) );
+		if ( '' === $raw || '' === (string) ( $p['fund_mode'] ?? '' ) ) {
+			return 0;
+		}
+		if ( 'percent' === $p['fund_mode'] ) {
+			return (int) round( (float) str_replace( ',', '.', $raw ) * 100 );
+		}
+		return Money::parse( $raw ) ?? 0;
+	}
+
 	private static function save_activity( array $p ): array {
 		$data = array(
 			'name'                 => $p['name'] ?? '',
@@ -174,6 +188,8 @@ final class Actions {
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
+			'fund_mode'            => (string) ( $p['fund_mode'] ?? '' ),
+			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
 		$id = (int) ( $p['id'] ?? 0 );
@@ -411,13 +427,27 @@ final class Actions {
 	// ---------- Conti ----------
 
 	private static function add_account( array $p ): array {
-		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0, (string) ( $p['kind'] ?? 'real' ) );
+		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
 		return array( Ui::url( 'apse-accounts' ), 'Conto aggiunto.' );
 	}
 
 	private static function update_account( array $p ): array {
-		Plugin::ledger()->update_account( (int) ( $p['id'] ?? 0 ), (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), (string) ( $p['kind'] ?? 'real' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
+		Plugin::ledger()->update_account( (int) ( $p['id'] ?? 0 ), (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
 		return array( Ui::url( 'apse-accounts' ), 'Conto aggiornato: i saldi sono stati ricalcolati.' );
+	}
+
+	private static function fund_release( array $p ): array {
+		$cents = Money::parse( $p['amount'] ?? '' );
+		if ( null === $cents ) {
+			throw new \InvalidArgumentException( 'Indica l\'importo da liberare.' );
+		}
+		Plugin::funds()->release( (int) ( $p['id'] ?? 0 ), $cents, (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
+		return array( Ui::url( 'apse-accounts' ), 'Quota liberata: è tornata nella disponibilità reale.' );
+	}
+
+	private static function fund_settle( array $p ): array {
+		$tx = Plugin::funds()->settle( (int) ( $p['id'] ?? 0 ), (int) ( $p['account_id'] ?? 0 ), (string) ( $p['method'] ?? 'cash' ), (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
+		return array( Ui::url( 'apse-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo estinto.' : 'Fondo a zero: estinto.' );
 	}
 
 	private static function close_account( array $p ): array {

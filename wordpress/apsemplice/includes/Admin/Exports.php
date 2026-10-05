@@ -95,7 +95,9 @@ final class Exports {
 		foreach ( $r['accounts'] as $a ) {
 			$csv .= self::line( array( $a['account']['name'], Money::plain( $a['opening'] ), Money::plain( $a['income'] ), Money::plain( $a['expense'] ), Money::plain( $a['transfers'] ), Money::plain( $a['closing'] ) ) );
 		}
-		$csv .= self::line( array( 'Totale conti (esclusi i fondi)', Money::plain( $r['opening_total'] ), Money::plain( $r['total_income'] ), Money::plain( $r['total_expense'] ), '0,00', Money::plain( $r['closing_total'] ) ) ) . "\r\n";
+		$csv .= self::line( array( 'Totale', Money::plain( $r['opening_total'] ), Money::plain( $r['total_income'] ), Money::plain( $r['total_expense'] ), '0,00', Money::plain( $r['closing_total'] ) ) ) . "\r\n";
+		$csv .= self::line( array( 'Fondi accantonati (rimborsi ai volontari)', '', '', '', '', Money::plain( -$r['funds_total'] ) ) ) . "\r\n";
+		$csv .= self::line( array( 'Disponibilità reale (saldi meno fondi)', '', '', '', '', Money::plain( $r['available'] ) ) ) . "\r\n";
 		$csv .= self::line( array( 'ENTRATE', 'Voce di rendiconto', 'Importo' ) );
 		foreach ( $r['income'] as $x ) {
 			$csv .= self::line( array( $x['name'], $x['fiscal_group'], Money::plain( $x['cents'] ) ) );

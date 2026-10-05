@@ -13,7 +13,7 @@ final class ExpensePage {
 		$ledger   = Plugin::ledger();
 		$accounts = array();
 		foreach ( $ledger->balances() as $a ) {
-			$accounts[ $a['id'] ] = $a['name'] . ( 'fund' === $a['kind'] ? ' [fondo]' : '' ) . ' (' . \ApSemplice\Money::format( $a['balance'] ) . ')';
+			$accounts[ $a['id'] ] = $a['name'] . ' (' . \ApSemplice\Money::format( $a['balance'] ) . ')';
 		}
 		$cats = array();
 		foreach ( $ledger->categories() as $c ) {

@@ -229,8 +229,17 @@ Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**: il
 
 La risposta al socio è sempre la stessa, così non si scopre chi è socio. Limite: 10 tentativi l'ora per indirizzo IP.
 
-## Conti, fondi e chiusura
+## Conti e chiusura
 
 In *Conti e cassa* ogni conto si può **rinominare**, cambiare di tipo e di **saldo di partenza** (il saldo attuale si ricalcola da solo), **chiudere** (solo a saldo zero: prima sposta i soldi con un giroconto) e riaprire. I conti chiusi non accettano movimenti ma restano nei rendiconti dei periodi in cui hanno lavorato.
 
-Ogni conto è **reale** oppure un **fondo**: un fondo è denaro che hai in cassa ma non è dell'associazione (es. le quote raccolte per rimborsare un socio). I fondi sono mostrati a parte, non entrano nella disponibilità né nelle entrate/uscite del rendiconto; il rendiconto li elenca con il loro saldo ma fuori dal totale.
+## Fondi per il rimborso dei volontari
+
+Nella scheda di un corso o di un evento a pagamento si può impostare la **quota per il rimborso**: un importo fisso o una percentuale di *ogni* pagamento ricevuto (mai oltre il pagamento stesso). Serve indicare l'istruttore.
+
+- Il pagamento entra per intero nel conto usato (la cassa torna con il contante contato) e conta come entrata.
+- La quota è **accantonata** nel fondo "Rimborso *volontario* — *attività*", creato al primo pagamento. Se il pagamento viene annullato in prima nota, si annulla anche la sua quota.
+- **Disponibilità reale dell'associazione = saldi dei conti meno i fondi.** È sempre riportata in dashboard, in *Conti e cassa* e nel rendiconto (anche nell'esportazione CSV).
+- Da un fondo si può **liberare** una quota (torna nella disponibilità, nessun movimento di cassa) oppure **estinguerlo**: registra in prima nota l'uscita del rimborso dal conto scelto e chiude il fondo.
+
+I conti sono sempre conti reali: non si trasformano in fondi né viceversa. Di un conto si possono cambiare nome, tipo e saldo di partenza; si chiude solo a saldo zero.

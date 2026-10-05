@@ -43,6 +43,10 @@ final class Plugin {
 		return self::$services['ledger'] ?? ( self::$services['ledger'] = new LedgerService() );
 	}
 
+	public static function funds(): FundService {
+		return self::$services['funds'] ?? ( self::$services['funds'] = new FundService() );
+	}
+
 	public static function payments(): PaymentService {
 		return self::$services['payments'] ?? ( self::$services['payments'] = new PaymentService() );
 	}

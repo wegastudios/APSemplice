@@ -2135,7 +2135,7 @@ apse_ok( false !== strpos( $as( 0, '[apsemplice_area_soci]' ), 'Primo accesso' )
 remove_all_filters( 'pre_wp_mail' );
 wp_set_current_user( 1 );
 
-// ---------- Conti: rinomina, saldo di partenza, chiusura, fondi ----------
+// ---------- Conti: rinomina, saldo di partenza, chiusura ----------
 wp_set_current_user( 1 );
 $acc_id = $ledger->add_account( 'Conto prova', 'bank', 10000 );
 $bal_of = function ( int $id, bool $closed = false ) use ( $ledger ) {
@@ -2146,11 +2146,11 @@ $bal_of = function ( int $id, bool $closed = false ) use ( $ledger ) {
 	}
 	return null;
 };
-$ledger->update_account( $acc_id, 'Conto rinominato', 'cash', 'real', 25000 );
+$ledger->update_account( $acc_id, 'Conto rinominato', 'cash', 25000 );
 apse_ok( 'Conto rinominato' === $ledger->account( $acc_id )['name'] && 'cash' === $ledger->account( $acc_id )['type'] && 25000 === $bal_of( $acc_id ), 'conti: si rinominano e il saldo di partenza cambia il saldo attuale' );
 $threw = false;
 try {
-	$ledger->update_account( $acc_id, '  ', 'cash', 'real', 0 );
+	$ledger->update_account( $acc_id, '  ', 'cash', 0 );
 } catch ( \InvalidArgumentException $e ) {
 	$threw = true;
 }
@@ -2162,7 +2162,7 @@ try {
 	$threw = true;
 }
 apse_ok( $threw && null !== $ledger->account( $acc_id ), 'conti: non si chiude un conto con dei soldi dentro' );
-$ledger->update_account( $acc_id, 'Conto rinominato', 'cash', 'real', 0 );
+$ledger->update_account( $acc_id, 'Conto rinominato', 'cash', 0 );
 $ledger->close_account( $acc_id );
 apse_ok( null === $ledger->account( $acc_id ) && ! in_array( $acc_id, array_map( 'intval', array_column( $ledger->accounts(), 'id' ) ), true ) && in_array( $acc_id, array_map( 'intval', array_column( $ledger->accounts( true ), 'id' ) ), true ), 'conti: chiuso, esce dagli elenchi dei movimenti ma resta consultabile' );
 $threw = false;
@@ -2175,27 +2175,77 @@ apse_ok( $threw, 'conti: un conto chiuso non accetta movimenti' );
 $ledger->reopen_account( $acc_id );
 apse_ok( null !== $ledger->account( $acc_id ), 'conti: si può riaprire' );
 
-// fondo: soldi in cassa non dell'associazione
-$real_before = array_sum( array_column( array_filter( $ledger->balances(), function ( $b ) {
-	return 'fund' !== $b['kind'];
-} ), 'balance' ) );
-$fund_payer  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pagante', 'last_name' => 'Fondo', 'email' => 'pagante.fondo@example.com' ) );
-$fund_id     = $ledger->add_account( 'Fondo rimborso Mario', 'cash', 0, 'fund' );
-$rep0        = Plugin::reports()->period( $today, $today );
-$ledger->record_receipt( array( 'date' => $today, 'account_id' => $fund_id, 'method' => 'cash', 'person_id' => $fund_payer, 'lines' => array( array( 'category_id' => $cat['other_income'], 'amount_cents' => 3000 ) ) ) );
-$real_after = array_sum( array_column( array_filter( $ledger->balances(), function ( $b ) {
-	return 'fund' !== $b['kind'];
-} ), 'balance' ) );
-$rep1        = Plugin::reports()->period( $today, $today );
-apse_ok( $real_before === $real_after && 3000 === $bal_of( $fund_id ) && $rep1['total_income'] === $rep0['total_income'] && $rep1['closing_total'] === $rep0['closing_total'] && 3000 === $rep1['funds_closing'], 'fondi: i soldi nel fondo non contano nelle disponibilità né nelle entrate del rendiconto' );
-$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Fondo rimborso Mario' );
-apse_ok( false !== strpos( $dash, 'non dell\'associazione' ), 'fondi: la dashboard li mostra a parte' );
-apse_render( array( Admin\AccountsPage::class, 'render' ), 'Fondi (soldi di altri)' );
-$ledger->record_expense( array( 'date' => $today, 'account_id' => $fund_id, 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 3000, 'description' => 'Rimborso a Mario' ) );
-$ledger->close_account( $fund_id );
-apse_ok( 0 === $bal_of( $fund_id, true ) && null === $ledger->account( $fund_id ), 'fondi: pagato il rimborso il fondo è a zero e si chiude' );
-apse_render( array( Admin\AccountsPage::class, 'render' ), 'Conti chiusi' );
-apse_render( array( Admin\ReportsPage::class, 'render' ), 'fondo' );
+// ---------- Fondi per il rimborso del volontario ----------
+$funds  = Plugin::funds();
+$fvol   = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Vera', 'last_name' => 'Rimborso', 'email' => 'vera.rimborso@example.com' ) );
+$fpayer = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pagante', 'last_name' => 'Fondo', 'email' => 'pagante.fondo@example.com' ) );
+$threw  = false;
+try {
+	$acts->create( array( 'name' => 'Senza istruttore', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'fund_mode' => 'percent', 'fund_value' => 2500 ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'fondo: la quota per il rimborso richiede l\'istruttore' );
+$threw = false;
+try {
+	$acts->create( array( 'name' => 'Troppo', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'instructor_person_id' => $fvol, 'fund_mode' => 'percent', 'fund_value' => 10100 ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'fondo: la percentuale non supera il 100%' );
+$fcorso = $acts->create( array( 'name' => 'Corso Rimborsi', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'instructor_person_id' => $fvol, 'fund_mode' => 'percent', 'fund_value' => 2500 ) );
+$av0    = $funds->available();
+$cash0  = $bal_of( (int) $cash['id'] );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $fpayer, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 2000, 'activity_id' => $fcorso, 'competence_month' => $month ) ) ) );
+$fl = array_values(
+	array_filter(
+		$funds->all(),
+		function ( $f ) use ( $fcorso ) {
+			return (int) $f['activity_id'] === $fcorso;
+		}
+	)
+);
+apse_ok( 1 === count( $fl ) && 'Rimborso Vera Rimborso — Corso Rimborsi' === $fl[0]['name'] && 500 === $fl[0]['balance'], 'fondo: il pagamento accantona il 25% in "Rimborso (volontario) — (corso)"' );
+apse_ok( $cash0 + 2000 === $bal_of( (int) $cash['id'] ), 'fondo: la cassa riceve comunque tutto il pagamento' );
+$av1 = $funds->available();
+apse_ok( $av1['accounts'] === $av0['accounts'] + 2000 && $av1['funds'] === $av0['funds'] + 500 && $av1['available'] === $av0['available'] + 1500, 'fondo: disponibilità reale = saldi meno fondi' );
+$acts->update( $fcorso, array( 'fund_mode' => 'fixed', 'fund_value' => 200 ) );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $fpayer, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 1000, 'activity_id' => $fcorso, 'competence_month' => $month ) ) ) );
+apse_ok( 700 === $funds->get( (int) $fl[0]['id'] )['balance'], 'fondo: con l\'importo fisso si accantonano 2,00 € per pagamento' );
+$last_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE activity_id = ' . $fcorso . ' ORDER BY id DESC LIMIT 1' );
+$ledger->void( $last_tx, 'errore' );
+apse_ok( 500 === $funds->get( (int) $fl[0]['id'] )['balance'], 'fondo: annullando il pagamento in prima nota si annulla anche la sua quota' );
+$threw = false;
+try {
+	$funds->release( (int) $fl[0]['id'], 99999, $today );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+$av_pre = $funds->available();
+$funds->release( (int) $fl[0]['id'], 100, $today );
+apse_ok( $threw && 400 === $funds->get( (int) $fl[0]['id'] )['balance'] && $funds->available()['available'] === $av_pre['available'] + 100, 'fondo: si libera una quota solo fino al saldo e torna nella disponibilità' );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
+apse_ok( false !== strpos( $dash, 'Rimborso Vera Rimborso' ), 'fondo: la dashboard mostra disponibilità reale e fondi' );
+apse_render( array( Admin\AccountsPage::class, 'render' ), 'Estingui il fondo' );
+$rep = Plugin::reports()->period( $today, $today );
+apse_ok( $rep['funds_total'] === $funds->total( $today ) && $rep['available'] === $rep['closing_total'] - $rep['funds_total'], 'fondo: il rendiconto riporta la disponibilità reale' );
+$av_before = $funds->available();
+$exp_tx    = $funds->settle( (int) $fl[0]['id'], (int) $cash['id'], 'cash', $today );
+$av_after  = $funds->available();
+$exp_row   = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $exp_tx, ARRAY_A );
+apse_ok( $exp_tx > 0 && 'expense' === $exp_row['type'] && 400 === (int) $exp_row['amount_cents'] && (int) $fvol === (int) $exp_row['person_id'], 'fondo estinto: l\'uscita del rimborso è registrata in prima nota' );
+apse_ok(
+	$av_after['available'] === $av_before['available'] && $av_after['accounts'] === $av_before['accounts'] - 400 && null !== $funds->get( (int) $fl[0]['id'] )['closed_at']
+	&& ! array_filter(
+		$funds->all(),
+		function ( $f ) use ( $fl ) {
+			return (int) $f['id'] === (int) $fl[0]['id'];
+		}
+	),
+	'fondo estinto: la disponibilità reale non cambia (il rimborso era già accantonato) e il fondo sparisce'
+);
+apse_render( array( Admin\AccountsPage::class, 'render' ), 'Conti' );
+apse_render( array( Admin\ReportsPage::class, 'render' ), 'Disponibilità reale' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

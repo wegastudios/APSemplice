@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '11';
+	const DB_VERSION        = '12';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -78,11 +78,35 @@ final class Install {
   name varchar(120) NOT NULL,
   type varchar(20) NOT NULL,
   opening_cents bigint(20) NOT NULL DEFAULT 0,
-  kind varchar(10) NOT NULL DEFAULT 'real',
   closed_at datetime DEFAULT NULL,
   sort_order int(11) NOT NULL DEFAULT 0,
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}funds (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(200) NOT NULL,
+  activity_id bigint(20) unsigned DEFAULT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  closed_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY activity_id (activity_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}fund_entries (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  fund_id bigint(20) unsigned NOT NULL,
+  kind varchar(8) NOT NULL,
+  cents bigint(20) NOT NULL,
+  tx_id bigint(20) unsigned DEFAULT NULL,
+  entry_date date NOT NULL,
+  note varchar(255) NOT NULL DEFAULT '',
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY fund_id (fund_id),
+  KEY tx_id (tx_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}categories (
@@ -106,6 +130,8 @@ final class Install {
   cancellable tinyint(1) NOT NULL DEFAULT 0,
   cancel_policy varchar(4) DEFAULT NULL,
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
+  fund_mode varchar(8) NOT NULL DEFAULT '',
+  fund_value bigint(20) NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,

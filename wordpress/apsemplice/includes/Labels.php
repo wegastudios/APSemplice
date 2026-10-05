@@ -10,10 +10,6 @@ final class Labels {
 		return array( 'cash' => 'Cassa contanti', 'bank' => 'Conto corrente', 'pos' => 'Conto POS', 'other' => 'Altro' );
 	}
 
-	public static function account_kinds(): array {
-		return array( 'real' => 'Conto reale (soldi dell\'associazione)', 'fund' => 'Fondo (soldi in cassa ma di altri, es. quote raccolte per un rimborso)' );
-	}
-
 	public static function methods(): array {
 		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'other' => 'Altro' );
 	}
