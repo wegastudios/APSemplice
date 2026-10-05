@@ -302,7 +302,7 @@ final class ActivitiesPage {
 			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> cellulare <input type="text" name="new_phone" placeholder="333 1234567"> del socio '
 			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'apse-walkhost-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><label><input type="checkbox" name="pay" value="1" checked> Incassa ora il contributo</label> (soci ' . esc_html( Money::format( $fee ) ) . ', ospiti ' . esc_html( Money::format( $guest ) ) . ') — '
-			. '<select name="method">' . Ui::options( array_diff_key( \ApSemplice\Labels::methods(), array( 'stripe' => 1, 'paypal' => 1 ) ), 'cash' ) . '</select> sul conto '
+			. 'sul conto '
 			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><label><input type="checkbox" name="checkin" value="1" checked> Registra subito l\'ingresso</label> <button class="button button-primary">Prenota sul posto</button></p>'
 			. '<p class="description">Il nuovo ospite viene creato (il cellulare è obbligatorio: serve a riconoscerlo) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>';

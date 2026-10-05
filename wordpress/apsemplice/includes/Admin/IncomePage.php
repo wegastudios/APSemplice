@@ -81,10 +81,9 @@ final class IncomePage {
 			$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'] );
 		}
 		$default_account = $ledger->default_account_for( 'cash' );
-		$accounts_by_method = array();
-		foreach ( array_keys( Labels::methods() ) as $m ) {
-			$d = $ledger->default_account_for( $m );
-			$accounts_by_method[ $m ] = $d ? (int) $d['id'] : 0;
+		$account_types = array();
+		foreach ( $accounts as $a ) {
+			$account_types[ (int) $a['id'] ] = $a['type'];
 		}
 		$data = array(
 			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
@@ -94,7 +93,7 @@ final class IncomePage {
 			'membershipFee' => (int) Settings::get( 'membership_fee_cents' ),
 			'socialYear'    => $sy->label(),
 			'nextYear'      => $sy->next()->label(),
-			'accountByMethod' => $accounts_by_method,
+			'accountTypes'  => $account_types,
 		);
 
 		Ui::header( 'Nuovo incasso' );
@@ -102,12 +101,12 @@ final class IncomePage {
 		Ui::form_open( 'apse_save_income', Ui::url( 'apse-income' ), false, 'apse-income' );
 		echo '<table class="form-table apse-form"><tbody>';
 		echo '<tr><th>Data</th><td><input type="date" name="date" id="apse-date" value="' . esc_attr( $today ) . '" required></td></tr>';
-		echo '<tr><th>Pagamento</th><td><select name="method" id="apse-method">' . Ui::options( Labels::methods(), 'cash' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Conto</th><td>';
 		$acc_map = array();
 		foreach ( $accounts as $a ) {
 			$acc_map[ $a['id'] ] = $a['name'];
 		}
-		echo 'sul conto <select name="account_id" id="apse-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<select name="account_id" id="apse-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / anonimo —', 'apse-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. ' <a href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '" target="_blank">+ nuovo socio</a>'
 			. '<div id="apse-person-info" class="apse-info"></div></td></tr>';

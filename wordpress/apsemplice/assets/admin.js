@@ -147,12 +147,35 @@
 				[D.socialYear, D.nextYear].forEach(function (y) {
 					var o = el('option', { value: y, text: 'Anno sociale ' + y }); if (y === l.socialYear) { o.selected = true; } ys.appendChild(o);
 				});
-				ys.addEventListener('change', function () { l.socialYear = ys.value; });
+				ys.addEventListener('change', function () { l.socialYear = ys.value; render(); });
 				row.appendChild(ys);
+				if (l.socialYear !== D.socialYear) {
+					var fc = el('input', { type: 'checkbox', name: n + '[free_current_year]', value: '1' });
+					if (l.freeCurrent) { fc.checked = true; }
+					fc.addEventListener('change', function () { l.freeCurrent = fc.checked; });
+					row.appendChild(el('label', { 'class': 'apse-free-year' }, [fc, document.createTextNode(' anno ' + D.socialYear + ' gratis')]));
+				}
 			}
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
 			amt.addEventListener('input', function () { l.amount = amt.value; update(); });
 			row.appendChild(amt); row.appendChild(el('span', { text: '€' }));
+			// Sconto, promozione o arrotondamento: la voce conta come pagata per intero anche se si incassa meno
+			var disc = el('input', { type: 'text', name: n + '[discount]', inputmode: 'decimal', value: l.discount || '', size: '6', placeholder: 'sconto', 'aria-label': 'Sconto' });
+			disc.addEventListener('input', function () {
+				l.discount = disc.value;
+				if (l.list == null) { l.list = parseMoney(l.amount) || 0; }
+				var d = parseMoney(disc.value) || 0;
+				l.amount = plain(Math.max(0, l.list - d));
+				amt.value = l.amount; update();
+			});
+			var why = el('input', { type: 'text', name: n + '[discount_note]', value: l.discountNote || '', size: '16', placeholder: 'motivo (es. open day)', 'aria-label': 'Motivo dello sconto' });
+			why.addEventListener('input', function () { l.discountNote = why.value; });
+			var free = el('button', { type: 'button', 'class': 'button button-small', text: 'Gratis' });
+			free.addEventListener('click', function () {
+				if (l.list == null) { l.list = parseMoney(l.amount) || 0; }
+				l.discount = plain(l.list); l.amount = plain(0); render();
+			});
+			row.appendChild(disc); row.appendChild(why); row.appendChild(free);
 			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
 				row.appendChild(el('input', { type: 'hidden', name: n + '[' + p[0] + ']', value: p[1] }));
 			});
@@ -169,7 +192,7 @@
 	function update() {
 		var t = total();
 		$('#apse-total').textContent = eur(t);
-		var cash = $('#apse-method').value === 'cash' && t > 0;
+		var cash = D.accountTypes[$('#apse-account').value] === 'cash' && t > 0;
 		$('#apse-cash').style.display = cash ? '' : 'none';
 		if (!cash) { return; }
 		var tenderedEl = $('#apse-tendered');
@@ -259,16 +282,12 @@
 	$('#apse-date').addEventListener('change', loadContext);
 
 	/* Modalità di pagamento: propone il conto giusto */
-	$('#apse-method').addEventListener('change', function () {
-		var acc = D.accountByMethod[this.value]; if (acc) { $('#apse-account').value = String(acc); }
-		update();
-	});
-	$('#apse-tendered').addEventListener('input', update);
+	$('#apse-account').addEventListener('change', update);	$('#apse-tendered').addEventListener('input', update);
 
 	form.addEventListener('submit', function (e) {
-		var bad = !lines.length || lines.some(function (l) { return !(parseMoney(l.amount) > 0); });
+		var bad = !lines.length || lines.some(function (l) { return !(parseMoney(l.amount) > 0 || parseMoney(l.discount) > 0); });
 		if (bad) { e.preventDefault(); window.alert('Aggiungi almeno una voce e inserisci un importo valido per ognuna.'); return; }
-		if ($('#apse-method').value === 'cash') {
+		if (D.accountTypes[$('#apse-account').value] === 'cash') {
 			var t = parseMoney($('#apse-tendered').value);
 			if (t != null && t < total()) { e.preventDefault(); window.alert('I contanti ricevuti non bastano.'); }
 		}

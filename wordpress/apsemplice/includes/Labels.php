@@ -10,6 +10,11 @@ final class Labels {
 		return array( 'cash' => 'Cassa contanti', 'bank' => 'Conto corrente', 'pos' => 'Conto POS', 'other' => 'Altro' );
 	}
 
+	/** Modalità di pagamento che deriva dal tipo di conto. */
+	public static function method_for_account( string $type ): string {
+		return array( 'cash' => 'cash', 'bank' => 'bank_transfer', 'pos' => 'pos' )[ $type ] ?? 'other';
+	}
+
 	public static function methods(): array {
 		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'other' => 'Altro' );
 	}

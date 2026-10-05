@@ -182,13 +182,19 @@ class LedgerService {
 		}
 	}
 
-	private function assert_account_method( int $account_id, string $method ): void {
-		if ( ! $this->account( $account_id ) ) {
+	/** Controlla il conto e restituisce la modalità di pagamento: se non è indicata, la decide il conto (cassa = contanti, conto = bonifico, POS = carta). */
+	private function assert_account_method( int $account_id, string $method ): string {
+		$account = $this->account( $account_id );
+		if ( ! $account ) {
 			throw new \InvalidArgumentException( $this->account_any( $account_id ) ? 'Il conto è chiuso: riaprilo per registrare movimenti.' : 'Conto non valido.' );
+		}
+		if ( '' === trim( $method ) ) {
+			return Labels::method_for_account( (string) $account['type'] );
 		}
 		if ( ! isset( Labels::methods()[ $method ] ) ) {
 			throw new \InvalidArgumentException( 'Modalità di pagamento non valida.' );
 		}
+		return $method;
 	}
 
 	private function tx_defaults( array $extra ): array {
@@ -240,7 +246,7 @@ class LedgerService {
 	public function record_receipt( array $d ): int {
 		$date = (string) ( $d['date'] ?? '' );
 		$this->assert_date( $date );
-		$this->assert_account_method( (int) ( $d['account_id'] ?? 0 ), (string) ( $d['method'] ?? '' ) );
+		$d['method'] = $this->assert_account_method( (int) ( $d['account_id'] ?? 0 ), (string) ( $d['method'] ?? '' ) );
 		$lines = $d['lines'] ?? array();
 		if ( ! $lines ) {
 			throw new \InvalidArgumentException( 'Aggiungi almeno una voce all\'incasso.' );
@@ -259,7 +265,8 @@ class LedgerService {
 			if ( ! $cat || ! Labels::category_kinds()[ $cat['kind'] ][1] || 'adjustment' === $cat['kind'] ) {
 				throw new \InvalidArgumentException( "Voce $n: categoria non valida per un incasso." );
 			}
-			if ( $cents <= 0 ) {
+			$discount = max( 0, (int) ( $l['discount_cents'] ?? 0 ) ); // sconto, promozione o arrotondamento: la voce conta come pagata anche se si incassa meno
+			if ( $cents < 0 || ( $cents <= 0 && $discount <= 0 ) ) {
 				throw new \InvalidArgumentException( "Voce $n: importo non valido." );
 			}
 			if ( ! empty( $l['competence_month'] ) && ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $l['competence_month'] ) ) {
@@ -302,7 +309,7 @@ class LedgerService {
 				}
 				$social_year = ! empty( $l['social_year'] ) ? $l['social_year'] : Settings::social_year( $date )->label();
 			}
-			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'line' => $l );
+			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
@@ -320,7 +327,8 @@ class LedgerService {
 							'activity_id'      => $p['activity_id'],
 							'session_id'       => $p['session_id'],
 							'person_id'        => $person ? (int) $person['id'] : null,
-							'description'      => substr( (string) ( $p['line']['description'] ?? '' ), 0, 255 ),
+							'description'      => substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),
+							'discount_cents'   => $p['discount'],
 							'competence_month' => ! empty( $p['line']['competence_month'] ) ? $p['line']['competence_month'] : null,
 							'social_year'      => $p['social_year'],
 							'document_ref'     => ! empty( $d['document_ref'] ) ? substr( trim( $d['document_ref'] ), 0, 80 ) : null,
@@ -346,7 +354,7 @@ class LedgerService {
 	public function record_expense( array $d ): int {
 		$date = (string) ( $d['date'] ?? '' );
 		$this->assert_date( $date );
-		$this->assert_account_method( (int) ( $d['account_id'] ?? 0 ), (string) ( $d['method'] ?? '' ) );
+		$d['method'] = $this->assert_account_method( (int) ( $d['account_id'] ?? 0 ), (string) ( $d['method'] ?? '' ) );
 		$cat = $this->category( (int) ( $d['category_id'] ?? 0 ) );
 		if ( ! $cat || ! Labels::category_kinds()[ $cat['kind'] ][2] || 'adjustment' === $cat['kind'] ) {
 			throw new \InvalidArgumentException( 'Categoria non valida per una spesa.' );
@@ -379,19 +387,19 @@ class LedgerService {
 		if ( $from_id === $to_id ) {
 			throw new \InvalidArgumentException( 'Scegli due conti diversi.' );
 		}
-		$this->assert_account_method( $from_id, $method );
-		$this->assert_account_method( $to_id, $method );
+		$m_out = $this->assert_account_method( $from_id, $method );
+		$m_in  = $this->assert_account_method( $to_id, $method );
 		if ( $cents <= 0 ) {
 			throw new \InvalidArgumentException( 'Importo non valido.' );
 		}
 		$cat      = $this->category_id_of_kind( 'adjustment' ); // segnaposto neutro per le righe di giroconto
 		$transfer = wp_generate_uuid4();
 		$this->in_transaction(
-			function () use ( $date, $from_id, $to_id, $cents, $method, $description, $cat, $transfer ) {
-				foreach ( array( array( 'transfer_out', $from_id ), array( 'transfer_in', $to_id ) ) as $leg ) {
+			function () use ( $date, $from_id, $to_id, $cents, $m_out, $m_in, $description, $cat, $transfer ) {
+				foreach ( array( array( 'transfer_out', $from_id, $m_out ), array( 'transfer_in', $to_id, $m_in ) ) as $leg ) {
 					$this->insert_tx(
 						array(
-							'tx_date' => $date, 'type' => $leg[0], 'amount_cents' => $cents, 'account_id' => $leg[1], 'method' => $method,
+							'tx_date' => $date, 'type' => $leg[0], 'amount_cents' => $cents, 'account_id' => $leg[1], 'method' => $leg[2],
 							'category_id' => $cat, 'description' => substr( $description, 0, 255 ), 'transfer_id' => $transfer,
 						)
 					);
@@ -500,7 +508,7 @@ class LedgerService {
 	 */
 	public function import_row( array $d ): int {
 		$this->assert_date( (string) $d['date'] );
-		$this->assert_account_method( (int) $d['account_id'], (string) $d['method'] );
+		$d['method'] = $this->assert_account_method( (int) $d['account_id'], (string) $d['method'] );
 		if ( ! in_array( $d['type'], array( 'income', 'expense' ), true ) || (int) $d['cents'] <= 0 ) {
 			throw new \InvalidArgumentException( 'Movimento non valido.' );
 		}

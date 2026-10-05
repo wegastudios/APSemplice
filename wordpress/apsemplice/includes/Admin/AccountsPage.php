@@ -69,7 +69,7 @@ final class AccountsPage {
 		echo '<details><summary>Estingui e paga il rimborso</summary><p class="description">Registra in prima nota l\'uscita di ' . esc_html( Money::format( $f['balance'] ) ) . ' (rimborso al volontario) e chiude il fondo.</p>';
 		Ui::form_open( 'apse_fund_settle', $back );
 		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Pagato da <select name="account_id">' . Ui::options( $accounts, null ) . '</select> <select name="method">' . Ui::options( Labels::methods(), 'cash' ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>Pagato da <select name="account_id">' . Ui::options( $accounts, null ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<button class="button" onclick="return confirm(\'Registrare il rimborso e chiudere il fondo?\')">Estingui il fondo</button>';
 		Ui::form_close();
 		echo '</details></div>';

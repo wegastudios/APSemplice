@@ -249,3 +249,10 @@ I conti sono sempre conti reali: non si trasformano in fondi né viceversa. Di u
 Il menu di amministrazione ha cinque voci: **Bacheca** (cassa rapida per incassi e spese semplici, richieste di accesso, soci da rinnovare, ospiti attesi che dovrebbero iscriversi), **Rubrica** (soci e ospiti con i link per scrivere via email o WhatsApp; import da Excel/CSV), **Corsi ed eventi**, **Contabilità** (prima nota, incassi, spese, giroconti, conti e fondi, report) e **Impostazioni**.
 
 Le **Impostazioni** hanno le schede *Generale*, *Pagamenti online*, *Tessera, QR e Wallet* e *Registro azioni*. QR della tessera, biglietti QR delle prenotazioni, Apple/Google Wallet e pagamenti online sono **spenti di default**: se non servono restano invisibili ai soci e nelle schede degli eventi.
+
+## Conti, sconti e iscrizione a fine anno
+
+- **Si sceglie solo il conto**, non "come si paga": la modalità deriva dal tipo di conto (cassa = contanti, conto corrente = bonifico, POS = carta). Con un conto di tipo cassa l'incasso mostra il calcolo del resto.
+- **Sconto / promozione / arrotondamento**: in ogni voce dell'incasso c'è il campo *sconto* (con il motivo, es. "open day") e il pulsante *Gratis*. La voce conta come pagata per intero, ma nel rendiconto entra solo ciò che è stato davvero incassato.
+- **Iscrizione a fine anno**: nella quota associativa dell'anno successivo si può spuntare "anno in corso gratis": il socio risulta iscritto subito, per l'anno in corso senza pagare e per il prossimo con la quota versata.
+- La **Bacheca** ha l'iscrizione rapida a un corso o la prenotazione a un evento; il giroconto sta solo in Contabilità.

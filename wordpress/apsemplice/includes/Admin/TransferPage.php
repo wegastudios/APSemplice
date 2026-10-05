@@ -21,7 +21,6 @@ final class TransferPage {
 		echo '<tr><th>Da</th><td><select name="from_id" required>' . Ui::options( $accounts, null, '— conto di partenza —' ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>A</th><td><select name="to_id" required>' . Ui::options( $accounts, null, '— conto di arrivo —' ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Importo</th><td><input type="text" name="amount" inputmode="decimal" required> €</td></tr>';
-		echo '<tr><th>Modalità</th><td><select name="method">' . Ui::options( Labels::methods(), 'bank_transfer' ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Descrizione</th><td><input type="text" name="description" class="large-text"></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Registra giroconto' );

@@ -69,6 +69,7 @@ final class Actions {
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_quick_cash'         => 'quick_cash',
+			'apse_quick_enroll'       => 'quick_enroll',
 			'apse_save_payment_settings' => 'save_payment_settings',
 			'apse_create_pages'       => 'create_pages',
 			'apse_import_preview'     => 'import_preview',
@@ -367,7 +368,24 @@ final class Actions {
 				'competence_month' => self::opt( $l, 'competence_month' ),
 				'social_year'      => self::opt( $l, 'social_year' ),
 				'description'      => (string) ( $l['description'] ?? '' ),
+				'discount_cents'   => Money::parse( $l['discount'] ?? '' ) ?? 0,
+				'discount_note'    => (string) ( $l['discount_note'] ?? '' ),
 			);
+			// Iscrizione a fine anno: si versa la quota dell'anno successivo e quello in corso Ã¨ gratuito (sconto del 100%)
+			$cat = null;
+			foreach ( Plugin::ledger()->categories() as $c ) {
+				if ( (int) $c['id'] === (int) ( $l['category_id'] ?? 0 ) ) {
+					$cat = $c;
+				}
+			}
+			$current = Settings::social_year( (string) ( $p['date'] ?? '' ) ?: current_time( 'Y-m-d' ) )->label();
+			if ( ! empty( $l['free_current_year'] ) && $cat && 'membership' === $cat['kind'] && ( $l['social_year'] ?? '' ) !== $current ) {
+				$lines[] = array(
+					'category_id' => (int) $cat['id'], 'amount_cents' => 0, 'social_year' => $current,
+					'discount_cents' => (int) Settings::get( 'membership_fee_cents' ), 'discount_note' => 'iscrizione a fine anno: anno in corso gratuito',
+					'description' => 'Quota associativa ' . $current,
+				);
+			}
 		}
 		$n = Plugin::ledger()->record_receipt(
 			array(
@@ -418,7 +436,7 @@ final class Actions {
 	private static function save_transfer( array $p ): array {
 		Plugin::ledger()->record_transfer(
 			(string) ( $p['date'] ?? '' ), (int) ( $p['from_id'] ?? 0 ), (int) ( $p['to_id'] ?? 0 ),
-			Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['method'] ?? 'other' ), trim( (string) ( $p['description'] ?? '' ) )
+			Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['method'] ?? '' ), trim( (string) ( $p['description'] ?? '' ) )
 		);
 		return array( Ui::url( 'apse-ledger' ), 'Giroconto registrato.' );
 	}
@@ -460,7 +478,7 @@ final class Actions {
 	}
 
 	private static function fund_settle( array $p ): array {
-		$tx = Plugin::funds()->settle( (int) ( $p['id'] ?? 0 ), (int) ( $p['account_id'] ?? 0 ), (string) ( $p['method'] ?? 'cash' ), (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
+		$tx = Plugin::funds()->settle( (int) ( $p['id'] ?? 0 ), (int) ( $p['account_id'] ?? 0 ), (string) ( $p['method'] ?? '' ), (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
 		return array( Ui::url( 'apse-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo estinto.' : 'Fondo a zero: estinto.' );
 	}
 
@@ -486,6 +504,30 @@ final class Actions {
 
 	// ---------- Impostazioni ----------
 
+	/** Iscrizione rapida dalla Bacheca: corso (dal mese in corso) o data di un evento. */
+	private static function quick_enroll( array $p ): array {
+		$pid    = (int) ( $p['person_id'] ?? 0 );
+		$person = Plugin::people()->get( $pid );
+		if ( ! $person ) {
+			throw new \InvalidArgumentException( 'Scegli chi si iscrive.' );
+		}
+		$target = (string) ( $p['target'] ?? '' );
+		$name   = trim( $person['first_name'] . ' ' . $person['last_name'] );
+		if ( 0 === strpos( $target, 'a:' ) ) {
+			$a = Plugin::activities()->get( (int) substr( $target, 2 ) );
+			if ( ! $a ) {
+				throw new \InvalidArgumentException( 'Corso non trovato.' );
+			}
+			Plugin::activities()->enroll( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
+			return array( Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.' );
+		}
+		if ( 0 === strpos( $target, 's:' ) ) {
+			Plugin::activities()->book( (int) substr( $target, 2 ), $pid );
+			return array( Ui::url( 'apse' ), $name . ' è prenotato/a.' );
+		}
+		throw new \InvalidArgumentException( 'Scegli a cosa iscriverlo.' );
+	}
+
 	/** Cassa rapida della Bacheca: un incasso o una spesa semplici. */
 	private static function quick_cash( array $p ): array {
 		$ledger = Plugin::ledger();
@@ -503,7 +545,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Scegli cosa registrare.' );
 		}
 		$date   = current_time( 'Y-m-d' );
-		$common = array( 'date' => $date, 'account_id' => (int) ( $p['account_id'] ?? 0 ), 'method' => (string) ( $p['method'] ?? 'cash' ) );
+		$common = array( 'date' => $date, 'account_id' => (int) ( $p['account_id'] ?? 0 ), 'method' => (string) ( $p['method'] ?? '' ) );
 		$desc   = trim( (string) ( $p['description'] ?? '' ) );
 		if ( 'general_cost' === $cat['kind'] ) {
 			$ledger->record_expense( $common + array( 'category_id' => (int) $cat['id'], 'amount_cents' => $cents, 'description' => $desc ) );

@@ -343,7 +343,7 @@ class ActivityService {
 		) ?: array();
 		$paid = array();
 		foreach ( $this->db()->get_results(
-			$this->db()->prepare( 'SELECT person_id, SUM(amount_cents) AS s FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = %d GROUP BY person_id", $session_id ),
+			$this->db()->prepare( 'SELECT person_id, SUM(amount_cents + discount_cents) AS s FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = %d GROUP BY person_id", $session_id ),
 			ARRAY_A
 		) ?: array() as $r ) {
 			$paid[ (int) $r['person_id'] ] = (int) $r['s'];
@@ -369,7 +369,7 @@ class ActivityService {
 		) ?: array();
 		$paid = array();
 		foreach ( $this->db()->get_results(
-			$this->db()->prepare( 'SELECT session_id, SUM(amount_cents) AS s FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND person_id = %d AND session_id IS NOT NULL GROUP BY session_id", $person_id ),
+			$this->db()->prepare( 'SELECT session_id, SUM(amount_cents + discount_cents) AS s FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND person_id = %d AND session_id IS NOT NULL GROUP BY session_id", $person_id ),
 			ARRAY_A
 		) ?: array() as $r ) {
 			$paid[ (int) $r['session_id'] ] = (int) $r['s'];
@@ -769,7 +769,7 @@ class ActivityService {
 		}
 		$ids  = implode( ',', array_map( 'intval', $activity_ids ) );
 		$rows = $this->db()->get_results(
-			"SELECT activity_id, person_id, COALESCE(competence_month, DATE_FORMAT(tx_date, '%Y-%m')) AS ym, SUM(amount_cents) AS s "
+			"SELECT activity_id, person_id, COALESCE(competence_month, DATE_FORMAT(tx_date, '%Y-%m')) AS ym, SUM(amount_cents + discount_cents) AS s "
 			. 'FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id IS NULL AND person_id IS NOT NULL AND activity_id IN ($ids) "
 			. 'GROUP BY activity_id, person_id, ym',
 			ARRAY_A

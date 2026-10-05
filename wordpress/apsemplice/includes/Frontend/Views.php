@@ -361,7 +361,6 @@ final class Views {
 			. '<label>Data <input type="date" name="date" value="' . esc_attr( current_time( 'Y-m-d' ) ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '" required></label>'
 			. '<label>Importo (€) <input type="text" name="amount" inputmode="decimal" placeholder="0,00" required></label>'
 			. '<label>Voce <select name="category_id" required>' . $opts( $cats, null, '— scegli —' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<label>Pagato con <select name="method">' . $opts( $methods, 'cash' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<label>Dal conto <select name="account_id">' . $opts( $accounts, $default ? $default['id'] : null ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<label>Attività <select name="activity_id">' . $opts( $acts, null, 'Nessuna (costo generale)' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<label>Descrizione <input type="text" name="description" maxlength="255"></label>'

@@ -31,7 +31,7 @@ final class ExpensePage {
 		Ui::form_open( 'apse_save_expense', Ui::url( 'apse-expense' ), true );
 		echo '<table class="form-table apse-form"><tbody>';
 		echo '<tr><th>Data</th><td><input type="date" name="date" value="' . esc_attr( current_time( 'Y-m-d' ) ) . '" required></td></tr>';
-		echo '<tr><th>Pagamento</th><td><select name="method">' . Ui::options( Labels::methods(), 'cash' ) . '</select> dal conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Pagato dal conto</th><td><select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">Il saldo tra parentesi è quello attuale: controlla che il conto abbia fondi sufficienti.</p></td></tr>';
 		echo '<tr><th>Voce</th><td><select name="category_id" required>' . Ui::options( $cats, null, '— scegli —' ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Importo</th><td><input type="text" name="amount" inputmode="decimal" required> €</td></tr>';

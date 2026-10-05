@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '12';
+	const DB_VERSION        = '13';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -166,6 +166,7 @@ final class Install {
   competence_month char(7) DEFAULT NULL,
   social_year varchar(12) DEFAULT NULL,
   document_ref varchar(80) DEFAULT NULL,
+  discount_cents bigint(20) NOT NULL DEFAULT 0,
   receipt_id varchar(40) DEFAULT NULL,
   import_batch bigint(20) unsigned DEFAULT NULL,
   transfer_id varchar(40) DEFAULT NULL,

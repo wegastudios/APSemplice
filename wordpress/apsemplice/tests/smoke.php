@@ -2320,6 +2320,69 @@ $dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Cassa rapid
 apse_ok( false !== strpos( $dash, 'apse_quick_cash' ), 'bacheca: la cassa rapida è in prima pagina' );
 apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Contatti' );
 
+// ---------- Conto = modalità di pagamento, sconti e iscrizione a fine anno ----------
+wp_set_current_user( 1 );
+$bank_id = $ledger->add_account( 'Conto banca prova', 'bank', 0 );
+$pos_id  = $ledger->add_account( 'POS prova', 'pos', 0 );
+$method_of = function ( int $tx ) use ( $wpdb ) {
+	return $wpdb->get_var( 'SELECT method FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $tx );
+};
+$e1 = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'a' ) );
+$e2 = $ledger->record_expense( array( 'date' => $today, 'account_id' => $bank_id, 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'b' ) );
+$e3 = $ledger->record_expense( array( 'date' => $today, 'account_id' => $pos_id, 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'c' ) );
+apse_ok( 'cash' === $method_of( $e1 ) && 'bank_transfer' === $method_of( $e2 ) && 'pos' === $method_of( $e3 ), 'pagamenti: senza modalità la decide il conto (cassa = contanti, conto = bonifico, POS = carta)' );
+$t_id = $ledger->record_transfer( $today, (int) $cash['id'], $bank_id, 100, '' );
+apse_ok( 2 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE transfer_id = %s', $t_id ) ), 'giroconto: senza modalità si registra comunque' );
+apse_ok( false === strpos( apse_render( array( Admin\ExpensePage::class, 'render' ), 'Pagato dal conto' ), 'name="method"' ) && false === strpos( apse_render( array( Admin\TransferPage::class, 'render' ), 'Giroconto' ), 'name="method"' ) && false === strpos( apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data' ), 'name="method"' ), 'moduli: niente scelta della modalità, basta il conto' );
+
+// sconto: la voce conta come pagata anche se si incassa meno
+$sc_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sconta', 'last_name' => 'Open', 'email' => 'sconta.open@example.com' ) );
+$sc_c   = $acts->create( array( 'name' => 'Corso Sconto', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000 ) );
+$acts->enroll( $sc_c, $sc_p, $month );
+$inc0 = Plugin::reports()->period( $today, $today )['total_income'];
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $sc_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 1500, 'activity_id' => $sc_c, 'competence_month' => $month ) ) ) );
+$st = $acts->status_for_person( $sc_p )[0]['summary'];
+apse_ok( empty( $st['regular'] ), 'sconto: senza sconto, 15,00 su 20,00 non bastano' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $sc_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 0, 'discount_cents' => 500, 'discount_note' => 'open day', 'activity_id' => $sc_c, 'competence_month' => $month ) ) ) );
+$st = $acts->status_for_person( $sc_p )[0]['summary'];
+apse_ok( ! empty( $st['regular'] ), 'sconto: 15,00 incassati + 5,00 di sconto = mensilità pagata' );
+$inc1 = Plugin::reports()->period( $today, $today )['total_income'];
+apse_ok( $inc1 === $inc0 + 1500, 'sconto: non è un\'entrata, il rendiconto conta solo ciò che è stato incassato' );
+$desc = (string) $wpdb->get_var( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE activity_id = ' . $sc_c . ' AND discount_cents = 500' );
+apse_ok( false !== strpos( $desc, 'sconto' ) && false !== strpos( $desc, 'open day' ), 'sconto: in prima nota resta il motivo' );
+$threw = false;
+try {
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $sc_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 0, 'activity_id' => $sc_c, 'competence_month' => $month ) ) ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'incasso: importo zero senza sconto non vale' );
+
+// iscrizione a fine anno: quota del prossimo anno e anno in corso gratis
+$fy_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Fine', 'last_name' => 'Anno', 'email' => 'fine.anno@example.com' ) );
+$si   = new ReflectionMethod( Admin\Actions::class, 'save_income' );
+$si->setAccessible( true );
+$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_p, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::social_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
+$fy_years = $wpdb->get_col( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $fy_p . ' AND deleted_at IS NULL ORDER BY social_year' );
+apse_ok( 2 === count( $fy_years ) && in_array( Settings::social_year()->label(), $fy_years, true ) && in_array( Settings::social_year()->next()->label(), $fy_years, true ), 'iscrizione a fine anno: si paga il prossimo anno e quello in corso è gratuito (' . implode( ',', $fy_years ) . ')' );
+apse_ok( $people->is_active_member( $fy_p ), 'iscrizione a fine anno: il socio è attivo subito' );
+
+// iscrizione rapida dalla Bacheca
+$qe = new ReflectionMethod( Admin\Actions::class, 'quick_enroll' );
+$qe->setAccessible( true );
+$qe_c = $acts->create( array( 'name' => 'Corso Rapido', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 1000 ) );
+$qe->invoke( null, array( 'person_id' => (string) $fy_p, 'target' => 'a:' . $qe_c ) );
+apse_ok( in_array( $qe_c, $acts->active_activity_ids( $fy_p ), true ), 'bacheca: iscrizione rapida a un corso' );
+$threw = false;
+try {
+	$qe->invoke( null, array( 'person_id' => (string) $fy_p, 'target' => '' ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'bacheca: serve scegliere a cosa iscrivere' );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Iscrizione a corsi ed eventi' );
+apse_ok( false === strpos( $dash, '>Giroconto<' ) && false !== strpos( $dash, 'apse_quick_enroll' ), 'bacheca: niente giroconto, c\'è l\'iscrizione' );
+
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità' );

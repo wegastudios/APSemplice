@@ -21,7 +21,6 @@ final class DashboardPage {
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Nuovo incasso</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Nuova spesa</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'apse-transfer' ) ) . '">Giroconto</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a></p>';
 
 		echo '<div class="apse-grid"><div class="apse-card"><h2>Disponibilità reale</h2>';
@@ -43,6 +42,7 @@ final class DashboardPage {
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		self::quick_cash();
+		self::quick_enroll();
 		self::renewals();
 		self::expected_guests();
 
@@ -115,8 +115,33 @@ final class DashboardPage {
 		echo '<p><select name="category_id" required>' . Ui::options( $cats, null ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<input type="text" name="amount" inputmode="decimal" placeholder="0,00" size="8" required> € </p>'
 			. '<p><input type="text" name="description" class="regular-text" placeholder="Descrizione" required></p>'
-			. '<p><select name="method">' . Ui::options( \ApSemplice\Labels::methods(), 'cash' ) . '</select> sul conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p>Sul conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><button class="button button-primary">Registra</button> <a href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Incasso completo (quote, attività)</a> · <a href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Spesa completa</a></p>';
+		Ui::form_close();
+		echo '</div>';
+	}
+
+	/** Iscrizione rapida a un corso (dal mese in corso) o prenotazione a una data di un evento. */
+	private static function quick_enroll(): void {
+		$acts    = Plugin::activities();
+		$targets = array();
+		foreach ( $acts->for_year( Settings::social_year()->label() ) as $a ) {
+			if ( 'course' === $a['kind'] ) {
+				$targets[ 'a:' . $a['id'] ] = 'Corso: ' . $a['name'];
+			}
+		}
+		foreach ( $acts->upcoming_sessions( 30 ) as $s ) {
+			$targets[ 's:' . $s['id'] ] = 'Evento: ' . $s['activity_name'] . ' — ' . Ui::date( $s['session_date'] );
+		}
+		echo '<div class="apse-card"><h2>Iscrizione a corsi ed eventi</h2>';
+		if ( ! $targets ) {
+			echo '<p>Nessun corso né evento in programma. <a href="' . esc_url( Ui::url( 'apse-activities' ) ) . '">Creane uno</a>.</p></div>';
+			return;
+		}
+		Ui::form_open( 'apse_quick_enroll', Ui::url( 'apse' ) );
+		echo '<p>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— chi si iscrive —' ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><select name="target" required>' . Ui::options( $targets, null, '— a cosa —' ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Poi incassa il contributo →</a></p>';
 		Ui::form_close();
 		echo '</div>';
 	}
