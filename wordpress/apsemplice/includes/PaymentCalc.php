@@ -21,7 +21,7 @@ final class PaymentCalc {
 			return $first->format( 'Y-m-d' );
 		}
 		$best = null;
-		foreach ( $days as $day ) { // con piÃ¹ giorni a settimana conta la prima lezione tra tutte
+		foreach ( $days as $day ) { // con più giorni a settimana conta la prima lezione tra tutte
 			$delta = ( $day - (int) $first->format( 'N' ) + 7 ) % 7;
 			$date  = $first->modify( '+' . $delta . ' days' )->format( 'Y-m-d' );
 			$best  = null === $best || $date < $best ? $date : $best;

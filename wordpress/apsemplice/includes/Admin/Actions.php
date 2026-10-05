@@ -390,7 +390,7 @@ final class Actions {
 				'discount_cents'   => Money::parse( $l['discount'] ?? '' ) ?? 0,
 				'discount_note'    => (string) ( $l['discount_note'] ?? '' ),
 			);
-			// Iscrizione a fine anno: si versa la quota dell'anno successivo e quello in corso Ã¨ gratuito (sconto del 100%)
+			// Iscrizione a fine anno: si versa la quota dell'anno successivo e quello in corso è gratuito (sconto del 100%)
 			$cat = null;
 			foreach ( Plugin::ledger()->categories() as $c ) {
 				if ( (int) $c['id'] === (int) ( $l['category_id'] ?? 0 ) ) {

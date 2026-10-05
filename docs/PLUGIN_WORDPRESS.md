@@ -267,9 +267,9 @@ Un corso si **rinnova da solo ogni mese** finché l'iscritto non viene "disdetto
 - **Calendario** (scheda *Corsi ed eventi › Calendario*): vista mensile con le lezioni settimanali dei corsi e le date degli eventi.
 - **Google Calendar**: nella stessa pagina si può pubblicare il calendario con un **indirizzo segreto** (spento di default, rigenerabile). In Google Calendar: *Altri calendari › Da URL*. Il collegamento è in sola lettura e contiene solo nomi, giorni, orari e luoghi.
 
-- Un corso puÃ² avere **piÃ¹ giorni a settimana** (es. lunedÃ¬ alle 20 e giovedÃ¬ alle 19): la mensilitÃ  Ã¨ dovuta dalla prima lezione del mese tra tutti i giorni.
-- Nella scheda del corso gli iscritti stanno nella prima colonna, sotto il modulo di iscrizione, e ci sono i link al calendario del corso e a quello di tutte le attivitÃ  (Google Calendar, Apple, Outlook).
+- Un corso può avere **più giorni a settimana** (es. lunedì alle 20 e giovedì alle 19): la mensilità è dovuta dalla prima lezione del mese tra tutti i giorni.
+- Nella scheda del corso gli iscritti stanno nella prima colonna, sotto il modulo di iscrizione, e ci sono i link al calendario del corso e a quello di tutte le attività (Google Calendar, Apple, Outlook).
 
 ## Tessera associativa
 
-La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti tranne i soci fondatori (tessera sempre rinnovata). Chi si iscrive a fine anno puÃ² pagare la tessera dell'anno dopo e avere gratis quella in corso.
+La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti tranne i soci fondatori (tessera sempre rinnovata). Chi si iscrive a fine anno può pagare la tessera dell'anno dopo e avere gratis quella in corso.

@@ -181,18 +181,18 @@ final class ActivitiesPage {
 		Ui::footer();
 	}
 
-	/** Collegamenti al calendario di questa attivitÃ  (e a quello di tutte). */
+	/** Collegamenti al calendario di questa attività (e a quello di tutte). */
 	private static function calendar_card( array $activity ): void {
 		echo '<div class="apse-card"><h2>Calendario</h2>';
 		if ( ! \ApSemplice\Calendar::enabled() ) {
-			echo '<p class="description">Il collegamento ai calendari (Google Calendar e simili) Ã¨ spento: lo accendi dalla <a href="' . esc_url( Ui::url( 'apse-calendar' ) ) . '">pagina del calendario</a>.</p></div>';
+			echo '<p class="description">Il collegamento ai calendari (Google Calendar e simili) è spento: lo accendi dalla <a href="' . esc_url( Ui::url( 'apse-calendar' ) ) . '">pagina del calendario</a>.</p></div>';
 			return;
 		}
 		$one = \ApSemplice\Calendar::feed_url( (int) $activity['id'] );
 		$all = \ApSemplice\Calendar::feed_url();
-		echo '<p><strong>Solo questa attivitÃ </strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $one ) ) . '">Aggiungi a Google Calendar</a> '
+		echo '<p><strong>Solo questa attività</strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $one ) ) . '">Aggiungi a Google Calendar</a> '
 			. '<a class="button" href="' . esc_url( \ApSemplice\Calendar::webcal_url( $one ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $one ) . '" onclick="this.select()"></p>'
-			. '<p><strong>Tutte le attivitÃ </strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $all ) ) . '">Aggiungi a Google Calendar</a> '
+			. '<p><strong>Tutte le attività</strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $all ) ) . '">Aggiungi a Google Calendar</a> '
 			. '<a class="button" href="' . esc_url( \ApSemplice\Calendar::webcal_url( $all ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $all ) . '" onclick="this.select()"></p>';
 		echo '</div>';
 	}

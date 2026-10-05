@@ -105,7 +105,7 @@ final class Calendar {
 		Audit::log( 'calendar.token_regenerated', 'settings' );
 	}
 
-	/** Indirizzo del calendario di tutte le attivitÃ  o, con $activity_id, di una sola. */
+	/** Indirizzo del calendario di tutte le attività o, con $activity_id, di una sola. */
 	public static function feed_url( ?int $activity_id = null ): string {
 		$args = array( self::QUERY_VAR => self::token() );
 		if ( $activity_id ) {
@@ -119,7 +119,7 @@ final class Calendar {
 		return preg_replace( '#^https?://#i', 'webcal://', $feed );
 	}
 
-	/** Collegamento che apre Google Calendar giÃ  pronto ad aggiungere il calendario. */
+	/** Collegamento che apre Google Calendar già pronto ad aggiungere il calendario. */
 	public static function google_add_url( string $feed ): string {
 		return 'https://calendar.google.com/calendar/r?cid=' . rawurlencode( self::webcal_url( $feed ) );
 	}

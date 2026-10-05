@@ -153,7 +153,7 @@ class ActivityService {
 		return $dt && $dt->format( 'Y-m-d' ) === $v ? $v : null;
 	}
 
-	/** Lezioni settimanali: [ ['day' => 1..7, 'start' => 'HH:MM'|null, 'end' => 'HH:MM'|null], ... ] (lunedÃ¬ = 1). */
+	/** Lezioni settimanali: [ ['day' => 1..7, 'start' => 'HH:MM'|null, 'end' => 'HH:MM'|null], ... ] (lunedì = 1). */
 	public static function slots( array $a ): array {
 		$raw = ! empty( $a['lesson_slots'] ) ? json_decode( (string) $a['lesson_slots'], true ) : null;
 		if ( is_array( $raw ) ) {
