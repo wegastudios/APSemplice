@@ -228,3 +228,9 @@ Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**: il
 - **Nessuno dei due** → la richiesta va in dashboard con il pulsante per scrivere su WhatsApp.
 
 La risposta al socio è sempre la stessa, così non si scopre chi è socio. Limite: 10 tentativi l'ora per indirizzo IP.
+
+## Conti, fondi e chiusura
+
+In *Conti e cassa* ogni conto si può **rinominare**, cambiare di tipo e di **saldo di partenza** (il saldo attuale si ricalcola da solo), **chiudere** (solo a saldo zero: prima sposta i soldi con un giroconto) e riaprire. I conti chiusi non accettano movimenti ma restano nei rendiconti dei periodi in cui hanno lavorato.
+
+Ogni conto è **reale** oppure un **fondo**: un fondo è denaro che hai in cassa ma non è dell'associazione (es. le quote raccolte per rimborsare un socio). I fondi sono mostrati a parte, non entrano nella disponibilità né nelle entrate/uscite del rendiconto; il rendiconto li elenca con il loro saldo ma fuori dal totale.
