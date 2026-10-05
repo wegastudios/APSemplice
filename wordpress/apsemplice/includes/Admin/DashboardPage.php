@@ -38,15 +38,25 @@ final class DashboardPage {
 
 		$requests = \ApSemplice\AccessRequests::pending();
 		if ( $requests ) {
-			echo '<div class="apse-card"><h2>Richieste di primo accesso (' . count( $requests ) . ')</h2><p class="description">Soci senza email che hanno chiesto di entrare con il cellulare: rispondi su WhatsApp con il link di attivazione.</p><ul>';
-			foreach ( $requests as $r ) {
-				$wa = \ApSemplice\Phone::whatsapp( (string) $r['phone'] );
-				echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['first_name'] . ' ' . $r['last_name'] ) . '</a> <span class="description">' . esc_html( mysql2date( 'd/m H:i', gmdate( 'Y-m-d H:i:s', $r['requested_at'] ) ) ) . '</span> ';
-				if ( '' !== $wa ) {
-					echo '<a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \ApSemplice\Frontend\Activation::invite_text( $r ) ) ) . '">💬 Invia link</a> ';
+			echo '<div class="apse-card"><h2>Richieste di accesso (' . count( $requests ) . ')</h2><p class="description">Dal "Primo accesso" del sito: chi non è stato riconosciuto, chi chiede di cambiare email e chi si è attivato col solo cellulare.</p><ul>';
+			foreach ( $requests as $rq ) {
+				$wa     = \ApSemplice\Phone::whatsapp( (string) $rq['phone'] );
+				$who    = $rq['person'] ? $rq['person']['first_name'] . ' ' . $rq['person']['last_name'] : (string) $rq['name'];
+				$label  = array( 'unknown' => 'non riconosciuto', 'change' => 'chiede di cambiare email', 'review' => 'attivato col cellulare: controlla' );
+				echo '<li>' . ( $rq['person'] ? '<a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $rq['person']['id'] ) ) ) . '">' . esc_html( $who ) . '</a>' : '<strong>' . esc_html( $who ) . '</strong>' )
+					. ' <span class="description">' . esc_html( $label[ $rq['kind'] ] ) . ' · ' . esc_html( (string) $rq['email'] ) . ' · ' . esc_html( (string) $rq['phone'] ) . ' · ' . esc_html( mysql2date( 'd/m H:i', gmdate( 'Y-m-d H:i:s', (int) $rq['at'] ) ) ) . '</span> ';
+				if ( 'unknown' === $rq['kind'] && '' !== $wa ) {
+					$text = 'Ciao ' . $who . ', ho ricevuto la tua richiesta di primo accesso. Per attivarti confermami nome, cognome ed email con cui sei iscritto/a.';
+					echo '<a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $text ) ) . '">💬 Scrivi su WhatsApp</a> ';
+				}
+				if ( 'change' === $rq['kind'] ) {
+					Ui::form_open( 'apse_access_approve', Ui::url( 'apse' ), false, 'apse-inline' );
+					echo Ui::hidden( 'id', $rq['id'] ) . '<button class="button button-small">Approva nuova email</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+					echo ' ';
 				}
 				Ui::form_open( 'apse_access_done', Ui::url( 'apse' ), false, 'apse-inline' );
-				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button-link">fatto</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Ui::hidden( 'id', $rq['id'] ) . '<button class="button-link">' . ( 'change' === $rq['kind'] ? 'rifiuta' : 'fatto' ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 				echo '</li>';
 			}
@@ -64,7 +74,7 @@ final class DashboardPage {
 			echo '</ul><p><a href="' . esc_url( Ui::url( 'apse-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) ) . '">Vedi tutti →</a></p></div>';
 		}
 
-		if ( $r['activities'] ) {
+		if ( ! empty( $r['activities'] ) ) {
 			echo '<h2>Attività</h2><div class="apse-grid">';
 			foreach ( $r['activities'] as $a ) {
 				echo '<div class="apse-card"><h3><a href="' . esc_url( Ui::url( 'apse-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></h3>'

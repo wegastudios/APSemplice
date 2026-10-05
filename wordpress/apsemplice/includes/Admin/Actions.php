@@ -44,6 +44,7 @@ final class Actions {
 			'apse_checkin'            => 'checkin',
 			'apse_promote_guest'      => 'promote_guest',
 			'apse_access_done'        => 'access_done',
+			'apse_access_approve'     => 'access_approve',
 			'apse_send_notice'        => 'send_notice',
 			'apse_walk_in'            => 'walk_in',
 			'apse_transfer_booking'   => 'transfer_booking',
@@ -284,8 +285,13 @@ final class Actions {
 	}
 
 	private static function access_done( array $p ): array {
-		\ApSemplice\AccessRequests::remove( (int) ( $p['id'] ?? 0 ) );
+		\ApSemplice\AccessRequests::remove( preg_replace( '/[^a-f0-9]/', '', (string) ( $p['id'] ?? '' ) ) );
 		return array( Ui::url( 'apse' ), 'Richiesta chiusa.' );
+	}
+
+	private static function access_approve( array $p ): array {
+		\ApSemplice\Frontend\FirstAccess::approve_change( preg_replace( '/[^a-f0-9]/', '', (string) ( $p['id'] ?? '' ) ) );
+		return array( Ui::url( 'apse' ), 'Email aggiornata: al socio è arrivato il link per scegliere la password.' );
 	}
 
 	private static function promote_guest( array $p ): array {

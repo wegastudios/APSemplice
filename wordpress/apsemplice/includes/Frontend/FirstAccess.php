@@ -1,21 +1,24 @@
 <?php
 namespace ApSemplice\Frontend;
 
+use ApSemplice\AccessRequests;
+use ApSemplice\Audit;
 use ApSemplice\License;
+use ApSemplice\MemberType;
+use ApSemplice\Phone;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * "Primo accesso": il socio scrive la sua email e riceve il link per scegliere la password. È il recupero password di WordPress,
- * ma con il nome e le parole giuste per chi entra per la prima volta (i soci importati hanno un utente senza password nota).
- * Risponde sempre allo stesso modo, così non si può scoprire quali email sono di soci.
+ * "Primo accesso": il socio scrive nome, email e cellulare e riceve il link per scegliere la password.
+ * Risponde sempre allo stesso modo, così non si può scoprire chi è socio.
  */
 final class FirstAccess {
 
 	const MAX_PER_HOUR = 10;
-	const MESSAGE      = 'Se i dati sono quelli di un socio: con l\'email ti abbiamo scritto, apri il messaggio e scegli la tua password (controlla anche la posta indesiderata); con il cellulare ti contatta la segreteria su WhatsApp. Non succede nulla? Chiedi alla segreteria.';
+	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -44,7 +47,7 @@ final class FirstAccess {
 			return false;
 		}
 		$person = \ApSemplice\Access::person_for_user( (int) $user->ID );
-		if ( ! $person || ! \ApSemplice\MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP ) ) {
+		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP ) ) {
 			return false; // solo i soci (mai gli amministratori)
 		}
 		$key = get_password_reset_key( $user );
@@ -59,48 +62,91 @@ final class FirstAccess {
 	}
 
 	/**
-	 * Primo accesso col cellulare. Se il socio ha un'email gli arriva il link per email (al suo indirizzo, mai a chi scrive);
-	 * se non ce l'ha la richiesta va alla segreteria, che risponde su WhatsApp con il link di attivazione.
+	 * Riconosce il socio dall'email o dal cellulare:
+	 *  - email già del socio: gli arriva il link;
+	 *  - solo il cellulare è di un socio senza accesso: si crea l'utente con l'email indicata, arriva il link e la segreteria vede la voce da controllare;
+	 *  - solo il cellulare è di un socio con accesso già attivo (altra email): non si cambia nulla da soli, la richiesta va alla segreteria;
+	 *  - nessuno dei due: la richiesta va alla segreteria.
 	 *
-	 * @return string emailed | queued | none
+	 * @return string emailed | activated | change_queued | unknown_queued | invalid | none
 	 */
-	public static function request_phone( string $phone ): string {
-		if ( ! License::allows( 'member_area' ) || ! \ApSemplice\Phone::is_valid( $phone ) ) {
+	public static function submit( string $name, string $email, string $phone ): string {
+		if ( ! License::allows( 'member_area' ) ) {
 			return 'none';
 		}
-		$found = array();
-		foreach ( Plugin::people()->find_by_phone( $phone ) as $p ) {
-			if ( \ApSemplice\MemberType::is_member( $p['type'] ) ) {
-				$found[] = $p;
+		$name  = trim( $name );
+		$email = trim( $email );
+		$phone = trim( $phone );
+		if ( '' === $name || ! is_email( $email ) || ! Phone::is_valid( $phone ) ) {
+			return 'invalid';
+		}
+		$people = Plugin::people();
+		$queue  = function ( string $kind, int $person_id = 0 ) use ( $name, $email, $phone ) {
+			AccessRequests::add( array( 'kind' => $kind, 'person_id' => $person_id, 'name' => $name, 'email' => $email, 'phone' => $phone ) );
+		};
+
+		// 1. L'email è già di un socio: caso sicuro, il link va a quell'indirizzo.
+		$by_mail = $people->find_by_email( strtolower( $email ) );
+		if ( $by_mail && MemberType::is_member( $by_mail['type'] ) ) {
+			if ( empty( $by_mail['wp_user_id'] ) ) {
+				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava
+			}
+			return self::request( $email ) ? 'emailed' : 'none';
+		}
+
+		// 2. Il cellulare è di un solo socio.
+		$members = array();
+		foreach ( $people->find_by_phone( $phone ) as $p ) {
+			if ( MemberType::is_member( $p['type'] ) ) {
+				$members[] = $p;
 			}
 		}
-		if ( 1 !== count( $found ) ) {
-			return 'none'; // nessuno, o più soci con lo stesso numero: non si indovina chi sia
+		if ( 1 === count( $members ) ) {
+			$p = $members[0];
+			if ( ! empty( $p['wp_user_id'] ) ) {
+				$queue( 'change', (int) $p['id'] );
+				return 'change_queued';
+			}
+			try {
+				$people->update( (int) $p['id'], array( 'email' => strtolower( $email ) ) ); // crea l'utente con l'email indicata
+			} catch ( \InvalidArgumentException $e ) {
+				unset( $e );
+				$queue( 'unknown' );
+				return 'unknown_queued';
+			}
+			$queue( 'review', (int) $p['id'] );
+			Audit::log( 'person.activated_by_phone', 'person', (int) $p['id'] );
+			return self::request( $email ) ? 'activated' : 'none';
 		}
-		$p = $found[0];
-		if ( ! empty( $p['wp_user_id'] ) ) {
-			return '' !== (string) $p['email'] && self::request( (string) $p['email'] ) ? 'emailed' : 'none';
-		}
-		\ApSemplice\AccessRequests::add( (int) $p['id'] );
-		return 'queued';
+
+		// 3. Non riconosciuto.
+		$queue( 'unknown' );
+		return 'unknown_queued';
 	}
 
-	/** Email o cellulare: manda il link, oppure mette la richiesta in coda per la segreteria. */
-	public static function request_any( string $who ): string {
-		$who = trim( $who );
-		if ( false !== strpos( $who, '@' ) ) {
-			return self::request( $who ) ? 'emailed' : 'none';
+	/** Approva il cambio email chiesto da un socio con accesso già attivo e gli manda il link. */
+	public static function approve_change( string $request_id ): void {
+		$r = AccessRequests::get( $request_id );
+		if ( ! $r || 'change' !== $r['kind'] || ! $r['person_id'] ) {
+			throw new \InvalidArgumentException( 'Richiesta non trovata.' );
 		}
-		return self::request_phone( $who );
+		Plugin::people()->update( (int) $r['person_id'], array( 'email' => strtolower( $r['email'] ) ) );
+		Audit::log( 'person.email_changed_by_request', 'person', (int) $r['person_id'] );
+		AccessRequests::remove( $request_id );
+		self::request( $r['email'] );
 	}
 
-	public static function page( string $message = '', string $email = '' ): string {
+	public static function page( string $message = '', array $post = array(), string $error = '' ): string {
 		$accent = (string) Settings::get( 'accent_color' ) ?: '#2271b1';
 		$input  = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
-		$body   = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
-			. '<div class="n">Primo accesso</div><p>Scrivi la tua email o il tuo cellulare: con l\'email ti mandiamo il link per scegliere la password, altrimenti ti scrive la segreteria su WhatsApp.</p>'
+		$field  = function ( string $label, string $name, string $type, string $auto ) use ( $input, $post ) {
+			return '<label>' . esc_html( $label ) . '<input style="' . $input . '" type="' . $type . '" name="' . $name . '" value="' . esc_attr( (string) ( $post[ $name ] ?? '' ) ) . '" required autocomplete="' . $auto . '"></label>';
+		};
+		$body = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
+			. ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
+			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ti mandiamo il link per scegliere la password. Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.</p>'
 			. '<form method="post" action="' . esc_url( self::url() ) . '">' . wp_nonce_field( 'apse_first_access', '_apse_nonce', false, false ) . '<input type="hidden" name="apse_first_go" value="1">'
-			. '<label>La tua email o il tuo cellulare<input style="' . $input . '" type="text" name="who" value="' . esc_attr( $email ) . '" required autocomplete="username"></label>'
+			. $field( 'Nome e cognome', 'name', 'text', 'name' ) . $field( 'La tua email', 'email', 'email', 'email' ) . $field( 'Il tuo cellulare', 'phone', 'tel', 'tel' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Mandami il link</button></form>'
 			. '<p style="margin-top:14px"><a href="' . esc_url( wp_login_url() ) . '">← Torna all\'accesso</a></p>';
 		return CardVerify::layout( 'Primo accesso', $accent, $body );
@@ -111,25 +157,28 @@ final class FirstAccess {
 			return;
 		}
 		$message = '';
-		$email   = '';
+		$error   = '';
+		$post    = array();
 		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['apse_first_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
-			$post   = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
-			$email  = sanitize_text_field( (string) ( $post['who'] ?? '' ) );
+			$post   = array_map( 'sanitize_text_field', wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification
 			$rl_key = 'apse_fa_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= self::MAX_PER_HOUR ) {
-				$message = 'Troppi tentativi: riprova tra un po\'.';
+				$error = 'Troppi tentativi: riprova tra un po\'.';
 			} elseif ( ! wp_verify_nonce( (string) ( $post['_apse_nonce'] ?? '' ), 'apse_first_access' ) ) {
-				$message = 'Sessione scaduta: riprova.';
+				$error = 'Sessione scaduta: riprova.';
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
-				self::request_any( $email );
-				$message = self::MESSAGE;
-				$email   = '';
+				if ( 'invalid' === self::submit( (string) ( $post['name'] ?? '' ), (string) ( $post['email'] ?? '' ), (string) ( $post['phone'] ?? '' ) ) ) {
+					$error = 'Controlla i dati: servono nome e cognome, un\'email valida e il numero di cellulare.';
+				} else {
+					$message = self::MESSAGE; // sempre la stessa risposta: non si scopre chi è socio
+					$post    = array();
+				}
 			}
 		}
 		CardVerify::send_headers();
-		echo self::page( $message, $email ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		echo self::page( $message, $post, $error ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
 		exit;
 	}
 }
