@@ -53,7 +53,7 @@ final class WpAiPage {
 			. '<tr><th>Tipo di socio se manca</th><td><select name="default_type">' . Ui::options( $types, (string) Settings::get( 'wpai_default_type' ) ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><th>Conto se manca</th><td><select name="default_account_id">' . Ui::options( $accounts, (int) Settings::get( 'wpai_default_account_id' ) ?: null, '— nessuno —' ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><th>Saldi attuali</th><td><label><input type="checkbox" name="keep_balances" value="1"' . checked( (int) Settings::get( 'wpai_keep_balances' ), 1, false ) . '> Non cambiare i saldi attuali dei conti (consigliato per anni passati)</label></td></tr>'
-			. '<tr><th>Iscrizione</th><td><label><input type="checkbox" name="mark_members" value="1"' . checked( (int) Settings::get( 'wpai_mark_members' ), 1, false ) . '> Segna i soci importati come iscritti all\'anno sociale ' . esc_html( Settings::social_year()->label() ) . '</label></td></tr>'
+			. '<tr><th>Iscrizione</th><td><label><input type="checkbox" name="mark_members" value="1"' . checked( (int) Settings::get( 'wpai_mark_members' ), 1, false ) . '> Segna i soci importati come iscritti all\'anno ' . esc_html( Settings::membership_year()->label() ) . '</label></td></tr>'
 			. '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();

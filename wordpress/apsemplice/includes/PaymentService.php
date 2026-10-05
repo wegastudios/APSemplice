@@ -70,7 +70,7 @@ class PaymentService {
 			// Quota associativa: solo per il socio stesso (i fondatori e gli ospiti non la pagano)
 			$fee = (int) Settings::get( 'membership_fee_cents' );
 			if ( $pid === (int) $actor['id'] && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
-				$sy    = Settings::social_year();
+				$sy    = Settings::membership_year();
 				$until = $people->active_until( $pid );
 				if ( ! $until || $until < $sy->end()->format( 'Y-m-d' ) ) {
 					if ( ! $until || $until < Db::today() ) {

@@ -2421,7 +2421,7 @@ $os = $acts->status_for_person( $once_p )[0]['summary'];
 apse_ok( 5000 === $os['total_paid'] && -7000 === $os['balance'], 'pagamento unico: si può versare a rate' );
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $once_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 7000, 'activity_id' => $once_c, 'competence_month' => $month ) ) ) );
 apse_ok( ! empty( $acts->status_for_person( $once_p )[0]['summary']['regular'] ), 'pagamento unico: completato il totale è in regola' );
-apse_ok( false !== strpos( apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'pagamento unico', array( 'id' => $once_c ) ), 'unica soluzione' ), 'scheda corso: si legge che è a pagamento unico' );
+apse_ok( false !== strpos( apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'pagamento unico', array( 'id' => $once_c ) ), 'una tantum' ), 'scheda corso: si legge che è una tantum' );
 
 $wk = \ApSemplice\Calendar::weekly_dates( '2026-01-01', '2026-01-31', 3 );
 apse_ok( array( '2026-01-07', '2026-01-14', '2026-01-21', '2026-01-28' ) === $wk && array() === \ApSemplice\Calendar::weekly_dates( '2026-02-01', '2026-01-01', 3 ), 'calendario: i mercoledì di gennaio 2026' );

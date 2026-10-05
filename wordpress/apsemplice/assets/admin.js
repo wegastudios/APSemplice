@@ -111,8 +111,7 @@
 			$$('.apse-row-sessions').forEach(function (r) { r.style.display = k === 'course' ? 'none' : ''; });
 			$$('.apse-row-course').forEach(function (r) { r.style.display = k === 'course' ? '' : 'none'; });
 			$$('.apse-row-event input[name="session_date"]').forEach(function (i) { i.required = k === 'event'; });
-			$$('.apse-fee-label').forEach(function (l) { var once = $('.apse-billing') && $('.apse-billing').value === 'once'; l.textContent = k === 'course' ? (once ? 'Contributo soci (in unica soluzione)' : 'Contributo soci (al mese)') : 'Contributo soci (a evento)'; });
-			$$('.apse-billing').forEach(function (b) { b.onchange = applyKind; });
+			$$('.apse-fee-label').forEach(function (l) { l.textContent = k === 'course' ? 'Contributo soci' : 'Contributo soci (a evento)'; });
 			var hint = $('#apse-kind-hint'); if (hint) { hint.textContent = kindHints[k] || ''; }
 		};
 		kindSel.addEventListener('change', applyKind);
@@ -147,7 +146,7 @@
 			if (l.kind === 'membership') {
 				var ys = el('select', { name: n + '[social_year]' });
 				[D.socialYear, D.nextYear].forEach(function (y) {
-					var o = el('option', { value: y, text: 'Anno sociale ' + y }); if (y === l.socialYear) { o.selected = true; } ys.appendChild(o);
+					var o = el('option', { value: y, text: 'Tessera ' + y + ' (scade il 31 dicembre)' }); if (y === l.socialYear) { o.selected = true; } ys.appendChild(o);
 				});
 				ys.addEventListener('change', function () { l.socialYear = ys.value; render(); });
 				row.appendChild(ys);

@@ -151,11 +151,11 @@ final class PeoplePage {
 			echo '<p class="description">Socio fondatore: la tessera è sempre rinnovata (scadenza a ' . (int) Settings::get( 'founder_years' ) . ' anni dall\'ingresso).</p></div>';
 			return;
 		}
-		$cur = Settings::social_year();
+		$cur = Settings::membership_year();
 		$opts = array( $cur->previous()->label() => $cur->previous()->label(), $cur->label() => $cur->label() . ' (corrente)', $cur->next()->label() => $cur->next()->label() );
 		Ui::form_open( 'apse_set_membership', Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) );
 		echo Ui::hidden( 'id', $p['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Anno sociale: <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>Anno della tessera (scade il 31 dicembre): <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<button class="button" name="enabled" value="1">Segna iscritto</button> <button class="button" name="enabled" value="0">Togli iscrizione</button></p>';
 		Ui::form_close();
 		echo '<p class="description">L\'incasso di una "Quota associativa" iscrive in automatico. Qui puoi iscrivere a mano chi ha già pagato.</p>';

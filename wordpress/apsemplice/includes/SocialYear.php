@@ -28,7 +28,8 @@ final class SocialYear {
 	}
 
 	public static function from_label( string $label, int $start_month ): self {
-		return new self( (int) substr( $label, 0, 4 ), $start_month );
+			// Le etichette senza barra ("2026") sono anni solari, ad esempio gli anni delle tessere
+		return new self( (int) substr( $label, 0, 4 ), false === strpos( $label, '/' ) ? 1 : $start_month );
 	}
 
 	public function label(): string {

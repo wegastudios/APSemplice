@@ -311,7 +311,7 @@ class PeopleService {
 			)
 		);
 		if ( ! empty( $in['membership'] ) ) {
-			$this->set_membership( $id, Settings::social_year()->label(), true, 'manual' );
+			$this->set_membership( $id, Settings::membership_year()->label(), true, 'manual' );
 		}
 		Audit::log( 'person.promoted', 'person', $id, array( 'from' => 'guest', 'to' => $type ) );
 	}

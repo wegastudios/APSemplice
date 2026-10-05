@@ -28,17 +28,19 @@ final class Calendar {
 		$out  = array();
 		$acts = $db->get_results( 'SELECT * FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL', ARRAY_A ) ?: array();
 		foreach ( $acts as $a ) {
-			if ( ActivityKind::COURSE !== $a['kind'] || (int) $a['lesson_weekday'] < 1 ) {
+			if ( ActivityKind::COURSE !== $a['kind'] ) {
 				continue;
 			}
 			$year  = SocialYear::from_label( $a['social_year'], Settings::start_month() );
 			$first = max( $from, $a['starts_on'] ?: $year->start()->format( 'Y-m-d' ) );
 			$last  = min( $to, $a['ends_on'] ?: $year->end()->format( 'Y-m-d' ) );
-			foreach ( self::weekly_dates( $first, $last, (int) $a['lesson_weekday'] ) as $d ) {
-				$out[] = array(
-					'date' => $d, 'start' => $a['lesson_start'], 'end' => $a['lesson_end'], 'title' => $a['name'], 'location' => (string) $a['location'],
-					'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
-				);
+			foreach ( ActivityService::slots( $a ) as $slot ) {
+				foreach ( self::weekly_dates( $first, $last, (int) $slot['day'] ) as $d ) {
+					$out[] = array(
+						'date' => $d, 'start' => $slot['start'], 'end' => $slot['end'], 'title' => $a['name'], 'location' => (string) $a['location'],
+						'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
+					);
+				}
 			}
 		}
 		$rows = $db->get_results(
@@ -103,12 +105,27 @@ final class Calendar {
 		Audit::log( 'calendar.token_regenerated', 'settings' );
 	}
 
-	public static function feed_url(): string {
-		return add_query_arg( self::QUERY_VAR, self::token(), home_url( '/' ) );
+	/** Indirizzo del calendario di tutte le attivitÃ  o, con $activity_id, di una sola. */
+	public static function feed_url( ?int $activity_id = null ): string {
+		$args = array( self::QUERY_VAR => self::token() );
+		if ( $activity_id ) {
+			$args['a'] = $activity_id;
+		}
+		return add_query_arg( $args, home_url( '/' ) );
+	}
+
+	/** Indirizzo con lo schema webcal:// (Apple Calendar, Outlook, Thunderbird). */
+	public static function webcal_url( string $feed ): string {
+		return preg_replace( '#^https?://#i', 'webcal://', $feed );
+	}
+
+	/** Collegamento che apre Google Calendar giÃ  pronto ad aggiungere il calendario. */
+	public static function google_add_url( string $feed ): string {
+		return 'https://calendar.google.com/calendar/r?cid=' . rawurlencode( self::webcal_url( $feed ) );
 	}
 
 	/** Il calendario in formato iCalendar: da 30 giorni fa a 13 mesi avanti. */
-	public static function ics( ?string $today = null ): string {
+	public static function ics( ?string $today = null, ?int $activity_id = null ): string {
 		$today  = $today ?: Db::today();
 		$from   = ( new \DateTimeImmutable( $today ) )->modify( '-30 days' )->format( 'Y-m-d' );
 		$to     = ( new \DateTimeImmutable( $today ) )->modify( '+13 months' )->format( 'Y-m-d' );
@@ -116,13 +133,18 @@ final class Calendar {
 		$tz     = in_array( $tz, timezone_identifiers_list(), true ) ? $tz : 'Europe/Rome';
 		$events = array();
 		foreach ( self::occurrences( $from, $to ) as $o ) {
+			if ( $activity_id && (int) $o['activity_id'] !== $activity_id ) {
+				continue;
+			}
 			$events[] = array(
 				'uid' => 'apse-' . ( $o['session_id'] ? 's' . $o['session_id'] : 'a' . $o['activity_id'] . '-' . $o['date'] ) . '@' . wp_parse_url( home_url(), PHP_URL_HOST ),
 				'summary' => $o['title'], 'date' => $o['date'], 'start' => $o['start'], 'end' => $o['end'], 'location' => $o['location'],
 			);
 		}
-		$name = (string) Settings::get( 'association_name' );
-		return Ics::calendar( ( '' !== $name ? $name . ' — ' : '' ) . 'Corsi ed eventi', $events, $tz, gmdate( 'Ymd\THis\Z' ) );
+		$name  = (string) Settings::get( 'association_name' );
+		$act   = $activity_id ? Plugin::activities()->get( $activity_id ) : null;
+		$title = $act ? $act['name'] : 'Corsi ed eventi';
+		return Ics::calendar( ( '' !== $name ? $name . ' — ' : '' ) . $title, $events, $tz, gmdate( 'Ymd\THis\Z' ) );
 	}
 
 	/** Risponde all'indirizzo segreto del calendario. */
@@ -138,7 +160,7 @@ final class Calendar {
 		nocache_headers();
 		header( 'Content-Type: text/calendar; charset=utf-8' );
 		header( 'Content-Disposition: inline; filename="apsemplice.ics"' );
-		echo self::ics(); // phpcs:ignore WordPress.Security.EscapeOutput -- iCalendar già escapato
+		echo self::ics( null, isset( $_GET['a'] ) ? (int) $_GET['a'] : null ); // phpcs:ignore WordPress.Security.EscapeOutput -- iCalendar già escapato
 		exit;
 	}
 }

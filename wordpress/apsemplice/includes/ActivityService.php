@@ -75,6 +75,7 @@ class ActivityService {
 				'lesson_weekday'       => ActivityKind::COURSE === $d['kind'] ? $d['lesson_weekday'] : 0,
 				'billing'              => ActivityKind::COURSE === $d['kind'] ? $d['billing'] : 'monthly',
 				'lesson_start'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_start'] : null,
+				'lesson_slots'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_slots'] : null,
 				'lesson_end'          => ActivityKind::COURSE === $d['kind'] ? $d['lesson_end'] : null,
 				'location'            => ActivityKind::COURSE === $d['kind'] ? $d['location'] : null,
 				'starts_on'           => ActivityKind::COURSE === $d['kind'] ? $d['starts_on'] : null,
@@ -99,6 +100,9 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
 		}
 		unset( $current['monthly_fee_cents'] );
+		if ( ! isset( $in['lesson_slots'] ) && ( isset( $in['lesson_weekday'] ) || isset( $in['lesson_start'] ) || isset( $in['lesson_end'] ) ) ) {
+			unset( $current['lesson_slots'] ); // modifica con i campi singoli: ripartono da quelli
+		}
 		$d = $this->normalize( array_merge( $current, $this->with_fee_alias( $in ) ) );
 		$d['kind'] = $current['kind']; // il tipo non si cambia dopo la creazione
 		$this->validate( $d );
@@ -115,6 +119,7 @@ class ActivityService {
 				'lesson_weekday'       => ActivityKind::COURSE === $d['kind'] ? $d['lesson_weekday'] : 0,
 				'billing'              => ActivityKind::COURSE === $d['kind'] ? $d['billing'] : 'monthly',
 				'lesson_start'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_start'] : null,
+				'lesson_slots'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_slots'] : null,
 				'lesson_end'          => ActivityKind::COURSE === $d['kind'] ? $d['lesson_end'] : null,
 				'location'            => ActivityKind::COURSE === $d['kind'] ? $d['location'] : null,
 				'starts_on'           => ActivityKind::COURSE === $d['kind'] ? $d['starts_on'] : null,
@@ -148,7 +153,47 @@ class ActivityService {
 		return $dt && $dt->format( 'Y-m-d' ) === $v ? $v : null;
 	}
 
+	/** Lezioni settimanali: [ ['day' => 1..7, 'start' => 'HH:MM'|null, 'end' => 'HH:MM'|null], ... ] (lunedÃ¬ = 1). */
+	public static function slots( array $a ): array {
+		$raw = ! empty( $a['lesson_slots'] ) ? json_decode( (string) $a['lesson_slots'], true ) : null;
+		if ( is_array( $raw ) ) {
+			return self::clean_slots( array( 'lesson_slots' => $raw ) );
+		}
+		return self::clean_slots( $a );
+	}
+
+	/** Giorni della settimana (1..7) in cui si tiene il corso. @return int[] */
+	public static function slot_days( array $a ): array {
+		return array_values( array_unique( array_map( function ( $s ) {
+			return (int) $s['day'];
+		}, self::slots( $a ) ) ) );
+	}
+
+	private static function clean_slots( array $in ): array {
+		$raw = array();
+		if ( isset( $in['lesson_slots'] ) ) {
+			$src = is_string( $in['lesson_slots'] ) ? json_decode( $in['lesson_slots'], true ) : $in['lesson_slots'];
+			$raw = is_array( $src ) ? $src : array();
+		} elseif ( (int) ( $in['lesson_weekday'] ?? 0 ) >= 1 ) {
+			$raw = array( array( 'day' => $in['lesson_weekday'], 'start' => $in['lesson_start'] ?? '', 'end' => $in['lesson_end'] ?? '' ) );
+		}
+		$out = array();
+		foreach ( $raw as $s ) {
+			$day = (int) ( $s['day'] ?? 0 );
+			if ( $day < 1 || $day > 7 ) {
+				continue;
+			}
+			$out[ $day . '|' . (string) ( $s['start'] ?? '' ) ] = array( 'day' => $day, 'start' => self::clean_time( $s['start'] ?? '' ), 'end' => self::clean_time( $s['end'] ?? '' ) );
+		}
+		$out = array_values( $out );
+		usort( $out, function ( $x, $y ) {
+			return strcmp( $x['day'] . (string) $x['start'], $y['day'] . (string) $y['start'] );
+		} );
+		return array_slice( $out, 0, 7 );
+	}
+
 	private function normalize( array $in ): array {
+		$slots = self::clean_slots( $in );
 		$guest = null;
 		if ( array_key_exists( 'guest_fee_cents', $in ) && null !== $in['guest_fee_cents'] && '' !== $in['guest_fee_cents'] ) {
 			$guest = (int) $in['guest_fee_cents'];
@@ -163,10 +208,12 @@ class ActivityService {
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'booking_qr'           => ! empty( $in['booking_qr'] ) ? 1 : 0,
-			'lesson_weekday'       => max( 0, min( 7, (int) ( $in['lesson_weekday'] ?? 0 ) ) ),
+			'lesson_weekday'       => $slots ? $slots[0]['day'] : 0,
+			'slots'                => $slots,
+			'lesson_slots'         => $slots ? wp_json_encode( $slots ) : null,
 			'billing'              => isset( $in['billing'] ) && 'once' === $in['billing'] ? 'once' : 'monthly',
-			'lesson_start'        => self::clean_time( $in['lesson_start'] ?? '' ),
-			'lesson_end'          => self::clean_time( $in['lesson_end'] ?? '' ),
+			'lesson_start'        => $slots ? $slots[0]['start'] : null,
+			'lesson_end'          => $slots ? $slots[0]['end'] : null,
 			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? substr( trim( (string) $in['location'] ), 0, 190 ) : null,
 			'starts_on'           => self::clean_date( $in['starts_on'] ?? '' ),
 			'ends_on'             => self::clean_date( $in['ends_on'] ?? '' ),
@@ -180,8 +227,11 @@ class ActivityService {
 		$instructor = $d['instructor_person_id'] ? Plugin::people()->get( $d['instructor_person_id'] ) : null;
 		$errors     = Rules::validate_activity( $d, $instructor );
 		$errors      = array_merge( $errors, FundShare::validate( $d['fund_mode'], $d['fund_value'], null !== $instructor ) );
-		if ( $d['lesson_start'] && $d['lesson_end'] && $d['lesson_end'] <= $d['lesson_start'] ) {
-			$errors[] = 'L\x27orario di fine deve essere dopo quello di inizio.';
+		foreach ( $d['slots'] as $slot ) {
+			if ( $slot['start'] && $slot['end'] && $slot['end'] <= $slot['start'] ) {
+				$errors[] = 'L\'orario di fine deve essere dopo quello di inizio.';
+				break;
+			}
 		}
 		if ( $d['starts_on'] && $d['ends_on'] && $d['ends_on'] < $d['starts_on'] ) {
 			$errors[] = 'La data di fine del corso è prima di quella di inizio.';
@@ -836,7 +886,7 @@ class ActivityService {
 			substr( Db::today(), 0, 7 ),
 			SocialYear::from_label( $activity['social_year'], Settings::start_month() ),
 			$paid_by_month,
-			(int) ( $activity['lesson_weekday'] ?? 0 ),
+			self::slot_days( $activity ),
 			Db::today()
 		);
 	}
@@ -882,7 +932,7 @@ class ActivityService {
 		}
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.billing, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
+				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d ORDER BY a.social_year DESC, a.name',
 				$person_id
 			),
@@ -893,7 +943,7 @@ class ActivityService {
 		foreach ( $rows as $e ) {
 			$activity = array(
 				'id' => $e['activity_id'], 'name' => $e['activity_name'], 'social_year' => $e['social_year'], 'kind' => $e['kind'],
-				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'billing' => $e['billing'], 'ends_on' => $e['ends_on'],
+				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'ends_on' => $e['ends_on'],
 			);
 			$out[]    = array(
 				'enrollment' => $e,

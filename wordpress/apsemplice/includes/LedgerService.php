@@ -307,7 +307,7 @@ class LedgerService {
 				if ( MemberType::is_auto_renewed( $person['type'] ) ) {
 					throw new \InvalidArgumentException( "Voce $n: il socio fondatore ha la tessera sempre rinnovata." );
 				}
-				$social_year = ! empty( $l['social_year'] ) ? $l['social_year'] : Settings::social_year( $date )->label();
+				$social_year = ! empty( $l['social_year'] ) ? $l['social_year'] : Settings::membership_year( $date )->label();
 			}
 			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'line' => $l );
 		}
@@ -528,7 +528,7 @@ class LedgerService {
 				'person_id'        => ! empty( $d['person_id'] ) ? (int) $d['person_id'] : null,
 				'description'      => substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
 				'competence_month' => ! empty( $d['month'] ) ? $d['month'] : null,
-				'social_year'      => 'membership' === $cat['kind'] ? Settings::social_year( (string) $d['date'] )->label() : null,
+				'social_year'      => 'membership' === $cat['kind'] ? Settings::membership_year( (string) $d['date'] )->label() : null,
 				'import_batch'     => ! empty( $d['batch'] ) ? (int) $d['batch'] : null,
 				'document_ref'     => ! empty( $d['ref'] ) ? substr( trim( (string) $d['ref'] ), 0, 80 ) : null,
 			)

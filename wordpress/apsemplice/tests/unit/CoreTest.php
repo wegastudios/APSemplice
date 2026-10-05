@@ -104,6 +104,16 @@ final class PaymentCalcTest extends TestCase {
 		$this->assertSame( '2025-10-01', PaymentCalc::first_lesson( '2025-10', 0 ), 'senza giorno indicato: dal 1° del mese' );
 	}
 
+	public function test_several_weekly_lessons_use_the_earliest_first_lesson(): void {
+		// ottobre 2025: lunedì 6, giovedì 2 -> la prima lezione del mese è giovedì 2
+		$this->assertSame( '2025-10-02', PaymentCalc::first_lesson( '2025-10', array( 1, 4 ) ) );
+		$this->assertSame( '2025-10-01', PaymentCalc::first_lesson( '2025-10', array() ) );
+		$s = PaymentCalc::compute( 1000, '2025-10', null, '2025-10', new SocialYear( 2025, 9 ), array(), array( 1, 4 ), '2025-10-02' );
+		$this->assertSame( 1000, $s['total_due'] );
+		$s = PaymentCalc::compute( 1000, '2025-10', null, '2025-10', new SocialYear( 2025, 9 ), array(), array( 1, 4 ), '2025-10-01' );
+		$this->assertSame( 0, $s['total_due'] );
+	}
+
 	public function test_new_month_is_due_from_the_first_lesson(): void {
 		$year = new SocialYear( 2025, 9 );
 		$s    = PaymentCalc::compute( 1000, '2025-09', null, '2025-10', $year, array( '2025-09' => 1000 ), 2, '2025-10-03' );

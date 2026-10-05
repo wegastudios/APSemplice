@@ -184,6 +184,17 @@ final class Actions {
 		return Money::parse( $raw ) ?? 0;
 	}
 
+	/** Lezioni settimanali dal modulo: righe giorno / dalle / alle (le righe senza giorno si ignorano). */
+	private static function lesson_slots( array $p ): array {
+		$out = array();
+		foreach ( (array) ( $p['slot_day'] ?? array() ) as $i => $day ) {
+			if ( (int) $day >= 1 ) {
+				$out[] = array( 'day' => (int) $day, 'start' => (string) ( $p['slot_start'][ $i ] ?? '' ), 'end' => (string) ( $p['slot_end'][ $i ] ?? '' ) );
+			}
+		}
+		return $out;
+	}
+
 	private static function save_activity( array $p ): array {
 		$data = array(
 			'name'                 => $p['name'] ?? '',
@@ -195,10 +206,9 @@ final class Actions {
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
+			'lesson_slots'         => isset( $p['slot_day'] ) ? self::lesson_slots( $p ) : null,
 			'lesson_weekday'       => (int) ( $p['lesson_weekday'] ?? 0 ),
 			'billing'              => (string) ( $p['billing'] ?? 'monthly' ),
-			'lesson_start'         => (string) ( $p['lesson_start'] ?? '' ),
-			'lesson_end'           => (string) ( $p['lesson_end'] ?? '' ),
 			'location'             => (string) ( $p['location'] ?? '' ),
 			'starts_on'            => (string) ( $p['starts_on'] ?? '' ),
 			'ends_on'              => (string) ( $p['ends_on'] ?? '' ),
@@ -387,7 +397,7 @@ final class Actions {
 					$cat = $c;
 				}
 			}
-			$current = Settings::social_year( (string) ( $p['date'] ?? '' ) ?: current_time( 'Y-m-d' ) )->label();
+			$current = Settings::membership_year( (string) ( $p['date'] ?? '' ) ?: current_time( 'Y-m-d' ) )->label();
 			if ( ! empty( $l['free_current_year'] ) && $cat && 'membership' === $cat['kind'] && ( $l['social_year'] ?? '' ) !== $current ) {
 				$lines[] = array(
 					'category_id' => (int) $cat['id'], 'amount_cents' => 0, 'social_year' => $current,

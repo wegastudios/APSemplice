@@ -91,8 +91,8 @@ final class IncomePage {
 			'categories'    => $cats,
 			'activities'    => $acts,
 			'membershipFee' => (int) Settings::get( 'membership_fee_cents' ),
-			'socialYear'    => $sy->label(),
-			'nextYear'      => $sy->next()->label(),
+			'socialYear'    => Settings::membership_year( $today )->label(),
+			'nextYear'      => Settings::membership_year( $today )->next()->label(),
 			'accountTypes'  => $account_types,
 		);
 

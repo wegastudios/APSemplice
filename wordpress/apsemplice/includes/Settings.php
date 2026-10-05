@@ -211,4 +211,9 @@ final class Settings {
 	public static function social_year( ?string $date = null ): SocialYear {
 		return SocialYear::for_date( $date ?? Db::today(), self::start_month() );
 	}
+
+	/** Anno della tessera associativa: l'anno solare, la scadenza è sempre il 31 dicembre (i soci fondatori sono a parte). */
+	public static function membership_year( ?string $date = null ): SocialYear {
+		return SocialYear::for_date( $date ?? Db::today(), 1 );
+	}
 }

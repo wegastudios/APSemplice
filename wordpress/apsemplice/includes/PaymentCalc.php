@@ -12,13 +12,21 @@ final class PaymentCalc {
 	const ADVANCE = 'advance'; // versato per un mese non (ancora) dovuto
 
 	/** Prima data del mese ($month "YYYY-MM") che cade nel giorno della settimana indicato (1 = lunedì … 7 = domenica); senza giorno, il 1° del mese. */
-	public static function first_lesson( string $month, int $weekday ): string {
+	public static function first_lesson( string $month, $weekday ): string {
 		$first = new \DateTimeImmutable( $month . '-01' );
-		if ( $weekday < 1 || $weekday > 7 ) {
+		$days  = array_values( array_filter( array_map( 'intval', (array) $weekday ), function ( $d ) {
+			return $d >= 1 && $d <= 7;
+		} ) );
+		if ( ! $days ) {
 			return $first->format( 'Y-m-d' );
 		}
-		$delta = ( $weekday - (int) $first->format( 'N' ) + 7 ) % 7;
-		return $first->modify( '+' . $delta . ' days' )->format( 'Y-m-d' );
+		$best = null;
+		foreach ( $days as $day ) { // con piÃ¹ giorni a settimana conta la prima lezione tra tutte
+			$delta = ( $day - (int) $first->format( 'N' ) + 7 ) % 7;
+			$date  = $first->modify( '+' . $delta . ' days' )->format( 'Y-m-d' );
+			$best  = null === $best || $date < $best ? $date : $best;
+		}
+		return $best;
 	}
 
 	/**
@@ -62,14 +70,15 @@ final class PaymentCalc {
 	 * @param string|null $today_date  data di oggi "YYYY-MM-DD" (serve solo con il giorno della lezione)
 	 * @return array ['months'=>[...], 'total_due', 'total_paid', 'balance', 'regular', 'unpaid_months'=>[...]]
 	 */
-	public static function compute( int $fee, string $start, ?string $end, string $today, SocialYear $year, array $paid_by_month, int $weekday = 0, ?string $today_date = null ): array {
+	public static function compute( int $fee, string $start, ?string $end, string $today, SocialYear $year, array $paid_by_month, $weekday = 0, ?string $today_date = null ): array {
 		$last_due = ( null === $end ) ? $today : min( $end, $today );
 		$months   = array();
 		$upcoming = null;
 		foreach ( $year->months() as $m ) {
 			$in_range = $m >= $start && $m <= $last_due;
 			$from     = self::first_lesson( $m, $weekday );
-			$reached  = null === $today_date || $weekday < 1 || $m < $today || $from <= $today_date;
+			$has_days = array_filter( array_map( 'intval', (array) $weekday ) );
+			$reached  = null === $today_date || ! $has_days || $m < $today || $from <= $today_date;
 			if ( $in_range && ! $reached && null === $upcoming ) {
 				$upcoming = array( 'month' => $m, 'date' => $from, 'fee' => $fee );
 			}

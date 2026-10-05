@@ -2,6 +2,7 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\ActivityKind;
+use ApSemplice\ActivityService;
 use ApSemplice\CancelPolicy;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
@@ -23,6 +24,19 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
+	/** Righe "giorno + dalle + alle" per le lezioni settimanali (una in più di quelle presenti, almeno due). */
+	private static function slot_inputs( ?array $a, array $days ): string {
+		$slots = $a ? ActivityService::slots( $a ) : array();
+		$n     = max( 2, min( 7, count( $slots ) + 1 ) );
+		$days  = array( 0 => '— nessun giorno —' ) + array_slice( $days, 1, null, true );
+		$html  = '';
+		for ( $i = 0; $i < $n; $i++ ) {
+			$s     = $slots[ $i ] ?? array( 'day' => 0, 'start' => '', 'end' => '' );
+			$html .= '<p style="margin:2px 0"><select name="slot_day[]">' . Ui::options( $days, (int) $s['day'] ) . '</select> dalle <input type="time" name="slot_start[]" value="' . esc_attr( (string) $s['start'] ) . '"> alle <input type="time" name="slot_end[]" value="' . esc_attr( (string) $s['end'] ) . '"></p>';
+		}
+		return $html;
+	}
+
 	/** Righe del modulo: come si paga e quando si tiene il corso (solo corsi). */
 	private static function weekday_row( ?array $a, string $row_class ): string {
 		$days   = array( 0 => 'Non indicato (mensilità dovuta dal 1° del mese)', 1 => 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica' );
@@ -33,8 +47,8 @@ final class ActivitiesPage {
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
 		return $tr . '<th>Come si paga</th><td><select name="billing" class="apse-billing">' . Ui::options( array( 'monthly' => 'Rinnovo mensile automatico', 'once' => 'Pagamento unico (tutti gli incontri insieme)' ), $billing ) . '</select>'
 			. '<p class="description"><strong>Mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>. <strong>Unico:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione.</p></td></tr>'
-			. $tr . '<th>Giorno e orario</th><td><select name="lesson_weekday">' . Ui::options( $days, $a ? (int) $a['lesson_weekday'] : 0 ) . '</select> dalle <input type="time" name="lesson_start" value="' . $val( 'lesson_start' ) . '"> alle <input type="time" name="lesson_end" value="' . $val( 'lesson_end' ) . '">'
-			. '<p class="description">Serve per il calendario (e per sapere da quando chiedere la mensilità).</p></td></tr>'
+			. $tr . '<th>Giorni e orari</th><td>' . self::slot_inputs( $a, $days )
+			. '<p class="description">Anche più giorni a settimana (es. lunedì alle 20 e giovedì alle 19): lascia vuote le righe che non servono. Servono per il calendario e per sapere da quando chiedere la mensilità.</p></td></tr>'
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data non si rinnova più</span></td></tr>';
 	}
@@ -64,9 +78,9 @@ final class ActivitiesPage {
 		$fee   = (int) $a['fee_cents'];
 		$guest = null === $a['guest_fee_cents'] || '' === $a['guest_fee_cents'] ? null : (int) $a['guest_fee_cents'];
 		$unit  = ActivityKind::fee_unit( $a['kind'], (string) ( $a['billing'] ?? 'monthly' ) );
-		$txt   = 0 === $fee ? 'Gratuito per i soci' : 'Soci ' . Money::format( $fee ) . ' ' . $unit;
+		$txt   = 0 === $fee ? 'Gratuito per i soci' : 'Soci ' . Money::format( $fee ) . rtrim( ' ' . $unit );
 		if ( null !== $guest ) {
-			$txt .= ' · ' . ( 0 === $guest ? 'ospiti: gratuito' : 'ospiti ' . Money::format( $guest ) . ' ' . $unit );
+			$txt .= ' · ' . ( 0 === $guest ? 'ospiti: gratuito' : 'ospiti ' . Money::format( $guest ) . rtrim( ' ' . $unit ) );
 		} elseif ( $fee > 0 ) {
 			$txt .= ' · ospiti: uguale';
 		}
@@ -153,18 +167,34 @@ final class ActivitiesPage {
 			self::sessions_left( $activity, $back );
 		} else {
 			self::course_left( $activity, $year, $back );
+			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
 		}
 		echo '</div><div class="apse-col">';
 		self::edit_card( $activity, $back );
+		self::calendar_card( $activity );
 		self::notices_card( $activity, $back );
 		echo '</div></div>';
 
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			self::sessions_list( $activity, $back );
-		} else {
-			self::course_enrolled( $activity, $year, $back );
 		}
 		Ui::footer();
+	}
+
+	/** Collegamenti al calendario di questa attivitÃ  (e a quello di tutte). */
+	private static function calendar_card( array $activity ): void {
+		echo '<div class="apse-card"><h2>Calendario</h2>';
+		if ( ! \ApSemplice\Calendar::enabled() ) {
+			echo '<p class="description">Il collegamento ai calendari (Google Calendar e simili) Ã¨ spento: lo accendi dalla <a href="' . esc_url( Ui::url( 'apse-calendar' ) ) . '">pagina del calendario</a>.</p></div>';
+			return;
+		}
+		$one = \ApSemplice\Calendar::feed_url( (int) $activity['id'] );
+		$all = \ApSemplice\Calendar::feed_url();
+		echo '<p><strong>Solo questa attivitÃ </strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $one ) ) . '">Aggiungi a Google Calendar</a> '
+			. '<a class="button" href="' . esc_url( \ApSemplice\Calendar::webcal_url( $one ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $one ) . '" onclick="this.select()"></p>'
+			. '<p><strong>Tutte le attivitÃ </strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $all ) ) . '">Aggiungi a Google Calendar</a> '
+			. '<a class="button" href="' . esc_url( \ApSemplice\Calendar::webcal_url( $all ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $all ) . '" onclick="this.select()"></p>';
+		echo '</div>';
 	}
 
 	private static function edit_card( array $activity, string $back ): void {
@@ -173,7 +203,7 @@ final class ActivitiesPage {
 		Ui::form_open( 'apse_save_activity', $back );
 		echo Ui::hidden( 'id', $activity['id'] ) . Ui::hidden( 'social_year', $activity['social_year'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" value="' . esc_attr( $activity['name'] ) . '" class="regular-text" required></td></tr>';
-		echo '<tr><th>Contributo soci (' . esc_html( ActivityKind::fee_unit( $activity['kind'], (string) $activity['billing'] ) ) . ')</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
+		echo '<tr><th>Contributo soci' . ( ActivityKind::COURSE === $activity['kind'] ? '' : ' (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')' ) . '</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
 		$guest = null === $activity['guest_fee_cents'] ? '' : Money::plain( (int) $activity['guest_fee_cents'] );
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {

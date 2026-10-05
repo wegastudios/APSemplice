@@ -17,7 +17,8 @@ final class ActivityKindTest extends TestCase {
 		$this->assertTrue( ActivityKind::uses_sessions( ActivityKind::RECURRING ) );
 	}
 
-	public function test_fee_unit(): void {
+		$this->assertSame( '', ActivityKind::fee_unit( ActivityKind::COURSE ), 'a rinnovo mensile si intende al mese: nessuna dicitura' );
+		$this->assertSame( 'una tantum', ActivityKind::fee_unit( ActivityKind::COURSE, 'once' ) );
 		$this->assertSame( 'al mese', ActivityKind::fee_unit( ActivityKind::COURSE ) );
 		$this->assertSame( 'a evento', ActivityKind::fee_unit( ActivityKind::EVENT ) );
 		$this->assertSame( 'a evento', ActivityKind::fee_unit( ActivityKind::RECURRING ) );

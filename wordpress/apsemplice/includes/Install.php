@@ -131,6 +131,7 @@ final class Install {
   cancel_policy varchar(4) DEFAULT NULL,
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
+  lesson_slots text,
   billing varchar(8) NOT NULL DEFAULT 'monthly',
   lesson_start char(5) DEFAULT NULL,
   lesson_end char(5) DEFAULT NULL,

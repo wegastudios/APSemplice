@@ -156,7 +156,7 @@ final class ImportService {
 
 	private static function apply_people( array $plan, bool $mark, array &$track ): array {
 		$db      = Db::db();
-		$year    = Settings::social_year()->label();
+		$year    = Settings::membership_year()->label();
 		$people  = Plugin::people();
 		$created = 0;
 		$updated = 0;
@@ -317,7 +317,7 @@ final class ImportService {
 								$delta[ $acc_id ] = ( $delta[ $acc_id ] ?? 0 ) + ( 'income' === $d['type'] ? $d['cents'] : -$d['cents'] );
 							}
 							if ( 'membership' === ( $d['category_kind'] ?? '' ) && $d['person_id'] ) {
-								$member_rows[] = array( (int) $d['person_id'], Settings::social_year( $d['date'] )->label(), $tx );
+								$member_rows[] = array( (int) $d['person_id'], Settings::membership_year( $d['date'] )->label(), $tx );
 							}
 							$from = null === $from || $d['date'] < $from ? $d['date'] : $from;
 							$to   = null === $to || $d['date'] > $to ? $d['date'] : $to;
