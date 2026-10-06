@@ -188,11 +188,16 @@
 		function active() {
 			return types[acc.value] === 'cash' && due() > 0 && (!income || !cat || income.indexOf(parseInt(cat.value, 10)) > -1);
 		}
+		function cashMode() {
+			// il riquadro si vede sempre quando si incassa in contanti, anche prima di scrivere l'importo
+			return types[acc.value] === 'cash' && (!income || !cat || income.indexOf(parseInt(cat.value, 10)) > -1) && (fixedFee !== null ? parseInt(fixedFee, 10) > 0 || parseInt(wrap.getAttribute('data-guest-fee'), 10) > 0 : true);
+		}
 		function refresh() {
-			var on = active();
+			var on = cashMode();
 			box.style.display = on ? '' : 'none';
 			if (!on) { return; }
 			var t = due(), got = parseMoney(tendered.value);
+			if (t <= 0) { quick.innerHTML = ''; out.className = 'apse-change-out description'; out.textContent = 'Scrivi l\'importo da incassare: qui comparirà il resto da dare.'; return; }
 			quick.innerHTML = '';
 			var q = [t]; [500, 1000, 2000, 5000, 10000, 20000].forEach(function (x) { if (x >= t && q.indexOf(x) < 0) { q.push(x); } });
 			q.slice(0, 4).forEach(function (v) {
