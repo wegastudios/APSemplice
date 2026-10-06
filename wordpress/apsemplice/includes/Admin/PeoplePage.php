@@ -356,7 +356,7 @@ final class PeoplePage {
 		echo '</div>';
 	}
 
-	/** Ricevute e attestazioni annuali della persona. */	/** Ricevute e attestazioni annuali della persona. */
+	/** Ricevute e attestazioni annuali della persona. */
 	private static function panel_receipts( array $p ): void {
 		$id    = (int) $p['id'];
 		$years = \ApSemplice\Receipts::years_for_payer( $id );

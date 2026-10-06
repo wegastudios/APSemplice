@@ -165,7 +165,7 @@ final class Actions {
 		return 'Sei uscito dalla lista d\'attesa.';
 	}
 
-	/** Il socio accetta il regolamento in vigore. */	/** Il socio accetta il regolamento in vigore. */
+	/** Il socio accetta il regolamento in vigore. */
 	public static function do_accept_rules( array $post ): string {
 		$actor = self::actor();
 		if ( ! \ApSemplice\Regulation::enabled() ) {
@@ -178,7 +178,7 @@ final class Actions {
 		return 'Grazie, il ' . mb_strtolower( \ApSemplice\Regulation::title(), 'UTF-8' ) . ' è stato accettato.';
 	}
 
-	/** Annulla una prenotazione se la regola lo consente	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
+	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
 	public static function do_cancel_booking( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );

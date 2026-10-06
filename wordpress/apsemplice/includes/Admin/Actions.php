@@ -209,7 +209,7 @@ final class Actions {
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Accettazione registrata.' );
 	}
 
-	private static function privacy_anonymize( array $p ): array {	private static function privacy_anonymize( array $p ): array {
+	private static function privacy_anonymize( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		\ApSemplice\Privacy::anonymize( $id );
 		return array( Ui::url( 'apse-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' );
@@ -597,7 +597,7 @@ final class Actions {
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ), 'Tolto dalla lista d\'attesa.' );
 	}
 
-	private static function cancel_booking( array $p ): array {	private static function cancel_booking( array $p ): array {
+	private static function cancel_booking( array $p ): array {
 		Plugin::activities()->cancel_booking( (int) $p['session_id'], (int) $p['person_id'] );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata (eventuali pagamenti vanno rimborsati a mano).' );
 	}

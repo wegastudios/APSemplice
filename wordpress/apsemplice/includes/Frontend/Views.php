@@ -980,7 +980,7 @@ final class Views {
 		return self::with_person( array( __CLASS__, 'section_rules' ) );
 	}
 
-	public static function receipts(): string {	public static function receipts(): string {
+	public static function receipts(): string {
 		return self::with_person( array( __CLASS__, 'section_receipts' ) );
 	}
 
