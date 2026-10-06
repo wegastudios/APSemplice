@@ -29,7 +29,7 @@ final class Attachments {
 	private static function ensure_dir(): string {
 		$dir = self::dir();
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
-			throw new \InvalidArgumentException( 'Non riesco a creare la cartella per gli allegati: controlla i permessi di wp-content/uploads.' );
+			throw new \InvalidArgumentException( 'Impossibile creare la cartella per gli allegati: controlla i permessi di wp-content/uploads.' );
 		}
 		// Apache: accesso diretto negato. Altri server: i nomi sono casuali, senza estensione e la cartella non si elenca.
 		if ( ! file_exists( $dir . '/.htaccess' ) ) {
@@ -113,7 +113,7 @@ final class Attachments {
 			$target = $dir . '/' . $stored;
 			$ok     = is_uploaded_file( $f['tmp_name'] ) ? move_uploaded_file( $f['tmp_name'], $target ) : copy( $f['tmp_name'], $target );
 			if ( ! $ok ) {
-				throw new \InvalidArgumentException( 'Non riesco a salvare "' . $f['name'] . '".' );
+				throw new \InvalidArgumentException( 'Impossibile salvare "' . $f['name'] . '".' );
 			}
 			chmod( $target, 0640 );
 			self::db()->insert(

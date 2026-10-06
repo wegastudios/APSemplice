@@ -150,7 +150,7 @@ final class FirstAccess {
 			$rl_key = 'apse_fa_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= self::MAX_PER_HOUR ) {
-				$error = 'Troppi tentativi: riprova tra un po\'.';
+				$error = 'Troppi tentativi: riprova tra qualche minuto.';
 			} elseif ( ! wp_verify_nonce( (string) ( $post['_apse_nonce'] ?? '' ), 'apse_first_access' ) ) {
 				$error = 'Sessione scaduta: riprova.';
 			} else {

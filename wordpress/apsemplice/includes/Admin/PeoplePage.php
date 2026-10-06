@@ -219,7 +219,7 @@ final class PeoplePage {
 			return;
 		}
 		$url = \ApSemplice\Frontend\Activation::url( (int) $p['id'] );
-		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e si attiva da solo (vale ' . (int) \ApSemplice\ActivationToken::VALID_DAYS . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
+		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . (int) \ApSemplice\ActivationToken::VALID_DAYS . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
 			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
 		$wa = \ApSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {
@@ -362,7 +362,7 @@ final class PeoplePage {
 		Ui::form_close();
 		echo '<p class="description">Presidente e vicepresidente sono uno ciascuno, i consiglieri sono al massimo ' . (int) \ApSemplice\Settings::councillors() . ' (si cambia in Impostazioni). Serve la tessera in regola.</p>';
 		if ( ! $svc->is_active_member( (int) $p['id'] ) && '' !== (string) $p['board_role'] ) {
-			echo '<p class="apse-neg">Attenzione: questo socio non Ã¨ piÃ¹ in regola con la tessera.</p>';
+			echo '<p class="apse-neg">Attenzione: questo socio non è più in regola con la tessera.</p>';
 		}
 		echo '</div>';
 	}

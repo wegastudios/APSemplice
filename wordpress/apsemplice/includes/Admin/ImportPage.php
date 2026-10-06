@@ -34,13 +34,13 @@ final class ImportPage {
 
 	private static function upload(): void {
 		echo '<p>Carica un file <strong>Excel (.xlsx)</strong> o <strong>CSV</strong> con i <strong>soci</strong>, gli <strong>ospiti</strong> e/o la <strong>prima nota</strong>, anche di anni passati. '
-			. 'Se nel file Excel ci sono più fogli (es. "Soci", "Ospiti", "Prima nota") li leggo tutti: capisco da solo a cosa serve ognuno dalle intestazioni. Prima di scrivere qualcosa vedrai un\'anteprima.</p>';
+			. 'Se nel file Excel ci sono più fogli (es. "Soci", "Ospiti", "Prima nota") vengono letti tutti: lo scopo di ciascuno si riconosce dalle intestazioni. Prima di registrare qualsiasi dato viene mostrata un\'anteprima.</p>';
 		echo '<div class="apse-cols"><div class="apse-col"><div class="apse-card"><h2>Soci e ospiti</h2>'
 			. '<p>Colonne riconosciute, in qualunque ordine: <strong>Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale</strong> e, per gli ospiti, <strong>Cellulare</strong> (obbligatorio) e <strong>Ospite di</strong> (tessera, email o nome e cognome del socio). '
 			. 'Nome e Cognome sono obbligatori; per i soci serve poi <strong>almeno uno tra Email, Cellulare e Numero tessera</strong>. Con l\'email il socio ha subito il suo accesso all\'area riservata; senza, resta registrato e si attiva dopo con un <strong>link da mandare su WhatsApp</strong> (lo trovi nell\'elenco soci). Il Tipo può essere <em>fondatore</em>, <em>ordinario</em>, <em>volontario</em> oppure <em>ospite</em>.</p></div></div>'
 			. '<div class="apse-col"><div class="apse-card"><h2>Prima nota</h2>'
 			. '<p>Colonne: <strong>Data, Importo</strong> (oppure <strong>Entrata</strong> e <strong>Uscita</strong>), e se vuoi <strong>Tipo, Conto, Modalità, Voce, Descrizione, Riferimento, N. tessera, Persona, Attività, Competenza</strong>. '
-			. 'Riconosco anche il file che esporta questo plugin. Le date possono essere 15/01/2024 o 2024-01-15; gli importi 1.234,56 o 1234.56. I conti che non esistono si creano; le voci non riconosciute finiscono in "Altra entrata" / "Costo generale".</p></div></div></div>';
+			. 'Viene riconosciuto anche il file esportato da questo plugin. Le date possono essere 15/01/2024 o 2024-01-15; gli importi 1.234,56 o 1234.56. I conti che non esistono si creano; le voci non riconosciute finiscono in "Altra entrata" / "Costo generale".</p></div></div></div>';
 		Ui::form_open( 'apse_import_preview', Ui::url( 'apse-import' ), true );
 		echo '<p><input type="file" name="file" accept=".xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></p>';
 		$types = array();
@@ -170,7 +170,7 @@ final class ImportPage {
 		}
 		echo '</tbody></table>';
 		if ( count( $plan ) > 300 ) {
-			echo '<p class="description">Mostro le prime 300 righe e tutte quelle con errori.</p>';
+			echo '<p class="description">Sono mostrate le prime 300 righe e tutte quelle con errori.</p>';
 		}
 	}
 
@@ -197,6 +197,6 @@ final class ImportPage {
 				. ( $p['warnings'] ? '<br><span class="description apse-warn">' . esc_html( implode( '; ', $p['warnings'] ) ) . '</span>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</tbody></table>';
-		echo '<p class="description">Mostro tutte le righe con errori o avvisi e le prime 200 delle altre. I movimenti importati si possono annullare uno per uno dalla Prima nota.</p>';
+		echo '<p class="description">Sono mostrate tutte le righe con errori o avvisi e le prime 200 delle altre. I movimenti importati si possono annullare uno per uno dalla Prima nota.</p>';
 	}
 }

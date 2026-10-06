@@ -28,7 +28,7 @@ final class CardPage {
 
 	/** Interruttori generali: tutto spento di default, si accende solo ciò che serve. */
 	private static function switches_card(): void {
-		echo '<div class="apse-card"><h2>Cosa vuoi usare</h2><p class="description">Tutto è spento di default. Ciò che non serve resta invisibile ai soci e nelle schede degli eventi.</p>';
+		echo '<div class="apse-card"><h2>Cosa vuoi usare</h2><p class="description">Tutte le funzioni sono disattivate per impostazione predefinita. Ciò che non serve resta invisibile ai soci e nelle schede degli eventi.</p>';
 		Ui::form_open( 'apse_save_card', Ui::url( 'apse-card' ) );
 		echo '<p><label><input type="checkbox" name="card_qr_enabled" value="1"' . checked( Settings::card_qr_enabled(), true, false ) . '> <strong>QR sulla tessera digitale</strong></label><br>'
 			. '<span class="description">Ogni socio trova nella sua area riservata un QR: chi lo scansiona (anche senza accedere al sito) vede subito se la tessera è <strong>valida in questo momento</strong>, con nome, tipo, numero e scadenza e nient\'altro. Il QR non cambia quando la tessera si rinnova. Gli ospiti non hanno tessera.</span></p>';
@@ -72,7 +72,7 @@ final class CardPage {
 		echo '<table class="form-table"><tbody>'
 			. '<tr><th>File .p12</th><td><input type="file" name="apple_p12" accept=".p12,.pfx"><br><input type="password" name="apple_password" placeholder="password del file .p12" autocomplete="new-password"></td></tr>'
 			. '<tr><th>Certificato WWDR</th><td><input type="file" name="apple_wwdr" accept=".cer,.pem,.crt"></td></tr>'
-			. '<tr><th>Pass Type ID</th><td><input type="text" name="pass_type" value="' . esc_attr( (string) Settings::get( 'wallet_apple_pass_type' ) ) . '" placeholder="pass.it.miaassociazione.tessera"><p class="description">Si compila da solo dal certificato.</p></td></tr>'
+			. '<tr><th>Pass Type ID</th><td><input type="text" name="pass_type" value="' . esc_attr( (string) Settings::get( 'wallet_apple_pass_type' ) ) . '" placeholder="pass.it.miaassociazione.tessera"><p class="description">Viene compilato automaticamente dal certificato.</p></td></tr>'
 			. '<tr><th>Team ID</th><td><input type="text" name="team" value="' . esc_attr( (string) Settings::get( 'wallet_apple_team' ) ) . '" maxlength="20"></td></tr>'
 			. '</tbody></table>';
 		submit_button( 'Salva Apple Wallet', 'primary', 'submit', false );

@@ -17,7 +17,7 @@ final class PaymentConfig {
 	public static function providers(): array {
 		return array(
 			self::NONE        => 'Nessuno (pagamento in sede)',
-			self::WOOCOMMERCE => 'WooCommerce (non ancora collegato)',
+			self::WOOCOMMERCE => 'WooCommerce (integrazione non disponibile)',
 			self::STRIPE      => 'Stripe (alternativa a WooCommerce)',
 			self::PAYPAL      => 'PayPal (alternativa a WooCommerce)',
 		);
@@ -61,7 +61,7 @@ final class PaymentConfig {
 				$errors[] = 'Stripe: la chiave segreta non corrisponde alla modalità ' . ( 'live' === $mode ? 'reale (live)' : 'di prova (test)' ) . '.';
 			}
 			if ( '' === $wh ) {
-				$warnings[] = 'Stripe: manca il segreto del webhook (whsec_…): senza non si potranno confermare i pagamenti in automatico.';
+				$warnings[] = 'Stripe: manca il segreto del webhook (whsec_…): senza di esso i pagamenti non possono essere confermati automaticamente.';
 			} elseif ( 0 !== strpos( $wh, 'whsec_' ) ) {
 				$errors[] = 'Stripe: il segreto del webhook deve iniziare con whsec_.';
 			}
@@ -88,7 +88,7 @@ final class PaymentConfig {
 			}
 		}
 		if ( self::WOOCOMMERCE === $provider ) {
-			$warnings[] = 'WooCommerce: l\'integrazione non è ancora attiva; per ora i pagamenti restano in sede.';
+			$warnings[] = 'WooCommerce: l\'integrazione non è disponibile; i pagamenti restano in sede.';
 		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}

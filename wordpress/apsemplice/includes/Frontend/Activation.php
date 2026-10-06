@@ -122,7 +122,7 @@ final class Activation {
 			$rl_key  = 'apse_act_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= self::MAX_ATTEMPTS_PER_HOUR ) {
-				$error = 'Troppi tentativi: riprova tra un po\'.';
+				$error = 'Troppi tentativi: riprova tra qualche minuto.';
 			} elseif ( ! $parsed || ! wp_verify_nonce( (string) ( $post['_apse_nonce'] ?? '' ), 'apse_activate_' . $parsed[0] ) ) {
 				$error = 'Sessione scaduta: riprova.';
 			} else {

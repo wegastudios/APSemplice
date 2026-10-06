@@ -159,7 +159,7 @@ final class Receipts {
 			}
 			$next = 1 + (int) $db->get_var( $db->prepare( "SELECT MAX(number) FROM $tbl WHERE year = %d", $year ) );
 			if ( ! $db->insert( $tbl, array( 'receipt_key' => $key, 'year' => $year, 'number' => $next, 'issued_at' => Db::now(), 'issued_by' => get_current_user_id() ?: null ) ) ) {
-				throw new \RuntimeException( 'Non riesco ad assegnare il numero della ricevuta.' );
+				throw new \RuntimeException( 'Impossibile assegnare il numero della ricevuta.' );
 			}
 			return array( 'number' => $next, 'year' => $year );
 		} finally {

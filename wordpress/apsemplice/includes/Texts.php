@@ -16,6 +16,7 @@ final class Texts {
 	const OPT           = 'apse_texts';
 	const MAX_LEN       = 600;
 	const MIN_LEN       = 3;
+	const CATALOG_VERSION = 4; // da aumentare quando cambiano i criteri dell'elenco (invalida la copia in memoria)
 	const GROUP_MANUAL  = 'Aggiunte a mano';
 	const GROUP_ORDER   = array(
 		'Area soci e pagine pubbliche',
@@ -185,6 +186,9 @@ final class Texts {
 		if ( preg_match( '/(SELECT|FROM|WHERE|COALESCE|GROUP BY|ORDER BY|LEFT JOIN)/', $s ) || preg_match( '/^[A-Z0-9-]+$/', $s ) ) {
 			return false; // pezzi di query e sigle (UTF-8)
 		}
+		if ( preg_match( '/^(START TRANSACTION|COMMIT|ROLLBACK|NOT EXISTS|Options |Deny |Require |Windows-|last day|first day|next |Referrer-|X-)/', $s ) || in_array( $s, array( 'PayerID', 'Stripe', 'APSemplice', 'UTF-8' ), true ) ) {
+			return false; // istruzioni tecniche, intestazioni, nomi di prodotto
+		}
 		$words = preg_split( '/\s+/u', $s ) ?: array();
 		if ( preg_match( '/^[A-ZÀ-Ý]/u', $s ) ) {
 			return ! preg_match( '/^[A-Za-z0-9_]+$/', $s ) || preg_match( '/[a-z]{3}/', $s ); // niente costanti (FOUNDER) né identificatori
@@ -249,7 +253,7 @@ final class Texts {
 		$dir   = rtrim( APSE_DIR, '/\\' ) . '/includes';
 		$files = array();
 		$it    = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) );
-		$sig   = APSE_VERSION;
+		$sig   = APSE_VERSION . '|v' . self::CATALOG_VERSION;
 		foreach ( $it as $f ) {
 			if ( 'php' === strtolower( $f->getExtension() ) ) {
 				$rel = ltrim( str_replace( '\\', '/', substr( $f->getPathname(), strlen( $dir ) ) ), '/' );

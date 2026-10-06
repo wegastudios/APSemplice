@@ -62,7 +62,7 @@ final class DashboardPage {
 				echo '<li>' . ( $rq['person'] ? '<a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $rq['person']['id'] ) ) ) . '">' . esc_html( $who ) . '</a>' : '<strong>' . esc_html( $who ) . '</strong>' )
 					. ' <span class="description">' . esc_html( $label[ $rq['kind'] ] ) . ' · ' . esc_html( (string) $rq['email'] ) . ' · ' . esc_html( (string) $rq['phone'] ) . ' · ' . esc_html( mysql2date( 'd/m H:i', gmdate( 'Y-m-d H:i:s', (int) $rq['at'] ) ) ) . '</span> ';
 				if ( 'unknown' === $rq['kind'] && '' !== $wa ) {
-					$text = 'Ciao ' . $who . ', ho ricevuto la tua richiesta di primo accesso. Per attivarti confermami nome, cognome ed email con cui sei iscritto/a.';
+					$text = 'Ciao ' . $who . ', abbiamo ricevuto la tua richiesta di primo accesso. Per attivare l\'accesso confermaci nome, cognome ed email con cui sei iscritto/a.';
 					echo '<a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $text ) ) . '">💬 Scrivi su WhatsApp</a> ';
 				}
 				if ( 'change' === $rq['kind'] ) {

@@ -156,7 +156,7 @@ final class Actions {
 
 	private static function delete_person( array $p ): array {
 		Plugin::people()->delete( (int) $p['id'] );
-		return array( Ui::url( 'apse-people' ), 'Persona eliminata (l\'utente WordPress, se c\'è, resta).' );
+		return array( Ui::url( 'apse-people' ), 'Persona eliminata. L\'eventuale utente WordPress collegato non viene rimosso.' );
 	}
 
 	private static function set_membership( array $p ): array {
@@ -185,7 +185,7 @@ final class Actions {
 	private static function privacy_anonymize( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		\ApSemplice\Privacy::anonymize( $id );
-		return array( Ui::url( 'apse-comms' ), 'Persona anonimizzata: i dati personali sono stati tolti, i movimenti contabili restano.' );
+		return array( Ui::url( 'apse-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' );
 	}
 
 	private static function save_comms( array $p ): array {
@@ -209,7 +209,7 @@ final class Actions {
 
 	private static function reminders_run( array $p ): array {
 		if ( ! \ApSemplice\Reminders::enabled() ) {
-			throw new \InvalidArgumentException( 'I promemoria sono spenti: accendili e salva prima.' );
+			throw new \InvalidArgumentException( 'I promemoria sono disattivati: attivali e salva le impostazioni prima di inviarli.' );
 		}
 		$r = \ApSemplice\Reminders::run();
 		return array( Ui::url( 'apse-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani.' );

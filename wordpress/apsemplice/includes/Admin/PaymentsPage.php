@@ -24,7 +24,7 @@ final class PaymentsPage {
 		Ui::form_open( 'apse_save_payment_settings', Ui::url( 'apse-payments' ) );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Come incassare online</th><td><select name="payment_provider" id="apse-pay-provider">' . Ui::options( PaymentConfig::providers(), $s['payment_provider'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p class="description">WooCommerce e Stripe/PayPal sono alternative: ne usi una. Con Stripe o PayPal i soci pagano dall\'area soci su una <strong>pagina ospitata dal gateway</strong> (i dati della carta non passano dal sito) e l\'incasso entra da solo in prima nota sul conto "Stripe" o "PayPal". Prima di usarli in modo reale prova con le chiavi di prova.</p></td></tr>';
+			. '<p class="description">WooCommerce e Stripe/PayPal sono alternative: ne usi una. Con Stripe o PayPal i soci pagano dall\'area soci su una <strong>pagina ospitata dal gateway</strong> (i dati della carta non passano dal sito) e l\'incasso entra da solo in prima nota sul conto "Stripe" o "PayPal". Prima di usarli in produzione verifica il funzionamento con le chiavi di prova.</p></td></tr>';
 		echo SettingsPage::gateway_row( 'stripe_mode', 'Stripe — modalità', $s, 'select', array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'apse-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::gateway_row( 'stripe_publishable_key', 'Stripe — chiave pubblicabile', $s, 'text', array(), 'apse-pay-stripe', 'pk_test_… / pk_live_…' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::secret_row( 'stripe_secret_key', 'Stripe — chiave segreta', 'apse-pay-stripe', 'sk_test_… / sk_live_… (o rk_… con restrizioni)' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -44,7 +44,7 @@ final class PaymentsPage {
 			}
 		}
 		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
-			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. È voluto: lo staging non può usare per sbaglio le chiavi reali. Usa chiavi di prova finché non sei sicuro.</p></td></tr>';
+			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. Questo impedisce a un sito di prova di usare per errore le chiavi reali. Usa le chiavi di prova finché non hai verificato il funzionamento.</p></td></tr>';
 		foreach ( \ApSemplice\Settings::SECRET_KEYS as $sk ) {
 			if ( Settings::secret_unreadable( $sk ) ) {
 				echo '<tr><th></th><td class="apse-warn">⚠ Una chiave è salvata ma non è leggibile su questo sito: reinseriscila.</td></tr>';

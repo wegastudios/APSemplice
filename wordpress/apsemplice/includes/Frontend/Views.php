@@ -115,7 +115,7 @@ final class Views {
 		if ( ! $person ) {
 			return self::wrap( self::notice( $is_admin
 				? 'Sei amministratore del sito e non hai una scheda socio collegata: qui i soci vedono i propri dati.'
-				: 'Il tuo utente non è collegato a una scheda socio. Contatta l\'associazione.' ) );
+				: 'Il tuo account non è collegato a una scheda socio. Contatta l\'associazione.' ) );
 		}
 		return self::wrap( (string) $fn( $person ), $class );
 	}
@@ -371,7 +371,7 @@ final class Views {
 		}
 		$fields = '<div class="apsf-fields"><label>Chi paga <select name="person_id" required>' . $people . '</select></label>'
 			. '<label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
-		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno si calcola da solo.</p>'
+		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno viene calcolato automaticamente.</p>'
 			. self::form( 'apse_front_collect', $fields, 'Registra l\'incasso' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
@@ -665,7 +665,7 @@ final class Views {
 		$fields = self::hidden( 'session_id', $s['id'] )
 			. '<label>Chi paga <select name="payer_id" required>' . $members_options . '</select></label>'
 			. '<label>Pagamento <select name="account_id">' . $accounts_options . '</select></label>'
-			. '<p class="apsf-small apsf-muted">Scegli i soci per cui paga (può esserci anche lui): ognuno viene prenotato, il biglietto è calcolato dal sito e c\'è un solo incasso.</p>' . $rows;
+			. '<p class="apsf-small apsf-muted">Scegli i soci per cui paga (può includere anche sé stesso): ognuno viene prenotato, l\'importo del biglietto è calcolato automaticamente e l\'incasso è unico.</p>' . $rows;
 		return '<details class="apsf-door-group"><summary><strong>＋ Un socio paga per più soci</strong></summary>'
 			. self::form( 'apse_front_door_group', $fields, 'Prenota e incassa per tutti', true ) . '</details>';
 	}

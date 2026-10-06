@@ -15,7 +15,7 @@ final class CommsPage {
 		$s = Settings::all();
 		Ui::header( 'Promemoria, privacy e ricevute' );
 		Ui::form_open( 'apse_save_comms', Ui::url( 'apse-comms' ) );
-		echo '<h2>Promemoria per email</h2><p class="description">Una volta al giorno il sito scrive ai soci. Sono spenti finché non li accendi. Chi non ha email (un ospite) riceve il messaggio tramite il socio che lo ospita; ogni promemoria si manda una volta sola.</p>';
+		echo '<h2>Promemoria per email</h2><p class="description">Ogni giorno il sito invia i promemoria ai soci. Sono disattivati finché non li attivi. Chi non ha un indirizzo email (un ospite) riceve il messaggio tramite il socio che lo ospita; ogni promemoria viene inviato una sola volta.</p>';
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Promemoria attivi</th><td><label><input type="checkbox" name="reminders_enabled" value="1"' . checked( ! empty( $s['reminders_enabled'] ), true, false ) . '> Invia i promemoria ogni giorno</label></td></tr>';
 		echo '<tr><th>Tessera</th><td><label><input type="checkbox" name="reminders_membership" value="1"' . checked( ! empty( $s['reminders_membership'] ), true, false ) . '> Tessera in scadenza e scaduta da poco</label> '
@@ -48,7 +48,7 @@ final class CommsPage {
 		echo '<button class="button"' . ( Reminders::enabled() ? '' : ' disabled' ) . ' data-confirm="Mandare ora i promemoria?">Invia ora</button>';
 		Ui::form_close();
 		if ( ! Reminders::enabled() ) {
-			echo ' <span class="description">Accendi i promemoria e salva per poterli mandare.</span>';
+			echo ' <span class="description">Attiva i promemoria e salva per poterli inviare.</span>';
 		}
 
 		// Privacy: consensi e anonimizzazione
