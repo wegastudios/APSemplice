@@ -2813,7 +2813,7 @@ $gone  = $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'categories' ) . ' W
 apse_ok( (int) $moved['category_id'] === (int) $cat['member_reimbursement'] && null !== $gone, 'migrazione: i movimenti passano alla voce unica e la vecchia sparisce' );
 apse_ok( 0 === \ApSemplice\Install::migrate_reimbursements(), 'migrazione: rilanciarla non cambia nulla' );
 $wpdb->delete( Db::t( 'transactions' ), array( 'id' => $old_tx ) );
-$fund_cat = $wpdb->get_var( 'SELECT c.kind FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.description LIKE '%(fondo estinto)' ORDER BY t.id DESC LIMIT 1" );
+$fund_cat = $wpdb->get_var( 'SELECT c.kind FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id IS NOT NULL AND t.description LIKE '%(fondo estinto)' ORDER BY t.id DESC LIMIT 1" );
 apse_ok( 'member_reimbursement' === $fund_cat, 'fondi: il rimborso del fondo estinto va nella voce dei rimborsi' );
 
 // ---------- Staff degli eventi: incasso sul posto e contatore dei posti ----------
