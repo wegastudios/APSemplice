@@ -1423,7 +1423,7 @@ apse_ok( false !== strpos( (string) apse_throws( function () use ( $csv_p ) { Im
 $junk = $mkf( 'rotto.xlsx', 'questo non è un file zip' );
 apse_ok( null !== apse_throws( function () use ( $junk ) { ImportService::preview_file( $junk, 'rotto.xlsx', array() ); } ), 'import: un .xlsx rotto è rifiutato con un messaggio' );
 $nothing = $mkf( 'altro.csv', "Colore;Forma\r\nrosso;tondo\r\n" );
-apse_ok( false !== strpos( (string) apse_throws( function () use ( $nothing ) { ImportService::preview_file( $nothing, 'altro.csv', array() ); } ), 'Non ho trovato' ), 'import: file senza soci né movimenti = messaggio con le colonne richieste' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $nothing ) { ImportService::preview_file( $nothing, 'altro.csv', array() ); } ), 'Non sono stati trovati' ), 'import: file senza soci né movimenti = messaggio con le colonne richieste' );
 
 // ---------- WP All Import: area di appoggio ----------
 apse_ok( defined( 'PMXI_VERSION' ) || class_exists( 'PMXI_Plugin' ), 'WP All Import è attivo insieme al plugin (nessun conflitto)' );
