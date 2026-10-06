@@ -49,6 +49,10 @@ final class TextsPage {
 		foreach ( $mems as $n => $d ) {
 			$m_opt[ $n ] = $n . ' / ' . $d[0] . ' (' . ( 'f' === $d[1] ? 'femminile' : 'maschile' ) . ')';
 		}
+		echo '<h2>Versione base</h2><p class="description">Due versioni pronte: <strong>femminile</strong> (associazione, socie) e <strong>maschile</strong> (comitato, soci). Poi puoi comunque cambiare ogni scelta qui sotto.</p>';
+		Ui::form_open( 'apse_save_terms', Ui::url( 'apse-texts' ), false, 'apse-inline' );
+		echo '<button class="button" name="preset" value="femminile">Usa la versione al femminile</button> <button class="button" name="preset" value="maschile">Usa la versione al maschile</button>';
+		Ui::form_close();
 		echo '<h2>Tipo di ente e termini</h2><p class="description">I testi sono scritti per un\'«associazione» con «soci». Scegli com\'è fatto il tuo ente e come chiami chi partecipa: tutti i testi si adattano da soli, con gli articoli giusti. '
 			. 'Il genere (femminile o maschile) serve per «la/il», «della/del», «le/i»…</p>';
 		Ui::form_open( 'apse_save_terms', Ui::url( 'apse-texts' ) );
@@ -95,9 +99,9 @@ final class TextsPage {
 			echo '<p>Nessun testo con questi filtri.</p>';
 		} else {
 			Ui::form_open( 'apse_save_texts', $here );
-			echo '<table class="widefat striped apse-texts"><thead><tr><th style="width:16%">Gruppo</th><th style="width:40%">Originale</th><th>Personalizzato</th></tr></thead><tbody>';
+			echo '<table class="widefat striped apse-texts"><thead><tr><th style="width:12%">Gruppo</th><th style="width:26%">Originale</th><th style="width:26%">Versione in uso</th><th>Personalizzato</th></tr></thead><tbody>';
 			foreach ( $slice as $r ) {
-				echo '<tr><td class="description">' . esc_html( $r['group'] ) . '</td><td>' . esc_html( $r['text'] ) . '</td>'
+				echo '<tr><td class="description">' . esc_html( $r['group'] ) . '</td><td>' . esc_html( $r['text'] ) . '</td><td>' . esc_html( \ApSemplice\Terms::apply( $r['text'] ) ) . '</td>'
 					. '<td><textarea name="t[' . esc_attr( md5( $r['text'] ) ) . ']" rows="' . ( strlen( $r['text'] ) > 70 ? 3 : 1 ) . '" class="large-text" maxlength="' . (int) Texts::MAX_LEN . '">' . esc_textarea( $r['custom'] ) . '</textarea></td></tr>';
 			}
 			echo '</tbody></table>';

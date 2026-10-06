@@ -221,6 +221,14 @@ final class Actions {
 	}
 
 	private static function save_terms( array $p ): array {
+		if ( ! empty( $p['preset'] ) ) { // versione base: femminile (associazione, socie) o maschile (comitato, soci)
+			$pre = \ApSemplice\Terms::PRESETS[ (string) $p['preset'] ] ?? null;
+			if ( ! $pre ) {
+				throw new \InvalidArgumentException( 'Versione non valida.' );
+			}
+			Settings::update( array( 'entity_type' => $pre[0], 'member_term' => $pre[1] ) );
+			return array( Ui::url( 'apse-texts' ), 'Versione ' . $p['preset'] . ' impostata: tutti i testi sono adattati.' );
+		}
 		$ec = (string) ( $p['entity_types_custom'] ?? '' );
 		$mc = (string) ( $p['member_terms_custom'] ?? '' );
 		$ents = \ApSemplice\Terms::entity_types( $ec );

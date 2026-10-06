@@ -65,6 +65,30 @@ final class Texts {
 		return htmlspecialchars( $s, ENT_QUOTES, 'UTF-8', false );
 	}
 
+	/**
+	 * Segnaposto per i testi personalizzati: la personalizzazione lavora sulla versione in uso, quindi il testo scelto
+	 * non viene poi adattato (tipo di ente e termini) una seconda volta.
+	 *
+	 * @return array{0:array,1:array} [originale => segnaposto, segnaposto => testo]
+	 */
+	private static function tokens( array $map, bool $html ): array {
+		$to   = array();
+		$back = array();
+		$i    = 0;
+		foreach ( $map as $o => $c ) {
+			$t         = "\x1A" . $i++ . "\x1A";
+			$to[ $o ]  = $t;
+			$back[ $t ] = $html ? self::h( (string) $c ) : (string) $c;
+			if ( $html ) {
+				$oe = self::h( (string) $o );
+				if ( $oe !== $o ) {
+					$to[ $oe ] = $t;
+				}
+			}
+		}
+		return array( $to, $back );
+	}
+
 	/** Testo semplice (email, PDF, messaggi): sostituzione diretta. */
 	public static function plain( string $s, ?array $map = null ): string {
 		$own = null === $map; // senza una mappa data: anche tipo di ente e termini scelti
@@ -72,10 +96,14 @@ final class Texts {
 		if ( '' === $s ) {
 			return $s;
 		}
-		if ( $map ) {
-			$s = strtr( $s, $map );
+		list( $to, $back ) = self::tokens( $map, false );
+		if ( $to ) {
+			$s = strtr( $s, $to );
 		}
-		return $own ? Terms::apply( $s ) : $s;
+		if ( $own ) {
+			$s = Terms::apply( $s );
+		}
+		return $back ? strtr( $s, $back ) : $s;
 	}
 
 	/** HTML: si sostituisce solo nel testo (non nei tag, negli script e negli stili) e in placeholder/title/aria-label/alt; il nuovo testo è protetto. */
@@ -85,32 +113,31 @@ final class Texts {
 		if ( ( ! $map && ! $terms ) || '' === $html ) {
 			return $html;
 		}
-		$hmap = array();
-		foreach ( $map as $o => $c ) {
-			$ce          = self::h( (string) $c );
-			$hmap[ $o ]  = $ce;
-			$oe          = self::h( (string) $o );
-			if ( $oe !== $o ) {
-				$hmap[ $oe ] = $ce;
-			}
-		}
+		list( $to, $back ) = self::tokens( $map, true );
 		$parts = preg_split( '#(<script\b.*?</script>|<style\b.*?</style>|<[^>]*>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE );
 		if ( false === $parts ) {
 			return $html;
 		}
+		$fix = function ( string $text ) use ( $to, $back, $terms ) {
+			if ( $to ) {
+				$text = strtr( $text, $to );
+			}
+			if ( $terms ) {
+				$text = Terms::apply_map( str_replace( '&#039;', "'", $text ), $terms );
+			}
+			return $back ? strtr( $text, $back ) : $text;
+		};
 		foreach ( $parts as $i => $part ) {
 			if ( '' === $part ) {
 				continue;
 			}
 			if ( 0 === $i % 2 ) {
-				$part = $map ? strtr( $part, $hmap ) : $part;
-				$parts[ $i ] = $terms ? Terms::apply_map( str_replace( '&#039;', "'", $part ), $terms ) : $part;
+				$parts[ $i ] = $fix( $part );
 			} elseif ( '<' === $part[0] && false === stripos( $part, '<script' ) && false === stripos( $part, '<style' ) ) {
 				$parts[ $i ] = (string) preg_replace_callback(
 					'/\b(placeholder|title|aria-label|alt)="([^"]*)"/i',
-					function ( $m ) use ( $hmap, $map, $terms ) {
-						$v = $map ? strtr( $m[2], $hmap ) : $m[2];
-						return $m[1] . '="' . ( $terms ? Terms::apply_map( $v, $terms ) : $v ) . '"';
+					function ( $m ) use ( $fix ) {
+						return $m[1] . '="' . $fix( $m[2] ) . '"';
 					},
 					$part
 				);
@@ -294,9 +321,9 @@ final class Texts {
 
 	/** CSV (separatore ";"), apribile in Excel: Gruppo ; Originale ; Personalizzato. */
 	public static function export_csv( bool $only_custom = false ): string {
-		$out = "Gruppo;Originale;Personalizzato\r\n";
+		$out = "Gruppo;Originale;Versione in uso;Personalizzato\r\n";
 		foreach ( self::rows( $only_custom ) as $r ) {
-			$out .= self::cell( $r['group'] ) . ';' . self::cell( $r['text'] ) . ';' . self::cell( $r['custom'] ) . "\r\n";
+			$out .= self::cell( $r['group'] ) . ';' . self::cell( $r['text'] ) . ';' . self::cell( Terms::apply( $r['text'] ) ) . ';' . self::cell( $r['custom'] ) . "\r\n";
 		}
 		return "\xEF\xBB\xBF" . $out;
 	}

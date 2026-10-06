@@ -29,6 +29,21 @@ final class Terms {
 		'iscritto'     => array( 'iscritti', 'm' ),
 		'sostenitore'  => array( 'sostenitori', 'm' ),
 		'componente'   => array( 'componenti', 'm' ),
+		'socia'        => array( 'socie', 'f' ),
+	);
+
+	/** Due versioni base: tipo di ente e termine per chi partecipa. */
+	const PRESETS = array(
+		'femminile' => array( 'associazione', 'socia' ),
+		'maschile'  => array( 'comitato', 'socio' ),
+	);
+
+	/** Aggettivi e qualifiche che seguono il termine e cambiano al femminile: maschile => femminile. */
+	const ADJECTIVES = array(
+		'fondatore' => 'fondatrice', 'fondatori' => 'fondatrici', 'ordinario' => 'ordinaria', 'ordinari' => 'ordinarie', 'sospeso' => 'sospesa', 'sospesi' => 'sospese',
+		'attivo' => 'attiva', 'attivi' => 'attive', 'inattivo' => 'inattiva', 'inattivi' => 'inattive', 'scaduto' => 'scaduta', 'scaduti' => 'scadute',
+		'iscritto' => 'iscritta', 'iscritti' => 'iscritte', 'volontario' => 'volontaria', 'volontari' => 'volontarie', 'e volontario' => 'e volontaria', 'e volontari' => 'e volontarie',
+		'nuovo' => 'nuova', 'nuovi' => 'nuove', 'registrato' => 'registrata', 'registrati' => 'registrate', 'invitato' => 'invitata', 'invitati' => 'invitate',
 	);
 
 	/** @var array|null */
@@ -85,6 +100,9 @@ final class Terms {
 	// ---------- Articoli ----------
 
 	private static function vowel( string $w ): bool {
+		if ( in_array( self::lower( $w ), array( 'onlus' ), true ) ) {
+			return false; // si dice "la onlus", non "l'onlus"
+		}
 		return (bool) preg_match( '/^[aeiouàèéìòùh]/iu', $w );
 	}
 
@@ -174,6 +192,12 @@ final class Terms {
 			$map['tutti i soci']    = ( $f ? 'tutte ' : 'tutti ' ) . self::with_article( $plur, $m_gender, true );
 			$map['altri soci']      = ( $f ? 'altre ' : 'altri ' ) . $plur;
 			$map['nuovi soci']      = ( $f ? 'nuove ' : 'nuovi ' ) . $plur;
+			if ( $f ) { // qualifiche al femminile: socio fondatore → socia fondatrice
+				foreach ( self::ADJECTIVES as $am => $af ) {
+					$pl = 'i' === substr( $am, -1 ) && ' ' !== substr( $am, 0, 1 );
+					$map[ ( $pl ? 'soci ' : 'socio ' ) . $am ] = ( $pl ? $plur : $sing ) . ' ' . $af;
+				}
+			}
 			$map['socio']           = $sing;
 			$map['soci']            = $plur;
 		}

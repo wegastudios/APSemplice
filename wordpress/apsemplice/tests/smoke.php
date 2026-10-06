@@ -3241,7 +3241,7 @@ apse_ok( false !== strpos( \ApSemplice\Texts::html( '<h3>Il mio profilo</h3><inp
 
 // esportazione e importazione
 $tx_csv = \ApSemplice\Texts::export_csv( true );
-apse_ok( 0 === strpos( $tx_csv, "\xEF\xBB\xBFGruppo;Originale;Personalizzato" ) && false !== strpos( $tx_csv, 'Il mio profilo;La mia scheda' ) && false !== strpos( $tx_csv, 'Aggiunte a mano;Promemoria di prova;Promemoria cambiato' ), 'testi: esportazione CSV con i soli personalizzati' );
+apse_ok( 0 === strpos( $tx_csv, "\xEF\xBB\xBFGruppo;Originale;Versione in uso;Personalizzato" ) && false !== strpos( $tx_csv, 'Il mio profilo;Il mio profilo;La mia scheda' ) && false !== strpos( $tx_csv, 'Aggiunte a mano;Promemoria di prova;Promemoria di prova;Promemoria cambiato' ), 'testi: esportazione CSV con i soli personalizzati' );
 $tx_all = \ApSemplice\Texts::export_csv();
 apse_ok( substr_count( $tx_all, "\r\n" ) > count( $tx_cat ), 'testi: esportazione CSV di tutti i testi' );
 $tx_file = wp_tempnam( 'apse-testi' );
@@ -3307,6 +3307,17 @@ $tm_save = new ReflectionMethod( Admin\Actions::class, 'save_terms' );
 $tm_save->invoke( null, array( 'entity_type' => 'museo', 'entity_types_custom' => "museo;m\nfondazione;f", 'member_term' => 'tesserata', 'member_terms_custom' => 'tesserata;tesserate;f' ) );
 apse_ok( 'museo' === Settings::get( 'entity_type' ) && 'tesserata' === Settings::get( 'member_term' ) && 'Il museo e le tesserate' === \ApSemplice\Texts::plain( "L'associazione e i soci" ), 'ente e termini: tipo di ente e termine aggiunti a mano' );
 apse_ok( null !== apse_throws( function () use ( $tm_save ) { $tm_save->invoke( null, array( 'entity_type' => 'inesistente', 'member_term' => 'socio' ) ); } ), 'ente e termini: una scelta fuori elenco viene rifiutata' );
+$tm_save->invoke( null, array( 'preset' => 'femminile' ) );
+apse_ok( 'associazione' === Settings::get( 'entity_type' ) && 'socia' === Settings::get( 'member_term' ) && 'Socia fondatrice, socie sospese e la socia' === \ApSemplice\Texts::plain( 'Socio fondatore, soci sospesi e il socio' ), 'versione base al femminile (associazione, socie), con le qualifiche al femminile' );
+$tm_save->invoke( null, array( 'preset' => 'maschile' ) );
+apse_ok( 'comitato' === Settings::get( 'entity_type' ) && 'socio' === Settings::get( 'member_term' ) && 'Il comitato e i soci' === \ApSemplice\Texts::plain( "L'associazione e i soci" ), 'versione base al maschile (comitato, soci)' );
+apse_ok( null !== apse_throws( function () use ( $tm_save ) { $tm_save->invoke( null, array( 'preset' => 'neutra' ) ); } ), 'versione base: una versione inesistente viene rifiutata' );
+// la personalizzazione lavora sulla versione in uso: il testo scelto non viene adattato una seconda volta
+Settings::update( array( 'member_term' => 'iscritto' ) );
+\ApSemplice\Texts::save_overrides( array( 'Il mio profilo' => 'La scheda del socio' ) );
+$tm_cust = $as( $u_f, '[apsemplice_profilo]' );
+apse_ok( false !== strpos( $tm_cust, 'La scheda del socio' ) && false === strpos( $tm_cust, 'La scheda dell&#039;iscritto' ), 'testi: il testo personalizzato resta com\'è scritto (non viene adattato di nuovo)' );
+\ApSemplice\Texts::save_overrides( array() );
 Settings::update( array( 'entity_type' => 'associazione', 'entity_types_custom' => '', 'member_term' => 'socio', 'member_terms_custom' => '' ) );
 remove_all_filters( 'pre_wp_mail' );
 

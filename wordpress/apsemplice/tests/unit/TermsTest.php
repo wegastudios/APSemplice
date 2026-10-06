@@ -65,4 +65,11 @@ final class TermsTest extends TestCase {
 		$this->assertSame( array( 'tesserate', 'f' ), $t['tesserata'] );
 		$this->assertSame( array( 'soci', 'm' ), $t['socio'] );
 	}
+
+	public function test_feminine_qualifiers_and_presets(): void {
+		$m = Terms::build_map( 'associazione', 'f', 'socia', 'socie', 'f' );
+		$this->assertSame( 'Socia fondatrice, socia e volontaria, socie ordinarie', Terms::apply_map( 'Socio fondatore, socio e volontario, soci ordinari', $m ) );
+		$this->assertSame( array( 'associazione', 'socia' ), Terms::PRESETS['femminile'] );
+		$this->assertSame( array( 'comitato', 'socio' ), Terms::PRESETS['maschile'] );
+	}
 }
