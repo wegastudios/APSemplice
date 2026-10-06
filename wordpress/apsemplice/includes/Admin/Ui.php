@@ -47,7 +47,7 @@ final class Ui {
 	}
 
 	public static function notices(): void {
-		$msg = ApSemplicelash::read( 'apse' ); // solo messaggi scritti dal sito (firmati)
+		$msg = \ApSemplice\Flash::read( 'apse' ); // solo messaggi scritti dal sito (firmati)
 		$ok  = $msg['ok'];
 		$err = $msg['err'];
 		if ( '' !== $ok ) {
@@ -163,7 +163,7 @@ final class Ui {
 	}
 
 	public static function redirect( string $url, string $ok = '', string $err = '' ): void {
-		wp_safe_redirect( ApSemplicelash::url( $url, 'apse', $ok, $err ) );
+		wp_safe_redirect( \ApSemplice\Flash::url( $url, 'apse', $ok, $err ) );
 		exit;
 	}
 }

@@ -46,7 +46,7 @@ final class Views {
 		if ( $printed ) {
 			return '';
 		}
-		$msg = ApSemplicelash::read( 'apsf' ); // solo messaggi scritti dal sito (firmati)
+		$msg = \ApSemplice\Flash::read( 'apsf' ); // solo messaggi scritti dal sito (firmati)
 		$ok  = $msg['ok'];
 		$err = $msg['err'];
 		if ( '' === $ok && '' === $err ) {

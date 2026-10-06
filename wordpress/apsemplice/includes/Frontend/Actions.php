@@ -92,7 +92,7 @@ final class Actions {
 	}
 
 	private static function redirect( string $url, string $ok = '', string $err = '' ): void {
-		wp_safe_redirect( ApSemplicelash::url( $url, 'apsf', $ok, $err ) );
+		wp_safe_redirect( \ApSemplice\Flash::url( $url, 'apsf', $ok, $err ) );
 		exit;
 	}
 

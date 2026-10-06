@@ -23,7 +23,7 @@ final class TicketVerify {
 		if ( ! isset( $_GET['apse_ticket'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;
 		}
-		$flash = ApSemplicelash::read( 'apsf' );
+		$flash = \ApSemplice\Flash::read( 'apsf' );
 		$html  = self::page( sanitize_text_field( wp_unslash( $_GET['apse_ticket'] ) ), $flash ); // phpcs:ignore WordPress.Security.NonceVerification
 		CardVerify::send_headers();
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
