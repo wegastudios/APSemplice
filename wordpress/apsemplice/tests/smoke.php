@@ -3561,7 +3561,6 @@ $bc_res  = $bc_send->invoke( null, array( 'audience' => 'activity:' . $acq, 'sub
 apse_ok( false !== strpos( $bc_res[1], 'Comunicazione avviata' ) && array( 'activity', $acq ) === Admin\MessagesPage::parse_audience( 'activity:' . $acq ) && array( 'members_all', 0 ) === Admin\MessagesPage::parse_audience( 'members_all' ), 'comunicazioni: invio dalla pagina' );
 apse_render( array( Admin\MessagesPage::class, 'render' ), 'Storico' );
 apse_render( array( Admin\MessagesPage::class, 'render' ), 'Destinatari:', array( 'audience' => 'members_active', 'subject' => 'Oggetto', 'body' => 'Testo', 'preview' => '1' ) );
-apse_render( array( Admin\MessagesPage::class, 'render' ), 'Riprova', array( 'view' => $b3 - 0 ) ) || true;
 apse_render( array( Admin\MessagesPage::class, 'render' ), 'Tutte le comunicazioni', array( 'view' => $b1 ) );
 wp_set_current_user( $sec_u );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-people' ), 'page=apse-messages' ), 'comunicazioni: la segreteria le vede' );
