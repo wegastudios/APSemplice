@@ -2663,7 +2663,7 @@ $people->set_membership( $mg_q, ( $mg_y - 1 ) . '/' . $mg_y, true, 'manual' );
 $people->set_membership( $mg_q, (string) $mg_y, true, 'manual' );
 $mg_n = \ApSemplice\Install::migrate_membership_years();
 apse_ok( $mg_n >= 2 && $mg_y . '-12-31' === $people->active_until( $mg_p ), 'migrazione: ora la tessera scade il 31 dicembre (' . $people->active_until( $mg_p ) . ')' );
-apse_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $mg_q . ' AND deleted_at IS NULL' ) && $mg_y . '-12-31' === $people->active_until( $mg_q ), 'migrazione: se c'e già l anno solare resta quello, senza doppioni' );
+apse_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $mg_q . ' AND deleted_at IS NULL' ) && $mg_y . '-12-31' === $people->active_until( $mg_q ), 'migrazione: se c\'è già l\'anno solare resta quello, senza doppioni' );
 apse_ok( 0 === \ApSemplice\Install::migrate_membership_years(), 'migrazione: rilanciarla non cambia nulla' );
 apse_ok( 1 === preg_match( '/^[0-9.]+\.\d{6,}$/', Plugin::asset_version( 'admin.js' ) ), 'script: la versione cambia a ogni aggiornamento (nessuna cache vecchia)' );
 
