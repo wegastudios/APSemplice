@@ -22,11 +22,11 @@ final class Assets {
 		if ( wp_style_is( 'apse-frontend', 'enqueued' ) ) {
 			return;
 		}
-		wp_enqueue_style( 'apse-frontend', APSE_URL . 'assets/frontend.css', array(), APSE_VERSION );
+		wp_enqueue_style( 'apse-frontend', APSE_URL . 'assets/frontend.css', array(), \ApSemplice\Plugin::asset_version( 'frontend.css' ) );
 		$css = self::inline_css();
 		if ( '' !== $css ) {
 			wp_add_inline_style( 'apse-frontend', $css );
 		}
-		wp_enqueue_script( 'apse-frontend', APSE_URL . 'assets/frontend.js', array(), APSE_VERSION, true );
+		wp_enqueue_script( 'apse-frontend', APSE_URL . 'assets/frontend.js', array(), \ApSemplice\Plugin::asset_version( 'frontend.js' ), true );
 	}
 }

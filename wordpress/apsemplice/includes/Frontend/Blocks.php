@@ -25,7 +25,7 @@ final class Blocks {
 			'apse-blocks',
 			APSE_URL . 'assets/blocks.js',
 			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render' ),
-			APSE_VERSION,
+			\ApSemplice\Plugin::asset_version( 'blocks.js' ),
 			true
 		);
 		$activities = array();

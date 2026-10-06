@@ -31,6 +31,12 @@ final class Plugin {
 		}
 	}
 
+	/** Versione di un file in assets/: cambia a ogni aggiornamento, così il browser non tiene in cache script e stili vecchi. */
+	public static function asset_version( string $file ): string {
+		$path = APSE_DIR . 'assets/' . $file;
+		return APSE_VERSION . '.' . ( is_readable( $path ) ? (string) filemtime( $path ) : '0' );
+	}
+
 	public static function people(): PeopleService {
 		return self::$services['people'] ?? ( self::$services['people'] = new PeopleService() );
 	}

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '16';
+	const DB_VERSION        = '17';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -20,11 +20,44 @@ final class Install {
 		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
 		if ( $old !== self::DB_VERSION ) {
 			self::activate();
+			if ( '' !== $old && version_compare( $old, '17', '<' ) ) {
+				self::migrate_membership_years();
+			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
 		}
+	}
+
+	/**
+	 * La tessera dura l'anno solare (scade il 31 dicembre): le iscrizioni registrate con l'anno sociale (es. "2025/2026", fino al 31 agosto)
+	 * diventano l'anno solare in cui finivano ("2026", fino al 31 dicembre). Non si accorcia nessuna validità. @return int iscrizioni convertite
+	 */
+	public static function migrate_membership_years(): int {
+		$db   = Db::db();
+		$tbl  = Db::t( 'memberships' );
+		$rows = $db->get_results( "SELECT * FROM $tbl WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ) ?: array();
+		$n    = 0;
+		foreach ( $rows as $r ) {
+			$year = (int) substr( $r['social_year'], (int) strpos( $r['social_year'], '/' ) + 1, 4 );
+			if ( $year < 2000 ) {
+				continue;
+			}
+			$label    = (string) $year;
+			$to       = $year . '-12-31';
+			$existing = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE person_id = %d AND social_year = %s", (int) $r['person_id'], $label ), ARRAY_A );
+			if ( $existing && null === $existing['deleted_at'] ) {
+				$db->update( $tbl, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $r['id'] ) ); // c'è già l'anno solare: basta quello
+			} elseif ( $existing ) {
+				$db->update( $tbl, array( 'valid_from' => $r['valid_from'], 'valid_to' => $to, 'source' => $r['source'], 'transaction_id' => $r['transaction_id'], 'deleted_at' => null ), array( 'id' => (int) $existing['id'] ) );
+				$db->update( $tbl, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $r['id'] ) );
+			} else {
+				$db->update( $tbl, array( 'social_year' => $label, 'valid_to' => $to ), array( 'id' => (int) $r['id'] ) );
+			}
+			$n++;
+		}
+		return $n;
 	}
 
 	public static function create_tables(): void {

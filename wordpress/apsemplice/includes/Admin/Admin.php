@@ -103,7 +103,7 @@ final class Admin {
 		if ( false === strpos( $hook, 'apse' ) ) {
 			return;
 		}
-		wp_enqueue_style( 'apse-admin', APSE_URL . 'assets/admin.css', array(), APSE_VERSION );
-		wp_enqueue_script( 'apse-admin', APSE_URL . 'assets/admin.js', array(), APSE_VERSION, true );
+		wp_enqueue_style( 'apse-admin', APSE_URL . 'assets/admin.css', array(), Plugin::asset_version( 'admin.css' ) );
+		wp_enqueue_script( 'apse-admin', APSE_URL . 'assets/admin.js', array(), Plugin::asset_version( 'admin.js' ), true );
 	}
 }
