@@ -37,7 +37,7 @@ final class Views {
 
 	private static function wrap( string $inner, string $class = '' ): string {
 		Assets::enqueue();
-		return '<div class="apsf ' . esc_attr( $class ) . '">' . self::flash() . $inner . '</div>';
+		return \ApSemplice\Texts::html( '<div class="apsf ' . esc_attr( $class ) . '">' . self::flash() . $inner . '</div>' ); // testi personalizzati
 	}
 
 	/** Esito dell'ultima azione (una sola volta per pagina, anche con più viste). */
@@ -115,7 +115,7 @@ final class Views {
 		if ( ! $person ) {
 			return self::wrap( self::notice( $is_admin
 				? 'Sei amministratore del sito e non hai una scheda socio collegata: qui i soci vedono i propri dati.'
-				: 'Il tuo utente non è collegato a una scheda socio. Contatta l\'associazione.' ) );
+				: 'Il tuo account non è collegato a una scheda socio. Contatta l\'associazione.' ) );
 		}
 		return self::wrap( (string) $fn( $person ), $class );
 	}
@@ -371,7 +371,7 @@ final class Views {
 		}
 		$fields = '<div class="apsf-fields"><label>Chi paga <select name="person_id" required>' . $people . '</select></label>'
 			. '<label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
-		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno si calcola da solo.</p>'
+		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno viene calcolato automaticamente.</p>'
 			. self::form( 'apse_front_collect', $fields, 'Registra l\'incasso' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
@@ -527,7 +527,9 @@ final class Views {
 		return '<section class="apsf-section"><h3>Il mio profilo</h3><dl class="apsf-dl"><div><dt>Nome</dt><dd>' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</dd></div>'
 			. '<div><dt>Email</dt><dd>' . esc_html( (string) $p['email'] ) . '</dd></div></dl>'
 			. '<p class="apsf-small apsf-muted">Per cambiare nome o email scrivi all\'associazione.</p>'
-			. self::form( 'apse_front_profile', $fields, 'Salva' ) . '</section>';
+			. self::form( 'apse_front_profile', $fields, 'Salva' )
+			. '<p class="apsf-small"><a href="' . esc_url( \ApSemplice\Privacy::export_url( (int) $p['id'] ) ) . '">Scarica i miei dati (JSON)</a>'
+			. ( '' !== (string) Settings::get( 'privacy_url' ) ? ' · <a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">Informativa sulla privacy</a>' : '' ) . '</p></section>';
 	}
 
 	// ---------- Gestione degli eventi: prenotati e ingressi ----------
@@ -663,7 +665,7 @@ final class Views {
 		$fields = self::hidden( 'session_id', $s['id'] )
 			. '<label>Chi paga <select name="payer_id" required>' . $members_options . '</select></label>'
 			. '<label>Pagamento <select name="account_id">' . $accounts_options . '</select></label>'
-			. '<p class="apsf-small apsf-muted">Scegli i soci per cui paga (può esserci anche lui): ognuno viene prenotato, il biglietto è calcolato dal sito e c\'è un solo incasso.</p>' . $rows;
+			. '<p class="apsf-small apsf-muted">Scegli i soci per cui paga (può includere anche sé stesso): ognuno viene prenotato, l\'importo del biglietto è calcolato automaticamente e l\'incasso è unico.</p>' . $rows;
 		return '<details class="apsf-door-group"><summary><strong>＋ Un socio paga per più soci</strong></summary>'
 			. self::form( 'apse_front_door_group', $fields, 'Prenota e incassa per tutti', true ) . '</details>';
 	}
@@ -905,12 +907,12 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,volontario,ingressi,spese' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
+					'profilo'    => 'section_profile', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
 				foreach ( $sections as $s ) {
@@ -934,6 +936,34 @@ final class Views {
 
 	public static function guests(): string {
 		return self::with_person( array( __CLASS__, 'section_guests' ) );
+	}
+
+	/** Le mie ricevute: scarico dei PDF (anche per gli ospiti che ho pagato) e attestazione annuale. */
+	public static function section_receipts( array $p ): string {
+		$pid   = (int) $p['id'];
+		$mine  = \ApSemplice\Receipts::list_for_payer( $pid, 15 );
+		$years = \ApSemplice\Receipts::years_for_payer( $pid );
+		if ( ! $mine && ! $years ) {
+			return '<section class="apsf-section"><h3>Le mie ricevute</h3><p class="apsf-muted">Nessun pagamento registrato finora.</p></section>';
+		}
+		$html = '<section class="apsf-section"><h3>Le mie ricevute</h3>';
+		if ( $years ) {
+			$html .= '<p>';
+			foreach ( $years as $y ) {
+				$html .= '<a class="apsf-btn" target="_blank" href="' . esc_url( \ApSemplice\Receipts::statement_url( $pid, (int) $y ) ) . '">Attestazione ' . (int) $y . '</a> ';
+			}
+			$html .= '</p><p class="apsf-small apsf-muted">L\'attestazione riepiloga tutti i versamenti dell\'anno (utile per la dichiarazione dei redditi).</p>';
+		}
+		$html .= '<ul class="apsf-list">';
+		foreach ( $mine as $r ) {
+			$html .= '<li><div><strong>' . esc_html( self::d( $r['date'] ) ) . '</strong> · ' . esc_html( $r['what'] ) . '</div><div>' . esc_html( Money::format( (int) $r['cents'] ) )
+				. ' <a class="apsf-btn" target="_blank" href="' . esc_url( \ApSemplice\Receipts::url( $r['key'] ) ) . '">Ricevuta PDF</a></div></li>';
+		}
+		return $html . '</ul></section>';
+	}
+
+	public static function receipts(): string {
+		return self::with_person( array( __CLASS__, 'section_receipts' ) );
 	}
 
 	public static function profile(): string {

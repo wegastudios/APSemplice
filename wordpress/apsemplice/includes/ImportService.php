@@ -49,7 +49,7 @@ final class ImportService {
 		}
 		if ( ! $people_rows && ! $ledger_rows ) {
 			throw new \InvalidArgumentException(
-				'Non ho trovato né soci né movimenti. Per i soci servono le colonne "Nome" e "Cognome"; per la prima nota "Data" e "Importo" (oppure "Entrata" e "Uscita"). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.'
+				'Non sono stati trovati né soci né movimenti. Per i soci servono le colonne "Nome" e "Cognome"; per la prima nota "Data" e "Importo" (oppure "Entrata" e "Uscita"). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.'
 			);
 		}
 		if ( count( $people_rows ) > self::MAX_ROWS || count( $ledger_rows ) > self::MAX_ROWS ) {

@@ -60,7 +60,7 @@ class PeopleService {
 	public function search( array $f = array() ): array {
 		$db    = $this->db();
 		$today = Db::today();
-		$where = array( 'p.deleted_at IS NULL' );
+		$where = array( 'p.deleted_at IS NULL', 'p.anonymized_at IS NULL' ); // le persone anonimizzate non compaiono più negli elenchi
 		$args  = array( $today );
 		if ( ! empty( $f['type'] ) ) {
 			$where[] = 'p.type = %s';
@@ -87,6 +87,9 @@ class PeopleService {
 				array_filter(
 					$rows,
 					function ( $r ) use ( $f, $today ) {
+						if ( 'noconsent' === $f['status'] ) {
+							return empty( $r['privacy_consent_at'] );
+						}
 						if ( MemberType::GUEST === $r['type'] ) {
 							return false;
 						}

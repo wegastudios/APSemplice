@@ -40,7 +40,7 @@ final class LicenseNotice {
 			: '<p>Contatta il fornitore del servizio per regolarizzare il pagamento.</p>';
 		if ( LicensePolicy::POPUP_CLOSABLE === $p['popup'] ) {
 			$html .= '<p class="description">Puoi chiudere questo avviso ancora per ' . (int) $p['days_left'] . ' ' . ( 1 === (int) $p['days_left'] ? 'giorno' : 'giorni' )
-				. '; poi resterà sempre visibile.</p><p><button type="button" class="button" id="apse-overlay-close">Chiudi per ora</button></p>';
+				. '; poi resterà sempre visibile.</p><p><button type="button" class="button" id="apse-overlay-close">Chiudi</button></p>';
 		} else {
 			$html .= '<p class="description">Il periodo in cui l\'avviso si poteva chiudere è terminato.</p>';
 		}

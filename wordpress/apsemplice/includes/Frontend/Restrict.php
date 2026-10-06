@@ -138,7 +138,7 @@ final class Restrict {
 			$html .= '<p><a class="apsf-btn wp-element-button" href="' . esc_url( $url ) . '">Accedi</a></p>';
 		}
 		$html .= '</div>';
-		return (string) apply_filters( 'apse_gate_html', $html, $rule, $activity_ids );
+		return (string) apply_filters( 'apse_gate_html', \ApSemplice\Texts::html( $html ), $rule, $activity_ids );
 	}
 
 	// ---------- Filtri sul contenuto ----------

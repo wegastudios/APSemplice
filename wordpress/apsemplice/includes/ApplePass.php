@@ -67,7 +67,7 @@ final class ApplePass {
 		try {
 			$zip = new \ZipArchive();
 			if ( true !== $zip->open( $tmp, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
-				throw new \InvalidArgumentException( 'Non riesco a creare il file della tessera.' );
+				throw new \InvalidArgumentException( 'Impossibile creare il file della tessera.' );
 			}
 			foreach ( $files as $name => $bytes ) {
 				$zip->addFromString( $name, $bytes );

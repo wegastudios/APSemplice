@@ -27,7 +27,7 @@ final class WalletCredentials {
 		}
 		$out = array();
 		if ( ! @openssl_pkcs12_read( $bytes, $out, $password ) || empty( $out['cert'] ) || empty( $out['pkey'] ) ) {
-			throw new \InvalidArgumentException( 'Non riesco a leggere il file .p12: controlla la password. Se il file viene da "Accesso Portachiavi" di macOS e il problema resta, esportalo di nuovo oppure incolla certificato e chiave in formato PEM.' );
+			throw new \InvalidArgumentException( 'Impossibile leggere il file .p12: controlla la password. Se il file viene da "Accesso Portachiavi" di macOS e il problema resta, esportalo di nuovo oppure incolla certificato e chiave in formato PEM.' );
 		}
 		return array( 'cert' => trim( $out['cert'] ) . "\n", 'key' => trim( $out['pkey'] ) . "\n" );
 	}

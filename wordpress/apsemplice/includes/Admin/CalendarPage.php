@@ -66,7 +66,7 @@ final class CalendarPage {
 		echo '<div class="apse-card"><h2>Collegamento a Google Calendar</h2>';
 		Ui::form_open( 'apse_save_ical', Ui::url( 'apse-calendar' ) );
 		echo '<p><label><input type="checkbox" name="ical_enabled" value="1"' . checked( $on, true, false ) . '> <strong>Pubblica il calendario con un indirizzo segreto</strong></label><br>'
-			. '<span class="description">Spento di default. L\'indirizzo contiene solo nomi, giorni, orari e luoghi di corsi ed eventi (nessun dato di persone), ma chiunque lo conosca può leggerlo.</span></p>';
+			. '<span class="description">Disattivato per impostazione predefinita. L\'indirizzo contiene solo nomi, giorni, orari e luoghi di corsi ed eventi (nessun dato di persone), ma chiunque lo conosca può leggerlo.</span></p>';
 		submit_button( 'Salva', 'primary', 'submit', false );
 		Ui::form_close();
 		if ( $on ) {

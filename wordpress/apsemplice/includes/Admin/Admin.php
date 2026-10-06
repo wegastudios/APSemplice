@@ -22,7 +22,7 @@ final class Admin {
 		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import' ) ),
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-audit' => 'Registro azioni' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-comms' => 'Promemoria, privacy e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni' ) ),
 	);
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
@@ -66,6 +66,8 @@ final class Admin {
 			array( 'apse-reports', 'Report', array( ReportsPage::class, 'render' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'apse-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),
+			array( 'apse-comms', 'Promemoria, privacy e ricevute', array( CommsPage::class, 'render' ) ),
+			array( 'apse-texts', 'Testi personalizzati', array( TextsPage::class, 'render' ) ),
 			array( 'apse-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),
 			array( 'apse-person', 'Scheda persona', array( PeoplePage::class, 'render_edit' ) ),
 			array( 'apse-activity', 'Scheda attività', array( ActivitiesPage::class, 'render_detail' ) ),

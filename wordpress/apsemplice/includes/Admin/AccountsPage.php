@@ -19,8 +19,8 @@ final class AccountsPage {
 			echo '<details><summary>Verifica saldo</summary>';
 			Ui::form_open( 'apse_cash_count', $back );
 			echo Ui::hidden( 'account_id', $a['id'] ) . Ui::hidden( 'date', $today ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<p>Saldo reale (contato / estratto conto): <input type="text" name="counted" inputmode="decimal" required> €</p>';
-			echo '<p><label><input type="checkbox" name="adjust" value="1"> Registra una rettifica per riallineare l\'app</label></p>';
+			echo '<p>Saldo reale (contanti contati o estratto conto): <input type="text" name="counted" inputmode="decimal" required> €</p>';
+			echo '<p><label><input type="checkbox" name="adjust" value="1"> Registra una rettifica per riallineare il saldo</label></p>';
 			echo '<button class="button">Verifica</button>';
 			Ui::form_close();
 			echo '</details>';
@@ -82,7 +82,7 @@ final class AccountsPage {
 		Ui::header( 'Conti e cassa' );
 		echo '<div class="apse-card"><h2>Disponibilità reale dell\'associazione</h2><p class="apse-big">' . Ui::money( $avail['available'] ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Saldi dei conti ' . esc_html( Money::format( $avail['accounts'] ) ) . ' meno fondi accantonati ' . esc_html( Money::format( $avail['funds'] ) ) . '.</p></div>';
-		echo '<p class="description">Il saldo dell\'app deve coincidere con la realtà: con "Verifica saldo" confronti il contante contato o l\'estratto conto, e se serve rettifichi.</p>';
+		echo '<p class="description">Il saldo registrato deve coincidere con quello reale: con "Verifica saldo" confronti il contante contato o l\'estratto conto e, se serve, registri una rettifica.</p>';
 
 		$open   = array();
 		$closed = array();

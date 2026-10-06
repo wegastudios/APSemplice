@@ -507,7 +507,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Non hai il permesso di inviare avvisi per questa attività.' );
 		}
 		$r = \ApSemplice\Notices::send( $aid, ! empty( $post['session_id'] ) ? (int) $post['session_id'] : null, (string) ( $post['subject'] ?? '' ), (string) ( $post['body'] ?? '' ) );
-		return 'Avviso inviato a ' . $r['recipients'] . ( 1 === $r['recipients'] ? ' persona' : ' persone' ) . ( $r['emailed'] < $r['recipients'] ? ' (' . ( $r['recipients'] - $r['emailed'] ) . ' email non partite)' : '' ) . '.';
+		return 'Avviso inviato a ' . $r['recipients'] . ( 1 === $r['recipients'] ? ' persona' : ' persone' ) . ( $r['emailed'] < $r['recipients'] ? ' (' . ( $r['recipients'] - $r['emailed'] ) . ' email non inviate)' : '' ) . '.';
 	}
 
 	public static function do_add_guest( array $post ): string {

@@ -691,7 +691,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Può gestire un evento solo un socio o volontario (non un ospite).' );
 		}
 		if ( $a['instructor_person_id'] && (int) $a['instructor_person_id'] === $person_id ) {
-			throw new \InvalidArgumentException( 'È già il referente dell\'evento: lo gestisce per definizione.' );
+			throw new \InvalidArgumentException( 'È già il referente dell\'evento e dispone di tutti i permessi di gestione.' );
 		}
 		if ( $this->is_staff( $activity_id, $person_id ) ) {
 			throw new \InvalidArgumentException( 'È già tra i gestori dell\'evento.' );

@@ -343,3 +343,40 @@ Controllo di accessi, permessi, query, pagamenti, allegati, token dei QR, calend
 
 - **Tesoriere**: nel riquadro "Incassa" ora ci sono anche i **corsi** (iscrive da solo e incassa il mese in corso, con le stesse regole sulla tessera). Sotto c'è **"Cassa per più persone"**: chi paga salda quote, eventi e corsi per sé e per altri (righe con persona o nuovo ospite); importo vuoto = importo standard; un solo incasso intestato a chi paga. La logica è la stessa degli amministratori (`GroupCash`).
 - **Staff con incasso abilitato**: nella schermata degli ingressi, **"Un socio paga per più soci"**: un socio paga il biglietto per sé e per altri soci. Limiti: solo soci con la tessera in regola, solo l'evento dello staff e solo nel giorno dell'evento, solo contanti o POS, importi calcolati dal sito; ingresso registrato per tutti. Se uno solo non va bene non resta scritto nulla.
+
+## Promemoria, privacy e ricevute
+
+Si configurano in **Impostazioni → Promemoria, privacy e ricevute**.
+
+**Promemoria per email** (spenti di default; uno al giorno, ognuno si manda una sola volta)
+- tessera in scadenza (N giorni prima, impostabile) e tessera scaduta da meno di una settimana;
+- corsi con rinnovo mensile: **dopo l'ultima lezione del mese** si ricorda a chi non ha ancora pagato il mese dopo (i corsi si rinnovano a inizio mese); un messaggio per persona, corso e mese; senza orari di lezione, dal 25 del mese;
+- evento il giorno dopo, per chi è prenotato.
+Chi non ha email (un ospite) riceve il messaggio tramite il socio che lo ospita ("per Nome Cognome"). La pagina mostra quanti ne partirebbero oggi e permette l'invio manuale.
+
+**Privacy (GDPR)**
+- *Consenso*: nella scheda persona si registra quando e come (cartaceo, sul sito, a voce, importato); filtro "Senza consenso privacy" nella Rubrica. Se indichi la pagina dell'informativa, chi attiva il proprio accesso deve accettarla e il consenso si registra da solo.
+- *Accesso ai dati*: ogni socio scarica i propri dati in JSON dal suo profilo; l'amministratore dalla scheda persona.
+- *Cancellazione*: **Anonimizza** toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti; i **movimenti contabili restano** (obbligo di conservazione). Non si può se ha ospiti, iscrizioni a corsi, prenotazioni future, cariche o è amministratore. Le persone anonimizzate spariscono dagli elenchi.
+- *Ex soci da anonimizzare*: elenco di chi è inattivo da più di N anni (impostabile, 5 di default); decidi tu caso per caso.
+
+**Ricevute in PDF**
+- Ogni incasso ha una **ricevuta** (Prima nota → "Ricevuta PDF", "invia per email" a chi ha pagato). Numero progressivo **N/AAAA** assegnato alla prima emissione e fisso; titolo "Ricevuta di erogazione liberale" se sono solo donazioni; firma "Per l'associazione" con il nome del Presidente (se assegnato) e una riga finale a tua scelta (es. riferimento normativo). Un incasso annullato non ha ricevuta.
+- **Attestazione annuale** dei versamenti di una persona (quote, contributi, erogazioni liberali con i totali): scheda persona e area soci.
+- Nell'area soci: shortcode `[apsemplice_ricevute]` (incluso in `[apsemplice_area_soci]`) con l'elenco e i download. Le vede solo chi ha pagato (o il socio che ospita chi ha pagato) e gli amministratori.
+- Il PDF è generato dal plugin senza librerie esterne; in CI si controlla con `pdfinfo`/`pdftotext`.
+
+## Testi personalizzati (Impostazioni → Testi personalizzati)
+
+Tutti i testi che il plugin mostra si possono cambiare: pagine dei soci, email e promemoria, ricevute e attestazioni in PDF, messaggi di conferma ed errore, etichette, amministrazione.
+
+- **Come funziona**: l'elenco dei testi si ricava dal codice (ogni frase scritta nei file) e si divide in gruppi (Area soci e pagine pubbliche, Email e promemoria, Ricevute e attestazioni PDF, Etichette e messaggi comuni, Messaggi di sistema, Amministrazione). Quello che scrivi nella colonna **Personalizzato** sostituisce l'originale ovunque compaia (testo delle pagine, segnaposto e title dei campi, messaggi, oggetto e corpo delle email, PDF). Il nuovo testo è protetto: niente HTML.
+- **Modifica rapida**: **Esporta tutti i testi (CSV)** (si apre in Excel: Gruppo ; Originale ; Personalizzato), cambia la colonna Personalizzato, **importa** il file (CSV o Excel). Personalizzato vuoto = torna all'originale. Si può esportare anche solo ciò che hai personalizzato.
+- **Pezzi mancanti**: i testi composti da più parti (nomi, date, importi) si cambiano pezzo per pezzo; se un pezzo non è nell'elenco lo aggiungi con «Aggiungi una sostituzione» (compare nel file come gruppo "Aggiunte a mano").
+- **Limiti**: la sostituzione vale per tutte le occorrenze di quel testo (anche dentro frasi più lunghe); i testi scritti negli script delle pagine (es. «Resto da dare» della calcolatrice) e le voci del menu di WordPress non passano da qui.
+
+## Tipo di ente e termini (Impostazioni → Testi personalizzati, in cima)
+
+- **Tipo di ente**: di serie *associazione* (femminile); si può scegliere *ente no profit*, *onlus*, *comitato*, *circolo* o aggiungerne altri a piacere (una riga `nome;f` oppure `nome;m`, es. `fondazione;f`). Il genere serve per gli articoli: «l'associazione» → «il comitato», «dell'associazione» → «del comitato», «un'associazione» → «un comitato», «la onlus»…
+- **Chi partecipa**: di serie *soci*; si può scegliere *iscritti*, *sostenitori*, *componenti* o aggiungere un termine (`singolare;plurale;f|m`, es. `tesserato;tesserati;m`). Gli articoli seguono (il socio → l'iscritto, ai soci → agli iscritti, dei soci → delle associate…).
+- I testi si adattano da soli in pagine, email, PDF, messaggi e amministrazione. Si sostituiscono **parole intere** (mai «soci» dentro «sociale» o «associazione») e gli indirizzi web e email non si toccano. Aggettivi e participi collegati possono restare al genere originale: si correggono nei testi personalizzati. C'è un'anteprima in pagina.

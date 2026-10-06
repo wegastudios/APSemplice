@@ -320,7 +320,7 @@ final class ActivitiesPage {
 			Ui::form_open( 'apse_add_dates', $back );
 			echo Ui::hidden( 'activity_id', $id ) . self::when_builder(); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<p>Luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <span class="description">(per le date che aggiungi; posti vuoti = nessun limite)</span></p>'
-				. '<p><button class="button button-primary">Aggiungi le date</button> <span class="description">Le date già presenti non si duplicano (massimo 400 alla volta).</span></p>';
+				. '<p><button class="button button-primary">Aggiungi le date</button> <span class="description">Le date già presenti non vengono duplicate (massimo 400 alla volta).</span></p>';
 			Ui::form_close();
 			echo '</div>';
 		}

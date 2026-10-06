@@ -26,6 +26,16 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_save_terms'         => 'save_terms',
+			'apse_save_texts'         => 'save_texts',
+			'apse_import_texts'       => 'import_texts',
+			'apse_reset_texts'        => 'reset_texts',
+			'apse_add_text'           => 'add_text',
+			'apse_privacy_consent'    => 'privacy_consent',
+			'apse_privacy_anonymize'  => 'privacy_anonymize',
+			'apse_save_comms'         => 'save_comms',
+			'apse_reminders_run'      => 'reminders_run',
+			'apse_receipt_email'      => 'receipt_email',
 			'apse_set_board_role'     => 'set_board_role',
 			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_card'          => 'save_card',
@@ -146,7 +156,7 @@ final class Actions {
 
 	private static function delete_person( array $p ): array {
 		Plugin::people()->delete( (int) $p['id'] );
-		return array( Ui::url( 'apse-people' ), 'Persona eliminata (l\'utente WordPress, se c\'è, resta).' );
+		return array( Ui::url( 'apse-people' ), 'Persona eliminata. L\'eventuale utente WordPress collegato non viene rimosso.' );
 	}
 
 	private static function set_membership( array $p ): array {
@@ -159,6 +169,142 @@ final class Actions {
 		$role = (string) ( $p['board_role'] ?? '' );
 		Plugin::people()->set_board_role( $id, '' === $role ? null : $role );
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . \ApSemplice\BoardRole::label( $role ) . '.' );
+	}
+
+	private static function privacy_consent( array $p ): array {
+		$id   = (int) ( $p['id'] ?? 0 );
+		$mode = (string) ( $p['mode'] ?? '' );
+		if ( 'clear' === $mode ) {
+			\ApSemplice\Privacy::clear_consent( $id );
+			return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Consenso rimosso.' );
+		}
+		\ApSemplice\Privacy::set_consent( $id, $mode );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Consenso registrato.' );
+	}
+
+	private static function privacy_anonymize( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		\ApSemplice\Privacy::anonymize( $id );
+		return array( Ui::url( 'apse-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' );
+	}
+
+	private static function save_comms( array $p ): array {
+		$txt = function ( string $k ) use ( $p ) {
+			return trim( (string) ( $p[ $k ] ?? '' ) );
+		};
+		Settings::update(
+			array(
+				'reminders_enabled'         => ! empty( $p['reminders_enabled'] ) ? 1 : 0,
+				'reminders_membership'      => ! empty( $p['reminders_membership'] ) ? 1 : 0,
+				'reminders_membership_days' => (int) ( $p['reminders_membership_days'] ?? 30 ),
+				'reminders_dues'            => ! empty( $p['reminders_dues'] ) ? 1 : 0,
+				'reminders_events'          => ! empty( $p['reminders_events'] ) ? 1 : 0,
+				'privacy_url'               => $txt( 'privacy_url' ),
+				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
+				'receipt_footer'            => $txt( 'receipt_footer' ),
+			)
+		);
+		return array( Ui::url( 'apse-comms' ), 'Impostazioni salvate.' );
+	}
+
+	private static function reminders_run( array $p ): array {
+		if ( ! \ApSemplice\Reminders::enabled() ) {
+			throw new \InvalidArgumentException( 'I promemoria sono disattivati: attivali e salva le impostazioni prima di inviarli.' );
+		}
+		$r = \ApSemplice\Reminders::run();
+		return array( Ui::url( 'apse-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani.' );
+	}
+
+	private static function receipt_email( array $p ): array {
+		\ApSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
+		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), 'Ricevuta inviata per email.' );
+	}
+
+	private static function save_terms( array $p ): array {
+		if ( ! empty( $p['preset'] ) ) { // versione base: femminile (associazione, socie) o maschile (comitato, soci)
+			$pre = \ApSemplice\Terms::PRESETS[ (string) $p['preset'] ] ?? null;
+			if ( ! $pre ) {
+				throw new \InvalidArgumentException( 'Versione non valida.' );
+			}
+			Settings::update( array( 'entity_type' => $pre[0], 'member_term' => $pre[1] ) );
+			return array( Ui::url( 'apse-texts' ), 'Versione ' . $p['preset'] . ' impostata: tutti i testi sono adattati.' );
+		}
+		$ec = (string) ( $p['entity_types_custom'] ?? '' );
+		$mc = (string) ( $p['member_terms_custom'] ?? '' );
+		$ents = \ApSemplice\Terms::entity_types( $ec );
+		$mems = \ApSemplice\Terms::member_terms( $mc );
+		$ent  = mb_strtolower( trim( (string) ( $p['entity_type'] ?? '' ) ), 'UTF-8' );
+		$mem  = mb_strtolower( trim( (string) ( $p['member_term'] ?? '' ) ), 'UTF-8' );
+		if ( ! isset( $ents[ $ent ] ) ) {
+			throw new \InvalidArgumentException( 'Scegli un tipo di ente dall\'elenco (o aggiungilo a mano: una riga «nome;m» oppure «nome;f»).' );
+		}
+		if ( ! isset( $mems[ $mem ] ) ) {
+			throw new \InvalidArgumentException( 'Scegli un termine dall\'elenco (o aggiungilo a mano: una riga «singolare;plurale;m» oppure «…;f»).' );
+		}
+		Settings::update( array( 'entity_type' => $ent, 'entity_types_custom' => $ec, 'member_term' => $mem, 'member_terms_custom' => $mc ) );
+		return array( Ui::url( 'apse-texts' ), 'Tipo di ente e termini salvati: i testi sono adattati.' );
+	}
+
+	private static function save_texts( array $p ): array {
+		$ov = \ApSemplice\Texts::overrides();
+		$by = array();
+		foreach ( \ApSemplice\Texts::rows() as $r ) {
+			$by[ md5( $r['text'] ) ] = $r['text'];
+		}
+		foreach ( (array) ( $p['t'] ?? array() ) as $hash => $custom ) {
+			if ( ! isset( $by[ (string) $hash ] ) ) {
+				continue; // solo testi che esistono davvero
+			}
+			$custom = trim( str_replace( "\r\n", "\n", (string) $custom ) );
+			if ( '' === $custom ) {
+				unset( $ov[ $by[ $hash ] ] );
+			} else {
+				$ov[ $by[ $hash ] ] = $custom;
+			}
+		}
+		\ApSemplice\Texts::save_overrides( $ov );
+		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Testi salvati.' );
+	}
+
+	private static function import_texts( array $p ): array {
+		if ( empty( $_FILES['texts_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['texts_file']['error'] || ! is_uploaded_file( $_FILES['texts_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Scegli il file da importare.' );
+		}
+		if ( (int) $_FILES['texts_file']['size'] > 5 * 1048576 ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Il file è troppo grande (massimo 5 MB).' );
+		}
+		$sheets = \ApSemplice\SheetReader::read( (string) $_FILES['texts_file']['tmp_name'], (string) $_FILES['texts_file']['name'] ); // phpcs:ignore WordPress.Security
+		$res    = null;
+		$err    = null;
+		foreach ( $sheets as $s ) {
+			try {
+				$res = \ApSemplice\Texts::import_rows( $s['rows'] );
+				break;
+			} catch ( \InvalidArgumentException $e ) {
+				$err = $e;
+			}
+		}
+		if ( ! $res ) {
+			throw $err ?: new \InvalidArgumentException( 'File non valido.' );
+		}
+		return array( Ui::url( 'apse-texts' ), 'Importazione completata: ' . $res['set'] . ' testi impostati, ' . $res['removed'] . ' ripristinati, ' . $res['manual'] . ' aggiunte a mano' . ( $res['ignored'] ? ', ' . $res['ignored'] . ' righe ignorate' : '' ) . '.' );
+	}
+
+	private static function reset_texts( array $p ): array {
+		\ApSemplice\Texts::save_overrides( array() );
+		return array( Ui::url( 'apse-texts' ), 'Testi originali ripristinati.' );
+	}
+
+	private static function add_text( array $p ): array {
+		$o = trim( (string) ( $p['original'] ?? '' ) );
+		$c = trim( (string) ( $p['custom'] ?? '' ) );
+		if ( strlen( $o ) < \ApSemplice\Texts::MIN_LEN || '' === $c ) {
+			throw new \InvalidArgumentException( 'Scrivi il testo di oggi (almeno 3 caratteri) e quello nuovo.' );
+		}
+		$ov       = \ApSemplice\Texts::overrides();
+		$ov[ $o ] = $c;
+		\ApSemplice\Texts::save_overrides( $ov );
+		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Sostituzione aggiunta.' );
 	}
 
 	private static function set_treasurer( array $p ): array {

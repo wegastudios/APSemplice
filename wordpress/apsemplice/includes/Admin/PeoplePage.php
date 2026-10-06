@@ -44,7 +44,7 @@ final class PeoplePage {
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-people">';
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
-		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy' ), $status, 'Qualsiasi stato' ) . '</select> ';
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
@@ -140,6 +140,8 @@ final class PeoplePage {
 			self::panel_membership( $p );
 			self::panel_card_qr( $p );
 			self::panel_board( $p );
+			self::panel_privacy( $p );
+			self::panel_receipts( $p );
 			self::panel_treasurer( $p );
 			self::panel_guests( $p );
 			self::panel_activities( $p );
@@ -217,7 +219,7 @@ final class PeoplePage {
 			return;
 		}
 		$url = \ApSemplice\Frontend\Activation::url( (int) $p['id'] );
-		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e si attiva da solo (vale ' . (int) \ApSemplice\ActivationToken::VALID_DAYS . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
+		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . (int) \ApSemplice\ActivationToken::VALID_DAYS . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
 			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
 		$wa = \ApSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {
@@ -298,6 +300,52 @@ final class PeoplePage {
 			. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p></div>';
 	}
 
+	/** Privacy: consenso registrato, scarico dei dati, anonimizzazione. */
+	private static function panel_privacy( array $p ): void {
+		$id = (int) $p['id'];
+		echo '<div class="apse-card"><h2>Privacy</h2>';
+		if ( \ApSemplice\Privacy::has_consent( $p ) ) {
+			echo '<p><strong class="apse-ok">Consenso registrato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['privacy_consent_at'] ) ) . ' (' . esc_html( \ApSemplice\Privacy::SOURCES[ $p['privacy_consent_source'] ] ?? '—' ) . ')</p>';
+			Ui::form_open( 'apse_privacy_consent', Ui::url( 'apse-person', array( 'id' => $id ) ), false, 'apse-inline' );
+			echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere il consenso registrato?">rimuovi il consenso</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		} else {
+			echo '<p>Consenso non registrato.</p>';
+			Ui::form_open( 'apse_privacy_consent', Ui::url( 'apse-person', array( 'id' => $id ) ) );
+			echo Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \ApSemplice\Privacy::SOURCES, 'paper' ) . '</select> <button class="button">Registra il consenso</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
+		echo '<p><a class="button" href="' . esc_url( \ApSemplice\Privacy::export_url( $id ) ) . '">Scarica i dati (JSON)</a></p>';
+		$why = \ApSemplice\Privacy::blocker( $id );
+		if ( '' === $why ) {
+			Ui::form_open( 'apse_privacy_anonymize', Ui::url( 'apse-comms' ), false, 'apse-inline' );
+			echo Ui::hidden( 'id', $id ) . '<button class="button" data-confirm="Anonimizzare questa persona? Nome, contatti, codice fiscale, tessera e note vengono tolti e non si recuperano. I movimenti contabili restano.">Anonimizza (cancellazione dati)</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		} else {
+			echo '<p class="description">Anonimizzazione non possibile ora: ' . esc_html( $why ) . '</p>';
+		}
+		echo '</div>';
+	}
+
+	/** Ricevute e attestazioni annuali della persona. */
+	private static function panel_receipts( array $p ): void {
+		$id    = (int) $p['id'];
+		$years = \ApSemplice\Receipts::years_for_payer( $id );
+		if ( ! $years ) {
+			return;
+		}
+		echo '<div class="apse-card"><h2>Ricevute e attestazioni</h2><p class="description">Le ricevute dei singoli incassi sono in Contabilità → Prima nota.</p><p>';
+		foreach ( $years as $y ) {
+			echo '<a class="button" target="_blank" href="' . esc_url( \ApSemplice\Receipts::statement_url( $id, (int) $y ) ) . '">Attestazione ' . (int) $y . '</a> ';
+		}
+		echo '</p><ul>';
+		foreach ( \ApSemplice\Receipts::list_for_payer( $id, 8 ) as $r ) {
+			echo '<li>' . Ui::date( $r['date'] ) . ' · ' . esc_html( $r['what'] ) . ' · ' . esc_html( \ApSemplice\Money::format( $r['cents'] ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+				. ' <a target="_blank" href="' . esc_url( \ApSemplice\Receipts::url( $r['key'] ) ) . '">ricevuta</a></li>';
+		}
+		echo '</ul></div>';
+	}
+
 	/** Carica nel consiglio direttivo: presidente, vicepresidente, consigliere. */
 	private static function panel_board( array $p ): void {
 		if ( ! \ApSemplice\BoardRole::eligible_type( $p['type'] ) ) {
@@ -314,7 +362,7 @@ final class PeoplePage {
 		Ui::form_close();
 		echo '<p class="description">Presidente e vicepresidente sono uno ciascuno, i consiglieri sono al massimo ' . (int) \ApSemplice\Settings::councillors() . ' (si cambia in Impostazioni). Serve la tessera in regola.</p>';
 		if ( ! $svc->is_active_member( (int) $p['id'] ) && '' !== (string) $p['board_role'] ) {
-			echo '<p class="apse-neg">Attenzione: questo socio non Ã¨ piÃ¹ in regola con la tessera.</p>';
+			echo '<p class="apse-neg">Attenzione: questo socio non è più in regola con la tessera.</p>';
 		}
 		echo '</div>';
 	}

@@ -27,10 +27,10 @@ final class WpAiPage {
 		echo '<div class="apse-card"><h2>Come si fa</h2><ol>'
 			. '<li>In <strong>All Import → Nuova importazione</strong> carica il tuo file (Excel, CSV, XML, anche da indirizzo web o Google Fogli).</li>'
 			. '<li>In "Importa in" scegli <strong>Movimenti APSemplice (import)</strong> per la prima nota oppure <strong>Soci e ospiti APSemplice (import)</strong> per soci e ospiti.</li>'
-			. '<li>Come titolo metti quello che vuoi (es. la data e la descrizione): non conta.</li>'
+			. '<li>Il titolo è libero (ad esempio la data e la descrizione): non influisce sull\'importazione.</li>'
 			. '<li>In <strong>Campi personalizzati</strong> aggiungi i campi qui sotto, uno per colonna, e trascina i dati del tuo file. Quelli che non ti servono lasciali fuori.</li>'
 			. '<li>Avvia l\'importazione. Al termine il plugin legge gli elementi, applica le stesse regole dell\'import da file, li registra e <strong>toglie quelli riusciti</strong>. Quelli con errori restano qui sotto con il motivo.</li>'
-			. '</ol><p class="description">Non serve altro, né funzioni da copiare. Puoi anche pianificare l\'importazione in WP All Import (ad esempio da un file che aggiorni ogni settimana): i doppioni in prima nota vengono riconosciuti e saltati.</p></div>';
+			. '</ol><p class="description">Non occorre altro codice. Puoi anche pianificare l\'importazione in WP All Import (ad esempio da un file che aggiorni ogni settimana): i doppioni in prima nota vengono riconosciuti e saltati.</p></div>';
 
 		echo '<div class="apse-cols"><div class="apse-col"><div class="apse-card"><h2>Prima nota</h2>';
 		self::fields_table( WpAllImport::LEDGER_FIELDS, 'Servono la data e un importo: "apse_amount" (con il segno: negativo = uscita) oppure "apse_income" e "apse_expense". Date: 15/01/2024 o 2024-01-15. Importi: 1.234,56 o 1234.56. I conti che non esistono si creano.' );

@@ -37,6 +37,7 @@ final class Ui {
 	}
 
 	public static function header( string $title, string $actions_html = '' ): void {
+		\ApSemplice\Texts::start_admin_buffer(); // testi personalizzati anche in amministrazione
 		echo '<div class="wrap apse"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.EscapeOutput
 		self::notices();

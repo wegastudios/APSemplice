@@ -31,6 +31,21 @@ jobs:
           find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
       - run: composer update --no-interaction --no-progress
       - run: vendor/bin/phpunit
+      - name: PDF valid and readable (poppler)
+        if: matrix.php == '8.1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          php tests/pdf_sample.php /tmp/prova.pdf
+          pdfinfo /tmp/prova.pdf | tee /tmp/info.txt
+          grep -q '^Pages:.*2' /tmp/info.txt
+          pdftotext -layout /tmp/prova.pdf /tmp/prova.txt
+          cat /tmp/prova.txt
+          grep -q 'RICEVUTA DI PAGAMENTO' /tmp/prova.txt
+          grep -q 'N. 12/2026' /tmp/prova.txt
+          grep -q 'Perché (famiglia)' /tmp/prova.txt
+          grep -q '10,00 €' /tmp/prova.txt
+          grep -q 'Seconda pagina' /tmp/prova.txt
       - name: QR codes decode with an independent reader (zbar)
         if: matrix.php == '8.1'
         run: |

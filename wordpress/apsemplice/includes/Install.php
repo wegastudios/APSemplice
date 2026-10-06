@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '23';
+	const DB_VERSION        = '24';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -115,6 +115,9 @@ final class Install {
   joined_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,
   board_role varchar(20) DEFAULT NULL,
+  privacy_consent_at datetime DEFAULT NULL,
+  privacy_consent_source varchar(20) DEFAULT NULL,
+  anonymized_at datetime DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
@@ -326,6 +329,29 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY activity_person (activity_id,person_id),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}reminders (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  kind varchar(20) NOT NULL,
+  ref varchar(60) NOT NULL,
+  sent_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY person_kind_ref (person_id,kind,ref),
+  KEY sent_at (sent_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}receipts (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  receipt_key varchar(40) NOT NULL,
+  year smallint(5) unsigned NOT NULL,
+  number int(10) unsigned NOT NULL,
+  issued_at datetime NOT NULL,
+  issued_by bigint(20) unsigned DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY receipt_key (receipt_key),
+  UNIQUE KEY year_number (year,number)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}notices (
