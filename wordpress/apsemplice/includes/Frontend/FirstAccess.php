@@ -64,11 +64,10 @@ final class FirstAccess {
 	/**
 	 * Riconosce il socio dall'email o dal cellulare:
 	 *  - email già del socio: gli arriva il link;
-	 *  - solo il cellulare è di un socio senza accesso: si crea l'utente con l'email indicata, arriva il link e la segreteria vede la voce da controllare;
-	 *  - solo il cellulare è di un socio con accesso già attivo (altra email): non si cambia nulla da soli, la richiesta va alla segreteria;
+	 *  - solo il cellulare è di un socio (con o senza accesso): il cellulare da solo non basta a dimostrare chi è, quindi non si crea né si collega nessun accesso da soli: la richiesta va alla segreteria, che verifica e approva;
 	 *  - nessuno dei due: la richiesta va alla segreteria.
 	 *
-	 * @return string emailed | activated | change_queued | unknown_queued | invalid | none
+	 * @return string emailed | change_queued | unknown_queued | invalid | none
 	 */
 	public static function submit( string $name, string $email, string $phone ): string {
 		if ( ! License::allows( 'member_area' ) ) {
@@ -102,21 +101,8 @@ final class FirstAccess {
 			}
 		}
 		if ( 1 === count( $members ) ) {
-			$p = $members[0];
-			if ( ! empty( $p['wp_user_id'] ) ) {
-				$queue( 'change', (int) $p['id'] );
-				return 'change_queued';
-			}
-			try {
-				$people->update( (int) $p['id'], array( 'email' => strtolower( $email ) ) ); // crea l'utente con l'email indicata
-			} catch ( \InvalidArgumentException $e ) {
-				unset( $e );
-				$queue( 'unknown' );
-				return 'unknown_queued';
-			}
-			$queue( 'review', (int) $p['id'] );
-			Audit::log( 'person.activated_by_phone', 'person', (int) $p['id'] );
-			return self::request( $email ) ? 'activated' : 'none';
+			$queue( 'change', (int) $members[0]['id'] ); // nessun accesso automatico: lo approva la segreteria dopo aver verificato la persona
+			return 'change_queued';
 		}
 
 		// 3. Non riconosciuto.

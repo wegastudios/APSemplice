@@ -26,10 +26,21 @@ final class Exports {
 		return '<a class="button" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 	}
 
+	/**
+	 * Un testo che inizia con = + - @ (o tabulazione / ritorno a capo) verrebbe eseguito come formula da Excel e LibreOffice: gli si mette
+	 * un apice davanti. I numeri (importi, anche negativi, e numeri di telefono con il +) restano com'è.
+	 */
+	public static function neutralize( string $v ): string {
+		if ( '' === $v || ! preg_match( '/^[=+\-@\t\r]/', $v ) || preg_match( '/^[+\-]?[0-9., ]+$/', $v ) ) {
+			return $v;
+		}
+		return "'" . $v;
+	}
+
 	private static function line( array $cells ): string {
 		$out = array();
 		foreach ( $cells as $c ) {
-			$v     = null === $c ? '' : (string) $c;
+			$v     = self::neutralize( null === $c ? '' : (string) $c );
 			$out[] = preg_match( '/[;"\r\n]/', $v ) ? '"' . str_replace( '"', '""', $v ) . '"' : $v;
 		}
 		return implode( ';', $out ) . "\r\n";

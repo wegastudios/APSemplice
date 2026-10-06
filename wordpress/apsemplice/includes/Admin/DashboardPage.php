@@ -56,6 +56,9 @@ final class DashboardPage {
 				$wa     = \ApSemplice\Phone::whatsapp( (string) $rq['phone'] );
 				$who    = $rq['person'] ? $rq['person']['first_name'] . ' ' . $rq['person']['last_name'] : (string) $rq['name'];
 				$label  = array( 'unknown' => 'non riconosciuto', 'change' => 'chiede di cambiare email', 'review' => 'attivato col cellulare: controlla' );
+				if ( 'change' === $rq['kind'] && $rq['person'] && empty( $rq['person']['wp_user_id'] ) ) {
+					$label['change'] = 'chiede l\'accesso col cellulare: verifica la persona prima di approvare';
+				}
 				echo '<li>' . ( $rq['person'] ? '<a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $rq['person']['id'] ) ) ) . '">' . esc_html( $who ) . '</a>' : '<strong>' . esc_html( $who ) . '</strong>' )
 					. ' <span class="description">' . esc_html( $label[ $rq['kind'] ] ) . ' · ' . esc_html( (string) $rq['email'] ) . ' · ' . esc_html( (string) $rq['phone'] ) . ' · ' . esc_html( mysql2date( 'd/m H:i', gmdate( 'Y-m-d H:i:s', (int) $rq['at'] ) ) ) . '</span> ';
 				if ( 'unknown' === $rq['kind'] && '' !== $wa ) {
@@ -64,7 +67,7 @@ final class DashboardPage {
 				}
 				if ( 'change' === $rq['kind'] ) {
 					Ui::form_open( 'apse_access_approve', Ui::url( 'apse' ), false, 'apse-inline' );
-					echo Ui::hidden( 'id', $rq['id'] ) . '<button class="button button-small">Approva nuova email</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					echo Ui::hidden( 'id', $rq['id'] ) . '<button class="button button-small">Approva e manda il link</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 					Ui::form_close();
 					echo ' ';
 				}

@@ -836,6 +836,8 @@ wp_set_current_user( 1 );
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 apse_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );
 apse_ok( false !== strpos( Admin\Exports::people()[1], 'fulvia@example.com' ), 'export soci' );
+apse_ok( "'=HYPERLINK(\"x\")" === Admin\Exports::neutralize( '=HYPERLINK("x")' ) && "'+1+1" === Admin\Exports::neutralize( '+1+1' ) && "'-2+3" === Admin\Exports::neutralize( '-2+3' ) && "'@SUM(A1)" === Admin\Exports::neutralize( '@SUM(A1)' ) && "'\t=1" === Admin\Exports::neutralize( "\t=1" ), 'export CSV: le formule nelle celle di testo vengono neutralizzate' );
+apse_ok( '-12,50' === Admin\Exports::neutralize( '-12,50' ) && '1.234,56' === Admin\Exports::neutralize( '1.234,56' ) && '+39 336 1112233' === Admin\Exports::neutralize( '+39 336 1112233' ) && 'Mario Rossi' === Admin\Exports::neutralize( 'Mario Rossi' ) && '' === Admin\Exports::neutralize( '' ), 'export CSV: importi, telefoni e testi normali restano com\'erano' );
 
 // ---------- Import CSV: piano ----------
 $existing = array();
@@ -2109,11 +2111,14 @@ apse_ok( 'invalid' === $FA::submit( '', 'a@example.com', '339 1230000' ) && 'inv
 apse_ok( 'emailed' === $FA::submit( 'Quinto', $q_mail, '339 9990000' ) && count( $fa_ml ) === $n_ml + 1 && array() === $AR::all(), 'primo accesso: email di un socio -> arriva il link, niente in coda' );
 
 $elio_id = (int) $elio['id'];
-apse_ok( 'activated' === $FA::submit( 'Elio Telefonico', 'Elio.Nuovo@example.com', '+39 336 1112233' ) && count( $fa_ml ) === $n_ml + 2 && 'elio.nuovo@example.com' === (string) ( (array) $fa_ml[ $n_ml + 1 ]['to'] )[0], 'primo accesso: cellulare di un socio senza accesso -> si crea l\'utente e il link va all\'email indicata' );
+apse_ok( 'change_queued' === $FA::submit( 'Elio Telefonico', 'Elio.Nuovo@example.com', '+39 336 1112233' ) && count( $fa_ml ) === $n_ml + 1, 'primo accesso: il solo cellulare di un socio senza accesso non basta -> nessun utente creato, nessuna email' );
 $elio_now = $people->get( $elio_id );
-apse_ok( ! empty( $elio_now['wp_user_id'] ) && 'elio.nuovo@example.com' === $elio_now['email'], 'primo accesso: il socio ha ora utente ed email' );
-$rev = array_values( array_filter( $AR::pending(), function ( $p ) use ( $elio_id ) { return 'review' === $p['kind'] && (int) $p['person_id'] === $elio_id; } ) );
-apse_ok( 1 === count( $rev ), 'primo accesso: la segreteria vede l\'attivazione da cellulare da controllare' );
+apse_ok( empty( $elio_now['wp_user_id'] ) && null === $elio_now['email'] && false === get_user_by( 'email', 'elio.nuovo@example.com' ), 'primo accesso: nessun accesso collegato a chi conosce solo il cellulare' );
+$rev = array_values( array_filter( $AR::pending(), function ( $p ) use ( $elio_id ) { return 'change' === $p['kind'] && (int) $p['person_id'] === $elio_id; } ) );
+apse_ok( 1 === count( $rev ), 'primo accesso: la segreteria vede la richiesta da verificare' );
+$FA::approve_change( (string) $rev[0]['id'] );
+$elio_now = $people->get( $elio_id );
+apse_ok( ! empty( $elio_now['wp_user_id'] ) && 'elio.nuovo@example.com' === $elio_now['email'] && count( $fa_ml ) === $n_ml + 2 && 'elio.nuovo@example.com' === (string) ( (array) $fa_ml[ $n_ml + 1 ]['to'] )[0], 'primo accesso: solo dopo l\'approvazione della segreteria si crea l\'utente e il link va all\'email indicata' );
 
 $people->update( $q, array( 'phone' => '338 5550101' ) );
 $n_ml = count( $fa_ml );

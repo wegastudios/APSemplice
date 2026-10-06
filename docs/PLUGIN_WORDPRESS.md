@@ -222,8 +222,7 @@ Chi tiene un'attività (referente), chi gestisce un evento e gli amministratori 
 Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**: il socio indica nome, email e cellulare.
 
 - **Email già di un socio** → gli arriva il link per scegliere la password.
-- **Cellulare di un solo socio senza accesso** → si crea l'utente con l'email indicata e arriva il link; in dashboard compare la voce "da controllare".
-- **Cellulare di un socio con accesso già attivo (altra email)** → nessuna modifica automatica (il cellulare non è un segreto): la richiesta va in dashboard e la segreteria sceglie *Approva nuova email* o *rifiuta*.
+- **Cellulare di un solo socio (con o senza accesso)** → nessuna modifica automatica: il cellulare non è un segreto e da solo non prova chi sei. La richiesta va in dashboard e la segreteria, dopo aver verificato la persona (per esempio su WhatsApp), sceglie *Approva e manda il link* (si crea l'utente o si cambia l'email e parte il link) oppure *rifiuta*.
 - **Nessuno dei due** → la richiesta va in dashboard con il pulsante per scrivere su WhatsApp.
 
 La risposta al socio è sempre la stessa, così non si scopre chi è socio. Limite: 10 tentativi l'ora per indirizzo IP.
@@ -320,3 +319,8 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 - **Ingresso sul posto dello staff**: solo per **soci** (mai ospiti, nemmeno nuovi: li gestisce la segreteria) e solo in **contanti o POS** (si sceglie il conto tra quelli di quel tipo). Referente e amministratori da pagina evento restano senza questo limite.
 - **Tesoriere**: oltre alle spese può **incassare tutto** dall'area riservata (pagina `[apsemplice_spese]`, riquadro "Incassa"): persona, conto e fino a tre voci tra quota associativa (l'anno si calcola da solo), eventi e altre entrate. Capability `apse_collect`.
 - **Consiglio direttivo**: tre cariche, assegnabili solo a soci **fondatori o ordinari in regola** con la tessera: **1 presidente**, **1 vicepresidente** e **consiglieri** (7 di default, il numero si cambia in Impostazioni → "Consiglio direttivo"). Si assegnano dalla scheda del socio; l'elenco compare in cima a "Soci e ospiti", con avviso se la tessera di qualcuno non è più in regola.
+
+## Sicurezza: due correzioni
+
+- **Primo accesso col solo cellulare**: non crea più nessun accesso da solo (prima chi conosceva il cellulare di un socio senza utente poteva farsi mandare il link con una email propria e prendere la sua identità). Ora la richiesta aspetta l'approvazione della segreteria.
+- **Esportazioni CSV**: le celle di testo che iniziano con `=`, `+`, `-`, `@` (o tabulazione) hanno un apice davanti, così Excel e LibreOffice non le eseguono come formule (un nome ospite o una descrizione malevola non può più colpire chi apre il file). Gli importi numerici restano numeri.
