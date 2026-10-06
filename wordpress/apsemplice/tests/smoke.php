@@ -3810,7 +3810,7 @@ Settings::clear_secret( 'stripe_secret_key' );
 $broken = wp_tempnam( 'apse-bad' );
 $zbk = new ZipArchive();
 $zbk->open( $broken, ZipArchive::OVERWRITE );
-$zbk->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'apsemplice', 'db_version' => (string) Install::DB_VERSION, 'tables' => array( 'apse_people' => 1 ) ) ) );
+$zbk->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'apsemplice', 'db_version' => (string) \ApSemplice\Install::DB_VERSION, 'tables' => array( 'apse_people' => 1 ) ) ) );
 $zbk->addFromString( 'tabelle/apse_people.jsonl', "{ non json\n" );
 $zbk->close();
 $before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
