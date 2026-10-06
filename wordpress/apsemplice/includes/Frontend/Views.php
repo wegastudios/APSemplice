@@ -617,8 +617,9 @@ final class Views {
 		if ( null === $seat['capacity'] ) {
 			return '';
 		}
-		$cls = 0 === $seat['free'] ? 'apsf-bad' : 'apsf-good';
-		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="apsf-small apsf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span></p>';
+		$cls  = 0 === $seat['free'] ? 'apsf-bad' : 'apsf-good';
+		$wait = \ApSemplice\Waitlist::count( (int) $s['id'] );
+		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="apsf-small apsf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span>' . ( $wait ? ' <span class="apsf-small apsf-muted">· in lista d\'attesa: ' . (int) $wait . '</span>' : '' ) . '</p>';
 	}
 
 	private static function door_form( array $s, array $a ): string {
@@ -907,12 +908,12 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
+					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
 				foreach ( $sections as $s ) {
@@ -960,6 +961,23 @@ final class Views {
 				. ' <a class="apsf-btn" target="_blank" href="' . esc_url( \ApSemplice\Receipts::url( $r['key'] ) ) . '">Ricevuta PDF</a></div></li>';
 		}
 		return $html . '</ul></section>';
+	}
+
+	/** Regolamento da accettare (compare in cima all'area finché il socio non lo accetta). */
+	public static function section_rules( array $p ): string {
+		if ( ! \ApSemplice\Regulation::applies_to( $p ) || \ApSemplice\Regulation::accepted( $p ) ) {
+			return '';
+		}
+		$title = \ApSemplice\Regulation::title();
+		$redo  = ! empty( $p['rules_accepted_at'] ) ? '<p class="apsf-small apsf-muted">Il ' . esc_html( mb_strtolower( $title, 'UTF-8' ) ) . ' è stato aggiornato: ti chiediamo di accettarlo di nuovo.</p>' : '';
+		$fields = \ApSemplice\Regulation::box_html() . '<label><input type="checkbox" name="rules_ok" value="1" required> Ho letto e accetto il ' . esc_html( mb_strtolower( $title, 'UTF-8' ) ) . '.</label>';
+		return '<section class="apsf-section apsf-rules-box"><h3>' . esc_html( $title ) . '</h3>' . $redo
+			. ( ! empty( Settings::get( 'rules_block_booking' ) ) ? '<p class="apsf-small apsf-muted">Finché non lo accetti non puoi prenotare eventi e attività.</p>' : '' )
+			. self::form( 'apse_front_accept_rules', $fields, 'Accetto' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
+	public static function rules(): string {
+		return self::with_person( array( __CLASS__, 'section_rules' ) );
 	}
 
 	public static function receipts(): string {
@@ -1019,6 +1037,31 @@ final class Views {
 							: '<span class="apsf-small apsf-muted">non annullabile (gestiscila nella tua area)</span>' );
 				} else {
 					$free[] = $person;
+				}
+			}
+			if ( $free && $full ) { // posti finiti: lista d'attesa
+				$queue = array();
+				foreach ( $free as $person ) {
+					$pos = \ApSemplice\Waitlist::position( (int) $s['id'], (int) $person['id'] );
+					if ( null !== $pos ) {
+						$html .= '<span class="apsf-badge">' . esc_html( $person['first_name'] ) . ': in lista d\'attesa (n. ' . (int) $pos . ')</span> '
+							. self::form( 'apse_front_waitlist_leave', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Esci dalla lista', true, 'apsf-inline' );
+					} else {
+						$queue[] = $person;
+					}
+				}
+				if ( $queue ) {
+					$wf = '';
+					if ( count( $queue ) > 1 ) {
+						$wf .= '<select name="person_id" aria-label="Chi metti in lista">';
+						foreach ( $queue as $person ) {
+							$wf .= '<option value="' . (int) $person['id'] . '">' . esc_html( $person['first_name'] ) . '</option>';
+						}
+						$wf .= '</select>';
+					} else {
+						$wf .= self::hidden( 'person_id', $queue[0]['id'] );
+					}
+					$html .= self::form( 'apse_front_waitlist_join', self::hidden( 'session_id', $s['id'] ) . $wf, 'Lista d\'attesa', false, 'apsf-inline' );
 				}
 			}
 			if ( $free && ! $full ) {

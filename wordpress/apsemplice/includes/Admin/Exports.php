@@ -51,7 +51,7 @@ final class Exports {
 	}
 
 	public static function handle(): void {
-		if ( ! current_user_can( Plugin::CAP ) ) {
+		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
 		check_admin_referer( 'apse_export' );

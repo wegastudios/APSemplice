@@ -31,6 +31,12 @@ final class Settings {
 			'reminders_membership_days' => 30,  // ... quanti giorni prima della scadenza
 			'reminders_dues'          => 1,     // ... mensilità dei corsi non pagate
 			'reminders_events'        => 1,     // ... evento il giorno dopo
+			'rules_enabled'           => 0,     // regolamento: se attivo, i soci devono accettarlo
+			'rules_title'             => 'Regolamento',
+			'rules_text'              => '',    // testo del regolamento (facoltativo se c'è l'indirizzo di una pagina)
+			'rules_url'               => '',    // pagina con il regolamento (facoltativa se c'è il testo)
+			'rules_version'           => '1',   // cambiandola, tutti devono accettare di nuovo
+			'rules_block_booking'     => 1,     // senza accettazione non si prenota
 			'privacy_url'             => '',    // pagina con l'informativa privacy: se c'è, chi attiva l'accesso deve accettarla
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
 			'receipt_footer'          => '',    // riga in fondo alle ricevute (es. riferimento normativo): la decide l'associazione
@@ -111,6 +117,12 @@ final class Settings {
 		}
 		$clean['reminders_membership_days'] = max( 1, min( 120, (int) $clean['reminders_membership_days'] ) );
 		$clean['privacy_url']             = esc_url_raw( trim( (string) $clean['privacy_url'] ) );
+		$clean['rules_enabled']           = empty( $clean['rules_enabled'] ) ? 0 : 1;
+		$clean['rules_block_booking']     = empty( $clean['rules_block_booking'] ) ? 0 : 1;
+		$clean['rules_title']             = substr( trim( (string) $clean['rules_title'] ), 0, 80 );
+		$clean['rules_text']              = substr( trim( str_replace( "\r\n", "\n", (string) $clean['rules_text'] ) ), 0, 30000 );
+		$clean['rules_url']               = esc_url_raw( trim( (string) $clean['rules_url'] ) );
+		$clean['rules_version']           = substr( trim( (string) $clean['rules_version'] ), 0, 20 );
 		$clean['privacy_retention_years'] = max( 1, min( 30, (int) $clean['privacy_retention_years'] ) );
 		$clean['receipt_footer']          = substr( trim( (string) $clean['receipt_footer'] ), 0, 300 );
 		$clean['license_key']             = substr( trim( (string) $clean['license_key'] ), 0, 120 );

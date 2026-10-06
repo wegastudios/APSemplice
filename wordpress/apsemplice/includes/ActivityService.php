@@ -366,6 +366,7 @@ class ActivityService {
 		$this->validate_session( $n );
 		$this->db()->update( Db::t( 'sessions' ), $n, array( 'id' => $session_id ) );
 		Audit::log( 'session.updated', 'activity', (int) $cur['activity_id'], array( 'session' => $session_id ) );
+		Waitlist::promote( $session_id ); // più posti: entrano quelli in lista d'attesa
 	}
 
 	/**
@@ -492,6 +493,7 @@ class ActivityService {
 		$s = $this->session( $session_id );
 		$this->db()->update( Db::t( 'bookings' ), array( 'status' => 'cancelled', 'cancelled_at' => Db::now() ), array( 'session_id' => $session_id, 'person_id' => $person_id ) );
 		Audit::log( 'booking.cancelled', 'activity', $s ? (int) $s['activity_id'] : null, array( 'session' => $session_id, 'person_id' => $person_id ) );
+		Waitlist::promote( $session_id ); // si è liberato un posto: entra il primo della lista d'attesa
 	}
 
 	private function booking_row( array $b, int $paid ): array {

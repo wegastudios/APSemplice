@@ -181,7 +181,7 @@ final class Attachments {
 
 	/** Chi gestisce il plugin vede tutto; il tesoriere solo gli allegati delle spese registrate da lui. */
 	public static function can_open( ?array $a ): bool {
-		if ( current_user_can( Plugin::CAP ) ) {
+		if ( current_user_can( Plugin::CAP_OPS ) ) {
 			return true;
 		}
 		if ( ! $a || ! current_user_can( 'apse_add_expense', 0 ) ) {

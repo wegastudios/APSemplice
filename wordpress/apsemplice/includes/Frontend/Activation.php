@@ -71,6 +71,9 @@ final class Activation {
 		if ( 'ok' !== $r['status'] ) {
 			return array( 'ok' => false, 'error' => self::message( $r['status'] ) );
 		}
+		if ( \ApSemplice\Regulation::enabled() && empty( $post['rules_ok'] ) ) {
+			return array( 'ok' => false, 'error' => 'Per continuare devi accettare il ' . mb_strtolower( \ApSemplice\Regulation::title(), 'UTF-8' ) . '.' );
+		}
 		if ( '' !== (string) Settings::get( 'privacy_url' ) && empty( $post['privacy_ok'] ) ) {
 			return array( 'ok' => false, 'error' => 'Per continuare devi accettare l\'informativa sulla privacy.' );
 		}
@@ -84,6 +87,9 @@ final class Activation {
 		}
 		if ( '' !== (string) Settings::get( 'privacy_url' ) ) {
 			\ApSemplice\Privacy::set_consent( (int) $r['person']['id'], 'web' );
+		}
+		if ( \ApSemplice\Regulation::enabled() ) {
+			\ApSemplice\Regulation::accept( (int) $r['person']['id'], 'web' );
 		}
 		return array( 'ok' => true, 'user_id' => $uid );
 	}
@@ -104,6 +110,7 @@ final class Activation {
 			. '<label>Il tuo cellulare<input style="' . $input . '" type="tel" name="phone" value="' . esc_attr( (string) ( $post['phone'] ?? $p['phone'] ?? '' ) ) . '" required autocomplete="tel"></label>'
 			. '<label>Password (almeno 8 caratteri)<input style="' . $input . '" type="password" name="password" minlength="8" required autocomplete="new-password"></label>'
 			. '<label>Ripeti la password<input style="' . $input . '" type="password" name="password2" minlength="8" required autocomplete="new-password"></label>'
+			. ( \ApSemplice\Regulation::enabled() ? '<div style="margin:8px 0"><strong>' . esc_html( \ApSemplice\Regulation::title() ) . '</strong>' . \ApSemplice\Regulation::box_html() . '<label style="display:block;margin:6px 0 14px"><input type="checkbox" name="rules_ok" value="1" required> Ho letto e accetto il ' . esc_html( mb_strtolower( \ApSemplice\Regulation::title(), 'UTF-8' ) ) . '.</label></div>' : '' )
 			. ( '' !== (string) Settings::get( 'privacy_url' ) ? '<label style="display:block;margin:6px 0 14px"><input type="checkbox" name="privacy_ok" value="1" required> Ho letto <a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a> e acconsento al trattamento dei miei dati.</label>' : '' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Attiva il mio accesso</button></form>';
 		return CardVerify::layout( 'Attiva il tuo accesso', $accent, $body );

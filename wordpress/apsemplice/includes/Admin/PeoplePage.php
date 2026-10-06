@@ -44,7 +44,7 @@ final class PeoplePage {
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-people">';
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
-		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> ';
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
@@ -139,10 +139,16 @@ final class PeoplePage {
 			self::panel_guest_status( $p );
 			self::panel_membership( $p );
 			self::panel_card_qr( $p );
-			self::panel_board( $p );
+			if ( current_user_can( \ApSemplice\Plugin::CAP ) ) { // riservati agli amministratori
+				self::panel_board( $p );
+			}
+			self::panel_rules( $p );
 			self::panel_privacy( $p );
 			self::panel_receipts( $p );
-			self::panel_treasurer( $p );
+			if ( current_user_can( \ApSemplice\Plugin::CAP ) ) {
+				self::panel_treasurer( $p );
+				self::panel_secretary( $p );
+			}
 			self::panel_guests( $p );
 			self::panel_activities( $p );
 			self::panel_bookings( $p );
@@ -317,12 +323,35 @@ final class PeoplePage {
 		}
 		echo '<p><a class="button" href="' . esc_url( \ApSemplice\Privacy::export_url( $id ) ) . '">Scarica i dati (JSON)</a></p>';
 		$why = \ApSemplice\Privacy::blocker( $id );
-		if ( '' === $why ) {
+		if ( ! current_user_can( \ApSemplice\Plugin::CAP ) ) {
+			// la cancellazione dei dati la decide un amministratore
+		} elseif ( '' === $why ) {
 			Ui::form_open( 'apse_privacy_anonymize', Ui::url( 'apse-comms' ), false, 'apse-inline' );
 			echo Ui::hidden( 'id', $id ) . '<button class="button" data-confirm="Anonimizzare questa persona? Nome, contatti, codice fiscale, tessera e note vengono tolti e non si recuperano. I movimenti contabili restano.">Anonimizza (cancellazione dati)</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();
 		} else {
 			echo '<p class="description">Anonimizzazione non possibile ora: ' . esc_html( $why ) . '</p>';
+		}
+		echo '</div>';
+	}
+
+	/** Regolamento: accettazione registrata (versione e modalità) e registrazione a mano. */
+	private static function panel_rules( array $p ): void {
+		if ( ! \ApSemplice\Regulation::applies_to( $p ) ) {
+			return;
+		}
+		$id = (int) $p['id'];
+		echo '<div class="apse-card"><h2>' . esc_html( \ApSemplice\Regulation::title() ) . '</h2>';
+		if ( \ApSemplice\Regulation::accepted( $p ) ) {
+			echo '<p><strong class="apse-ok">Accettato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['rules_accepted_at'] ) ) . ' (versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ', ' . esc_html( \ApSemplice\Regulation::SOURCES[ $p['rules_accepted_source'] ] ?? '—' ) . ')</p>';
+			Ui::form_open( 'apse_rules_record', Ui::url( 'apse-person', array( 'id' => $id ) ), false, 'apse-inline' );
+			echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere l\'accettazione registrata?">rimuovi l\'accettazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		} else {
+			echo '<p>' . ( ! empty( $p['rules_accepted_at'] ) ? 'Ha accettato la versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ': ora è in vigore la ' . esc_html( \ApSemplice\Regulation::version() ) . '.' : 'Non ancora accettato.' ) . '</p>';
+			Ui::form_open( 'apse_rules_record', Ui::url( 'apse-person', array( 'id' => $id ) ) );
+			echo Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \ApSemplice\Regulation::SOURCES, 'paper' ) . '</select> <button class="button">Registra l\'accettazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
 		}
 		echo '</div>';
 	}
@@ -365,6 +394,25 @@ final class PeoplePage {
 			echo '<p class="apse-neg">Attenzione: questo socio non è più in regola con la tessera.</p>';
 		}
 		echo '</div>';
+	}
+
+	/** Ruolo Segreteria: lavora su soci, attività e contabilità senza essere amministratore del sito. */
+	private static function panel_secretary( array $p ): void {
+		if ( \ApSemplice\MemberType::GUEST === $p['type'] || empty( $p['wp_user_id'] ) ) {
+			return;
+		}
+		$user = get_userdata( (int) $p['wp_user_id'] );
+		if ( ! $user || $user->has_cap( \ApSemplice\Plugin::CAP ) ) {
+			return;
+		}
+		$on = in_array( \ApSemplice\Plugin::ROLE_SECRETARY, (array) $user->roles, true );
+		echo '<div class="apse-card"><h2>Segreteria</h2>';
+		echo '<p>' . ( $on ? '<strong class="apse-ok">Fa parte della segreteria</strong>' : 'Non fa parte della segreteria.' ) . '</p>';
+		Ui::form_open( 'apse_set_secretary', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
+		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<button class="button">' . ( $on ? 'Togli dalla segreteria' : 'Aggiungi alla segreteria' ) . '</button>';
+		Ui::form_close();
+		echo '<p class="description">La segreteria accede all\'amministrazione per gestire soci, attività, incassi e spese, comunicazioni e ricevute. Non vede Impostazioni, pagamenti online, privacy (anonimizzazione), testi personalizzati e anni solari.</p></div>';
 	}
 
 	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */

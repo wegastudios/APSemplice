@@ -119,7 +119,7 @@ final class Access {
 	}
 
 	public static function is_admin_user( int $user_id ): bool {
-		return $user_id > 0 && user_can( $user_id, Plugin::CAP );
+		return $user_id > 0 && user_can( $user_id, Plugin::CAP_OPS );
 	}
 
 	public static function user_can( int $user_id, string $ability, int $object_id ): bool {

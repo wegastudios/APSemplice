@@ -23,6 +23,7 @@ final class Shortcodes {
 		'mie_attivita'    => 'Le mie attività e prenotazioni',
 		'pagamenti'       => 'Pagamenti da fare (paga online)',
 		'ricevute'        => 'Le mie ricevute e attestazioni (PDF)',
+		'regolamento'     => 'Regolamento da accettare',
 		'spese'           => 'Spese del tesoriere (con foto dello scontrino)',
 		'ingressi'        => 'Ingressi agli eventi (prenotati e QR, per chi gestisce)',
 		'avvisi'          => 'Avvisi dei volontari agli iscritti (bacheca)',
@@ -50,7 +51,7 @@ final class Shortcodes {
 	public static function render_view( string $view, array $atts = array() ): string {
 		switch ( $view ) {
 			case 'area_soci':
-				return Views::area( shortcode_atts( array( 'sezioni' => 'tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ), $atts ) );
+				return Views::area( shortcode_atts( array( 'sezioni' => 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ), $atts ) );
 			case 'tessera':
 				return Views::card();
 			case 'calendario':
@@ -61,6 +62,8 @@ final class Shortcodes {
 				return Views::checkin();
 			case 'spese':
 				return Views::expenses();
+			case 'regolamento':
+				return Views::rules();
 			case 'ricevute':
 				return Views::receipts();
 			case 'pagamenti':

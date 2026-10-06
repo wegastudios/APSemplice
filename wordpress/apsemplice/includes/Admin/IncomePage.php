@@ -21,7 +21,7 @@ final class IncomePage {
 	/** Contesto di una persona per l'incasso: tessera, attività a cui è iscritta e primo mese da pagare. */
 	public static function ajax_context(): void {
 		check_ajax_referer( 'apse_income', 'nonce' );
-		if ( ! current_user_can( Plugin::CAP ) ) {
+		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			wp_send_json_error( 'Non autorizzato', 403 );
 		}
 		$person = Plugin::people()->get( (int) ( $_POST['person_id'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification

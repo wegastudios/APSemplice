@@ -5,8 +5,14 @@ defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
 
 final class Plugin {
 
-	/** Capability per usare il plugin. Per ora solo gli amministratori (vedi Install::grant_caps). */
+	/** Capability di amministrazione completa (impostazioni, pagamenti online, privacy, testi): solo gli amministratori. */
 	const CAP = 'apse_manage';
+
+	/** Capability per lavorare con soci, attività e contabilità: amministratori e ruolo Segreteria. */
+	const CAP_OPS = 'apse_operate';
+
+	/** Ruolo WordPress della segreteria: opera sul plugin senza essere amministratore del sito. */
+	const ROLE_SECRETARY = 'apse_secretary';
 
 	/** Ruolo WordPress dato ai nuovi utenti creati per i soci: nessun accesso all'area di amministrazione. */
 	const ROLE_MEMBER = 'apse_member';

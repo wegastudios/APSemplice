@@ -94,7 +94,7 @@ final class Api {
 				'callback'            => array( __CLASS__, 'session_bookings' ),
 				'permission_callback' => function ( \WP_REST_Request $r ) {
 					$s = Plugin::activities()->session( (int) $r['id'] );
-					return $s ? self::guard( 'apse_view_participants', (int) $s['activity_id'] ) : self::guard( Plugin::CAP );
+					return $s ? self::guard( 'apse_view_participants', (int) $s['activity_id'] ) : self::guard( Plugin::CAP_OPS );
 				},
 			)
 		);
