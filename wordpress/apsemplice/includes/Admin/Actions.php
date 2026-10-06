@@ -329,7 +329,7 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->book( (int) $p['session_id'], $pid );
-		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' . self::membership_warning( $pid ) );
+		return self::after_signup( $pid, Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
 	}
 
 	/**

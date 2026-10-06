@@ -2676,6 +2676,21 @@ apse_ok( false === strpos( $res_free[0], 'apse-income' ), 'iscrizione: se non c\
 $res_paid = $qe->invoke( null, array( 'person_id' => (string) $p_cov, 'target' => 'a:' . $qe_c ) );
 apse_ok( false !== strpos( $res_paid[0], 'apse-income' ) && false !== strpos( $res_paid[1], 'incasso' ), 'iscrizione: con la mensilità dovuta si apre l\'incasso (anche con la tessera in regola)' );
 
+// ---------- Prenotazione di un evento dalla segreteria: se c'è da incassare si apre l'incasso ----------
+$bk = new ReflectionMethod( Admin\Actions::class, 'book' );
+$bk->setAccessible( true );
+$ev_paid = $mkev( 'Serata a pagamento', 700, null );
+$ev_free = $mkev( 'Serata libera', 0, null );
+$s_paid  = $first_session( $ev_paid );
+$s_free  = $first_session( $ev_free );
+$res_bp = $bk->invoke( null, array( 'session_id' => (string) $s_paid, 'activity_id' => (string) $ev_paid, 'person_id' => (string) $p_cov ) );
+apse_ok( false !== strpos( $res_bp[0], 'apse-income' ) && false !== strpos( $res_bp[0], 'person_id=' . $p_cov ) && false !== strpos( $res_bp[0], 'due=1' ), 'prenotazione evento a pagamento: si apre l\'incasso con il contributo da versare' );
+$res_bf = $bk->invoke( null, array( 'session_id' => (string) $s_free, 'activity_id' => (string) $ev_free, 'person_id' => (string) $p_cov ) );
+apse_ok( false === strpos( $res_bf[0], 'apse-income' ) && false !== strpos( $res_bf[1], 'Prenotazione registrata' ), 'prenotazione evento gratuito con la tessera in regola: si resta nella scheda dell\'evento' );
+$p_nocard = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Evento', 'last_name' => 'Senzatessera', 'email' => 'evento.senzatessera@example.com' ) );
+$res_bn = $bk->invoke( null, array( 'session_id' => (string) $s_free, 'activity_id' => (string) $ev_free, 'person_id' => (string) $p_nocard ) );
+apse_ok( false !== strpos( $res_bn[0], 'apse-income' ) && false !== strpos( $res_bn[0], 'person_id=' . $p_nocard ), 'prenotazione evento gratuito con la tessera non valida: si apre l\'incasso (la quota associativa)' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );
