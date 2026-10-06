@@ -465,3 +465,22 @@ Corretto:
 - **Privacy**: l'anonimizzazione toglie anche polizze, dispositivi con le notifiche, destinatari delle comunicazioni, motivo di uscita e legami del nucleo familiare; l'esportazione dei dati comprende polizze, presenze e data di uscita.
 
 Verificato senza trovare problemi: query SQL (tutte preparate o con valori fissi), permessi e nonce di ogni azione, escape dell'output delle pagine nuove, lettura dei file Excel (nessun DOCTYPE né entità), accesso alle ricevute, gli indirizzi dei servizi di push (solo https e servizi noti), ordini WooCommerce (il prezzo viene sempre dal server e l'ordine si registra una sola volta).
+
+## Revisione riga per riga dei file letti solo di sfuggita (ottobre, quarto giro)
+
+Rilette per intero le pagine di amministrazione, l'importazione, le tessere per il wallet, la licenza, i fondi, i registri, i promemoria, le azioni del sito e gli script.
+
+Corretto:
+- **Importazione da file**: il codice dell'anteprima veniva salvato con le maiuscole e poi cercato in minuscolo, quindi l'anteprima risultava sempre «scaduta» e non si poteva importare dal pannello. Ora il codice è sempre in minuscolo.
+- **Soci usciti**: chi lascia l'associazione risulta sospeso (non prenota, non riceve promemoria né comunicazioni ai soci, non compare tra i soci da rinnovare). Per i fondatori la tessera termina alla data di uscita. Togliendo la cessazione il socio torna in carica; finché c'è la cessazione non si può riattivare. Il QR della tessera e la tessera nell'area soci non risultano più valide per un socio sospeso o uscito.
+- **Prenotazioni e rimborsi**: la prenotazione di un posto fallisce con «riprova» se il blocco non si ottiene (prima proseguiva senza); l'estinzione di un fondo avviene sotto blocco e in un'unica transazione (uscita, voce del fondo e chiusura insieme: un doppio clic non paga due volte); i promemoria si prenotano prima di essere spediti (cron e «Invia ora» insieme non mandano due email).
+- **Licenza**: avvisi, comunicazioni, app installabile e notifiche push ora si fermano con la licenza non in regola, come descritto in `LICENZE.md` (prima era controllato solo l'invio dei promemoria).
+- **Privacy**: l'anonimizzazione toglie il nome anche dalle voci dei pagamenti online, dal nome dei fondi, dalla firma degli avvisi e dai dati precedenti salvati dagli import; il registro delle azioni non scrive più il nome dei fondi.
+- **Pagamenti online**: l'elenco mostra «WooCommerce» per gli ordini del negozio (prima li indicava come Stripe).
+- **Controlli sui dati**: lunghezza di nome, cognome, email, cellulare e codice fiscale, data di ingresso reale, anno della tessera di un incasso, mese del registro presenze, periodo dell'attestato presenze, data nel contesto dell'incasso, nome del file scaricato, attributi dei blocchi, valori non testuali nei pacchetti di traduzione.
+- **Troncamenti**: i testi lunghi si accorciano per caratteri e non per byte (niente lettere accentate spezzate).
+- **Varie**: segno di spunta «può incassare» con un carattere rovinato, filtri del registro azioni completati, dati dei blocchi nell'editor protetti da `</script>`, descrizioni di alcune funzioni.
+
+Verificato senza trovare problemi: esportazioni CSV (le celle che iniziano con `=`, `+`, `-`, `@` vengono neutralizzate), importazione di prima nota e soci, firma e contenuto delle tessere Apple e Google, caricamento dell'icona dell'app, caricamento delle credenziali del wallet, script del sito e dell'amministrazione (nessun HTML costruito con dati dell'utente), controllo dei biglietti QR.
+
+Limiti noti: i nomi scritti a mano nei verbali (elenco dei presenti) non vengono anonimizzati; l'invio degli avvisi ai partecipanti di un'attività avviene in un solo passaggio (le comunicazioni a gruppi invece a gruppi di 25).
