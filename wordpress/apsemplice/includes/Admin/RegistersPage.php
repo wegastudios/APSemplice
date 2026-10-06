@@ -230,7 +230,7 @@ final class RegistersPage {
 	public static function render_attendance(): void {
 		$aid   = Ui::get_int( 'activity' );
 		$today = Db::today();
-		$ym    = preg_match( '/^\d{4}-\d{2}$/', Ui::get_str( 'ym' ) ) ? Ui::get_str( 'ym' ) : substr( $today, 0, 7 );
+		$ym    = preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', Ui::get_str( 'ym' ) ) ? Ui::get_str( 'ym' ) : substr( $today, 0, 7 );
 		$date  = Ui::get_str( 'date' );
 		Ui::header( 'Registro presenze' );
 		$acts = array();

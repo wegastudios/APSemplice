@@ -180,6 +180,9 @@ final class Broadcasts {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function create( string $subject, string $body, string $audience, int $ref = 0 ): int {
+		if ( ! License::allows( 'official_notices' ) ) {
+			throw new \InvalidArgumentException( 'L\'invio delle comunicazioni è sospeso perché la licenza di APSemplice non risulta in regola.' );
+		}
 		$subject = trim( (string) preg_replace( '/\s+/', ' ', $subject ) ); // una sola riga: niente a capo nell'oggetto
 		$body    = trim( str_replace( "\r\n", "\n", $body ) );
 		if ( '' === $subject || '' === $body ) {
@@ -200,13 +203,13 @@ final class Broadcasts {
 		$db->insert(
 			Db::t( 'broadcasts' ),
 			array(
-				'subject' => $subject, 'body' => $body, 'audience' => substr( $audience, 0, 40 ), 'audience_ref' => $ref ?: null, 'status' => 'sending', 'total' => count( $r['list'] ),
+				'subject' => $subject, 'body' => $body, 'audience' => mb_substr( $audience, 0, 40 ), 'audience_ref' => $ref ?: null, 'status' => 'sending', 'total' => count( $r['list'] ),
 				'sent' => 0, 'failed' => 0, 'created_by' => get_current_user_id() ?: null, 'created_at' => Db::now(),
 			)
 		);
 		$id = (int) $db->insert_id;
 		foreach ( $r['list'] as $x ) {
-			$db->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $id, 'person_id' => $x['person_id'], 'email' => substr( $x['email'], 0, 190 ), 'name' => substr( $x['name'], 0, 120 ), 'status' => 'queued' ) );
+			$db->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $id, 'person_id' => $x['person_id'], 'email' => mb_substr( $x['email'], 0, 190 ), 'name' => mb_substr( $x['name'], 0, 120 ), 'status' => 'queued' ) );
 		}
 		Audit::log( 'broadcast.created', 'broadcast', $id, array( 'audience' => $audience, 'recipients' => count( $r['list'] ) ) ); // senza il testo
 		self::process( $id, self::BATCH );
@@ -217,8 +220,8 @@ final class Broadcasts {
 	public static function process( int $id, int $batch = self::BATCH ): int {
 		$db = self::db();
 		$b  = self::get( $id );
-		if ( ! $b || 'sending' !== $b['status'] ) {
-			return 0;
+		if ( ! $b || 'sending' !== $b['status'] || ! License::allows( 'official_notices' ) ) {
+			return 0; // con la licenza non in regola l'invio resta fermo: riprende da solo quando torna in regola
 		}
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array();
 		$assoc = (string) Settings::get( 'association_name' );

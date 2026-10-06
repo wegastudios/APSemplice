@@ -71,9 +71,9 @@ class FundService {
 		}
 		$vol  = ! empty( $activity['instructor_person_id'] ) ? Plugin::people()->get( (int) $activity['instructor_person_id'] ) : null;
 		$name = 'Rimborso ' . ( $vol ? trim( $vol['first_name'] . ' ' . $vol['last_name'] ) : 'volontario' ) . ' — ' . $activity['name'];
-		$this->db()->insert( Db::t( 'funds' ), array( 'name' => substr( $name, 0, 200 ), 'activity_id' => $activity_id, 'person_id' => $vol ? (int) $vol['id'] : null, 'created_at' => Db::now() ) );
+		$this->db()->insert( Db::t( 'funds' ), array( 'name' => mb_substr( $name, 0, 200 ), 'activity_id' => $activity_id, 'person_id' => $vol ? (int) $vol['id'] : null, 'created_at' => Db::now() ) );
 		$id = (int) $this->db()->insert_id;
-		Audit::log( 'fund.created', 'fund', $id, array( 'name' => $name ) );
+		Audit::log( 'fund.created', 'fund', $id );
 		return $id;
 	}
 
@@ -100,9 +100,9 @@ class FundService {
 		if ( $person_id && ! Plugin::people()->get( $person_id ) ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		$this->db()->insert( Db::t( 'funds' ), array( 'name' => substr( $name, 0, 200 ), 'person_id' => $person_id ?: null, 'created_at' => Db::now() ) );
+		$this->db()->insert( Db::t( 'funds' ), array( 'name' => mb_substr( $name, 0, 200 ), 'person_id' => $person_id ?: null, 'created_at' => Db::now() ) );
 		$id = (int) $this->db()->insert_id;
-		Audit::log( 'fund.created', 'fund', $id, array( 'name' => $name ) );
+		Audit::log( 'fund.created', 'fund', $id );
 		if ( $initial_cents > 0 ) {
 			$this->deposit( $id, $initial_cents, '' !== $date ? $date : Db::today(), 'Somma iniziale' );
 		}
@@ -118,7 +118,7 @@ class FundService {
 		if ( $cents <= 0 ) {
 			throw new \InvalidArgumentException( 'Indica un importo maggiore di zero.' );
 		}
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => substr( '' !== $note ? $note : 'Somma accantonata', 0, 255 ), 'created_at' => Db::now() ) );
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( '' !== $note ? $note : 'Somma accantonata', 0, 255 ), 'created_at' => Db::now() ) );
 		Audit::log( 'fund.deposited', 'fund', $fund_id, array( 'cents' => $cents ) );
 	}
 
@@ -196,7 +196,7 @@ class FundService {
 		if ( $cents <= 0 || $cents > $f['balance'] ) {
 			throw new \InvalidArgumentException( 'Puoi liberare da zero fino a ' . Money::format( $f['balance'] ) . '.' );
 		}
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => substr( '' !== $note ? $note : 'Quota liberata', 0, 255 ), 'created_at' => Db::now() ) );
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( '' !== $note ? $note : 'Quota liberata', 0, 255 ), 'created_at' => Db::now() ) );
 		Audit::log( 'fund.released', 'fund', $fund_id, array( 'cents' => $cents ) );
 	}
 
@@ -206,24 +206,34 @@ class FundService {
 	 * @return int id dell'uscita in prima nota (0 se il fondo era a zero)
 	 */
 	public function settle( int $fund_id, int $account_id, string $method, string $date ): int {
-		$f = $this->get( $fund_id );
-		if ( ! $f || null !== $f['closed_at'] ) {
-			throw new \InvalidArgumentException( 'Fondo non trovato o già estinto.' );
-		}
-		$ledger = Plugin::ledger();
-		$tx_id  = 0;
-		if ( $f['balance'] > 0 ) {
-			$tx_id = $ledger->record_expense(
-				array(
-					'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => $ledger->category_id_of_kind( $f['person_id'] ? 'member_reimbursement' : 'general_cost' ),
-					'amount_cents' => $f['balance'], 'activity_id' => $f['activity_id'] ? (int) $f['activity_id'] : null, 'person_id' => $f['person_id'] ? (int) $f['person_id'] : null,
-					'description' => substr( $f['name'] . ' (fondo estinto)', 0, 255 ),
-				)
-			);
-			$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'payout', 'cents' => $f['balance'], 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => 'Rimborso pagato', 'created_at' => Db::now() ) );
-		}
-		$this->db()->update( Db::t( 'funds' ), array( 'closed_at' => Db::now() ), array( 'id' => $fund_id ) );
-		Audit::log( 'fund.settled', 'fund', $fund_id, array( 'cents' => $f['balance'], 'tx' => $tx_id ) );
-		return $tx_id;
+		// Sotto blocco (due richieste insieme non pagano due volte lo stesso rimborso) e in un'unica transazione (uscita, voce del fondo e chiusura: tutto o niente).
+		return (int) Db::with_lock(
+			'apse_fund_settle_' . $fund_id,
+			function () use ( $fund_id, $account_id, $method, $date ) {
+				$ledger = Plugin::ledger();
+				return $ledger->in_batch(
+					function () use ( $ledger, $fund_id, $account_id, $method, $date ) {
+						$f = $this->get( $fund_id );
+						if ( ! $f || null !== $f['closed_at'] ) {
+							throw new \InvalidArgumentException( 'Fondo non trovato o già estinto.' );
+						}
+						$tx_id = 0;
+						if ( $f['balance'] > 0 ) {
+							$tx_id = $ledger->record_expense(
+								array(
+									'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => $ledger->category_id_of_kind( $f['person_id'] ? 'member_reimbursement' : 'general_cost' ),
+									'amount_cents' => $f['balance'], 'activity_id' => $f['activity_id'] ? (int) $f['activity_id'] : null, 'person_id' => $f['person_id'] ? (int) $f['person_id'] : null,
+									'description' => mb_substr( $f['name'] . ' (fondo estinto)', 0, 255 ),
+								)
+							);
+							$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'payout', 'cents' => $f['balance'], 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => 'Rimborso pagato', 'created_at' => Db::now() ) );
+						}
+						$this->db()->update( Db::t( 'funds' ), array( 'closed_at' => Db::now() ), array( 'id' => $fund_id ) );
+						Audit::log( 'fund.settled', 'fund', $fund_id, array( 'cents' => $f['balance'], 'tx' => $tx_id ) );
+						return $tx_id;
+					}
+				);
+			}
+		);
 	}
 }

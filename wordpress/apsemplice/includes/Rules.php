@@ -30,6 +30,19 @@ final class Rules {
 			$errors[] = 'Il numero di cellulare non è valido.';
 		}
 
+		$joined = trim( (string) ( $d['joined_on'] ?? '' ) );
+		if ( '' !== $joined ) {
+			$dt = \DateTime::createFromFormat( 'Y-m-d', $joined );
+			if ( ! $dt || $dt->format( 'Y-m-d' ) !== $joined ) {
+				$errors[] = 'La data di ingresso non è valida.';
+			}
+		}
+		foreach ( array( 'first_name' => array( 'Il nome', 120 ), 'last_name' => array( 'Il cognome', 120 ), 'email' => array( 'L\'email', 190 ), 'phone' => array( 'Il cellulare', 60 ), 'tax_code' => array( 'Il codice fiscale', 32 ) ) as $field => $lim ) {
+			if ( mb_strlen( trim( (string) ( $d[ $field ] ?? '' ) ), 'UTF-8' ) > $lim[1] ) {
+				$errors[] = $lim[0] . ' è troppo lungo (al massimo ' . $lim[1] . ' caratteri).';
+			}
+		}
+
 		$card = trim( (string) ( $d['card_number'] ?? '' ) );
 		if ( strlen( $card ) > 40 ) {
 			$errors[] = 'Il numero di tessera è troppo lungo (massimo 40 caratteri).';

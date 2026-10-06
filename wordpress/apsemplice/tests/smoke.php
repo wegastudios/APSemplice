@@ -279,6 +279,10 @@ License::set_state( 'unpaid', $today );
 $pol = License::policy();
 apse_ok( 'closable' === $pol['popup'] && 7 === $pol['days_left'], 'licenza non pagata: popup chiudibile per 7 giorni' );
 apse_ok( ! License::allows( 'export' ) && ! License::allows( 'member_area' ), 'licenza non pagata: export e accesso soci bloccati subito' );
+Settings::update( array( 'pwa_enabled' => 1, 'push_enabled' => 1 ) );
+apse_ok( ! \ApSemplice\Pwa::enabled() && ! \ApSemplice\Push::enabled(), 'licenza non pagata: l\'app installabile e le notifiche push sono bloccate' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $yoga ) { \ApSemplice\Notices::send( $yoga, null, 'Titolo', 'Testo' ); } ), 'licenza' ) && false !== strpos( (string) apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', 'Testo', 'members_all' ); } ), 'licenza' ), 'licenza non pagata: avvisi e comunicazioni sono sospesi' );
+Settings::update( array( 'pwa_enabled' => 0, 'push_enabled' => 0 ) );
 apse_ok( false !== strpos( Admin\LicenseNotice::html(), 'apse-overlay-close' ), 'popup con pulsante di chiusura' );
 apse_ok( false !== strpos( Admin\Exports::link( 'people', array(), 'Esporta' ), 'disabled' ), 'pulsanti di esportazione disattivati' );
 apse_ok( user_can( 1, 'apse_view_participants', $yoga ), 'amministratore: i permessi restano' );
@@ -1561,6 +1565,10 @@ $tina_param = \ApSemplice\CardToken::param( $tre_p, Settings::card_secret() );
 apse_ok( 'expired' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: un socio senza tessera valida risulta non valido' );
 $people->set_membership( $tre_p, Settings::social_year()->label(), true, 'manual' );
 apse_ok( 'valid' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: lo stesso QR diventa valido appena la tessera si rinnova (verifica in diretta)' );
+$people->suspend( $tre_p );
+apse_ok( 'expired' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: un socio sospeso o uscito non ha la tessera valida, anche se non è scaduta' );
+$people->reactivate( $tre_p );
+apse_ok( 'valid' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: riattivato, la tessera torna valida' );
 apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( $founder . '.' . str_repeat( '0', 20 ) )['status'] && 'invalid' === \ApSemplice\Frontend\CardVerify::result( 'boh' )['status'] && 'invalid' === \ApSemplice\Frontend\CardVerify::result( ( $founder + 1 ) . '.' . explode( '.', $qm[1] )[1] )['status'], 'verifica: firma sbagliata, formato errato o firma di un altro socio = non valido' );
 apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( \ApSemplice\CardToken::param( $guest, Settings::card_secret() ) )['status'], 'verifica: gli ospiti non hanno tessera' );
 $page = \ApSemplice\Frontend\CardVerify::page( $qm[1] );
@@ -3824,6 +3832,29 @@ $bk_csv = \ApSemplice\Docs::book( '', 'csv' );
 apse_ok( 0 === strpos( $bk_doc['body'], '%PDF-1.4' ) && false !== strpos( $bk_doc['body'], 'LIBRO DEI SOCI' ) && false !== strpos( $bk_csv['body'], 'Libroregistro Livia' ) && false !== strpos( $bk_csv['body'], 'recesso' ), 'libro soci: PDF e CSV' );
 \ApSemplice\MemberBook::set_left( $rg_p, '' );
 apse_ok( in_array( $rg_p, array_column( \ApSemplice\MemberBook::rows( 'in_force' ), 'id' ), true ), 'libro soci: la cessazione si toglie' );
+// cessazione: chi ha lasciato l'associazione non è più un socio attivo
+$lf_p = $mkb( 'Lia', 'Lasciata' );
+$people->set_membership( $lf_p, Settings::membership_year()->label(), true );
+apse_ok( $people->is_active_member( $lf_p ), 'cessazione: prima della cessazione il socio è attivo' );
+\ApSemplice\MemberBook::set_left( $lf_p, $today, 'recesso' );
+apse_ok( ! $people->is_active_member( $lf_p ) && $people->is_suspended( $lf_p ), 'cessazione: chi ha lasciato non è più un socio attivo' );
+apse_ok( null !== apse_throws( function () use ( $people, $lf_p ) { $people->reactivate( $lf_p ); } ), 'cessazione: non si riattiva finché c\'è la cessazione' );
+\ApSemplice\MemberBook::set_left( $lf_p, '' );
+apse_ok( $people->is_active_member( $lf_p ) && ! $people->is_suspended( $lf_p ), 'cessazione: tolta, il socio torna in carica' );
+$lf_f = $people->create( array( 'type' => 'founder', 'first_name' => 'Fabio', 'last_name' => 'Fondatorelasciato', 'email' => 'fabio.fondatorelasciato@example.com', 'joined_on' => gmdate( 'Y-m-d', strtotime( '-30 days' ) ) ) );
+apse_ok( $people->is_active_member( $lf_f ), 'cessazione: il fondatore è sempre in regola' );
+\ApSemplice\MemberBook::set_left( $lf_f, $today, 'dimissioni' );
+apse_ok( ! $people->is_active_member( $lf_f ), 'cessazione: il fondatore che ha lasciato non è più attivo' );
+\ApSemplice\MemberBook::set_left( $lf_f, '' );
+apse_ok( $people->is_active_member( $lf_f ), 'cessazione: il fondatore riammesso torna sempre in regola' );
+// campi troppo lunghi e date impossibili sono rifiutati prima di arrivare al database
+apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => str_repeat( 'a', 130 ), 'last_name' => 'Lungo', 'email' => 'nome.lungo@example.com' ) ); } ), 'persone: un nome troppo lungo è rifiutato' );
+apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Data', 'last_name' => 'Impossibile', 'email' => 'data.impossibile@example.com', 'joined_on' => '2023-02-30' ) ); } ), 'persone: una data di ingresso impossibile è rifiutata' );
+// l'anno della tessera in un incasso deve avere la forma di un anno
+apse_ok( null !== apse_throws( function () use ( $ledger, $today, $cash, $cat, $lf_p ) { $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $lf_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000, 'social_year' => 'qualcosa' ) ) ) ); } ), 'incasso: l\'anno della tessera non valido è rifiutato' );
+// blocchi con nome: l'operazione parte e restituisce il suo risultato; l'eccezione passa e il blocco si libera
+apse_ok( 42 === \ApSemplice\Db::with_lock( 'apse_test_lock', function () { return 42; } ), 'blocco: restituisce il risultato' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Db::with_lock( 'apse_test_lock', function () { throw new \InvalidArgumentException( 'errore di prova' ); } ); } ) && 7 === \ApSemplice\Db::with_lock( 'apse_test_lock', function () { return 7; } ), 'blocco: dopo un errore il blocco è libero' );
 apse_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
 apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Cessazione', array( 'id' => $rg_p ) );
 // verbali
@@ -4116,6 +4147,8 @@ if ( ! \ApSemplice\WooBridge::active() ) {
 	$wc_o3->set_status( 'cancelled' );
 	$wc_o3->save();
 	apse_ok( 'cancelled' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay3['id'] ), 'woocommerce: ordine annullato => il pagamento in attesa si chiude' );
+	wp_set_current_user( 1 );
+	apse_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
 	// un ordine senza voci APSemplice non cambia nulla
 	$tx_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
 	$wc_x = wc_create_order();
@@ -4253,7 +4286,23 @@ if ( \ApSemplice\WebPush::supported() && $sx_uid ) {
 }
 $sx_export = \ApSemplice\Privacy::export( $sx_p );
 apse_ok( 'POL-999' === ( $sx_export['assicurazioni'][0]['numero'] ?? '' ) && array_key_exists( 'presenze', $sx_export ), 'privacy: l\'esportazione dei dati comprende polizze e presenze' );
+// copie del nome in altre tabelle: pagamenti online, fondi, avvisi, dati degli import
+$wpdb->insert( Db::t( 'payments' ), array( 'public_id' => 'anon-test-' . $sx_p, 'provider' => 'stripe', 'status' => 'paid', 'amount_cents' => 1000, 'payer_person_id' => $sx_p, 'payer_user_id' => $sx_uid, 'items' => wp_json_encode( array( array( 'type' => 'membership', 'person_id' => $sx_p, 'person_name' => 'Ada Daanonimizzare', 'amount_cents' => 1000 ) ) ), 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$sx_fund = \ApSemplice\Plugin::funds()->create( 'Rimborso Ada Daanonimizzare — gita', 0, $sx_p );
+$wpdb->insert( Db::t( 'notices' ), array( 'activity_id' => $at_c, 'author_user_id' => $sx_uid, 'author_name' => 'Ada Daanonimizzare', 'subject' => 'Prova', 'body' => 'Prova', 'created_at' => Db::now() ) );
+$wpdb->insert( Db::t( 'import_batches' ), array( 'created_at' => Db::now(), 'source' => 'prova-anonimizzazione', 'summary' => '{}', 'data' => wp_json_encode( array( 'people_updated' => array( $sx_p => array( 'first_name' => 'Ada', 'email' => 'ada.vecchia@example.com' ) ) ) ) ) );
 \ApSemplice\Privacy::anonymize( $sx_p );
+apse_ok(
+	false === strpos( (string) $wpdb->get_var( 'SELECT items FROM ' . Db::t( 'payments' ) . " WHERE public_id = 'anon-test-$sx_p'" ), 'Daanonimizzare' )
+	&& false === strpos( (string) $wpdb->get_var( 'SELECT name FROM ' . Db::t( 'funds' ) . ' WHERE id = ' . (int) $sx_fund ), 'Daanonimizzare' )
+	&& 'Persona anonimizzata' === (string) $wpdb->get_var( 'SELECT author_name FROM ' . Db::t( 'notices' ) . ' WHERE author_user_id = ' . $sx_uid . ' LIMIT 1' )
+	&& false === strpos( (string) $wpdb->get_var( 'SELECT data FROM ' . Db::t( 'import_batches' ) . " WHERE source = 'prova-anonimizzazione'" ), 'ada.vecchia' ),
+	'privacy: l\'anonimizzazione toglie il nome anche da pagamenti online, fondi, avvisi e dati degli import'
+);
+$wpdb->delete( Db::t( 'payments' ), array( 'public_id' => 'anon-test-' . $sx_p ) );
+$wpdb->delete( Db::t( 'funds' ), array( 'id' => (int) $sx_fund ) );
+$wpdb->delete( Db::t( 'notices' ), array( 'author_user_id' => $sx_uid ) );
+$wpdb->delete( Db::t( 'import_batches' ), array( 'source' => 'prova-anonimizzazione' ) );
 apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'insurance' ) . ' WHERE person_id = ' . $sx_p ) && '' === (string) $wpdb->get_var( 'SELECT email FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE person_id = ' . $sx_p . ' LIMIT 1' ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id = ' . $sx_uid ) && null === $people->get( $sx_c )['family_head_id'], 'privacy: l\'anonimizzazione toglie polizze, destinatari delle comunicazioni, dispositivi e legami familiari' );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------

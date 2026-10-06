@@ -82,7 +82,7 @@ final class GroupCash {
 				foreach ( $b_lines as $l ) {
 					$kind  = (string) ( $l['kind'] ?? '' );
 					$cents = Money::parse( $l['amount'] ?? '' ) ?? 0;
-					$title = substr( (string) ( $l['title'] ?? '' ), 0, 200 );
+					$title = mb_substr( (string) ( $l['title'] ?? '' ), 0, 200 );
 					if ( $staff && 'event' !== $kind ) {
 						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo i biglietti dell\'evento.' );
 					}

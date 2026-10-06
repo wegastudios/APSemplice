@@ -90,6 +90,9 @@ final class Notices {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function send( int $activity_id, ?int $session_id, string $subject, string $body ): array {
+		if ( ! License::allows( 'official_notices' ) ) {
+			throw new \InvalidArgumentException( 'L\'invio degli avvisi è sospeso perché la licenza di APSemplice non risulta in regola.' );
+		}
 		$a = Plugin::activities()->get( $activity_id );
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
@@ -121,7 +124,7 @@ final class Notices {
 		$db->insert(
 			Db::t( 'notices' ),
 			array(
-				'activity_id' => $activity_id, 'session_id' => $session_id ?: null, 'author_user_id' => get_current_user_id() ?: null, 'author_name' => substr( $by, 0, 120 ),
+				'activity_id' => $activity_id, 'session_id' => $session_id ?: null, 'author_user_id' => get_current_user_id() ?: null, 'author_name' => mb_substr( $by, 0, 120 ),
 				'subject' => $subject, 'body' => $body, 'recipients' => count( $rcpt ), 'emailed' => 0, 'created_at' => Db::now(),
 			)
 		);

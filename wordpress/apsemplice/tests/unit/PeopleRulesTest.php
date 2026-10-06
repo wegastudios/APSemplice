@@ -93,6 +93,22 @@ final class RulesTest extends TestCase {
 		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'first_name' => ' ' ) ) ) );
 	}
 
+	public function test_fields_longer_than_the_columns_are_refused(): void {
+		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'first_name' => str_repeat( 'a', 121 ) ) ) ) );
+		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'last_name' => str_repeat( 'b', 121 ) ) ) ) );
+		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'tax_code' => str_repeat( 'C', 33 ) ) ) ) );
+		$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'phone' => str_repeat( '3', 61 ) ) ) ) );
+		$this->assertSame( array(), Rules::validate_person( $this->person( array( 'first_name' => str_repeat( 'à', 100 ) ) ) ), 'il limite conta i caratteri, non i byte' );
+	}
+
+	public function test_joined_on_must_be_a_real_date(): void {
+		$this->assertSame( array(), Rules::validate_person( $this->person( array( 'joined_on' => '2024-02-29' ) ) ) );
+		$this->assertSame( array(), Rules::validate_person( $this->person( array( 'joined_on' => '' ) ) ), 'vuota: si usa oggi' );
+		foreach ( array( '2023-02-29', '2024-13-01', 'ieri', '15/01/2024' ) as $bad ) {
+			$this->assertNotEmpty( Rules::validate_person( $this->person( array( 'joined_on' => $bad ) ) ), $bad );
+		}
+	}
+
 	public function test_activity_instructor_must_be_volunteer(): void {
 		$act = array( 'name' => 'Yoga', 'fee_cents' => 2000, 'instructor_person_id' => 3 );
 		$this->assertSame( array(), Rules::validate_activity( $act, array( 'type' => 'volunteer' ) ) );

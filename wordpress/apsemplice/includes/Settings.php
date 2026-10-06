@@ -135,10 +135,10 @@ final class Settings {
 		$clean['insurance_association']    = empty( $clean['insurance_association'] ) ? 0 : 1;
 		$clean['family_discount_pct']      = max( 0, min( 100, (int) $clean['family_discount_pct'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
-		$clean['entity_type']         = substr( trim( (string) $clean['entity_type'] ), 0, 60 );
-		$clean['member_term']         = substr( trim( (string) $clean['member_term'] ), 0, 60 );
-		$clean['entity_types_custom'] = substr( trim( (string) $clean['entity_types_custom'] ), 0, 1000 );
-		$clean['member_terms_custom'] = substr( trim( (string) $clean['member_terms_custom'] ), 0, 1000 );
+		$clean['entity_type']         = mb_substr( trim( (string) $clean['entity_type'] ), 0, 60 );
+		$clean['member_term']         = mb_substr( trim( (string) $clean['member_term'] ), 0, 60 );
+		$clean['entity_types_custom'] = mb_substr( trim( (string) $clean['entity_types_custom'] ), 0, 1000 );
+		$clean['member_terms_custom'] = mb_substr( trim( (string) $clean['member_terms_custom'] ), 0, 1000 );
 		\ApSemplice\Terms::flush();
 		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events' ) as $k ) {
 			$clean[ $k ] = empty( $clean[ $k ] ) ? 0 : 1;
@@ -147,17 +147,17 @@ final class Settings {
 		$clean['privacy_url']             = esc_url_raw( trim( (string) $clean['privacy_url'] ) );
 		$clean['rules_enabled']           = empty( $clean['rules_enabled'] ) ? 0 : 1;
 		$clean['rules_block_booking']     = empty( $clean['rules_block_booking'] ) ? 0 : 1;
-		$clean['rules_title']             = substr( trim( (string) $clean['rules_title'] ), 0, 80 );
-		$clean['rules_text']              = substr( trim( str_replace( "\r\n", "\n", (string) $clean['rules_text'] ) ), 0, 30000 );
+		$clean['rules_title']             = mb_substr( trim( (string) $clean['rules_title'] ), 0, 80 );
+		$clean['rules_text']              = mb_substr( trim( str_replace( "\r\n", "\n", (string) $clean['rules_text'] ) ), 0, 30000 );
 		$clean['rules_url']               = esc_url_raw( trim( (string) $clean['rules_url'] ) );
-		$clean['rules_version']           = substr( trim( (string) $clean['rules_version'] ), 0, 20 );
+		$clean['rules_version']           = mb_substr( trim( (string) $clean['rules_version'] ), 0, 20 );
 		$clean['privacy_retention_years'] = max( 1, min( 30, (int) $clean['privacy_retention_years'] ) );
-		$clean['receipt_footer']          = substr( trim( (string) $clean['receipt_footer'] ), 0, 300 );
-		$clean['license_key']             = substr( trim( (string) $clean['license_key'] ), 0, 120 );
+		$clean['receipt_footer']          = mb_substr( trim( (string) $clean['receipt_footer'] ), 0, 300 );
+		$clean['license_key']             = mb_substr( trim( (string) $clean['license_key'] ), 0, 120 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
-		$clean['payment_hint']            = '' === trim( (string) $clean['payment_hint'] ) ? self::DEFAULT_PAYMENT_HINT : substr( trim( (string) $clean['payment_hint'] ), 0, 300 );
-		$clean['gate_message']            = substr( trim( (string) $clean['gate_message'] ), 0, 200 );
+		$clean['payment_hint']            = '' === trim( (string) $clean['payment_hint'] ) ? self::DEFAULT_PAYMENT_HINT : mb_substr( trim( (string) $clean['payment_hint'] ), 0, 300 );
+		$clean['gate_message']            = mb_substr( trim( (string) $clean['gate_message'] ), 0, 200 );
 		$clean['payment_provider']        = PaymentConfig::is_valid( (string) $clean['payment_provider'] ) ? (string) $clean['payment_provider'] : PaymentConfig::NONE;
 		$clean['stripe_mode']             = 'live' === $clean['stripe_mode'] ? 'live' : 'test';
 		$clean['paypal_mode']             = 'live' === $clean['paypal_mode'] ? 'live' : 'sandbox';
@@ -169,14 +169,14 @@ final class Settings {
 		$clean['wallet_enabled']          = empty( $clean['wallet_enabled'] ) ? 0 : 1;
 		$clean['ical_enabled']            = empty( $clean['ical_enabled'] ) ? 0 : 1;
 		foreach ( array( 'wallet_apple_cert_pem', 'wallet_apple_wwdr_pem' ) as $k ) {
-			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 12000 );
+			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 12000 );
 		}
 		foreach ( array( 'wallet_apple_pass_type', 'wallet_apple_team', 'wallet_google_issuer', 'wallet_google_email' ) as $k ) {
-			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 200 );
+			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
 		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
-			$clean[ $k ] = substr( trim( (string) $clean[ $k ] ), 0, 200 );
+			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
 		Audit::log( 'settings.updated', 'settings' ); // senza i valori: nel registro non finiscono chiavi
 		update_option( self::OPTION, $clean );
@@ -278,12 +278,12 @@ final class Settings {
 		return SocialYear::for_date( $date ?? Db::today(), self::start_month() );
 	}
 
-	/** Anno della tessera associativa: l'anno solare, la scadenza è sempre il 31 dicembre (i soci fondatori sono a parte). */
-	/** Posti da consigliere nel consiglio direttivo. */
+	/** Registro delle assicurazioni dei volontari attivo? */
 	public static function insurance_volunteers(): bool {
 		return (bool) self::get( 'insurance_volunteers' );
 	}
 
+	/** Polizze dell'associazione attive? */
 	public static function insurance_association(): bool {
 		return (bool) self::get( 'insurance_association' );
 	}
@@ -297,6 +297,7 @@ final class Settings {
 		return max( 0, (int) self::get( 'board_councillors' ) );
 	}
 
+	/** Anno della tessera associativa: l'anno solare, la scadenza è sempre il 31 dicembre (i soci fondatori sono a parte). */
 	public static function membership_year( ?string $date = null ): SocialYear {
 		return SocialYear::for_date( $date ?? Db::today(), 1 );
 	}

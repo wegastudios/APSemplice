@@ -418,7 +418,7 @@ final class ActivitiesPage {
 				$in[] = (int) $m['person_id'];
 				echo '<li>' . esc_html( $m['first_name'] . ' ' . $m['last_name'] ) . ' <span class="description">' . esc_html( MemberType::label( $m['type'] ) ) . '</span> ';
 				Ui::form_open( 'apse_event_staff_cash', $back, false, 'apse-inline' );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' onchange="this.form.submit()"> puÃ² incassare sul posto</label>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' onchange="this.form.submit()"> può incassare sul posto</label>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 				echo ' ';
 				Ui::form_open( 'apse_event_staff_remove', $back, false, 'apse-inline' );
@@ -441,6 +441,7 @@ final class ActivitiesPage {
 		$id       = (int) $activity['id'];
 		$sessions = Plugin::activities()->sessions( $id );
 		$all      = Plugin::people()->search();
+		$gov      = Plugin::people()->guest_overview();
 		echo '<h2>' . ( ActivityKind::EVENT === $activity['kind'] ? 'Data e prenotazioni' : 'Date e prenotazioni' ) . '</h2>';
 		if ( ! $sessions ) {
 			echo '<p>Nessuna data. ' . ( ActivityKind::RECURRING === $activity['kind'] ? 'Aggiungine qui sopra.' : '' ) . '</p>';
@@ -448,7 +449,6 @@ final class ActivitiesPage {
 		foreach ( $sessions as $s ) {
 			$cancelled = ! empty( $s['cancelled_at'] );
 			$bookings  = Plugin::activities()->bookings_for_session( (int) $s['id'] );
-			$gov       = Plugin::people()->guest_overview();
 			$booked    = array();
 			foreach ( $bookings as $b ) {
 				if ( $b['active'] ) {

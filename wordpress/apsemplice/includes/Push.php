@@ -19,7 +19,7 @@ final class Push {
 	}
 
 	public static function enabled(): bool {
-		return (bool) Settings::get( 'pwa_enabled' ) && (bool) Settings::get( 'push_enabled' ) && WebPush::supported();
+		return (bool) Settings::get( 'pwa_enabled' ) && (bool) Settings::get( 'push_enabled' ) && License::allows( 'official_notices' ) && License::allows( 'pwa' ) && WebPush::supported();
 	}
 
 	// ---------- Chiavi VAPID ----------

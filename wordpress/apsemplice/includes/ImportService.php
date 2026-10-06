@@ -142,7 +142,7 @@ final class ImportService {
 	}
 
 	private static function open_batch( string $source ): int {
-		Db::db()->insert( Db::t( 'import_batches' ), array( 'created_at' => Db::now(), 'user_id' => get_current_user_id() ?: null, 'source' => substr( $source, 0, 190 ) ) );
+		Db::db()->insert( Db::t( 'import_batches' ), array( 'created_at' => Db::now(), 'user_id' => get_current_user_id() ?: null, 'source' => mb_substr( $source, 0, 190 ) ) );
 		return (int) Db::db()->insert_id;
 	}
 

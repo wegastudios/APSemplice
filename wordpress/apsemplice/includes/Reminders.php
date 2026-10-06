@@ -39,8 +39,28 @@ final class Reminders {
 		return (bool) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reminders' ) . ' WHERE person_id = %d AND kind = %s AND sent_at >= %s', $person_id, $kind, $since ) );
 	}
 
-	private static function mark( int $person_id, string $kind, string $ref ): void {
-		Db::db()->query( Db::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'reminders' ) . ' (person_id, kind, ref, sent_at) VALUES (%d, %s, %s, %s)', $person_id, $kind, substr( $ref, 0, 60 ), Db::now() ) );
+	/** Si prenota l'invio prima di spedire: se un'altra esecuzione (cron e "Invia ora" insieme) l'ha già preso, non si manda due volte. @return bool true se l'invio è nostro */
+	private static function claim( int $person_id, string $kind, string $ref ): bool {
+		$db = Db::db();
+		$db->query( $db->prepare( 'INSERT IGNORE INTO ' . Db::t( 'reminders' ) . ' (person_id, kind, ref, sent_at) VALUES (%d, %s, %s, %s)', $person_id, $kind, substr( $ref, 0, 60 ), Db::now() ) );
+		return 1 === (int) $db->rows_affected;
+	}
+
+	/** L'email non è partita: il promemoria torna in coda per la prossima esecuzione. */
+	private static function release( int $person_id, string $kind, string $ref ): void {
+		Db::db()->delete( Db::t( 'reminders' ), array( 'person_id' => $person_id, 'kind' => $kind, 'ref' => substr( $ref, 0, 60 ) ) );
+	}
+
+	/** Invia il promemoria prenotandolo prima. @return bool true se è partito ora */
+	private static function deliver( array $to, int $person_id, string $kind, string $ref, string $subject, string $body ): bool {
+		if ( ! self::claim( $person_id, $kind, $ref ) ) {
+			return false;
+		}
+		if ( ! self::send( $to, $subject, $body ) ) {
+			self::release( $person_id, $kind, $ref );
+			return false;
+		}
+		return true;
 	}
 
 	/** Dove mandare il promemoria di una persona: la sua email o, per un ospite senza email, quella del socio che lo ospita. @return array{email:string,name:string,about:string}|null */
@@ -130,11 +150,8 @@ final class Reminders {
 			if ( ! $to || self::sent( (int) $p['id'], $kind, $until ) ) {
 				continue;
 			}
-			if ( $send ) {
-				if ( ! self::send( $to, $subj, $body ) ) {
-					continue;
-				}
-				self::mark( (int) $p['id'], $kind, $until );
+			if ( $send && ! self::deliver( $to, (int) $p['id'], $kind, $until, $subj, $body ) ) {
+				continue;
 			}
 			$n++;
 		}
@@ -203,11 +220,8 @@ final class Reminders {
 				$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
 				$body = 'il corso «' . $a['name'] . '» si rinnova all\'inizio di ' . self::month_name( $target ) . ': ' . $who . 'la mensilità è di ' . Money::format( $fee - $paid )
 					. ( $paid > 0 ? ' (resta da versare)' : '' ) . ". Puoi pagare in segreteria o, se attivo, online dall'area riservata.\nSe non vuoi più frequentare, comunicalo alla segreteria prima dell'inizio del mese. Se hai già pagato, ignora questo messaggio.";
-				if ( $send ) {
-					if ( ! self::send( $to, 'Rinnovo del corso ' . $a['name'], $body ) ) {
-						continue;
-					}
-					self::mark( (int) $p['id'], 'dues', $ref );
+				if ( $send && ! self::deliver( $to, (int) $p['id'], 'dues', $ref, 'Rinnovo del corso ' . $a['name'], $body ) ) {
+					continue;
 				}
 				$n++;
 			}
@@ -243,11 +257,8 @@ final class Reminders {
 			$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
 			$body = 'ti ricordiamo la prenotazione ' . $who . 'per «' . $r['activity_name'] . '» domani, ' . ( new \DateTimeImmutable( $r['session_date'] ) )->format( 'd/m/Y' )
 				. ( $r['start_time'] ? ' alle ' . $r['start_time'] : '' ) . ( $r['location'] ? ' — ' . $r['location'] : '' ) . '. Se non puoi venire, annulla dall\'area riservata (se l\'evento lo permette).';
-			if ( $send ) {
-				if ( ! self::send( $to, 'Domani: ' . $r['activity_name'], $body ) ) {
-					continue;
-				}
-				self::mark( (int) $p['id'], 'event', (string) $r['session_id'] );
+			if ( $send && ! self::deliver( $to, (int) $p['id'], 'event', (string) $r['session_id'], 'Domani: ' . $r['activity_name'], $body ) ) {
+				continue;
 			}
 			$n++;
 		}

@@ -213,7 +213,7 @@ class PaymentService {
 				$res   = PayPalApi::create_order( $this->http(), $live, $token, PayPalApi::order_payload( $items, $public, $success, $cancel, $brand ), $public );
 			}
 		} catch ( \RuntimeException $e ) {
-			$this->update( $id, array( 'status' => 'failed', 'error' => substr( $e->getMessage(), 0, 250 ) ) );
+			$this->update( $id, array( 'status' => 'failed', 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
 			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );
 			throw new \InvalidArgumentException( 'Il servizio di pagamento non risponde in questo momento. Riprova più tardi.' );
 		}
@@ -274,7 +274,7 @@ class PaymentService {
 				return $this->finalize( $p, PayPalApi::captured_cents( $order ), PayPalApi::capture_id( $order ) );
 			}
 		} catch ( \RuntimeException $e ) {
-			$this->update( (int) $p['id'], array( 'error' => substr( $e->getMessage(), 0, 250 ) ) );
+			$this->update( (int) $p['id'], array( 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
 		}
 		return false;
 	}
@@ -370,7 +370,7 @@ class PaymentService {
 						$allocated += PaymentItems::total( $group );
 					} catch ( \InvalidArgumentException $e ) {
 						$review       = true;
-						$error        = substr( $e->getMessage(), 0, 250 );
+						$error        = mb_substr( $e->getMessage(), 0, 250 );
 						$unallocated += PaymentItems::total( $group );
 					}
 				}
@@ -385,9 +385,9 @@ class PaymentService {
 			}
 		} catch ( \Throwable $e ) {
 			$review = true;
-			$error  = substr( 'Registrazione incompleta: ' . $e->getMessage(), 0, 250 );
+			$error  = mb_substr( 'Registrazione incompleta: ' . $e->getMessage(), 0, 250 );
 		}
-		$this->update( (int) $p['id'], array( 'status' => 'paid', 'paid_at' => Db::now(), 'provider_payment_id' => substr( $provider_payment_id, 0, 120 ), 'allocated_cents' => $allocated, 'review' => $review ? 1 : 0, 'error' => $error ) );
+		$this->update( (int) $p['id'], array( 'status' => 'paid', 'paid_at' => Db::now(), 'provider_payment_id' => mb_substr( $provider_payment_id, 0, 120 ), 'allocated_cents' => $allocated, 'review' => $review ? 1 : 0, 'error' => $error ) );
 		Audit::log( 'payment.paid', 'payment', (int) $p['id'], array( 'provider' => $p['provider'], 'cents' => $paid_cents, 'review' => $review ) );
 		$this->send_receipt_email( $this->get( (int) $p['id'] ), $items );
 		return true;

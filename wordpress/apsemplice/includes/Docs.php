@@ -195,8 +195,10 @@ final class Docs {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
 		}
-		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $from ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $to ) ) {
-			throw new \InvalidArgumentException( 'Indica il periodo (dal / al).' );
+		foreach ( array( $from, $to ) as $day ) {
+			if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $day, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+				throw new \InvalidArgumentException( 'Indica il periodo (dal / al).' );
+			}
 		}
 		$s     = Attendance::summary( $activity_id, $from, $to );
 		$dates = $s['dates'];
