@@ -283,7 +283,17 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Scegli almeno una voce da incassare.' );
 		}
 		$pid = (int) ( $post['person_id'] ?? 0 );
-		$ledger->record_receipt( array( 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $post['account_id'] ?? 0 ), 'method' => '', 'person_id' => $pid, 'lines' => $lines ) );
+		$acts = Plugin::activities();
+		$ledger->in_batch(
+			function () use ( $post, $pid, $lines, $acts, $ledger ) {
+				foreach ( $lines as $l ) {
+					if ( ! empty( $l['session_id'] ) && ! $acts->has_active_booking( (int) $l['session_id'], $pid ) ) {
+						$acts->book( (int) $l['session_id'], $pid ); // chi paga un evento senza prenotazione viene prenotato (se c'e posto)
+					}
+				}
+				$ledger->record_receipt( array( 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $post['account_id'] ?? 0 ), 'method' => '', 'person_id' => $pid, 'lines' => $lines ) );
+			}
+		);
 		return 'Incasso registrato.';
 	}
 
