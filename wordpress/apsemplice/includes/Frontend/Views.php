@@ -128,7 +128,7 @@ final class Views {
 		}
 		$people = Plugin::people();
 		$until  = MemberType::GUEST === $p['type'] ? null : $people->active_until( (int) $p['id'] );
-		$active = $until && $until >= current_time( 'Y-m-d' );
+		$active = MemberType::GUEST !== $p['type'] && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
 		$assoc  = (string) Settings::get( 'association_name' );
 		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? self::d( $until ) : '—' );
 		return '<section class="apsf-section"><div class="apsf-memcard">'

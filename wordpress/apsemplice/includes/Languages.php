@@ -80,6 +80,9 @@ final class Languages {
 	private static function clean( array $pairs ): array {
 		$out = array();
 		foreach ( $pairs as $o => $t ) {
+			if ( ! is_scalar( $t ) ) {
+				continue; // un file JSON con valori che non sono testo
+			}
 			$o = trim( (string) $o );
 			$t = trim( (string) $t );
 			if ( '' === $t || $t === $o || strlen( $o ) < Texts::MIN_LEN || strlen( $o ) > Texts::MAX_LEN || strlen( $t ) > Texts::MAX_LEN ) {

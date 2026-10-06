@@ -73,7 +73,7 @@ class FundService {
 		$name = 'Rimborso ' . ( $vol ? trim( $vol['first_name'] . ' ' . $vol['last_name'] ) : 'volontario' ) . ' — ' . $activity['name'];
 		$this->db()->insert( Db::t( 'funds' ), array( 'name' => mb_substr( $name, 0, 200 ), 'activity_id' => $activity_id, 'person_id' => $vol ? (int) $vol['id'] : null, 'created_at' => Db::now() ) );
 		$id = (int) $this->db()->insert_id;
-		Audit::log( 'fund.created', 'fund', $id, array( 'name' => $name ) );
+		Audit::log( 'fund.created', 'fund', $id );
 		return $id;
 	}
 
@@ -102,7 +102,7 @@ class FundService {
 		}
 		$this->db()->insert( Db::t( 'funds' ), array( 'name' => mb_substr( $name, 0, 200 ), 'person_id' => $person_id ?: null, 'created_at' => Db::now() ) );
 		$id = (int) $this->db()->insert_id;
-		Audit::log( 'fund.created', 'fund', $id, array( 'name' => $name ) );
+		Audit::log( 'fund.created', 'fund', $id );
 		if ( $initial_cents > 0 ) {
 			$this->deposit( $id, $initial_cents, '' !== $date ? $date : Db::today(), 'Somma iniziale' );
 		}

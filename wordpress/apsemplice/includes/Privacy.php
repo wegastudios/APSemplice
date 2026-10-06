@@ -195,7 +195,9 @@ final class Privacy {
 		$db->update( Db::t( 'broadcast_rcpt' ), array( 'email' => '', 'name' => 'Persona anonimizzata' ), array( 'person_id' => $person_id ) ); // destinatari delle comunicazioni
 		if ( $uid > 0 ) {
 			$db->delete( Db::t( 'push_subs' ), array( 'user_id' => $uid ) ); // dispositivi con le notifiche
+			$db->update( Db::t( 'notices' ), array( 'author_name' => 'Persona anonimizzata' ), array( 'author_user_id' => $uid ) ); // firma degli avvisi
 		}
+		self::scrub_copies( $person_id, $name );
 		if ( '' !== trim( $name ) ) { // il nome scritto a mano nelle descrizioni dei movimenti
 			$db->query(
 				$db->prepare(
@@ -215,6 +217,42 @@ final class Privacy {
 			}
 		}
 		Audit::log( 'person.anonymized', 'person', $person_id, array( 'type' => $p['type'] ) ); // senza il nome
+	}
+
+	/** Le copie del nome e dei dati di una persona rimaste in altre tabelle: voci dei pagamenti online, nome dei fondi, dati precedenti salvati dagli import. */
+	private static function scrub_copies( int $person_id, string $name ): void {
+		$db = Db::db();
+		// pagamenti online: il nome scritto in ogni voce
+		$pay = Db::t( 'payments' );
+		foreach ( $db->get_results( $db->prepare( "SELECT id, items FROM $pay WHERE payer_person_id = %d OR items LIKE %s", $person_id, '%"person_id":' . $person_id . '%' ), ARRAY_A ) ?: array() as $r ) {
+			$items = json_decode( (string) $r['items'], true );
+			if ( ! is_array( $items ) ) {
+				continue;
+			}
+			$changed = false;
+			foreach ( $items as $k => $i ) {
+				if ( is_array( $i ) && (int) ( $i['person_id'] ?? 0 ) === $person_id && isset( $i['person_name'] ) ) {
+					$items[ $k ]['person_name'] = 'Persona anonimizzata';
+					$changed                    = true;
+				}
+			}
+			if ( $changed ) {
+				$db->update( $pay, array( 'items' => wp_json_encode( $items ) ), array( 'id' => (int) $r['id'] ) );
+			}
+		}
+		// fondi per i rimborsi: il nome del volontario è nel nome del fondo
+		if ( '' !== trim( $name ) ) {
+			$db->query( $db->prepare( 'UPDATE ' . Db::t( 'funds' ) . ' SET name = REPLACE(name, %s, %s) WHERE person_id = %d', $name, '[anonimizzato]', $person_id ) );
+		}
+		// import: i dati che la scheda aveva prima dell'aggiornamento (servono ad annullare l'import)
+		$imp = Db::t( 'import_batches' );
+		foreach ( $db->get_results( "SELECT id, data FROM $imp WHERE data LIKE '%people_updated%'", ARRAY_A ) ?: array() as $r ) {
+			$data = json_decode( (string) $r['data'], true );
+			if ( is_array( $data ) && isset( $data['people_updated'][ $person_id ] ) ) {
+				unset( $data['people_updated'][ $person_id ] );
+				$db->update( $imp, array( 'data' => wp_json_encode( $data ) ), array( 'id' => (int) $r['id'] ) );
+			}
+		}
 	}
 
 	/**

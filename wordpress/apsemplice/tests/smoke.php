@@ -1565,6 +1565,10 @@ $tina_param = \ApSemplice\CardToken::param( $tre_p, Settings::card_secret() );
 apse_ok( 'expired' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: un socio senza tessera valida risulta non valido' );
 $people->set_membership( $tre_p, Settings::social_year()->label(), true, 'manual' );
 apse_ok( 'valid' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: lo stesso QR diventa valido appena la tessera si rinnova (verifica in diretta)' );
+$people->suspend( $tre_p );
+apse_ok( 'expired' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: un socio sospeso o uscito non ha la tessera valida, anche se non è scaduta' );
+$people->reactivate( $tre_p );
+apse_ok( 'valid' === \ApSemplice\Frontend\CardVerify::result( $tina_param )['status'], 'verifica: riattivato, la tessera torna valida' );
 apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( $founder . '.' . str_repeat( '0', 20 ) )['status'] && 'invalid' === \ApSemplice\Frontend\CardVerify::result( 'boh' )['status'] && 'invalid' === \ApSemplice\Frontend\CardVerify::result( ( $founder + 1 ) . '.' . explode( '.', $qm[1] )[1] )['status'], 'verifica: firma sbagliata, formato errato o firma di un altro socio = non valido' );
 apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( \ApSemplice\CardToken::param( $guest, Settings::card_secret() ) )['status'], 'verifica: gli ospiti non hanno tessera' );
 $page = \ApSemplice\Frontend\CardVerify::page( $qm[1] );
@@ -4282,7 +4286,23 @@ if ( \ApSemplice\WebPush::supported() && $sx_uid ) {
 }
 $sx_export = \ApSemplice\Privacy::export( $sx_p );
 apse_ok( 'POL-999' === ( $sx_export['assicurazioni'][0]['numero'] ?? '' ) && array_key_exists( 'presenze', $sx_export ), 'privacy: l\'esportazione dei dati comprende polizze e presenze' );
+// copie del nome in altre tabelle: pagamenti online, fondi, avvisi, dati degli import
+$wpdb->insert( Db::t( 'payments' ), array( 'public_id' => 'anon-test-' . $sx_p, 'provider' => 'stripe', 'status' => 'paid', 'amount_cents' => 1000, 'payer_person_id' => $sx_p, 'payer_user_id' => $sx_uid, 'items' => wp_json_encode( array( array( 'type' => 'membership', 'person_id' => $sx_p, 'person_name' => 'Ada Daanonimizzare', 'amount_cents' => 1000 ) ) ), 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$sx_fund = \ApSemplice\Plugin::funds()->create( 'Rimborso Ada Daanonimizzare — gita', 0, $sx_p );
+$wpdb->insert( Db::t( 'notices' ), array( 'activity_id' => $at_c, 'author_user_id' => $sx_uid, 'author_name' => 'Ada Daanonimizzare', 'subject' => 'Prova', 'body' => 'Prova', 'created_at' => Db::now() ) );
+$wpdb->insert( Db::t( 'import_batches' ), array( 'created_at' => Db::now(), 'source' => 'prova-anonimizzazione', 'summary' => '{}', 'data' => wp_json_encode( array( 'people_updated' => array( $sx_p => array( 'first_name' => 'Ada', 'email' => 'ada.vecchia@example.com' ) ) ) ) ) );
 \ApSemplice\Privacy::anonymize( $sx_p );
+apse_ok(
+	false === strpos( (string) $wpdb->get_var( 'SELECT items FROM ' . Db::t( 'payments' ) . " WHERE public_id = 'anon-test-$sx_p'" ), 'Daanonimizzare' )
+	&& false === strpos( (string) $wpdb->get_var( 'SELECT name FROM ' . Db::t( 'funds' ) . ' WHERE id = ' . (int) $sx_fund ), 'Daanonimizzare' )
+	&& 'Persona anonimizzata' === (string) $wpdb->get_var( 'SELECT author_name FROM ' . Db::t( 'notices' ) . ' WHERE author_user_id = ' . $sx_uid . ' LIMIT 1' )
+	&& false === strpos( (string) $wpdb->get_var( 'SELECT data FROM ' . Db::t( 'import_batches' ) . " WHERE source = 'prova-anonimizzazione'" ), 'ada.vecchia' ),
+	'privacy: l\'anonimizzazione toglie il nome anche da pagamenti online, fondi, avvisi e dati degli import'
+);
+$wpdb->delete( Db::t( 'payments' ), array( 'public_id' => 'anon-test-' . $sx_p ) );
+$wpdb->delete( Db::t( 'funds' ), array( 'id' => (int) $sx_fund ) );
+$wpdb->delete( Db::t( 'notices' ), array( 'author_user_id' => $sx_uid ) );
+$wpdb->delete( Db::t( 'import_batches' ), array( 'source' => 'prova-anonimizzazione' ) );
 apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'insurance' ) . ' WHERE person_id = ' . $sx_p ) && '' === (string) $wpdb->get_var( 'SELECT email FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE person_id = ' . $sx_p . ' LIMIT 1' ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id = ' . $sx_uid ) && null === $people->get( $sx_c )['family_head_id'], 'privacy: l\'anonimizzazione toglie polizze, destinatari delle comunicazioni, dispositivi e legami familiari' );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------

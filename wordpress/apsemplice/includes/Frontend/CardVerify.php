@@ -57,10 +57,13 @@ final class CardVerify {
 		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
 			return array( 'status' => 'invalid', 'person' => null, 'until' => null );
 		}
+		$until = $people->active_until( (int) $p['id'] );
+		if ( $people->is_suspended( (int) $p['id'] ) ) {
+			return array( 'status' => 'expired', 'person' => $p, 'until' => $until ); // sospeso o uscito dall'associazione: la tessera non vale, anche se non è scaduta
+		}
 		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
 			return array( 'status' => 'valid', 'person' => $p, 'until' => null );
 		}
-		$until = $people->active_until( (int) $p['id'] );
 		return array( 'status' => $until && $until >= current_time( 'Y-m-d' ) ? 'valid' : 'expired', 'person' => $p, 'until' => $until );
 	}
 
@@ -76,7 +79,7 @@ final class CardVerify {
 		list( $title, $color ) = $map[ $r['status'] ];
 		if ( $r['person'] ) {
 			$p     = $r['person'];
-			$until = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $r['until'] ? ( new \DateTimeImmutable( $r['until'] ) )->format( 'd/m/Y' ) : '—' );
+			$until = MemberType::is_auto_renewed( $p['type'] ) && 'valid' === $r['status'] ? 'Sempre rinnovata' : ( $r['until'] ? ( new \DateTimeImmutable( $r['until'] ) )->format( 'd/m/Y' ) : '—' );
 			$body  = '<div class="n">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div><div class="t">' . esc_html( \ApSemplice\Levels::label( $p ) ) . '</div>'
 				. '<dl><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div><div><dt>Valida fino al</dt><dd>' . esc_html( $until ) . '</dd></div></dl>';
 		} elseif ( 'invalid' === $r['status'] ) {
