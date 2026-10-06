@@ -3,6 +3,9 @@ namespace ApSemplice\Admin;
 
 use ApSemplice\AssocPolicies;
 use ApSemplice\Attendance;
+use ApSemplice\FivePerMille;
+use ApSemplice\Guide;
+use ApSemplice\Settings;
 use ApSemplice\Insurance;
 use ApSemplice\MemberBook;
 use ApSemplice\Minutes;
@@ -24,6 +27,11 @@ final class RegistersActions {
 		'apse_policy_add'       => 'policy_add',
 		'apse_policy_delete'    => 'policy_delete',
 		'apse_statement_notes'  => 'statement_notes',
+		'apse_guide_dismiss'    => 'guide_dismiss',
+		'apse_fivepm_settings'  => 'fivepm_settings',
+		'apse_fivepm_add'       => 'fivepm_add',
+		'apse_fivepm_report'    => 'fivepm_report',
+		'apse_fivepm_delete'    => 'fivepm_delete',
 	);
 
 	public static function register(): void {
@@ -91,6 +99,34 @@ final class RegistersActions {
 		$date = (string) ( $p['date'] ?? '' );
 		$n    = Attendance::save( $aid, $date, array_map( 'intval', (array) ( $p['present'] ?? array() ) ), get_current_user_id() );
 		return array( Ui::url( 'apse-attendance', array( 'activity' => $aid, 'ym' => substr( $date, 0, 7 ), 'date' => $date ) ), 'Presenze registrate (' . $n . ' persone).' );
+	}
+
+	public static function fivepm_settings( array $p ): array {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			throw new \InvalidArgumentException( 'Solo un amministratore può attivare il 5x1000.' );
+		}
+		Settings::update( array( 'fivepm_enabled' => ! empty( $p['fivepm_enabled'] ) ? 1 : 0, 'fivepm_text' => (string) ( $p['fivepm_text'] ?? '' ) ) );
+		return array( Ui::url( 'apse-fivepm' ), 'Impostazioni del 5x1000 salvate.' );
+	}
+
+	public static function fivepm_add( array $p ): array {
+		FivePerMille::add( (int) ( $p['year'] ?? 0 ), (string) ( $p['amount'] ?? '' ), (int) ( $p['choices'] ?? 0 ), (string) ( $p['received_on'] ?? '' ) );
+		return array( Ui::url( 'apse-fivepm' ), 'Contributo registrato.' );
+	}
+
+	public static function fivepm_report( array $p ): array {
+		FivePerMille::report( (int) ( $p['id'] ?? 0 ), (string) ( $p['reported_on'] ?? '' ), (string) ( $p['report_notes'] ?? '' ) );
+		return array( Ui::url( 'apse-fivepm' ), 'Rendiconto registrato.' );
+	}
+
+	public static function fivepm_delete( array $p ): array {
+		FivePerMille::delete( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'apse-fivepm' ), 'Contributo eliminato.' );
+	}
+
+	public static function guide_dismiss( array $p ): array {
+		Guide::dismiss( get_current_user_id(), ! empty( $p['on'] ) && '0' !== (string) $p['on'] );
+		return array( Ui::url( 'apse-guide' ), 'Preferenza salvata.' );
 	}
 
 	public static function statement_notes( array $p ): array {

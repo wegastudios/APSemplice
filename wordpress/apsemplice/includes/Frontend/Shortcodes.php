@@ -33,6 +33,7 @@ final class Shortcodes {
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
+		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
 		'accesso'         => 'Accesso / login',
 	);
 
@@ -80,6 +81,8 @@ final class Shortcodes {
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'prossimi_eventi':
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );
+			case 'cinquepermille':
+				return Views::five_per_mille();
 			case 'accesso':
 				return is_user_logged_in() ? '' : Views::login_prompt();
 		}

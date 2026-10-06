@@ -10,6 +10,33 @@ final class TextsPage {
 
 	const PER_PAGE = 40;
 
+	/** Lingua del sito: scelta e pacchetti di traduzione. */
+	private static function language_section(): void {
+		$cur  = \ApSemplice\Languages::current();
+		$all  = \ApSemplice\Languages::available();
+		$up   = \ApSemplice\Languages::uploaded();
+		echo '<h2>Lingua</h2><p class="description">I testi del plugin sono in italiano. Scegli un\'altra lingua tra quelle disponibili: pagine, email e PDF vengono tradotti, e le tue personalizzazioni hanno comunque la precedenza. Questa pagina resta in italiano.</p>';
+		Ui::form_open( 'apse_save_language', Ui::url( 'apse-texts' ), false, 'apse-inline' );
+		echo '<select name="language">' . Ui::options( $all, $cur ) . '</select> <button class="button button-primary">Usa questa lingua</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		Ui::form_close();
+		echo '<details><summary><strong>Aggiungi una lingua</strong></summary><p class="description">Parti dal file dei testi (esporta da «Esporta tutti i testi» qui sotto), scrivi la traduzione nella colonna «Personalizzato» rinominandola «Traduzione» (oppure lascia il nome com\'è) e caricalo con il codice della lingua. Va bene CSV, Excel o JSON.</p>';
+		Ui::form_open( 'apse_import_language', Ui::url( 'apse-texts' ), true );
+		echo '<p>Codice <input type="text" name="code" size="5" placeholder="fr" maxlength="6" required> Nome <input type="text" name="name" placeholder="Français" maxlength="60" required> <input type="file" name="lang_file" accept=".csv,.xlsx,.json" required> <button class="button">Carica</button></p>';
+		Ui::form_close();
+		if ( $up ) {
+			echo '<p>Lingue caricate:</p><ul>';
+			foreach ( $up as $c => $p ) {
+				echo '<li>' . esc_html( $p['name'] . ' (' . $c . ') — ' . count( $p['strings'] ) . ' frasi' ) . ' ';
+				Ui::form_open( 'apse_delete_language', Ui::url( 'apse-texts' ), false, 'apse-inline' );
+				echo Ui::hidden( 'code', $c ) . '<button class="button-link-delete" data-confirm="Eliminare questa traduzione?">elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo '</li>';
+			}
+			echo '</ul>';
+		}
+		echo '</details>';
+	}
+
 	public static function render(): void {
 		$all    = Texts::rows();
 		$groups = array();
@@ -37,6 +64,7 @@ final class TextsPage {
 		$n_cust = count( Texts::overrides() );
 
 		Ui::header( 'Testi personalizzati' );
+		self::language_section();
 		// Tipo di ente e termini
 		$s     = \ApSemplice\Settings::all();
 		$ents  = \ApSemplice\Terms::entity_types( (string) $s['entity_types_custom'] );

@@ -976,6 +976,16 @@ final class Views {
 			. self::form( 'apse_front_accept_rules', $fields, 'Accetto' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
+	/** Messaggio pubblico del 5x1000 con il codice fiscale dell'associazione (vuoto se spento o senza codice fiscale). */
+	public static function five_per_mille(): string {
+		if ( ! \ApSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
+			return '';
+		}
+		$name = trim( (string) Settings::get( 'association_name' ) );
+		return '<section class="apsf-section apsf-fivepm"><h3>5x1000' . ( '' !== $name ? ' a ' . esc_html( $name ) : '' ) . '</h3><p>' . esc_html( \ApSemplice\FivePerMille::text() ) . '</p>'
+			. '<p class="apsf-small">Codice fiscale: <strong>' . esc_html( (string) Settings::get( 'tax_code' ) ) . '</strong></p></section>';
+	}
+
 	public static function rules(): string {
 		return self::with_person( array( __CLASS__, 'section_rules' ) );
 	}

@@ -3925,6 +3925,69 @@ apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-book' ), 'page=apse-minutes'
 wp_set_current_user( 1 );
 apse_ok( has_action( 'admin_post_apse_doc' ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
 
+// ---------- 5x1000, guida iniziale, lingue ----------
+wp_set_current_user( 1 );
+$fp_cf = Settings::get( 'tax_code' );
+apse_ok( ! \ApSemplice\FivePerMille::enabled() && '' === \ApSemplice\Frontend\Views::five_per_mille(), '5x1000: spento di default, il messaggio non compare' );
+apse_render( array( Admin\FivePmPage::class, 'render' ), 'Il 5x1000 è spento' );
+Settings::update( array( 'fivepm_enabled' => 1, 'tax_code' => '12345678901', 'association_name' => 'Associazione Cinque' ) );
+$fp_view = \ApSemplice\Frontend\Views::five_per_mille();
+apse_ok( false !== strpos( $fp_view, '12345678901' ) && false !== strpos( $fp_view, 'Associazione Cinque' ) && false !== strpos( do_shortcode( '[apsemplice_cinquepermille]' ), '12345678901' ), '5x1000: il messaggio ha il codice fiscale ed è disponibile come shortcode' );
+Settings::update( array( 'fivepm_text' => 'Firma per {associazione} con {codice_fiscale}.' ) );
+apse_ok( 'Firma per Associazione Cinque con 12345678901.' === \ApSemplice\FivePerMille::text(), '5x1000: messaggio personalizzabile con i segnaposto' );
+Settings::update( array( 'tax_code' => '' ) );
+apse_ok( '' === \ApSemplice\Frontend\Views::five_per_mille(), '5x1000: senza codice fiscale il messaggio non compare' );
+Settings::update( array( 'tax_code' => '12345678901' ) );
+$fp_1 = \ApSemplice\FivePerMille::add( 2023, '1.234,56', 80, $in_day( -300 ) );
+$fp_2 = \ApSemplice\FivePerMille::add( 2022, '900', 60, $in_day( -400 ) );
+$fp_r1 = \ApSemplice\FivePerMille::get( $fp_1 );
+$fp_r2 = \ApSemplice\FivePerMille::get( $fp_2 );
+apse_ok( 123456 === (int) $fp_r1['amount_cents'] && 'open' === \ApSemplice\FivePerMille::status( $fp_r1 ) && 'overdue' === \ApSemplice\FivePerMille::status( $fp_r2 ), '5x1000: contributi con scadenza del rendiconto a 12 mesi' );
+apse_ok( 1 === count( \ApSemplice\FivePerMille::alerts() ) && 'overdue' === \ApSemplice\FivePerMille::alerts()[0]['status'], '5x1000: avviso per il rendiconto scaduto' );
+apse_render( array( Admin\DashboardPage::class, 'render' ), '5x1000: 1 contributo' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\FivePerMille::add( 2023, '10', 1, '2026-01-01' ); } ) && null !== apse_throws( function () { \ApSemplice\FivePerMille::add( 1990, '10', 1, '2026-01-01' ); } ) && null !== apse_throws( function () { \ApSemplice\FivePerMille::add( 2021, '0', 1, '2026-01-01' ); } ) && null !== apse_throws( function () { \ApSemplice\FivePerMille::add( 2021, '10', 1, 'ieri' ); } ), '5x1000: anno già registrato, anno, importo e data validi' );
+\ApSemplice\FivePerMille::report( $fp_2, $today, 'Acquisto di materiali per i corsi.' );
+apse_ok( 'reported' === \ApSemplice\FivePerMille::status( \ApSemplice\FivePerMille::get( $fp_2 ) ) && 0 === count( \ApSemplice\FivePerMille::alerts() ) && null !== apse_throws( function () use ( $fp_1, $today ) { \ApSemplice\FivePerMille::report( $fp_1, $today, '' ); } ), '5x1000: il rendiconto chiude l\'avviso (e non può essere vuoto)' );
+apse_render( array( Admin\FivePmPage::class, 'render' ), 'Prepara il promemoria per i soci' );
+apse_render( array( Admin\FivePmPage::class, 'render' ), 'Contributi ricevuti' );
+\ApSemplice\FivePerMille::delete( $fp_1 );
+apse_ok( 1 === count( \ApSemplice\FivePerMille::all() ), '5x1000: si elimina un contributo' );
+Settings::update( array( 'fivepm_enabled' => 0, 'fivepm_text' => '', 'tax_code' => $fp_cf ) );
+// guida iniziale
+$gd = \ApSemplice\Guide::steps();
+apse_ok( 7 === count( $gd ) && 7 === \ApSemplice\Guide::progress()['total'] && count( \ApSemplice\Guide::options() ) >= 6, 'guida: sette passi e le funzioni facoltative' );
+apse_render( array( Admin\GuidePage::class, 'render' ), 'Domande frequenti' );
+apse_render( array( Admin\DashboardPage::class, 'render' ), 'Configurazione iniziale' );
+Admin\RegistersActions::guide_dismiss( array( 'on' => '1' ) );
+apse_ok( \ApSemplice\Guide::dismissed( 1 ) && ! \ApSemplice\Guide::show_banner( 1 ), 'guida: l\'avviso in Bacheca si può nascondere' );
+Admin\RegistersActions::guide_dismiss( array( 'on' => '0' ) );
+apse_ok( ! \ApSemplice\Guide::dismissed( 1 ), 'guida: e rimostrare' );
+// lingue
+$lg = \ApSemplice\Languages::available();
+apse_ok( 'Italiano' === $lg['it'] && isset( $lg['en'] ) && 'it' === \ApSemplice\Languages::current() && 'Quota associativa' === \ApSemplice\Texts::plain( 'Quota associativa' ), 'lingue: l\'italiano è quella di partenza e il pacchetto inglese è incluso' );
+Settings::update( array( 'language' => 'en' ) );
+\ApSemplice\Texts::flush();
+apse_ok( 'en' === \ApSemplice\Languages::current() && 'Membership fee' === \ApSemplice\Texts::plain( 'Quota associativa' ), 'lingue: i testi passano all\'inglese' );
+apse_ok( '<p>Save</p>' === \ApSemplice\Texts::html( '<p>Salva</p>' ) && '<p>Salvare il file</p>' === \ApSemplice\Texts::html( '<p>Salvare il file</p>' ) && '<p>Salvataggio</p>' === \ApSemplice\Texts::html( '<p>Salvataggio</p>' ), 'lingue: le parole brevi si traducono solo se sono il testo intero' );
+apse_ok( 'Membership fee: 10' === \ApSemplice\Texts::plain( 'Quota associativa: 10' ) && false !== strpos( \ApSemplice\Texts::html( '<a title="Salva">Quota associativa</a>' ), 'title="Save">Membership fee' ), 'lingue: le frasi si traducono anche dentro altro testo e negli attributi' );
+\ApSemplice\Texts::save_overrides( array( 'Quota associativa' => 'Annual dues' ) );
+apse_ok( 'Annual dues' === \ApSemplice\Texts::plain( 'Quota associativa' ), 'lingue: le personalizzazioni vincono sulla traduzione' );
+\ApSemplice\Texts::save_overrides( array() );
+apse_render( array( Admin\TextsPage::class, 'render' ), 'Usa questa lingua' );
+Settings::update( array( 'language' => 'it' ) );
+\ApSemplice\Texts::flush();
+apse_ok( 'Quota associativa' === \ApSemplice\Texts::plain( 'Quota associativa' ) && '<p>Salva</p>' === \ApSemplice\Texts::html( '<p>Salva</p>' ), 'lingue: tornando all\'italiano i testi restano originali' );
+$lg_n = \ApSemplice\Languages::save_pack( 'fr', 'Français', array( 'Salva' => 'Enregistrer', 'Quota associativa' => 'Cotisation' ) );
+Settings::update( array( 'language' => 'fr' ) );
+\ApSemplice\Texts::flush();
+apse_ok( 2 === $lg_n && isset( \ApSemplice\Languages::available()['fr'] ) && 'Cotisation' === \ApSemplice\Texts::plain( 'Quota associativa' ) && '<p>Enregistrer</p>' === \ApSemplice\Texts::html( '<p>Salva</p>' ), 'lingue: si carica un pacchetto e lo si sceglie' );
+$lg_pairs = \ApSemplice\Languages::pairs_from_rows( array( array( 'Gruppo', 'Originale', 'Traduzione' ), array( 'x', 'Quota associativa', 'Beitrag' ), array( 'x', 'Salva', '' ) ) );
+apse_ok( array( 'Quota associativa' => 'Beitrag' ) === $lg_pairs && null !== apse_throws( function () { \ApSemplice\Languages::pairs_from_rows( array( array( 'A', 'B' ) ) ); } ) && null !== apse_throws( function () { \ApSemplice\Languages::save_pack( 'it', 'Italiano', array( 'Salva' => 'x' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Languages::save_pack( 'xx1', 'Strana', array( 'Salva' => 'x' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Languages::save_pack( 'de', '', array( 'Salva' => 'Speichern' ) ); } ), 'lingue: lettura del file di traduzione e controlli sul codice e sul nome' );
+\ApSemplice\Languages::delete_pack( 'fr' );
+Settings::update( array( 'language' => 'it' ) );
+\ApSemplice\Texts::flush();
+apse_ok( ! isset( \ApSemplice\Languages::available()['fr'] ) && 'it' === \ApSemplice\Languages::current() && Admin\Actions::required_cap( 'apse_import_language' ) === Plugin::CAP && Admin\Actions::required_cap( 'apse_save_language' ) === Plugin::CAP, 'lingue: si elimina un pacchetto caricato; scegliere e caricare è riservato agli amministratori' );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 wp_set_current_user( 1 );
 delete_option( \ApSemplice\Backup::OPT_LAST );

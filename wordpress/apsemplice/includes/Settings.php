@@ -22,6 +22,9 @@ final class Settings {
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
+			'language'                => 'it',  // lingua dei testi (pacchetti di traduzione)
+			'fivepm_enabled'          => 0,     // 5x1000: spento di default
+			'fivepm_text'             => '',    // messaggio personalizzato (vuoto = quello standard)
 			'insurance_volunteers'    => 0,     // registro delle assicurazioni dei volontari: spento di default
 			'insurance_association'   => 0,     // polizze dell'associazione (responsabilità civile, infortuni): spente di default
 			'family_discount_pct'     => 0,    // sconto sulla quota dei familiari del capofamiglia (%)
@@ -109,6 +112,9 @@ final class Settings {
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
+		$clean['language']                = preg_match( '/^[a-z]{2,3}(_[A-Z]{2})?$/', (string) $clean['language'] ) ? (string) $clean['language'] : 'it';
+		$clean['fivepm_enabled']          = empty( $clean['fivepm_enabled'] ) ? 0 : 1;
+		$clean['fivepm_text']             = mb_substr( trim( (string) $clean['fivepm_text'] ), 0, 1000 );
 		$clean['insurance_volunteers']     = empty( $clean['insurance_volunteers'] ) ? 0 : 1;
 		$clean['insurance_association']    = empty( $clean['insurance_association'] ) ? 0 : 1;
 		$clean['family_discount_pct']      = max( 0, min( 100, (int) $clean['family_discount_pct'] ) );

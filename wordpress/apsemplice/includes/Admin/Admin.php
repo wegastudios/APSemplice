@@ -24,8 +24,8 @@ final class Admin {
 		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import' ) ),
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto' ) ),
-		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-backup' => 'Copia di sicurezza', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni' ) ),
+		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze', 'apse-fivepm' => '5x1000' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-backup' => 'Copia di sicurezza', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ) ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
@@ -74,6 +74,8 @@ final class Admin {
 			array( 'apse-statement', 'Rendiconto', array( RegistersPage::class, 'render_statement' ) ),
 			array( 'apse-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
 			array( 'apse-volunteers', 'Assicurazioni', array( RegistersPage::class, 'render_volunteers' ) ),
+			array( 'apse-guide', 'Guida iniziale', array( GuidePage::class, 'render' ) ),
+			array( 'apse-fivepm', '5x1000', array( FivePmPage::class, 'render' ) ),
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'apse-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),

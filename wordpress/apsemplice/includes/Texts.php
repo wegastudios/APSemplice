@@ -53,11 +53,66 @@ final class Texts {
 		}
 		update_option( self::OPT, $clean );
 		self::$map = $clean;
+		self::$eff = null; // le sostituzioni in vigore si ricalcolano
+		self::$tok = array();
 	}
 
 	/** Dopo un salvataggio o un test: rilegge dal database. */
 	public static function flush(): void {
-		self::$map = null;
+		self::$map      = null;
+		self::$eff      = null;
+		self::$eff_code = null;
+		self::$tok      = array();
+	}
+
+	/**  array|null traduzioni della lingua in uso + personalizzazioni (le personalizzazioni vincono) */
+	private static $eff = null;
+	/**  string|null */
+	private static $eff_code = null;
+	/**  array traduzioni da applicare solo al testo intero (parole brevi) */
+	private static $exact = array();
+
+	/** Testo intero (con gli spazi attorno) che è una parola breve tradotta. */
+	private static function exact_swap( string $text ): string {
+		if ( ! self::$exact ) {
+			return $text;
+		}
+		$t = trim( $text );
+		if ( '' !== $t && isset( self::$exact[ $t ] ) ) {
+			return substr( $text, 0, strpos( $text, $t ) ) . self::$exact[ $t ] . substr( $text, strpos( $text, $t ) + strlen( $t ) );
+		}
+		return $text;
+	}
+	/**  array segnaposto già calcolati per la mappa in uso: [html?1:0 => [to, back]] */
+	private static $tok = array();
+
+	/** Sostituzioni in vigore: pacchetto della lingua scelta, poi le personalizzazioni sopra. */
+	public static function effective(): array {
+		$code = \ApSemplice\Languages::current();
+		if ( null === self::$eff || self::$eff_code !== $code ) {
+			self::$eff_code = $code;
+			self::$exact    = array();
+			$pack           = \ApSemplice\Languages::strings( $code );
+			// le parole singole e brevi ("Salva", "Data") si traducono solo se sono il testo intero: altrimenti romperebbero parole più lunghe
+			foreach ( $pack as $o => $t ) {
+				if ( strlen( (string) $o ) < 8 && ! preg_match( '/\s/', (string) $o ) ) {
+					self::$exact[ (string) $o ] = (string) $t;
+					unset( $pack[ $o ] );
+				}
+			}
+			self::$eff = array_merge( $pack, self::overrides() );
+			self::$tok = array();
+		}
+		return self::$eff;
+	}
+
+	private static function effective_tokens( bool $html ): array {
+		$map = self::effective();
+		$k   = $html ? 1 : 0;
+		if ( ! isset( self::$tok[ $k ] ) ) {
+			self::$tok[ $k ] = self::tokens( $map, $html );
+		}
+		return self::$tok[ $k ];
 	}
 
 	// ---------- Applicazione ----------
@@ -93,11 +148,13 @@ final class Texts {
 	/** Testo semplice (email, PDF, messaggi): sostituzione diretta. */
 	public static function plain( string $s, ?array $map = null ): string {
 		$own = null === $map; // senza una mappa data: anche tipo di ente e termini scelti
-		$map = $map ?? self::overrides();
 		if ( '' === $s ) {
 			return $s;
 		}
-		list( $to, $back ) = self::tokens( $map, false );
+		list( $to, $back ) = $own ? self::effective_tokens( false ) : self::tokens( $map, false );
+		if ( $own ) {
+			$s = self::exact_swap( $s );
+		}
 		if ( $to ) {
 			$s = strtr( $s, $to );
 		}
@@ -109,17 +166,21 @@ final class Texts {
 
 	/** HTML: si sostituisce solo nel testo (non nei tag, negli script e negli stili) e in placeholder/title/aria-label/alt; il nuovo testo è protetto. */
 	public static function html( string $html, ?array $map = null ): string {
-		$terms = null === $map ? Terms::map() : array();
-		$map   = $map ?? self::overrides();
-		if ( ( ! $map && ! $terms ) || '' === $html ) {
+		$own   = null === $map;
+		$terms = $own ? Terms::map() : array();
+		$map   = $map ?? self::effective();
+		if ( ( ! $map && ! $terms && ( ! $own || ! self::$exact ) ) || '' === $html ) {
 			return $html;
 		}
-		list( $to, $back ) = self::tokens( $map, true );
+		list( $to, $back ) = $own ? self::effective_tokens( true ) : self::tokens( $map, true );
 		$parts = preg_split( '#(<script\b.*?</script>|<style\b.*?</style>|<[^>]*>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE );
 		if ( false === $parts ) {
 			return $html;
 		}
-		$fix = function ( string $text ) use ( $to, $back, $terms ) {
+		$fix = function ( string $text ) use ( $to, $back, $terms, $own ) {
+			if ( $own ) {
+				$text = self::exact_swap( $text );
+			}
 			if ( $to ) {
 				$text = strtr( $text, $to );
 			}
@@ -150,7 +211,7 @@ final class Texts {
 	/** Amministrazione: tutta la pagina passa dalla sostituzione (tranne la pagina dei testi stessa). */
 	public static function start_admin_buffer(): void {
 		static $started = false;
-		if ( $started || ( ! self::overrides() && ! Terms::map() ) ) {
+		if ( $started || ( ! self::effective() && ! self::$exact && ! Terms::map() ) ) {
 			return;
 		}
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
