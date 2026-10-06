@@ -24,7 +24,10 @@ final class MemberBook {
 		}
 		$date = trim( $date );
 		if ( '' === $date ) {
-			self::db()->update( Db::t( 'people' ), array( 'left_on' => null, 'left_reason' => null, 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
+			self::db()->update( Db::t( 'people' ), array( 'left_on' => null, 'left_reason' => null, 'suspended_at' => null, 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
+			if ( MemberType::is_auto_renewed( $p['type'] ) ) {
+				Plugin::people()->refresh_founder_membership( $person_id ); // il fondatore torna con la tessera sempre rinnovata
+			}
 			Audit::log( 'member.left_cleared', 'person', $person_id, array() );
 			return;
 		}
@@ -38,7 +41,12 @@ final class MemberBook {
 		if ( $date < (string) $p['joined_on'] ) {
 			throw new \InvalidArgumentException( 'La cessazione non può essere prima dell\'ingresso (' . $p['joined_on'] . ').' );
 		}
-		self::db()->update( Db::t( 'people' ), array( 'left_on' => $date, 'left_reason' => mb_substr( trim( sanitize_text_field( $reason ) ), 0, 190 ), 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
+		// Chi ha lasciato l'associazione non è più un socio attivo: non prenota, non riceve promemoria né comunicazioni ai soci, non compare tra quelli da rinnovare.
+		// Si usa lo stato «sospeso»; per il fondatore (sempre in regola) si ferma la tessera alla data di cessazione.
+		self::db()->update( Db::t( 'people' ), array( 'left_on' => $date, 'left_reason' => mb_substr( trim( sanitize_text_field( $reason ) ), 0, 190 ), 'suspended_at' => ! empty( $p['suspended_at'] ) ? $p['suspended_at'] : Db::now(), 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
+		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
+			self::db()->query( self::db()->prepare( 'UPDATE ' . Db::t( 'memberships' ) . " SET valid_to = %s WHERE person_id = %d AND social_year = 'FOUNDER' AND deleted_at IS NULL", $date, $person_id ) );
+		}
 		Audit::log( 'member.left', 'person', $person_id, array( 'date' => $date ) );
 	}
 

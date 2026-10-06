@@ -281,8 +281,12 @@ class PeopleService {
 	}
 
 	public function reactivate( int $person_id ): void {
-		if ( ! $this->get( $person_id ) ) {
+		$p = $this->get( $person_id );
+		if ( ! $p ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
+		}
+		if ( ! empty( $p['left_on'] ) ) {
+			throw new \InvalidArgumentException( 'Ha lasciato l\'associazione: per riammetterlo togli prima la cessazione dal riquadro «Libro soci».' );
 		}
 		$this->db()->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $person_id ) );
 		Audit::log( 'person.reactivated', 'person', $person_id );
@@ -678,6 +682,14 @@ class PeopleService {
 	}
 
 	// ---------- Iscrizioni (tessere) ----------
+
+	/** Ripristina la tessera sempre rinnovata di un fondatore (dopo una cessazione tolta). */
+	public function refresh_founder_membership( int $person_id ): void {
+		$p = $this->get( $person_id );
+		if ( $p && MemberType::is_auto_renewed( $p['type'] ) ) {
+			$this->set_founder_membership( $person_id, (string) $p['joined_on'] );
+		}
+	}
 
 	/** Il fondatore ha una sola iscrizione che dura N anni (default 99): sempre rinnovata. */
 	private function set_founder_membership( int $person_id, string $joined_on ): void {

@@ -29,7 +29,7 @@ final class AccessRequests {
 	public static function add( array $d ): string {
 		$kind = in_array( $d['kind'] ?? '', self::KINDS, true ) ? $d['kind'] : 'unknown';
 		$item = array(
-			'kind' => $kind, 'person_id' => (int) ( $d['person_id'] ?? 0 ), 'name' => substr( (string) ( $d['name'] ?? '' ), 0, 120 ),
+			'kind' => $kind, 'person_id' => (int) ( $d['person_id'] ?? 0 ), 'name' => mb_substr( (string) ( $d['name'] ?? '' ), 0, 120 ),
 			'email' => substr( (string) ( $d['email'] ?? '' ), 0, 190 ), 'phone' => substr( (string) ( $d['phone'] ?? '' ), 0, 40 ), 'at' => time(),
 		);
 		$id  = substr( md5( $kind . '|' . $item['person_id'] . '|' . Text::lower( $item['email'] ) . '|' . Phone::key( $item['phone'] ) ), 0, 12 );

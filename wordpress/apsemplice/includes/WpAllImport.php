@@ -92,7 +92,7 @@ final class WpAllImport {
 		try {
 			self::process();
 		} catch ( \Throwable $e ) {
-			Audit::log( 'wpai.failed', 'import', null, array( 'error' => substr( $e->getMessage(), 0, 200 ) ) ); // non deve interrompere WP All Import
+			Audit::log( 'wpai.failed', 'import', null, array( 'error' => mb_substr( $e->getMessage(), 0, 200 ) ) ); // non deve interrompere WP All Import
 		}
 	}
 
@@ -118,7 +118,7 @@ final class WpAllImport {
 
 	private static function mark( int $post_id, string $message ): void {
 		update_post_meta( $post_id, self::META_RESULT, 'error' );
-		update_post_meta( $post_id, self::META_MSG, substr( $message, 0, 250 ) );
+		update_post_meta( $post_id, self::META_MSG, mb_substr( $message, 0, 250 ) );
 	}
 
 	/** @return array ['people'=>int, 'ledger'=>int, 'duplicates'=>int, 'errors'=>int] */

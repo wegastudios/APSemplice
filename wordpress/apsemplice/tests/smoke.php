@@ -279,6 +279,10 @@ License::set_state( 'unpaid', $today );
 $pol = License::policy();
 apse_ok( 'closable' === $pol['popup'] && 7 === $pol['days_left'], 'licenza non pagata: popup chiudibile per 7 giorni' );
 apse_ok( ! License::allows( 'export' ) && ! License::allows( 'member_area' ), 'licenza non pagata: export e accesso soci bloccati subito' );
+Settings::update( array( 'pwa_enabled' => 1, 'push_enabled' => 1 ) );
+apse_ok( ! \ApSemplice\Pwa::enabled() && ! \ApSemplice\Push::enabled(), 'licenza non pagata: l\'app installabile e le notifiche push sono bloccate' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $yoga ) { \ApSemplice\Notices::send( $yoga, null, 'Titolo', 'Testo' ); } ), 'licenza' ) && false !== strpos( (string) apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', 'Testo', 'members_all' ); } ), 'licenza' ), 'licenza non pagata: avvisi e comunicazioni sono sospesi' );
+Settings::update( array( 'pwa_enabled' => 0, 'push_enabled' => 0 ) );
 apse_ok( false !== strpos( Admin\LicenseNotice::html(), 'apse-overlay-close' ), 'popup con pulsante di chiusura' );
 apse_ok( false !== strpos( Admin\Exports::link( 'people', array(), 'Esporta' ), 'disabled' ), 'pulsanti di esportazione disattivati' );
 apse_ok( user_can( 1, 'apse_view_participants', $yoga ), 'amministratore: i permessi restano' );
@@ -3824,6 +3828,29 @@ $bk_csv = \ApSemplice\Docs::book( '', 'csv' );
 apse_ok( 0 === strpos( $bk_doc['body'], '%PDF-1.4' ) && false !== strpos( $bk_doc['body'], 'LIBRO DEI SOCI' ) && false !== strpos( $bk_csv['body'], 'Libroregistro Livia' ) && false !== strpos( $bk_csv['body'], 'recesso' ), 'libro soci: PDF e CSV' );
 \ApSemplice\MemberBook::set_left( $rg_p, '' );
 apse_ok( in_array( $rg_p, array_column( \ApSemplice\MemberBook::rows( 'in_force' ), 'id' ), true ), 'libro soci: la cessazione si toglie' );
+// cessazione: chi ha lasciato l'associazione non è più un socio attivo
+$lf_p = $mkb( 'Lia', 'Lasciata' );
+$people->set_membership( $lf_p, Settings::membership_year()->label(), true );
+apse_ok( $people->is_active_member( $lf_p ), 'cessazione: prima della cessazione il socio è attivo' );
+\ApSemplice\MemberBook::set_left( $lf_p, $today, 'recesso' );
+apse_ok( ! $people->is_active_member( $lf_p ) && $people->is_suspended( $lf_p ), 'cessazione: chi ha lasciato non è più un socio attivo' );
+apse_ok( null !== apse_throws( function () use ( $people, $lf_p ) { $people->reactivate( $lf_p ); } ), 'cessazione: non si riattiva finché c\'è la cessazione' );
+\ApSemplice\MemberBook::set_left( $lf_p, '' );
+apse_ok( $people->is_active_member( $lf_p ) && ! $people->is_suspended( $lf_p ), 'cessazione: tolta, il socio torna in carica' );
+$lf_f = $people->create( array( 'type' => 'founder', 'first_name' => 'Fabio', 'last_name' => 'Fondatorelasciato', 'email' => 'fabio.fondatorelasciato@example.com', 'joined_on' => gmdate( 'Y-m-d', strtotime( '-30 days' ) ) ) );
+apse_ok( $people->is_active_member( $lf_f ), 'cessazione: il fondatore è sempre in regola' );
+\ApSemplice\MemberBook::set_left( $lf_f, $today, 'dimissioni' );
+apse_ok( ! $people->is_active_member( $lf_f ), 'cessazione: il fondatore che ha lasciato non è più attivo' );
+\ApSemplice\MemberBook::set_left( $lf_f, '' );
+apse_ok( $people->is_active_member( $lf_f ), 'cessazione: il fondatore riammesso torna sempre in regola' );
+// campi troppo lunghi e date impossibili sono rifiutati prima di arrivare al database
+apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => str_repeat( 'a', 130 ), 'last_name' => 'Lungo', 'email' => 'nome.lungo@example.com' ) ); } ), 'persone: un nome troppo lungo è rifiutato' );
+apse_ok( null !== apse_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Data', 'last_name' => 'Impossibile', 'email' => 'data.impossibile@example.com', 'joined_on' => '2023-02-30' ) ); } ), 'persone: una data di ingresso impossibile è rifiutata' );
+// l'anno della tessera in un incasso deve avere la forma di un anno
+apse_ok( null !== apse_throws( function () use ( $ledger, $today, $cash, $cat, $lf_p ) { $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $lf_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000, 'social_year' => 'qualcosa' ) ) ) ); } ), 'incasso: l\'anno della tessera non valido è rifiutato' );
+// blocchi con nome: l'operazione parte e restituisce il suo risultato; l'eccezione passa e il blocco si libera
+apse_ok( 42 === \ApSemplice\Db::with_lock( 'apse_test_lock', function () { return 42; } ), 'blocco: restituisce il risultato' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Db::with_lock( 'apse_test_lock', function () { throw new \InvalidArgumentException( 'errore di prova' ); } ); } ) && 7 === \ApSemplice\Db::with_lock( 'apse_test_lock', function () { return 7; } ), 'blocco: dopo un errore il blocco è libero' );
 apse_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
 apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Cessazione', array( 'id' => $rg_p ) );
 // verbali
@@ -4116,6 +4143,8 @@ if ( ! \ApSemplice\WooBridge::active() ) {
 	$wc_o3->set_status( 'cancelled' );
 	$wc_o3->save();
 	apse_ok( 'cancelled' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay3['id'] ), 'woocommerce: ordine annullato => il pagamento in attesa si chiude' );
+	wp_set_current_user( 1 );
+	apse_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
 	// un ordine senza voci APSemplice non cambia nulla
 	$tx_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
 	$wc_x = wc_create_order();

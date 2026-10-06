@@ -34,7 +34,7 @@ final class Blocks {
 		}
 		wp_add_inline_script(
 			'apse-blocks',
-			'window.APSE_BLOCKS = ' . wp_json_encode( array( 'views' => Shortcodes::VIEWS, 'rules' => Visibility::labels(), 'activities' => $activities ) ) . ';',
+			'window.APSE_BLOCKS = ' . wp_json_encode( array( 'views' => Shortcodes::VIEWS, 'rules' => Visibility::labels(), 'activities' => $activities ), JSON_HEX_TAG | JSON_HEX_AMP ) . ';',
 			'before'
 		);
 
@@ -75,7 +75,7 @@ final class Blocks {
 	public static function render_view( $attrs ): string {
 		$view = isset( $attrs['vista'] ) && isset( Shortcodes::VIEWS[ $attrs['vista'] ] ) ? $attrs['vista'] : 'area_soci';
 		unset( $attrs['vista'] );
-		return Shortcodes::render_view( $view, array_filter( (array) $attrs, 'strlen' ) );
+		return Shortcodes::render_view( $view, array_filter( array_filter( (array) $attrs, 'is_scalar' ), 'strlen' ) );
 	}
 
 	public static function render_reserved( $attrs, $content = '' ): string {

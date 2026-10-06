@@ -258,7 +258,7 @@ class ActivityService {
 			'billing'              => isset( $in['billing'] ) && 'once' === $in['billing'] ? 'once' : 'monthly',
 			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
 			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
-			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? substr( trim( (string) $in['location'] ), 0, 190 ) : null,
+			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? mb_substr( trim( (string) $in['location'] ), 0, 190 ) : null,
 			'starts_on'           => self::clean_date( $in['starts_on'] ?? '' ),
 			'ends_on'             => self::clean_date( $in['ends_on'] ?? '' ),
 			'fund_mode'            => isset( $in['fund_mode'] ) && in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE,
@@ -456,34 +456,30 @@ class ActivityService {
 		}
 		$tbl = Db::t( 'bookings' );
 		// Posti e doppie prenotazioni: controllo e scrittura sotto blocco, così due richieste insieme non superano la capienza.
-		$lock = 'apse_book_' . $session_id;
-		$got  = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT GET_LOCK(%s, 5)', $lock ) );
-		try {
-			$existing = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $person_id ), ARRAY_A );
-			if ( $existing && 'booked' === $existing['status'] ) {
-				throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
-			}
-			if ( null !== $s['capacity'] ) {
-				$taken = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
-				if ( $taken >= (int) $s['capacity'] ) {
-					throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
+		list( $id, $fee ) = Db::with_lock(
+			'apse_book_' . $session_id,
+			function () use ( $tbl, $s, $a, $person, $session_id, $person_id ) {
+				$existing = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $person_id ), ARRAY_A );
+				if ( $existing && 'booked' === $existing['status'] ) {
+					throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
 				}
-			}
-			$fee = $this->fee_for( $a, $person['type'] );
-			if ( $existing ) {
-				$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
-				$id = (int) $existing['id'];
-			} else {
+				if ( null !== $s['capacity'] ) {
+					$taken = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
+					if ( $taken >= (int) $s['capacity'] ) {
+						throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
+					}
+				}
+				$fee = $this->fee_for( $a, $person['type'] );
+				if ( $existing ) {
+					$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
+					return array( (int) $existing['id'], $fee );
+				}
 				if ( ! $this->db()->insert( $tbl, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'fee_due_cents' => $fee, 'created_at' => Db::now() ) ) ) {
 					throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
 				}
-				$id = (int) $this->db()->insert_id;
+				return array( (int) $this->db()->insert_id, $fee );
 			}
-		} finally {
-			if ( $got ) {
-				$this->db()->get_var( $this->db()->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
-			}
-		}
+		);
 		Audit::log( 'booking.created', 'activity', (int) $a['id'], array( 'session' => $session_id, 'person_id' => $person_id, 'fee' => $fee ) );
 		return $id;
 	}

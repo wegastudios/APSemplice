@@ -324,6 +324,9 @@ class LedgerService {
 				// La quota va all'anno più recente creato; se non è quello in corso, l'anno in corso è in omaggio (a chi non è un socio scaduto).
 				$plan        = Plugin::people()->membership_plan( (int) $person['id'], $date );
 				$social_year = ! empty( $l['social_year'] ) ? (string) $l['social_year'] : $plan['year'];
+				if ( ! preg_match( '#^(19|20)\d{2}(/(19|20)\d{2})?$#', $social_year ) ) {
+					throw new \InvalidArgumentException( "Voce $n: anno della tessera non valido." );
+				}
 				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}
 			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
@@ -345,11 +348,11 @@ class LedgerService {
 							'session_id'       => $p['session_id'],
 							'person_id'        => $p['person'] ? (int) $p['person']['id'] : null,
 							'payer_person_id'  => $payer && $p['person'] && (int) $payer['id'] !== (int) $p['person']['id'] ? (int) $payer['id'] : null,
-							'description'      => substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),
+							'description'      => mb_substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),
 							'discount_cents'   => $p['discount'],
 							'competence_month' => ! empty( $p['line']['competence_month'] ) ? $p['line']['competence_month'] : null,
 							'social_year'      => $p['social_year'],
-							'document_ref'     => ! empty( $d['document_ref'] ) ? substr( trim( $d['document_ref'] ), 0, 80 ) : null,
+							'document_ref'     => ! empty( $d['document_ref'] ) ? mb_substr( trim( $d['document_ref'] ), 0, 80 ) : null,
 							'receipt_id'       => $receipt_id,
 						)
 					);
@@ -397,8 +400,8 @@ class LedgerService {
 				'category_id'  => (int) $cat['id'],
 				'activity_id'  => ! empty( $d['activity_id'] ) ? (int) $d['activity_id'] : null,
 				'person_id'    => ! empty( $d['person_id'] ) ? (int) $d['person_id'] : null,
-				'description'  => substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
-				'document_ref' => ! empty( $d['document_ref'] ) ? substr( trim( $d['document_ref'] ), 0, 80 ) : null,
+				'description'  => mb_substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
+				'document_ref' => ! empty( $d['document_ref'] ) ? mb_substr( trim( $d['document_ref'] ), 0, 80 ) : null,
 			)
 		);
 	}
@@ -423,7 +426,7 @@ class LedgerService {
 					$this->insert_tx(
 						array(
 							'tx_date' => $date, 'type' => $leg[0], 'amount_cents' => $cents, 'account_id' => $leg[1], 'method' => $leg[2],
-							'category_id' => $cat, 'description' => substr( $description, 0, 255 ), 'transfer_id' => $transfer,
+							'category_id' => $cat, 'description' => mb_substr( $description, 0, 255 ), 'transfer_id' => $transfer,
 						)
 					);
 				}
@@ -444,7 +447,7 @@ class LedgerService {
 		if ( ! empty( $tx['transfer_id'] ) ) {
 			$ids = array_map( 'intval', $this->db()->get_col( $this->db()->prepare( "SELECT id FROM $tbl WHERE transfer_id = %s AND voided_at IS NULL", $tx['transfer_id'] ) ) );
 		}
-		$reason = '' === trim( $reason ) ? 'Annullato' : substr( trim( $reason ), 0, 255 );
+		$reason = '' === trim( $reason ) ? 'Annullato' : mb_substr( trim( $reason ), 0, 255 );
 		$this->in_transaction(
 			function () use ( $ids, $reason, $tbl ) {
 				foreach ( $ids as $id ) {
@@ -555,11 +558,11 @@ class LedgerService {
 				'category_id'      => (int) $cat['id'],
 				'activity_id'      => ! empty( $d['activity_id'] ) ? (int) $d['activity_id'] : null,
 				'person_id'        => ! empty( $d['person_id'] ) ? (int) $d['person_id'] : null,
-				'description'      => substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
+				'description'      => mb_substr( trim( (string) ( $d['description'] ?? '' ) ), 0, 255 ),
 				'competence_month' => ! empty( $d['month'] ) ? $d['month'] : null,
 				'social_year'      => 'membership' === $cat['kind'] ? Settings::membership_year( (string) $d['date'] )->label() : null,
 				'import_batch'     => ! empty( $d['batch'] ) ? (int) $d['batch'] : null,
-				'document_ref'     => ! empty( $d['ref'] ) ? substr( trim( (string) $d['ref'] ), 0, 80 ) : null,
+				'document_ref'     => ! empty( $d['ref'] ) ? mb_substr( trim( (string) $d['ref'] ), 0, 80 ) : null,
 			)
 		);
 	}

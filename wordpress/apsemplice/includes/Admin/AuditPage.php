@@ -14,7 +14,12 @@ final class AuditPage {
 		Ui::header( 'Registro azioni' );
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-audit"><select name="type" onchange="this.form.submit()">'
 			. Ui::options(
-				array( 'person.' => 'Persone', 'membership.' => 'Iscrizioni', 'activity.' => 'Attività', 'tx.' => 'Movimenti', 'cashcount.' => 'Verifiche cassa', 'import.' => 'Import', 'settings.' => 'Impostazioni' ),
+				array(
+					'person.' => 'Persone', 'member.' => 'Libro soci', 'membership.' => 'Iscrizioni', 'activity.' => 'Attività', 'booking.' => 'Prenotazioni', 'attendance.' => 'Presenze',
+					'tx.' => 'Movimenti', 'account.' => 'Conti', 'fund.' => 'Fondi', 'year.' => 'Anni solari', 'payment.' => 'Pagamenti online', 'cashcount.' => 'Verifiche cassa',
+					'minutes.' => 'Verbali', 'insurance.' => 'Assicurazioni dei volontari', 'policy.' => 'Polizze', 'fivepm.' => '5x1000', 'privacy.' => 'Privacy', 'backup.' => 'Copie di sicurezza',
+					'import.' => 'Import', 'settings.' => 'Impostazioni',
+				),
 				$prefix,
 				'Tutte le azioni'
 			) . '</select></form>'; // phpcs:ignore WordPress.Security.EscapeOutput

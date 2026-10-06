@@ -433,7 +433,7 @@ final class Views {
 		foreach ( $ledger->accounts() as $a ) {
 			$accounts[ (int) $a['id'] ] = $a['name'];
 		}
-		$methods = array_diff_key( Labels::methods(), array( 'stripe' => 1, 'paypal' => 1 ) );
+		$methods = array_diff_key( Labels::methods(), array( 'stripe' => 1, 'paypal' => 1, 'woocommerce' => 1 ) );
 		$acts    = array();
 		foreach ( Plugin::activities()->for_year( Settings::social_year()->label() ) as $a ) {
 			$acts[ (int) $a['id'] ] = $a['name'];

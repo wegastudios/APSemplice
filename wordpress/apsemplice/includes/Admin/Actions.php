@@ -1120,7 +1120,7 @@ final class Actions {
 			(string) $f['name'],
 			array( 'default_type' => (string) ( $p['default_type'] ?? '' ), 'default_account_id' => (int) ( $p['default_account_id'] ?? 0 ) )
 		);
-		$token = wp_generate_password( 16, false );
+		$token = sanitize_key( wp_generate_password( 16, false ) ); // minuscole: stessa forma con cui viene poi riletto
 		set_transient( 'apse_import_' . get_current_user_id() . '_' . $token, $prev, HOUR_IN_SECONDS );
 		return array( Ui::url( 'apse-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
 	}

@@ -49,7 +49,7 @@ final class AttachmentRules {
 		}
 		if ( strlen( $name ) > 120 ) {
 			$ext  = self::extension( $name );
-			$name = substr( $name, 0, 110 ) . ( '' !== $ext ? '.' . $ext : '' );
+			$name = mb_strcut( $name, 0, 110, 'UTF-8' ) . ( '' !== $ext ? '.' . $ext : '' );
 		}
 		return $name;
 	}
