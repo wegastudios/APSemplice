@@ -4136,6 +4136,100 @@ if ( ! \ApSemplice\WooBridge::active() ) {
 }
 wp_set_current_user( 1 );
 
+// ---------- App installabile (PWA) e notifiche push ----------
+wp_set_current_user( 1 );
+$pw_accent = Settings::get( 'accent_color' );
+$pw_name   = Settings::get( 'association_name' );
+apse_ok( ! \ApSemplice\Pwa::enabled() && ! \ApSemplice\Push::enabled() && 404 === \ApSemplice\Pwa::response( 'apse-manifest.webmanifest' )['status'], 'app: spenta di default, il manifest non c\'è' );
+apse_ok( false !== strpos( \ApSemplice\Pwa::response( 'apse-sw.js' )['body'], 'unregister' ) && '' === \ApSemplice\Frontend\Views::section_app( $people->get( $rg_p ) ), 'app: spenta, il service worker si toglie da solo e l\'area non mostra nulla' );
+Settings::update( array( 'pwa_enabled' => 1, 'push_enabled' => 1, 'association_name' => 'Assoc App', 'accent_color' => '#336699' ) );
+$pw_man = json_decode( \ApSemplice\Pwa::response( 'apse-manifest.webmanifest' )['body'], true );
+apse_ok( 200 === \ApSemplice\Pwa::response( 'apse-manifest.webmanifest' )['status'] && 'Assoc App' === $pw_man['name'] && 'standalone' === $pw_man['display'] && '#336699' === $pw_man['theme_color'] && false !== strpos( $pw_man['start_url'], 'source=pwa' ) && ! empty( $pw_man['icons'] ) && 'image/png' === $pw_man['icons'][0]['type'] && $pw_man['scope'] === home_url( '/' ), 'app: il manifest ha nome, colore, indirizzo di partenza e icone' );
+apse_ok( 'apse-sw.js' === \ApSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/apse-sw.js' ), PHP_URL_PATH ) ) && 'apse-manifest.webmanifest' === \ApSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/apse-manifest.webmanifest?x=1' ), PHP_URL_PATH ) ) && null === \ApSemplice\Pwa::route_of( '/qualcosa-altro' ) && null === \ApSemplice\Pwa::route_of( '/apse-sw.js.php' ), 'app: gli indirizzi dell\'app si riconoscono (e solo quelli)' );
+$pw_sw = \ApSemplice\Pwa::response( 'apse-sw.js' );
+apse_ok( false !== strpos( $pw_sw['body'], "addEventListener('push'" ) && false !== strpos( $pw_sw['body'], "addEventListener('notificationclick'" ) && false !== strpos( $pw_sw['body'], 'apse-offline.html' ) && false !== strpos( $pw_sw['body'], 'const NAME = "Assoc App"' ) && false === strpos( $pw_sw['body'], '%VER%' ) && false === strpos( $pw_sw['body'], '%AREA%' ) && 0 === strpos( $pw_sw['type'], 'application/javascript' ), 'app: il service worker gestisce offline e notifiche' );
+apse_ok( 0 === strpos( \ApSemplice\Pwa::response( 'apse-icon-192.png' )['body'], "\x89PNG" ) && false !== strpos( \ApSemplice\Pwa::response( 'apse-offline.html' )['body'], 'Sei offline' ), 'app: icona generata e pagina offline' );
+ob_start();
+\ApSemplice\Pwa::print_head();
+$pw_head = ob_get_clean();
+\ApSemplice\Pwa::enqueue();
+apse_ok( false !== strpos( $pw_head, 'rel="manifest"' ) && false !== strpos( $pw_head, 'theme-color' ) && false !== strpos( $pw_head, 'apple-touch-icon' ) && wp_script_is( 'apse-pwa', 'enqueued' ), 'app: le pagine del sito collegano manifest, colore e script' );
+$pw_card = \ApSemplice\Frontend\Views::section_app( $people->get( $rg_p ) );
+apse_ok( false !== strpos( $pw_card, 'data-apse-install' ) && false !== strpos( $pw_card, 'data-apse-push-on' ), 'app: nell\'area soci compaiono installazione e notifiche' );
+Settings::update( array( 'push_enabled' => 0 ) );
+apse_ok( false === strpos( \ApSemplice\Frontend\Views::section_app( $people->get( $rg_p ) ), 'data-apse-push-on' ) && ! \ApSemplice\Push::enabled(), 'app: senza notifiche resta solo l\'installazione' );
+Settings::update( array( 'push_enabled' => 1 ) );
+// notifiche
+if ( ! \ApSemplice\WebPush::supported() ) {
+	apse_ok( ! \ApSemplice\Push::enabled(), 'notifiche: senza openssl non si accendono' );
+} else {
+	$pw_v1 = \ApSemplice\Push::public_key();
+	apse_ok( 87 === strlen( $pw_v1 ) && $pw_v1 === \ApSemplice\Push::public_key() && false === strpos( (string) wp_json_encode( get_option( \ApSemplice\Push::OPT_VAPID ) ), 'BEGIN' ), 'notifiche: chiavi del sito create una volta e la privata è cifrata' );
+	$pw_uid = (int) $people->get( $at_a )['wp_user_id'];
+	$pw_mk  = function ( string $endpoint ) {
+		$k = \ApSemplice\WebPush::new_keypair();
+		return array( 'endpoint' => $endpoint, 'keys' => array( 'p256dh' => \ApSemplice\WebPush::b64u( $k['public'] ), 'auth' => \ApSemplice\WebPush::b64u( random_bytes( 16 ) ) ) );
+	};
+	$pw_ep1 = 'https://fcm.googleapis.com/fcm/send/prova-1';
+	$pw_s1  = \ApSemplice\Push::subscribe( $pw_uid, $pw_mk( $pw_ep1 ), 'Browser di prova' );
+	apse_ok( $pw_s1 > 0 && \ApSemplice\Push::subscribed( $pw_uid ) && $pw_s1 === \ApSemplice\Push::subscribe( $pw_uid, $pw_mk( $pw_ep1 ) ) && 1 === \ApSemplice\Push::count(), 'notifiche: un dispositivo si collega una sola volta' );
+	apse_ok( null !== apse_throws( function () use ( $pw_uid, $pw_mk ) { \ApSemplice\Push::subscribe( $pw_uid, $pw_mk( 'https://evil.example.com/x' ) ); } ) && null !== apse_throws( function () use ( $pw_uid, $pw_mk ) { \ApSemplice\Push::subscribe( $pw_uid, $pw_mk( 'http://fcm.googleapis.com/x' ) ); } ) && null !== apse_throws( function () use ( $pw_uid ) { \ApSemplice\Push::subscribe( $pw_uid, array( 'endpoint' => 'https://fcm.googleapis.com/x', 'keys' => array( 'p256dh' => 'corta', 'auth' => 'x' ) ) ); } ), 'notifiche: solo servizi di push noti e chiavi valide' );
+	$pw_cap = array();
+	\ApSemplice\WebPush::$http = function ( $url, $args ) use ( &$pw_cap ) {
+		$pw_cap[] = array( $url, $args );
+		return array( 'code' => 201 );
+	};
+	$pw_n = \ApSemplice\Push::notify_users( array( $pw_uid ), 'Titolo di prova', 'Un testo abbastanza lungo per la notifica' );
+	apse_ok( 1 === $pw_n && 1 === count( $pw_cap ) && $pw_ep1 === $pw_cap[0][0] && 0 === strpos( $pw_cap[0][1]['headers']['Authorization'], 'vapid t=' ) && false !== strpos( $pw_cap[0][1]['headers']['Authorization'], ', k=' . $pw_v1 ) && 'aes128gcm' === $pw_cap[0][1]['headers']['Content-Encoding'] && strlen( $pw_cap[0][1]['body'] ) > 100 && ! empty( $wpdb->get_var( 'SELECT last_ok_at FROM ' . Db::t( 'push_subs' ) . ' WHERE id = ' . $pw_s1 ) ), 'notifiche: il messaggio parte cifrato e firmato verso il servizio di push' );
+	// la comunicazione a un gruppo arriva anche come notifica
+	$pw_cap = array();
+	$wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id <> ' . $pw_uid );
+	\ApSemplice\Broadcasts::create( 'Avviso con notifica', 'Ciao {nome}, questo è un avviso.', 'activity', $at_c );
+	$pw_hit = 0;
+	foreach ( $pw_cap as $c ) {
+		if ( $c[0] === $pw_ep1 ) {
+			$pw_hit++;
+		}
+	}
+	apse_ok( 1 === $pw_hit, 'notifiche: le comunicazioni a gruppi arrivano anche sul telefono di chi le ha attivate' );
+	// dispositivo che ha tolto le notifiche, servizio in errore
+	\ApSemplice\WebPush::$http = function () { return array( 'code' => 410 ); };
+	\ApSemplice\Push::notify_users( array( $pw_uid ), 'x', 'y' );
+	apse_ok( ! \ApSemplice\Push::subscribed( $pw_uid ), 'notifiche: un dispositivo che non esiste più viene tolto' );
+	\ApSemplice\Push::subscribe( $pw_uid, $pw_mk( $pw_ep1 ) );
+	\ApSemplice\WebPush::$http = function () { return array( 'code' => 500 ); };
+	for ( $i = 0; $i < 5; $i++ ) {
+		\ApSemplice\Push::notify_users( array( $pw_uid ), 'x', 'y' );
+	}
+	apse_ok( ! \ApSemplice\Push::subscribed( $pw_uid ), 'notifiche: dopo troppi errori di seguito il dispositivo viene tolto' );
+	// limite di dispositivi per utente
+	for ( $i = 0; $i < \ApSemplice\Push::MAX_PER_USER; $i++ ) {
+		\ApSemplice\Push::subscribe( $pw_uid, $pw_mk( 'https://fcm.googleapis.com/fcm/send/lim-' . $i ) );
+	}
+	apse_ok( null !== apse_throws( function () use ( $pw_uid, $pw_mk ) { \ApSemplice\Push::subscribe( $pw_uid, $pw_mk( 'https://fcm.googleapis.com/fcm/send/oltre' ) ); } ), 'notifiche: un numero massimo di dispositivi per utente' );
+	\ApSemplice\Push::unsubscribe( $pw_uid, 'https://fcm.googleapis.com/fcm/send/lim-0' );
+	apse_ok( \ApSemplice\Push::MAX_PER_USER - 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id = ' . $pw_uid ), 'notifiche: un dispositivo si scollega' );
+	// notifica di prova dall'amministrazione
+	\ApSemplice\Push::subscribe( 1, $pw_mk( 'https://updates.push.services.mozilla.com/wpush/v2/prova-admin' ) );
+	$pw_cap = array();
+	\ApSemplice\WebPush::$http = function ( $url, $args ) use ( &$pw_cap ) {
+		$pw_cap[] = $url;
+		return array( 'code' => 201 );
+	};
+	$pw_t = Admin\TechActions::push_test( array() );
+	apse_ok( false !== strpos( $pw_t[1], 'inviata a 1 dispositivo' ) && array( 'https://updates.push.services.mozilla.com/wpush/v2/prova-admin' ) === $pw_cap, 'notifiche: la notifica di prova va ai dispositivi dell\'utente collegato' );
+	\ApSemplice\Push::reset_keys();
+	apse_ok( 0 === \ApSemplice\Push::count() && 87 === strlen( \ApSemplice\Push::public_key() ) && $pw_v1 !== \ApSemplice\Push::public_key(), 'notifiche: rigenerando le chiavi i dispositivi vanno ricollegati' );
+	\ApSemplice\WebPush::$http = null;
+}
+Admin\TechActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
+apse_ok( 'Mia App' === \ApSemplice\Pwa::app_name() && 'MiaApp' === \ApSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
+apse_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
+apse_ok( in_array( 'apse-app', Admin\Admin::ADMIN_ONLY, true ) && false !== strpos( Admin\Admin::tabs( 'apse-tech' ), 'App e notifiche' ) && isset( Admin\SettingsPage::FEATURES['pwa_enabled'], Admin\SettingsPage::FEATURES['push_enabled'] ) && isset( \ApSemplice\Frontend\Shortcodes::VIEWS['app'] ) && shortcode_exists( 'apsemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
+Admin\TechActions::save_app( array() );
+Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 wp_set_current_user( 1 );
 delete_option( \ApSemplice\Backup::OPT_LAST );

@@ -33,6 +33,7 @@ final class Plugin {
 		Texts::register();       // esportazione dei testi personalizzati
 		Privacy::register();     // download dei propri dati
 		WpAllImport::register(); // compatibilità con WP All Import (area di appoggio)
+		Pwa::register();         // app installabile e notifiche (se accese)
 		add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce (se è attivo)
 		add_action( 'apse_check_pending_payments', function () {
 			self::payments()->check_pending();

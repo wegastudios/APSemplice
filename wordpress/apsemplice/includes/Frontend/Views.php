@@ -913,12 +913,12 @@ final class Views {
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ) ) ) );
+		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese,app' ) ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
+					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
 				foreach ( $sections as $s ) {
@@ -989,6 +989,28 @@ final class Views {
 		$name = trim( (string) Settings::get( 'association_name' ) );
 		return '<section class="apsf-section apsf-fivepm"><h3>5x1000' . ( '' !== $name ? ' a ' . esc_html( $name ) : '' ) . '</h3><p>' . esc_html( \ApSemplice\FivePerMille::text() ) . '</p>'
 			. '<p class="apsf-small">Codice fiscale: <strong>' . esc_html( (string) Settings::get( 'tax_code' ) ) . '</strong></p></section>';
+	}
+
+	/** App installabile e notifiche: si vede solo se l'app è accesa nelle impostazioni. */
+	public static function section_app( array $p ): string {
+		if ( ! \ApSemplice\Pwa::enabled() ) {
+			return '';
+		}
+		$push = \ApSemplice\Push::enabled();
+		$html = '<section class="apsf-section apsf-app"><h3>App e notifiche</h3>'
+			. '<p class="apsf-small apsf-muted">Aggiungi ' . esc_html( \ApSemplice\Pwa::app_name() ) . ' alla schermata Home del telefono: si apre come un\'app, con la tessera sempre a portata di mano.</p>'
+			. '<p><button type="button" class="apsf-btn" data-apse-install hidden>Installa l\'app</button></p>'
+			. '<p class="apsf-small apsf-muted" data-apse-ios hidden>Su iPhone: tocca <strong>Condividi</strong> e poi <strong>Aggiungi alla schermata Home</strong>.</p>';
+		if ( $push ) {
+			$html .= '<div data-apse-push><p class="apsf-small apsf-muted">Ricevi sul telefono gli avvisi dei corsi e degli eventi, i promemoria e le comunicazioni dell\'associazione.</p>'
+				. '<p><button type="button" class="apsf-btn" data-apse-push-on>Attiva le notifiche su questo dispositivo</button> <button type="button" class="apsf-btn apsf-btn-ghost" data-apse-push-off hidden>Disattiva le notifiche</button></p>'
+				. '<p class="apsf-small apsf-muted" data-apse-push-msg></p></div>';
+		}
+		return $html . '</section>';
+	}
+
+	public static function app(): string {
+		return self::with_person( array( __CLASS__, 'section_app' ) );
 	}
 
 	public static function rules(): string {
