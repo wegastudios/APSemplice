@@ -145,6 +145,9 @@ final class Texts {
 		if ( preg_match( '/^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|FROM|WHERE|JOIN|LEFT JOIN|ORDER BY|GROUP BY|LIMIT|SET|AND|OR)\b/', $s ) ) {
 			return false;
 		}
+		if ( preg_match( '/(SELECT|FROM|WHERE|COALESCE|GROUP BY|ORDER BY|LEFT JOIN)/', $s ) || preg_match( '/^[A-Z0-9-]+$/', $s ) ) {
+			return false; // pezzi di query e sigle (UTF-8)
+		}
 		$words = preg_split( '/\s+/u', $s ) ?: array();
 		if ( preg_match( '/^[A-ZÀ-Ý]/u', $s ) ) {
 			return ! preg_match( '/^[A-Za-z0-9_]+$/', $s ) || preg_match( '/[a-z]{3}/', $s ); // niente costanti (FOUNDER) né identificatori
