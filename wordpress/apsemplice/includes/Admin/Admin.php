@@ -15,13 +15,16 @@ final class Admin {
 		Exports::register();
 		IncomePage::register_ajax();
 		LicenseNotice::register();
+		RegistersActions::register();
+		\ApSemplice\Docs::register();
 	}
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */
 	const GROUPS = array(
 		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import' ) ),
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
-		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report' ) ),
+		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto' ) ),
+		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Volontari e assicurazione', 'apse-attendance' => 'Presenze' ) ),
 		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-backup' => 'Copia di sicurezza', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni' ) ),
 	);
 
@@ -52,6 +55,7 @@ final class Admin {
 			array( 'apse-people', 'Rubrica', array( PeoplePage::class, 'render_list' ) ),
 			array( 'apse-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
 			array( 'apse-ledger', 'Contabilità', array( LedgerPage::class, 'render' ) ),
+			array( 'apse-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
 		foreach ( $visible as $s ) {
@@ -67,6 +71,10 @@ final class Admin {
 			array( 'apse-transfer', 'Giroconto', array( TransferPage::class, 'render' ) ),
 			array( 'apse-accounts', 'Conti e fondi', array( AccountsPage::class, 'render' ) ),
 			array( 'apse-reports', 'Report', array( ReportsPage::class, 'render' ) ),
+			array( 'apse-statement', 'Rendiconto', array( RegistersPage::class, 'render_statement' ) ),
+			array( 'apse-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
+			array( 'apse-volunteers', 'Volontari e assicurazione', array( RegistersPage::class, 'render_volunteers' ) ),
+			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'apse-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),
 			array( 'apse-messages', 'Comunicazioni', array( MessagesPage::class, 'render' ) ),

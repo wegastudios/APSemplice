@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '27';
+	const DB_VERSION        = '28';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -117,6 +117,8 @@ final class Install {
   board_role varchar(20) DEFAULT NULL,
   level_id bigint(20) unsigned DEFAULT NULL,
   family_head_id bigint(20) unsigned DEFAULT NULL,
+  left_on date DEFAULT NULL,
+  left_reason varchar(190) DEFAULT NULL,
   privacy_consent_at datetime DEFAULT NULL,
   privacy_consent_source varchar(20) DEFAULT NULL,
   anonymized_at datetime DEFAULT NULL,
@@ -133,6 +135,50 @@ final class Install {
   KEY type (type),
   KEY host_person_id (host_person_id),
   KEY family_head_id (family_head_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}minutes (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(20) NOT NULL,
+  meeting_date date NOT NULL,
+  place varchar(190) DEFAULT NULL,
+  title varchar(190) NOT NULL,
+  attendees text,
+  agenda text,
+  body longtext,
+  approved_on date DEFAULT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY kind_date (kind,meeting_date)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}insurance (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  company varchar(120) NOT NULL,
+  policy_no varchar(80) DEFAULT NULL,
+  valid_from date NOT NULL,
+  valid_to date NOT NULL,
+  notes varchar(255) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}attendance (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  lesson_date date NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  present tinyint(1) NOT NULL DEFAULT 1,
+  marked_by bigint(20) unsigned DEFAULT NULL,
+  marked_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY lesson_person (activity_id,lesson_date,person_id),
+  KEY person_id (person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}member_levels (

@@ -401,3 +401,14 @@ Tutti i testi che il plugin mostra si possono cambiare: pagine dei soci, email e
 - **Nucleo familiare**: nella scheda del socio si sceglie il *capofamiglia*. Il capofamiglia paga la quota piena, i familiari la quota del loro livello ridotta dello **sconto nucleo familiare** (Impostazioni, in percentuale). Il capofamiglia deve essere un socio e non un familiare; gli ospiti non hanno livello né nucleo.
 - La quota calcolata (`Levels::fee_for`) è usata ovunque: incassi dal tesoriere, cassa per più persone, pagamenti online, promemoria e Bacheca.
 - La copia di sicurezza include i livelli.
+
+## Registri: libro soci, verbali, volontari e assicurazione, presenze, rendiconto
+
+Nuova voce di menu **Registri** (accessibile anche alla segreteria) e scheda **Rendiconto** in Contabilità. Gli elenchi si scaricano in PDF e CSV (l'esportazione segue la licenza), il PDF è generato dal plugin.
+
+- **Libro soci**: l'elenco progressivo dei soci con data di ingresso e di cessazione, livello e codice fiscale; filtri «in carica» e «cessati». La cessazione (recesso, esclusione, decesso, con motivo) si registra dalla scheda del socio e il socio resta nel libro. Gli ospiti non compaiono.
+- **Verbali**: assemblee dei soci e riunioni del consiglio, con data, luogo, presenti, ordine del giorno, deliberazioni e data di approvazione. Numerazione progressiva per tipo e anno (1/2026…), PDF con firme di segretario e presidente.
+- **Volontari e assicurazione**: i soci volontari non cessati con le loro polizze (compagnia, numero, periodo). Stato: in regola, in scadenza (entro 30 giorni), scaduta, nessuna polizza. In Bacheca compare un avviso se qualcuno è scoperto o in scadenza.
+- **Presenze**: per ogni lezione di un corso (le lezioni vengono dal programma) o data di un evento si segna chi c'era, a lezione fatta; la prima volta sono tutti presenti e si tolgono gli assenti. Riepilogo per periodo con presenze, lezioni e percentuale; PDF a matrice (fino a 10 lezioni) o riepilogativo.
+- **Rendiconto per cassa**: dall'anno solare della prima nota, entrate e uscite raggruppate per «voce di rendiconto» delle categorie, confronto con l'anno precedente, avanzo o disavanzo, saldi iniziali e finali dei conti, fondi accantonati, relazione sull'andamento (testo libero per anno) e firme di tesoriere e presidente. È un documento di lavoro: va verificato dal commercialista prima dell'approvazione.
+- Database v28: tabelle `minutes`, `insurance`, `attendance`; colonne `left_on` e `left_reason` su `people`. Tutto è incluso nella copia di sicurezza.

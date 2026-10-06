@@ -50,6 +50,12 @@ final class DashboardPage {
 					. ' <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">Scaricala ora</a>.</p></div>';
 			}
 		}
+		$ins = \ApSemplice\Insurance::counts();
+		if ( $ins[ \ApSemplice\Insurance::NONE ] + $ins[ \ApSemplice\Insurance::EXPIRED ] + $ins[ \ApSemplice\Insurance::EXPIRING ] > 0 ) {
+			echo '<div class="notice notice-warning inline"><p>Assicurazione dei volontari: '
+				. (int) ( $ins[ \ApSemplice\Insurance::NONE ] + $ins[ \ApSemplice\Insurance::EXPIRED ] ) . ' senza copertura valida, ' . (int) $ins[ \ApSemplice\Insurance::EXPIRING ] . ' in scadenza. '
+				. '<a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri il registro</a>.</p></div>';
+		}
 		self::quick_cash();
 		self::quick_enroll();
 		self::payments_due();

@@ -3808,6 +3808,103 @@ apse_render( array( Admin\SettingsPage::class, 'render' ), 'Livelli di socio' );
 apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Nucleo familiare', array( 'id' => $lv_fam ) );
 Settings::update( array( 'family_discount_pct' => 0 ) );
 
+// ---------- Libro soci, verbali, volontari e assicurazione, presenze, rendiconto ----------
+wp_set_current_user( 1 );
+$rg_p = $mkb( 'Livia', 'Libroregistro' );
+$bk_all = \ApSemplice\MemberBook::rows();
+$bk_ids = array_column( $bk_all, 'id' );
+apse_ok( in_array( $rg_p, $bk_ids, true ) && ! in_array( $guest, $bk_ids, true ) && $bk_all[0]['n'] === 1 && count( $bk_all ) === count( $bk_ids ), 'libro soci: tutti i soci con numero progressivo, senza ospiti' );
+\ApSemplice\MemberBook::set_left( $rg_p, $today, 'recesso' );
+$bk_left = array_column( \ApSemplice\MemberBook::rows( 'left' ), 'id' );
+$bk_in   = array_column( \ApSemplice\MemberBook::rows( 'in_force' ), 'id' );
+apse_ok( in_array( $rg_p, $bk_left, true ) && ! in_array( $rg_p, $bk_in, true ) && in_array( $rg_p, array_column( \ApSemplice\MemberBook::rows(), 'id' ), true ), 'libro soci: il socio cessato resta nel libro con la sua data' );
+apse_ok( null !== apse_throws( function () use ( $rg_p ) { \ApSemplice\MemberBook::set_left( $rg_p, gmdate( 'Y-m-d', strtotime( '+5 days' ) ) ); } ) && null !== apse_throws( function () use ( $rg_p ) { \ApSemplice\MemberBook::set_left( $rg_p, '2001-01-01' ); } ) && null !== apse_throws( function () use ( $guest ) { \ApSemplice\MemberBook::set_left( $guest, $today ); } ), 'libro soci: la cessazione non può essere futura, precedente all\'ingresso o di un ospite' );
+$bk_doc = \ApSemplice\Docs::book();
+$bk_csv = \ApSemplice\Docs::book( '', 'csv' );
+apse_ok( 0 === strpos( $bk_doc['body'], '%PDF-1.4' ) && false !== strpos( $bk_doc['body'], 'LIBRO DEI SOCI' ) && false !== strpos( $bk_csv['body'], 'Libroregistro Livia' ) && false !== strpos( $bk_csv['body'], 'recesso' ), 'libro soci: PDF e CSV' );
+\ApSemplice\MemberBook::set_left( $rg_p, '' );
+apse_ok( in_array( $rg_p, array_column( \ApSemplice\MemberBook::rows( 'in_force' ), 'id' ), true ), 'libro soci: la cessazione si toglie' );
+apse_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
+apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Cessazione', array( 'id' => $rg_p ) );
+// verbali
+$mn_y  = substr( $today, 0, 4 );
+$mn_1  = \ApSemplice\Minutes::save( 0, array( 'kind' => 'assembly', 'meeting_date' => $mn_y . '-03-10', 'place' => 'Sede', 'title' => 'Approvazione del bilancio', 'attendees' => 'Presenti 12 soci', 'agenda' => '1. Bilancio', 'body' => "Si approva il bilancio.\nVoti favorevoli: tutti.", 'approved_on' => '' ), 1 );
+$mn_2  = \ApSemplice\Minutes::save( 0, array( 'kind' => 'assembly', 'meeting_date' => $mn_y . '-05-12', 'title' => 'Seconda assemblea', 'body' => 'Si discute.' ), 1 );
+$mn_3  = \ApSemplice\Minutes::save( 0, array( 'kind' => 'board', 'meeting_date' => $mn_y . '-02-01', 'title' => 'Riunione del consiglio', 'body' => 'Si decide.' ), 1 );
+apse_ok( $mn_y . '' === substr( \ApSemplice\Minutes::get( $mn_1 )['number'], 2 ) && '1/' . $mn_y === \ApSemplice\Minutes::get( $mn_1 )['number'] && '2/' . $mn_y === \ApSemplice\Minutes::get( $mn_2 )['number'] && '1/' . $mn_y === \ApSemplice\Minutes::get( $mn_3 )['number'], 'verbali: numerazione progressiva per tipo e anno, in ordine di data' );
+apse_ok( 2 === count( \ApSemplice\Minutes::all( 'assembly', (int) $mn_y ) ) && null !== apse_throws( function () { \ApSemplice\Minutes::save( 0, array( 'kind' => 'altro', 'meeting_date' => '2026-01-01', 'title' => 'x', 'body' => 'x' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Minutes::save( 0, array( 'kind' => 'board', 'meeting_date' => '2026-13-45', 'title' => 'x', 'body' => 'x' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Minutes::save( 0, array( 'kind' => 'board', 'meeting_date' => '2026-01-01', 'title' => '', 'body' => 'x' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Minutes::save( 0, array( 'kind' => 'board', 'meeting_date' => '2026-01-01', 'title' => 'x', 'body' => '' ) ); } ), 'verbali: tipo, data, titolo e contenuto obbligatori' );
+\ApSemplice\Minutes::save( $mn_1, array( 'kind' => 'assembly', 'meeting_date' => $mn_y . '-03-10', 'place' => 'Sede', 'title' => 'Approvazione del bilancio', 'body' => 'Testo corretto.', 'approved_on' => $mn_y . '-05-12' ), 1 );
+$mn_pdf = \ApSemplice\Docs::minute( $mn_1 );
+apse_ok( 0 === strpos( $mn_pdf['body'], '%PDF-1.4' ) && false !== strpos( $mn_pdf['body'], 'VERBALE N. 1/' . $mn_y ) && false !== strpos( $mn_pdf['body'], 'Approvazione del bilancio' ) && false !== strpos( $mn_pdf['body'], 'Testo corretto.' ) && false !== strpos( $mn_pdf['body'], 'letto e approvato' ) && false !== strpos( $mn_pdf['body'], 'Il Segretario' ), 'verbali: il PDF ha numero, titolo, testo, approvazione e firme' );
+\ApSemplice\Minutes::delete( $mn_3 );
+apse_ok( null === \ApSemplice\Minutes::get( $mn_3 ) && null !== apse_throws( function () use ( $mn_3 ) { \ApSemplice\Docs::minute( $mn_3 ); } ), 'verbali: un verbale eliminato non compare più' );
+apse_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Approvazione del bilancio' );
+apse_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Stampa il PDF', array( 'view' => $mn_1 ) );
+apse_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Crea il verbale', array( 'new' => '1' ) );
+// volontari e assicurazione
+$in_day = function ( int $d ) use ( $today ) {
+	return gmdate( 'Y-m-d', strtotime( $today . ' ' . ( $d >= 0 ? '+' : '' ) . $d . ' days' ) );
+};
+$st_of = function () use ( $vol ) {
+	foreach ( \ApSemplice\Insurance::register() as $r ) {
+		if ( (int) $r['person']['id'] === $vol ) {
+			return $r['status'];
+		}
+	}
+	return null;
+};
+apse_ok( 'none' === $st_of(), 'assicurazione: senza polizza il volontario risulta scoperto' );
+\ApSemplice\Insurance::add( $vol, 'Assicurazioni Prova', 'P-100', $in_day( -400 ), $in_day( -35 ), '' );
+apse_ok( 'expired' === $st_of(), 'assicurazione: polizza scaduta' );
+$ins_soon = \ApSemplice\Insurance::add( $vol, 'Assicurazioni Prova', 'P-101', $in_day( -5 ), $in_day( 10 ), '' );
+apse_ok( 'expiring' === $st_of(), 'assicurazione: polizza in scadenza' );
+apse_render( array( Admin\DashboardPage::class, 'render' ), 'Assicurazione dei volontari' );
+\ApSemplice\Insurance::add( $vol, 'Assicurazioni Prova', 'P-102', $in_day( -5 ), $in_day( 200 ), 'rinnovo' );
+apse_ok( 'valid' === $st_of() && 3 === count( \ApSemplice\Insurance::for_person( $vol ) ), 'assicurazione: vale la polizza che copre di più' );
+apse_ok( null !== apse_throws( function () use ( $vol, $in_day ) { \ApSemplice\Insurance::add( $vol, 'X', '', $in_day( 10 ), $in_day( 1 ), '' ); } ) && null !== apse_throws( function () use ( $vol, $in_day ) { \ApSemplice\Insurance::add( $vol, '', '', $in_day( 1 ), $in_day( 10 ), '' ); } ) && null !== apse_throws( function () use ( $guest, $in_day ) { \ApSemplice\Insurance::add( $guest, 'X', '', $in_day( 1 ), $in_day( 10 ), '' ); } ), 'assicurazione: date coerenti, compagnia obbligatoria, solo per i soci' );
+\ApSemplice\Insurance::delete( $ins_soon );
+apse_ok( 2 === count( \ApSemplice\Insurance::for_person( $vol ) ), 'assicurazione: si elimina una polizza' );
+$vl_doc = \ApSemplice\Docs::volunteers();
+apse_ok( false !== strpos( $vl_doc['body'], 'REGISTRO DEI VOLONTARI' ) && false !== strpos( \ApSemplice\Docs::volunteers( 'csv' )['body'], 'Assicurazioni Prova' ), 'assicurazione: PDF e CSV del registro' );
+apse_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Registra una polizza' );
+// presenze
+$at_day = (int) gmdate( 'N', strtotime( $today ) );
+$at_c   = $acts->create( array( 'name' => 'Corso presenze', 'social_year' => $sy_label, 'instructor_person_id' => $vol, 'monthly_fee_cents' => 1000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => $at_day, 'start' => '18:00', 'end' => '19:00', 'from' => substr( $today, 0, 8 ) . '01' ) ) ) );
+$at_a   = $mkb( 'Anna', 'Presenteregistro' );
+$at_b   = $mkb( 'Bruno', 'Assenteregistro' );
+$acts->enroll( $at_c, $at_a, $month );
+$acts->enroll( $at_c, $at_b, $month );
+$at_act = $acts->get( $at_c );
+apse_ok( in_array( $today, \ApSemplice\Attendance::lesson_dates( $at_act, substr( $today, 0, 8 ) . '01', $today ), true ) && 2 === count( \ApSemplice\Attendance::roster( $at_act, $today ) ), 'presenze: le lezioni del corso e gli iscritti attesi' );
+apse_ok( 2 === \ApSemplice\Attendance::save( $at_c, $today, array( $at_a ), 1 ) && array( $at_a => true, $at_b => false ) == \ApSemplice\Attendance::marks( $at_c, $today ), 'presenze: si segna chi c\'era e chi no' );
+\ApSemplice\Attendance::save( $at_c, $today, array( $at_a, $at_b ), 1 );
+apse_ok( array( $at_a => true, $at_b => true ) == \ApSemplice\Attendance::marks( $at_c, $today ), 'presenze: registrare di nuovo sostituisce le presenze' );
+\ApSemplice\Attendance::save( $at_c, $today, array( $at_a ), 1 );
+apse_ok( null !== apse_throws( function () use ( $at_c, $in_day, $at_a ) { \ApSemplice\Attendance::save( $at_c, $in_day( 7 ), array( $at_a ) ); } ) && null !== apse_throws( function () use ( $at_c, $in_day, $at_a ) { \ApSemplice\Attendance::save( $at_c, $in_day( -1 ), array( $at_a ) ); } ) && null !== apse_throws( function () use ( $at_a ) { \ApSemplice\Attendance::save( 999999, '2026-01-01', array( $at_a ) ); } ), 'presenze: non in anticipo, non in un giorno senza lezione, solo attività esistenti' );
+$at_sum = \ApSemplice\Attendance::summary( $at_c, substr( $today, 0, 4 ) . '-01-01', $today );
+$at_by  = array();
+foreach ( $at_sum['people'] as $r ) {
+	$at_by[ $r['person_id'] ] = $r['presenze'] . '/' . $r['totale'];
+}
+apse_ok( array( $today ) === $at_sum['dates'] && '1/1' === $at_by[ $at_a ] && '0/1' === $at_by[ $at_b ], 'presenze: riepilogo del periodo' );
+$at_doc = \ApSemplice\Docs::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today );
+apse_ok( false !== strpos( $at_doc['body'], 'REGISTRO PRESENZE' ) && false !== strpos( $at_doc['body'], 'Presenteregistro Anna' ) && false !== strpos( $at_doc['body'], 'Corso presenze' ) && false !== strpos( \ApSemplice\Docs::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today, 'csv' )['body'], 'Assenteregistro Bruno' ) && null !== apse_throws( function () use ( $at_c ) { \ApSemplice\Docs::attendance( $at_c, 'ieri', 'oggi' ); } ), 'presenze: PDF e CSV del registro' );
+apse_render( array( Admin\RegistersPage::class, 'render_attendance' ), 'Registra le presenze', array( 'activity' => $at_c, 'ym' => substr( $today, 0, 7 ), 'date' => $today ) );
+// rendiconto
+$rd_y = (int) substr( $today, 0, 4 );
+$rd   = \ApSemplice\Statement::data( $rd_y );
+apse_ok( $rd['result']['cur'] === $rd['total_income']['cur'] - $rd['total_expense']['cur'] && $rd['total_income']['cur'] === array_sum( array_column( $rd['income'], 'cur' ) ) && $rd['total_expense']['cur'] === array_sum( array_column( $rd['expenses'], 'cur' ) ) && in_array( $rd_y, \ApSemplice\Statement::years(), true ), 'rendiconto: totali, avanzo e anni coerenti' );
+\ApSemplice\Statement::save_notes( $rd_y, "Anno positivo.\nNessuna criticità." );
+$rd_doc = \ApSemplice\Docs::statement( $rd_y );
+apse_ok( 0 === strpos( $rd_doc['body'], '%PDF-1.4' ) && false !== strpos( $rd_doc['body'], 'RENDICONTO PER CASSA' ) && false !== strpos( $rd_doc['body'], 'ENTRATE' ) && false !== strpos( $rd_doc['body'], 'USCITE' ) && false !== strpos( $rd_doc['body'], 'Anno positivo.' ) && false !== strpos( $rd_doc['body'], 'Il Tesoriere' ) && false !== strpos( $rd_doc['body'], 'CASSA E CONTI' ), 'rendiconto: il PDF ha entrate, uscite, cassa, relazione e firme' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Docs::statement( 1999 ); } ) && null !== apse_throws( function () use ( $rd_y ) { \ApSemplice\Statement::save_notes( $rd_y, str_repeat( 'x', 6000 ) ); } ), 'rendiconto: anno valido e relazione di lunghezza limitata' );
+apse_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Relazione sull\'andamento della gestione', array( 'year' => $rd_y ) );
+// accessi
+wp_set_current_user( $sec_u );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-book' ), 'page=apse-minutes' ) && false !== strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-statement' ) && Admin\Actions::required_cap( 'apse_save_levels' ) === Plugin::CAP && current_user_can( Plugin::CAP_OPS ), 'registri: la segreteria li vede' );
+wp_set_current_user( 1 );
+apse_ok( has_action( 'admin_post_apse_doc' ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 wp_set_current_user( 1 );
 delete_option( \ApSemplice\Backup::OPT_LAST );
