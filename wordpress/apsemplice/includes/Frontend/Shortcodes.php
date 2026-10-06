@@ -33,6 +33,7 @@ final class Shortcodes {
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
+		'app'             => 'App e notifiche (installa l'app, attiva le notifiche)',
 		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
 		'accesso'         => 'Accesso / login',
 	);
@@ -52,7 +53,7 @@ final class Shortcodes {
 	public static function render_view( string $view, array $atts = array() ): string {
 		switch ( $view ) {
 			case 'area_soci':
-				return Views::area( shortcode_atts( array( 'sezioni' => 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese' ), $atts ) );
+				return Views::area( shortcode_atts( array( 'sezioni' => 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese,app' ), $atts ) );
 			case 'tessera':
 				return Views::card();
 			case 'calendario':
@@ -81,6 +82,8 @@ final class Shortcodes {
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'prossimi_eventi':
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );
+			case 'app':
+				return Views::app();
 			case 'cinquepermille':
 				return Views::five_per_mille();
 			case 'accesso':

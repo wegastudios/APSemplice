@@ -24,6 +24,11 @@ final class Settings {
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
 			'card_enabled'            => 1,     // tessera digitale nell'area soci
 			'reports_enabled'         => 1,     // report e rendiconto
+			'pwa_enabled'             => 0,     // app installabile (PWA): spenta di default
+			'push_enabled'            => 0,     // notifiche push: spente di default
+			'pwa_name'                => '',    // nome dell'app (vuoto = denominazione)
+			'pwa_short_name'          => '',    // nome breve sotto l'icona
+			'pwa_icon_id'             => 0,     // icona dell'app (immagine PNG della libreria media)
 			'woo_default_product'     => 0,     // prodotto WooCommerce per le voci senza un prodotto proprio
 			'language'                => 'it',  // lingua dei testi (pacchetti di traduzione)
 			'fivepm_enabled'          => 0,     // 5x1000: spento di default
@@ -117,6 +122,11 @@ final class Settings {
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
 		$clean['card_enabled']            = empty( $clean['card_enabled'] ) ? 0 : 1;
 		$clean['reports_enabled']         = empty( $clean['reports_enabled'] ) ? 0 : 1;
+		$clean['pwa_enabled']             = empty( $clean['pwa_enabled'] ) ? 0 : 1;
+		$clean['push_enabled']            = empty( $clean['push_enabled'] ) ? 0 : 1;
+		$clean['pwa_name']                = mb_substr( trim( (string) $clean['pwa_name'] ), 0, 45 );
+		$clean['pwa_short_name']          = mb_substr( trim( (string) $clean['pwa_short_name'] ), 0, 12 );
+		$clean['pwa_icon_id']             = max( 0, (int) $clean['pwa_icon_id'] );
 		$clean['woo_default_product']     = max( 0, (int) $clean['woo_default_product'] );
 		$clean['language']                = preg_match( '/^[a-z]{2,3}(_[A-Z]{2})?$/', (string) $clean['language'] ) ? (string) $clean['language'] : 'it';
 		$clean['fivepm_enabled']          = empty( $clean['fivepm_enabled'] ) ? 0 : 1;

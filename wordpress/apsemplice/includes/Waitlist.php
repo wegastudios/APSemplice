@@ -130,6 +130,7 @@ final class Waitlist {
 		$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
 		$when = ( new \DateTimeImmutable( $session['session_date'] ) )->format( 'd/m/Y' ) . ( $session['start_time'] ? ' alle ' . $session['start_time'] : '' );
 		$assoc = (string) Settings::get( 'association_name' );
+		Push::notify_email( (string) $to['email'], 'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ), 'Si è liberato un posto e la prenotazione ' . $who . 'del ' . $when . ' è stata registrata.' );
 		Texts::mail(
 			$to['email'],
 			'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ),

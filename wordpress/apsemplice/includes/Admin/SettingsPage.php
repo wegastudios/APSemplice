@@ -24,6 +24,8 @@ final class SettingsPage {
 		'insurance_volunteers'  => 'Assicurazioni dei volontari',
 		'insurance_association' => 'Polizze dell\'associazione (responsabilità civile, infortuni)',
 		'fivepm_enabled'        => '5x1000',
+		'pwa_enabled'           => 'App installabile sul telefono (PWA)',
+		'push_enabled'          => 'Notifiche push ai dispositivi dei soci',
 	);
 
 	/** Caselle delle funzioni, lette e salvate dal modulo «Generale». */
