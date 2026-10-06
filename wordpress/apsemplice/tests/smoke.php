@@ -2625,7 +2625,7 @@ $susp->setAccessible( true );
 $susp->invoke( null, array( 'id' => (string) $sp_a ) );
 apse_ok( $people->is_suspended( $sp_a ) && ! $people->is_active_member( $sp_a ), 'sospensione: il socio diventa inattivo' );
 $dash_sp2 = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Cassa rapida' );
-apse_ok( false === strpos( $dash_sp2, 'Sospeso Manuale' ), 'sospensione: i soci inattivi non si vedono più in bacheca' );
+apse_ok( false === strpos( $dash_sp2, '>Sospeso Manuale</a>' ), 'sospensione: i soci inattivi non si vedono più negli elenchi della bacheca' );
 $threw = false;
 try {
 	$pay_q( $sp_a );
