@@ -3201,7 +3201,10 @@ foreach ( array_keys( $tx_groups ) as $gname ) {
 	}
 	echo "  [$gname] " . implode( ' | ', $sample ) . "\n";
 }
-apse_ok( count( $tx_cat ) > 300 && in_array( 'Il mio profilo', $tx_texts, true ) && in_array( 'Le mie ricevute', $tx_texts, true ) && in_array( 'RICEVUTA DI PAGAMENTO', $tx_texts, true ), 'testi: il catalogo ricavato dal codice contiene i testi del sito' );
+foreach ( $tx_cat as $c ) { // elenco completo nel registro del CI, per la revisione dei testi
+	echo 'TXT ' . wp_json_encode( array( $c['group'], $c['text'] ), JSON_UNESCAPED_UNICODE ) . "\n";
+}
+apse_ok( count( $tx_cat ) > 300 &&in_array( 'Il mio profilo', $tx_texts, true ) && in_array( 'Le mie ricevute', $tx_texts, true ) && in_array( 'RICEVUTA DI PAGAMENTO', $tx_texts, true ), 'testi: il catalogo ricavato dal codice contiene i testi del sito' );
 apse_ok( 'Area soci e pagine pubbliche' === $tx_by['Il mio profilo'] && 'Ricevute e attestazioni (PDF)' === $tx_by['RICEVUTA DI PAGAMENTO'], 'testi: ogni testo ha il suo gruppo' );
 $tx_bad = array();
 foreach ( $tx_texts as $t ) {
