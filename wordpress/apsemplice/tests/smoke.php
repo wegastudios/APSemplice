@@ -3065,6 +3065,36 @@ apse_ok( false !== strpos( $t_rita, 'sta per scadere' ) && false !== strpos( $t_
 $n_rita = $mails_to( 'rita.promemoria@example.com' );
 \ApSemplice\Reminders::run( $today );
 apse_ok( $n_rita === $mails_to( 'rita.promemoria@example.com' ) && $r_on['events'] >= 2, 'promemoria: ogni promemoria si manda una sola volta' );
+// corsi mensili: dopo l'ultima lezione del mese, promemoria a chi non ha pagato il mese dopo
+$cur_m = substr( $today, 0, 7 );
+$tgt_m = gmdate( 'Y-m', strtotime( $cur_m . '-01 +1 month' ) );
+if ( in_array( $tgt_m, Settings::social_year()->months(), true ) ) {
+	Settings::update( array( 'reminders_dues' => 1, 'reminders_membership' => 0, 'reminders_events' => 0 ) );
+	$mk_course = function ( string $name, string $day ) use ( $acts, $sy_label, $cur_m ) {
+		return $acts->create( array( 'name' => $name, 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'lesson_slots' => array( array( 'type' => 'single', 'date' => $cur_m . '-' . $day, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+	};
+	$c_done  = $mk_course( 'Corso già finito nel mese', '10' );
+	$c_later = $mk_course( 'Corso con lezione ancora da fare', '28' );
+	$dm1 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dina', 'last_name' => 'Nonpagato', 'email' => 'dina.nonpagato@example.com' ) );
+	$dm2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dino', 'last_name' => 'Pagato', 'email' => 'dino.pagato@example.com' ) );
+	foreach ( array( $dm1, $dm2 ) as $pid ) {
+		$acts->enroll( $c_done, $pid, $cur_m );
+		$acts->enroll( $c_later, $pid, $cur_m );
+	}
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $dm2, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => 2000, 'activity_id' => $c_done, 'competence_month' => $tgt_m ) ) ) );
+	$d_before = $mails_to( 'dina.nonpagato@example.com' );
+	\ApSemplice\Reminders::run( $cur_m . '-09' );
+	apse_ok( $d_before === $mails_to( 'dina.nonpagato@example.com' ), 'promemoria corsi: prima dell\'ultima lezione del mese non parte nulla' );
+	\ApSemplice\Reminders::run( $cur_m . '-11' );
+	$t_dina = $mail_text( 'dina.nonpagato@example.com' );
+	apse_ok( false !== strpos( $t_dina, 'Corso già finito nel mese' ) && false === strpos( $t_dina, 'ancora da fare' ) && 0 === $mails_to( 'dino.pagato@example.com' ), 'promemoria corsi: dopo l\'ultima lezione, solo a chi non ha pagato il mese dopo, e solo per il corso con lezioni finite' );
+	$d_n = $mails_to( 'dina.nonpagato@example.com' );
+	\ApSemplice\Reminders::run( $cur_m . '-12' );
+	apse_ok( $d_n === $mails_to( 'dina.nonpagato@example.com' ), 'promemoria corsi: un solo promemoria per corso e mese' );
+	\ApSemplice\Reminders::run( $cur_m . '-29' );
+	apse_ok( false !== strpos( $mail_text( 'dina.nonpagato@example.com' ), 'ancora da fare' ), 'promemoria corsi: il corso con lezione più tardi riceve il promemoria dopo la sua ultima lezione' );
+	Settings::update( array( 'reminders_dues' => 0, 'reminders_membership' => 1, 'reminders_events' => 1 ) );
+}
 $last = \ApSemplice\Reminders::last_run();
 apse_ok( ! empty( $last['at'] ), 'promemoria: l\'ultimo invio è registrato' );
 Settings::update( array( 'reminders_enabled' => 0, 'reminders_dues' => 1 ) );

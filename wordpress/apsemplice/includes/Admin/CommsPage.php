@@ -20,7 +20,7 @@ final class CommsPage {
 		echo '<tr><th>Promemoria attivi</th><td><label><input type="checkbox" name="reminders_enabled" value="1"' . checked( ! empty( $s['reminders_enabled'] ), true, false ) . '> Invia i promemoria ogni giorno</label></td></tr>';
 		echo '<tr><th>Tessera</th><td><label><input type="checkbox" name="reminders_membership" value="1"' . checked( ! empty( $s['reminders_membership'] ), true, false ) . '> Tessera in scadenza e scaduta da poco</label> '
 			. '— avvisa <input type="number" min="1" max="120" name="reminders_membership_days" value="' . (int) $s['reminders_membership_days'] . '" style="width:70px"> giorni prima</td></tr>';
-		echo '<tr><th>Mensilità dei corsi</th><td><label><input type="checkbox" name="reminders_dues" value="1"' . checked( ! empty( $s['reminders_dues'] ), true, false ) . '> Mensilità non pagate</label> <span class="description">(al massimo un messaggio ogni ' . (int) Reminders::DUES_EVERY_DAYS . ' giorni)</span></td></tr>';
+		echo '<tr><th>Mensilità dei corsi</th><td><label><input type="checkbox" name="reminders_dues" value="1"' . checked( ! empty( $s['reminders_dues'] ), true, false ) . '> Rinnovo dei corsi mensili</label> <span class="description">Dopo l\'ultima lezione del mese si ricorda a chi non ha ancora pagato il mese dopo (i corsi si rinnovano a inizio mese). Senza orari di lezione, dal 25 del mese. Un messaggio per persona, corso e mese.</span></td></tr>';
 		echo '<tr><th>Eventi</th><td><label><input type="checkbox" name="reminders_events" value="1"' . checked( ! empty( $s['reminders_events'] ), true, false ) . '> Ricordo il giorno prima a chi è prenotato</label></td></tr>';
 		echo '</tbody></table>';
 

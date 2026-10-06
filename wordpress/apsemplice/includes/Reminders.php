@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Promemoria automatici per email, una volta al giorno (spenti di default, si accendono dalle impostazioni):
  *  - tessera in scadenza (entro N giorni) e tessera scaduta da poco: una volta per scadenza;
- *  - mensilità dei corsi non pagate: al massimo una ogni 14 giorni;
+ *  - corsi con rinnovo mensile: dopo l'ultima lezione del mese, a chi non ha ancora pagato il mese dopo (una volta per mese);
  *  - evento il giorno dopo: una volta per prenotazione.
  * Chi non ha email (un ospite) riceve il promemoria tramite il socio che lo ospita. Gli invii sono registrati per non ripeterli.
  */
@@ -14,7 +14,6 @@ final class Reminders {
 
 	const HOOK            = 'apse_send_reminders';
 	const OPT_LAST        = 'apse_reminders_last';
-	const DUES_EVERY_DAYS = 14;
 	const EXPIRED_WINDOW  = 7; // giorni dopo la scadenza in cui si manda ancora il promemoria "scaduta"
 
 	public static function register(): void {
@@ -140,47 +139,82 @@ final class Reminders {
 		return $n;
 	}
 
+	/**
+	 * Corsi con rinnovo mensile: dopo l'ULTIMA lezione del mese si ricorda a chi non ha ancora pagato il mese dopo (si rinnovano a inizio mese).
+	 * Un solo promemoria per persona, corso e mese; non si manda per un corso "una tantum", né oltre la fine dell'anno sociale o del corso.
+	 */
 	private static function dues( string $today, bool $send ): int {
 		$acts   = Plugin::activities();
 		$people = Plugin::people();
-		$by     = array();
+		$cur    = substr( $today, 0, 7 );
+		$target = gmdate( 'Y-m', strtotime( $cur . '-01 +1 month' ) );
+		$mstart = $cur . '-01';
+		$mend   = gmdate( 'Y-m-t', strtotime( $mstart ) );
+		$last   = array(); // attività => data dell'ultima lezione del mese
+		$any    = array(); // attività che hanno lezioni in calendario questo mese
+		foreach ( Calendar::occurrences( $mstart, $mend ) as $o ) {
+			if ( 'course' === $o['kind'] ) {
+				$any[ (int) $o['activity_id'] ] = true;
+				$last[ (int) $o['activity_id'] ] = max( $last[ (int) $o['activity_id'] ] ?? '', $o['date'] );
+			}
+		}
+		$n = 0;
 		foreach ( $acts->for_year( Settings::social_year( $today )->label() ) as $a ) {
-			if ( ActivityKind::COURSE !== $a['kind'] ) {
+			$aid = (int) $a['id'];
+			if ( ActivityKind::COURSE !== $a['kind'] || 'once' === ( $a['billing'] ?? 'monthly' ) ) {
 				continue;
 			}
-			foreach ( $acts->status_for_activity( (int) $a['id'] ) as $s ) {
-				if ( null !== $s['enrollment']['end_month'] || ! $s['summary']['unpaid_months'] ) {
+			if ( ! in_array( $target, SocialYear::from_label( $a['social_year'], Settings::start_month() )->months(), true ) ) {
+				continue; // il mese dopo è nell'anno sociale successivo
+			}
+			if ( ! empty( $a['ends_on'] ) && substr( (string) $a['ends_on'], 0, 7 ) < $target ) {
+				continue; // il corso finisce prima
+			}
+			$last_lesson = isset( $any[ $aid ] ) ? $last[ $aid ] : ( ! empty( ActivityService::slot_days( $a ) ) ? '' : $cur . '-24' ); // senza orari di lezione: dal 25 del mese
+			if ( '' === $last_lesson || $today <= $last_lesson ) {
+				continue; // l'ultima lezione del mese non c'è ancora stata (o non ci sono lezioni questo mese)
+			}
+			foreach ( $acts->status_for_activity( $aid ) as $s ) {
+				$e = $s['enrollment'];
+				if ( null !== $e['end_month'] || $e['start_month'] > $target ) {
 					continue;
 				}
-				foreach ( $s['summary']['unpaid_months'] as $m ) {
-					if ( (int) $m['missing'] > 0 ) {
-						$by[ (int) $s['enrollment']['person_id'] ][] = $a['name'] . ': ' . $m['month'] . ' — ' . Money::format( (int) $m['missing'] );
+				$p = $people->get( (int) $e['person_id'] );
+				if ( ! $p || ! empty( $p['suspended_at'] ) ) {
+					continue;
+				}
+				$fee  = $acts->fee_for( $a, $p['type'] );
+				$paid = 0;
+				foreach ( $s['summary']['months'] as $m ) {
+					if ( $m['month'] === $target ) {
+						$paid = (int) $m['paid'];
 					}
 				}
-			}
-		}
-		$since = gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -' . self::DUES_EVERY_DAYS . ' days' ) );
-		$n     = 0;
-		foreach ( $by as $pid => $lines ) {
-			$p = $people->get( (int) $pid );
-			if ( ! $p || ! empty( $p['suspended_at'] ) ) {
-				continue;
-			}
-			$to = self::recipient( $p );
-			if ( ! $to || self::sent_since( (int) $pid, 'dues', $since ) ) {
-				continue;
-			}
-			$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
-			$body = 'ci risultano da versare ' . $who . "le seguenti mensilità dei corsi:\n\n- " . implode( "\n- ", array_slice( $lines, 0, 12 ) ) . "\n\nPuoi regolarizzare in segreteria o online dall'area riservata. Se hai già pagato, ignora questo messaggio.";
-			if ( $send ) {
-				if ( ! self::send( $to, 'Mensilità da versare', $body ) ) {
+				if ( $fee <= 0 || $paid >= $fee ) {
 					continue;
 				}
-				self::mark( (int) $pid, 'dues', $today . '-' . $pid );
+				$to  = self::recipient( $p );
+				$ref = $aid . ':' . $target;
+				if ( ! $to || self::sent( (int) $p['id'], 'dues', $ref ) ) {
+					continue;
+				}
+				$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
+				$body = 'il corso «' . $a['name'] . '» si rinnova all\'inizio di ' . self::month_name( $target ) . ': ' . $who . 'la mensilità è di ' . Money::format( $fee - $paid )
+					. ( $paid > 0 ? ' (resta da versare)' : '' ) . ". Puoi pagare in segreteria o, se attivo, online dall'area riservata.\nSe non vuoi più frequentare, comunicalo alla segreteria prima dell'inizio del mese. Se hai già pagato, ignora questo messaggio.";
+				if ( $send ) {
+					if ( ! self::send( $to, 'Rinnovo del corso ' . $a['name'], $body ) ) {
+						continue;
+					}
+					self::mark( (int) $p['id'], 'dues', $ref );
+				}
+				$n++;
 			}
-			$n++;
 		}
 		return $n;
+	}
+
+	private static function month_name( string $ym ): string {
+		return ( Receipts::MONTHS[ (int) substr( $ym, 5, 2 ) ] ?? $ym ) . ' ' . substr( $ym, 0, 4 );
 	}
 
 	private static function events( string $today, bool $send ): int {

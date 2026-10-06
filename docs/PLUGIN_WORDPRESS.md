@@ -350,7 +350,7 @@ Si configurano in **Impostazioni → Promemoria, privacy e ricevute**.
 
 **Promemoria per email** (spenti di default; uno al giorno, ognuno si manda una sola volta)
 - tessera in scadenza (N giorni prima, impostabile) e tessera scaduta da meno di una settimana;
-- mensilità dei corsi non pagate (al massimo un messaggio ogni 14 giorni);
+- corsi con rinnovo mensile: **dopo l'ultima lezione del mese** si ricorda a chi non ha ancora pagato il mese dopo (i corsi si rinnovano a inizio mese); un messaggio per persona, corso e mese; senza orari di lezione, dal 25 del mese;
 - evento il giorno dopo, per chi è prenotato.
 Chi non ha email (un ospite) riceve il messaggio tramite il socio che lo ospita ("per Nome Cognome"). La pagina mostra quanti ne partirebbero oggi e permette l'invio manuale.
 
