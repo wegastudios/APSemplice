@@ -28,7 +28,7 @@ final class SettingsPage {
 
 	/** Caselle delle funzioni, lette e salvate dal modulo «Generale». */
 	private static function feature_boxes( array $s ): string {
-		$html = '';
+		$html = '<input type="hidden" name="features_present" value="1">';
 		foreach ( self::FEATURES as $k => $label ) {
 			$html .= '<label><input type="checkbox" name="' . esc_attr( $k ) . '" value="1"' . checked( ! empty( $s[ $k ] ), true, false ) . '> ' . esc_html( $label ) . '</label><br>';
 		}
