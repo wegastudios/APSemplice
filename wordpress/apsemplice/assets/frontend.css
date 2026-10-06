@@ -118,3 +118,9 @@
 .apsf-booked[hidden] { display: none; }
 .apsf-checkin-act { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .apsf-scan-form { display: none; }
+
+/* Ingresso sul posto e cassa per più soci (staff): un campo per riga */
+.apsf-door label, .apsf-door-group label { display: block; margin: 8px 0; }
+.apsf-door select, .apsf-door-group select { width: 100%; max-width: 100%; }
+.apsf-door details, .apsf-door-group { margin-top: 14px; }
+.apsf-door > summary, .apsf-door-group > summary { cursor: pointer; padding: 6px 0; }
