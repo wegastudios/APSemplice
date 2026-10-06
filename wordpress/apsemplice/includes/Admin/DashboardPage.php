@@ -50,7 +50,14 @@ final class DashboardPage {
 					. ' <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">Scaricala ora</a>.</p></div>';
 			}
 		}
-		$ins = \ApSemplice\Insurance::counts();
+		if ( \ApSemplice\Settings::insurance_association() ) {
+			$rc = \ApSemplice\AssocPolicies::rc_status();
+			if ( \ApSemplice\Insurance::VALID !== $rc ) {
+				$msg = array( \ApSemplice\Insurance::NONE => 'non risulta nessuna polizza di responsabilità civile dell\'associazione', \ApSemplice\Insurance::EXPIRED => 'la polizza di responsabilità civile dell\'associazione è scaduta', \ApSemplice\Insurance::EXPIRING => 'la polizza di responsabilità civile dell\'associazione sta per scadere' );
+				echo '<div class="notice notice-warning inline"><p>Assicurazione: ' . esc_html( $msg[ $rc ] ) . '. <a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri le assicurazioni</a>.</p></div>';
+			}
+		}
+		$ins = \ApSemplice\Settings::insurance_volunteers() ? \ApSemplice\Insurance::counts() : array( 'none' => 0, 'expired' => 0, 'expiring' => 0 );
 		if ( $ins[ \ApSemplice\Insurance::NONE ] + $ins[ \ApSemplice\Insurance::EXPIRED ] + $ins[ \ApSemplice\Insurance::EXPIRING ] > 0 ) {
 			echo '<div class="notice notice-warning inline"><p>Assicurazione dei volontari: '
 				. (int) ( $ins[ \ApSemplice\Insurance::NONE ] + $ins[ \ApSemplice\Insurance::EXPIRED ] ) . ' senza copertura valida, ' . (int) $ins[ \ApSemplice\Insurance::EXPIRING ] . ' in scadenza. '

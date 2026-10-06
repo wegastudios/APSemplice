@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\AssocPolicies;
 use ApSemplice\Attendance;
 use ApSemplice\Db;
 use ApSemplice\Docs;
@@ -134,7 +135,60 @@ final class RegistersPage {
 	// ---------- Volontari e assicurazione ----------
 
 	public static function render_volunteers(): void {
-		Ui::header( 'Volontari e assicurazione' );
+		Ui::header( 'Assicurazioni' );
+		$assoc = \ApSemplice\Settings::insurance_association();
+		$vols  = \ApSemplice\Settings::insurance_volunteers();
+		if ( ! $assoc && ! $vols ) {
+			echo '<p>Le assicurazioni sono spente. Attivale da <a href="' . esc_url( Ui::url( 'apse-settings' ) ) . '">Impostazioni</a> (voce «Assicurazioni»): polizze dell\'associazione e registro delle assicurazioni dei volontari.</p>';
+			Ui::footer();
+			return;
+		}
+		if ( $assoc ) {
+			self::policies_section();
+		}
+		if ( $vols ) {
+			self::volunteers_section();
+		}
+		Ui::footer();
+	}
+
+	/** Polizze dell'associazione: responsabilità civile, infortuni dei soci, altre coperture. */
+	private static function policies_section(): void {
+		$statuses = AssocPolicies::statuses();
+		$labels   = Insurance::status_labels();
+		$kinds    = AssocPolicies::kinds();
+		$cls      = array( Insurance::VALID => '', Insurance::EXPIRING => 'apse-warn', Insurance::EXPIRED => 'apse-neg', Insurance::NONE => 'apse-neg' );
+		echo '<h2>Polizze dell\'associazione</h2><p class="description">La polizza generale dell\'associazione, a copertura dei soci e della responsabilità civile verso terzi per le attività svolte. '
+			. 'Registra compagnia, numero, periodo di copertura, premio e massimale: viene segnalata in Bacheca se la responsabilità civile è scoperta o in scadenza entro ' . (int) Insurance::SOON . ' giorni.</p>';
+		echo '<table class="widefat striped"><thead><tr><th>Copertura</th><th>Polizza</th><th>Fino al</th><th>Stato</th></tr></thead><tbody>';
+		foreach ( $statuses as $k => $st ) {
+			$pol = $st['policy'];
+			echo '<tr><td>' . esc_html( $kinds[ $k ] ) . '</td><td>' . ( $pol ? esc_html( $pol['company'] . ( '' !== (string) $pol['policy_no'] ? ' · n. ' . $pol['policy_no'] : '' ) . ( '' !== (string) $pol['coverage'] ? ' · ' . $pol['coverage'] : '' ) ) : '—' )
+				. '</td><td>' . ( $pol ? self::date( $pol['valid_to'] ) : '—' ) . '</td><td><span class="' . esc_attr( $cls[ $st['status'] ] ) . '">' . esc_html( $labels[ $st['status'] ] ) . '</span></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</tbody></table>';
+		Ui::form_open( 'apse_policy_add', Ui::url( 'apse-volunteers' ) );
+		echo '<h3>Registra una polizza dell\'associazione</h3><p><select name="kind">' . Ui::options( $kinds, AssocPolicies::RC ) . '</select> <input type="text" name="company" placeholder="Compagnia" required> <input type="text" name="policy_no" placeholder="N. polizza" size="14"> '
+			. 'dal <input type="date" name="valid_from" value="' . esc_attr( Db::today() ) . '" required> al <input type="date" name="valid_to" required></p>'
+			. '<p><input type="text" name="premium" placeholder="Premio € (facoltativo)" size="18" inputmode="decimal"> <input type="text" name="coverage" placeholder="Massimale / descrizione (facoltativo)" class="regular-text" maxlength="255"> <button class="button button-primary">Registra la polizza</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		Ui::form_close();
+		$all = AssocPolicies::all();
+		if ( $all ) {
+			echo '<details><summary>Tutte le polizze registrate (' . count( $all ) . ')</summary><table class="widefat striped"><thead><tr><th>Tipo</th><th>Compagnia</th><th>N.</th><th>Periodo</th><th>Premio</th><th>Massimale</th><th></th></tr></thead><tbody>';
+			foreach ( $all as $x ) {
+				echo '<tr><td>' . esc_html( $kinds[ $x['kind'] ] ?? $x['kind'] ) . '</td><td>' . esc_html( $x['company'] ) . '</td><td>' . esc_html( (string) $x['policy_no'] ) . '</td><td>' . self::date( $x['valid_from'] ) . ' – ' . self::date( $x['valid_to'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+					. '</td><td>' . ( null === $x['premium_cents'] ? '—' : esc_html( Money::format( (int) $x['premium_cents'] ) ) ) . '</td><td>' . esc_html( (string) $x['coverage'] ) . '</td><td>';
+				Ui::form_open( 'apse_policy_delete', Ui::url( 'apse-volunteers' ), false, 'apse-inline' );
+				echo Ui::hidden( 'id', $x['id'] ) . '<button class="button-link-delete" data-confirm="Eliminare questa polizza?">elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo '</td></tr>';
+			}
+			echo '</tbody></table></details>';
+		}
+	}
+
+	private static function volunteers_section(): void {
+		echo '<h2>Volontari</h2>';
 		$rows   = Insurance::register();
 		$labels = Insurance::status_labels();
 		$cls    = array( Insurance::VALID => '', Insurance::EXPIRING => 'apse-warn', Insurance::EXPIRED => 'apse-neg', Insurance::NONE => 'apse-neg' );
@@ -169,7 +223,6 @@ final class RegistersPage {
 			echo '</td></tr>';
 		}
 		echo '</tbody></table>';
-		Ui::footer();
 	}
 
 	// ---------- Presenze ----------

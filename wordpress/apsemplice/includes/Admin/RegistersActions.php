@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\AssocPolicies;
 use ApSemplice\Attendance;
 use ApSemplice\Insurance;
 use ApSemplice\MemberBook;
@@ -20,6 +21,8 @@ final class RegistersActions {
 		'apse_insurance_add'    => 'insurance_add',
 		'apse_insurance_delete' => 'insurance_delete',
 		'apse_attendance_save'  => 'attendance_save',
+		'apse_policy_add'       => 'policy_add',
+		'apse_policy_delete'    => 'policy_delete',
 		'apse_statement_notes'  => 'statement_notes',
 	);
 
@@ -70,6 +73,16 @@ final class RegistersActions {
 
 	public static function insurance_delete( array $p ): array {
 		Insurance::delete( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'apse-volunteers' ), 'Polizza eliminata.' );
+	}
+
+	public static function policy_add( array $p ): array {
+		AssocPolicies::add( (string) ( $p['kind'] ?? '' ), (string) ( $p['company'] ?? '' ), (string) ( $p['policy_no'] ?? '' ), (string) ( $p['valid_from'] ?? '' ), (string) ( $p['valid_to'] ?? '' ), (string) ( $p['premium'] ?? '' ), (string) ( $p['coverage'] ?? '' ) );
+		return array( Ui::url( 'apse-volunteers' ), 'Polizza registrata.' );
+	}
+
+	public static function policy_delete( array $p ): array {
+		AssocPolicies::delete( (int) ( $p['id'] ?? 0 ) );
 		return array( Ui::url( 'apse-volunteers' ), 'Polizza eliminata.' );
 	}
 

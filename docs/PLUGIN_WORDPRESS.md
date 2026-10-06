@@ -412,3 +412,11 @@ Nuova voce di menu **Registri** (accessibile anche alla segreteria) e scheda **R
 - **Presenze**: per ogni lezione di un corso (le lezioni vengono dal programma) o data di un evento si segna chi c'era, a lezione fatta; la prima volta sono tutti presenti e si tolgono gli assenti. Riepilogo per periodo con presenze, lezioni e percentuale; PDF a matrice (fino a 10 lezioni) o riepilogativo.
 - **Rendiconto per cassa**: dall'anno solare della prima nota, entrate e uscite raggruppate per «voce di rendiconto» delle categorie, confronto con l'anno precedente, avanzo o disavanzo, saldi iniziali e finali dei conti, fondi accantonati, relazione sull'andamento (testo libero per anno) e firme di tesoriere e presidente. È un documento di lavoro: va verificato dal commercialista prima dell'approvazione.
 - Database v28: tabelle `minutes`, `insurance`, `attendance`; colonne `left_on` e `left_reason` su `people`. Tutto è incluso nella copia di sicurezza.
+
+### Assicurazioni (Impostazioni → «Assicurazioni»)
+
+Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Registri mostra solo le sezioni attive.
+
+- **Registro delle assicurazioni dei volontari**: come sopra (polizze per volontario, stato e avviso in Bacheca).
+- **Polizze dell'associazione**: responsabilità civile verso terzi, infortuni dei soci e altre coperture. Per ogni polizza: compagnia, numero, periodo, premio e massimale/descrizione. Per ogni tipo vale la polizza che copre di più; se la responsabilità civile è scoperta, scaduta o in scadenza (30 giorni) compare un avviso in Bacheca.
+- Database v29: tabella `assoc_policies`; impostazioni `insurance_volunteers` e `insurance_association`.

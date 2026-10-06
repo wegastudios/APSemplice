@@ -3818,7 +3818,7 @@ apse_ok( in_array( $rg_p, $bk_ids, true ) && ! in_array( $guest, $bk_ids, true )
 $bk_left = array_column( \ApSemplice\MemberBook::rows( 'left' ), 'id' );
 $bk_in   = array_column( \ApSemplice\MemberBook::rows( 'in_force' ), 'id' );
 apse_ok( in_array( $rg_p, $bk_left, true ) && ! in_array( $rg_p, $bk_in, true ) && in_array( $rg_p, array_column( \ApSemplice\MemberBook::rows(), 'id' ), true ), 'libro soci: il socio cessato resta nel libro con la sua data' );
-apse_ok( null !== apse_throws( function () use ( $rg_p ) { \ApSemplice\MemberBook::set_left( $rg_p, gmdate( 'Y-m-d', strtotime( '+5 days' ) ) ); } ) && null !== apse_throws( function () use ( $rg_p ) { \ApSemplice\MemberBook::set_left( $rg_p, '2001-01-01' ); } ) && null !== apse_throws( function () use ( $guest ) { \ApSemplice\MemberBook::set_left( $guest, $today ); } ), 'libro soci: la cessazione non può essere futura, precedente all\'ingresso o di un ospite' );
+apse_ok( null !== apse_throws( function () use ( $rg_p ) { \ApSemplice\MemberBook::set_left( $rg_p, gmdate( 'Y-m-d', strtotime( '+5 days' ) ) ); } ) && null !== apse_throws( function () use ( $rg_p ) { \ApSemplice\MemberBook::set_left( $rg_p, '2001-01-01' ); } ) && null !== apse_throws( function () use ( $guest, $today ) { \ApSemplice\MemberBook::set_left( $guest, $today ); } ), 'libro soci: la cessazione non può essere futura, precedente all\'ingresso o di un ospite' );
 $bk_doc = \ApSemplice\Docs::book();
 $bk_csv = \ApSemplice\Docs::book( '', 'csv' );
 apse_ok( 0 === strpos( $bk_doc['body'], '%PDF-1.4' ) && false !== strpos( $bk_doc['body'], 'LIBRO DEI SOCI' ) && false !== strpos( $bk_csv['body'], 'Libroregistro Livia' ) && false !== strpos( $bk_csv['body'], 'recesso' ), 'libro soci: PDF e CSV' );
@@ -3842,6 +3842,9 @@ apse_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Approvazion
 apse_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Stampa il PDF', array( 'view' => $mn_1 ) );
 apse_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Crea il verbale', array( 'new' => '1' ) );
 // volontari e assicurazione
+apse_ok( ! Settings::insurance_volunteers() && ! Settings::insurance_association(), 'assicurazioni: spente di default' );
+apse_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Le assicurazioni sono spente' );
+Settings::update( array( 'insurance_volunteers' => 1, 'insurance_association' => 1 ) );
 $in_day = function ( int $d ) use ( $today ) {
 	return gmdate( 'Y-m-d', strtotime( $today . ' ' . ( $d >= 0 ? '+' : '' ) . $d . ' days' ) );
 };
@@ -3867,6 +3870,22 @@ apse_ok( 2 === count( \ApSemplice\Insurance::for_person( $vol ) ), 'assicurazion
 $vl_doc = \ApSemplice\Docs::volunteers();
 apse_ok( false !== strpos( $vl_doc['body'], 'REGISTRO DEI VOLONTARI' ) && false !== strpos( \ApSemplice\Docs::volunteers( 'csv' )['body'], 'Assicurazioni Prova' ), 'assicurazione: PDF e CSV del registro' );
 apse_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Registra una polizza' );
+// polizze dell'associazione
+apse_ok( 'none' === \ApSemplice\AssocPolicies::rc_status(), 'polizze associazione: senza responsabilità civile risulta scoperta' );
+apse_render( array( Admin\DashboardPage::class, 'render' ), 'responsabilità civile dell\'associazione' );
+$pl_old = \ApSemplice\AssocPolicies::add( 'rc', 'Compagnia RC', 'RC-1', $in_day( -400 ), $in_day( -35 ) );
+apse_ok( 'expired' === \ApSemplice\AssocPolicies::rc_status(), 'polizze associazione: scaduta' );
+\ApSemplice\AssocPolicies::add( 'rc', 'Compagnia RC', 'RC-2', $in_day( -5 ), $in_day( 10 ), '350,00', 'Massimale 1.000.000 €' );
+apse_ok( 'expiring' === \ApSemplice\AssocPolicies::rc_status(), 'polizze associazione: in scadenza' );
+\ApSemplice\AssocPolicies::add( 'rc', 'Compagnia RC', 'RC-3', $in_day( -5 ), $in_day( 300 ), '360,00', 'Massimale 1.000.000 €' );
+\ApSemplice\AssocPolicies::add( 'accident', 'Compagnia Infortuni', 'INF-1', $in_day( -5 ), $in_day( 300 ) );
+$pl_st = \ApSemplice\AssocPolicies::statuses();
+apse_ok( 'valid' === \ApSemplice\AssocPolicies::rc_status() && 'RC-3' === $pl_st['rc']['policy']['policy_no'] && 36000 === (int) $pl_st['rc']['policy']['premium_cents'] && 'valid' === $pl_st['accident']['status'] && 'none' === $pl_st['other']['status'], 'polizze associazione: vale quella che copre di più, per tipo' );
+apse_ok( null !== apse_throws( function () use ( $in_day ) { \ApSemplice\AssocPolicies::add( 'strana', 'X', '', $in_day( 1 ), $in_day( 5 ) ); } ) && null !== apse_throws( function () use ( $in_day ) { \ApSemplice\AssocPolicies::add( 'rc', '', '', $in_day( 1 ), $in_day( 5 ) ); } ) && null !== apse_throws( function () use ( $in_day ) { \ApSemplice\AssocPolicies::add( 'rc', 'X', '', $in_day( 9 ), $in_day( 5 ) ); } ) && null !== apse_throws( function () use ( $in_day ) { \ApSemplice\AssocPolicies::add( 'rc', 'X', '', $in_day( 1 ), $in_day( 5 ), 'tanto' ); } ), 'polizze associazione: tipo, compagnia, date e premio validi' );
+\ApSemplice\AssocPolicies::delete( $pl_old );
+apse_ok( 3 === count( \ApSemplice\AssocPolicies::all() ), 'polizze associazione: si elimina una polizza' );
+apse_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Polizze dell\'associazione' );
+apse_ok( 'Assicurazioni' === ( Admin\Admin::GROUPS['apse-book'][1]['apse-volunteers'] ?? '' ), 'assicurazioni: la scheda si chiama Assicurazioni' );
 // presenze
 $at_day = (int) gmdate( 'N', strtotime( $today ) );
 $at_c   = $acts->create( array( 'name' => 'Corso presenze', 'social_year' => $sy_label, 'instructor_person_id' => $vol, 'monthly_fee_cents' => 1000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => $at_day, 'start' => '18:00', 'end' => '19:00', 'from' => substr( $today, 0, 8 ) . '01' ) ) ) );

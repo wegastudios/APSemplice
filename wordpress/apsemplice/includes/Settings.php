@@ -22,7 +22,9 @@ final class Settings {
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
-			'family_discount_pct'     => 0,     // sconto sulla quota dei familiari del capofamiglia (%)
+			'insurance_volunteers'    => 0,     // registro delle assicurazioni dei volontari: spento di default
+			'insurance_association'   => 0,     // polizze dell'associazione (responsabilità civile, infortuni): spente di default
+			'family_discount_pct'     => 0,    // sconto sulla quota dei familiari del capofamiglia (%)
 			'entity_type'             => 'associazione', // tipo di ente: i testi si adattano (articoli compresi)
 			'entity_types_custom'     => '',    // tipi aggiunti a mano, uno per riga: nome;m|f
 			'member_term'             => 'socio', // come si chiamano le persone che partecipano (singolare)
@@ -107,6 +109,8 @@ final class Settings {
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
+		$clean['insurance_volunteers']     = empty( $clean['insurance_volunteers'] ) ? 0 : 1;
+		$clean['insurance_association']    = empty( $clean['insurance_association'] ) ? 0 : 1;
 		$clean['family_discount_pct']      = max( 0, min( 100, (int) $clean['family_discount_pct'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['entity_type']         = substr( trim( (string) $clean['entity_type'] ), 0, 60 );
@@ -254,6 +258,14 @@ final class Settings {
 
 	/** Anno della tessera associativa: l'anno solare, la scadenza è sempre il 31 dicembre (i soci fondatori sono a parte). */
 	/** Posti da consigliere nel consiglio direttivo. */
+	public static function insurance_volunteers(): bool {
+		return (bool) self::get( 'insurance_volunteers' );
+	}
+
+	public static function insurance_association(): bool {
+		return (bool) self::get( 'insurance_association' );
+	}
+
 	/** Sconto (%) sulla quota dei familiari di un capofamiglia. */
 	public static function family_discount(): int {
 		return max( 0, min( 100, (int) self::get( 'family_discount_pct' ) ) );

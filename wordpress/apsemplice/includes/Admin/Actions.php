@@ -947,6 +947,8 @@ final class Actions {
 				'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'family_discount_pct'     => (int) ( $p['family_discount_pct'] ?? 0 ),
+				'insurance_volunteers'    => ! empty( $p['insurance_volunteers'] ) ? 1 : 0,
+				'insurance_association'   => ! empty( $p['insurance_association'] ) ? 1 : 0,
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
 				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
 				'board_councillors'       => (int) ( $p['board_councillors'] ?? 7 ),
