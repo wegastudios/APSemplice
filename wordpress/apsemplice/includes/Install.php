@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '26';
+	const DB_VERSION        = '27';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -115,6 +115,8 @@ final class Install {
   joined_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,
   board_role varchar(20) DEFAULT NULL,
+  level_id bigint(20) unsigned DEFAULT NULL,
+  family_head_id bigint(20) unsigned DEFAULT NULL,
   privacy_consent_at datetime DEFAULT NULL,
   privacy_consent_source varchar(20) DEFAULT NULL,
   anonymized_at datetime DEFAULT NULL,
@@ -129,7 +131,19 @@ final class Install {
   UNIQUE KEY card_number (card_number),
   UNIQUE KEY wp_user_id (wp_user_id),
   KEY type (type),
-  KEY host_person_id (host_person_id)
+  KEY host_person_id (host_person_id),
+  KEY family_head_id (family_head_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}member_levels (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(80) NOT NULL,
+  base_type varchar(20) NOT NULL,
+  fee_cents bigint(20) DEFAULT NULL,
+  sort_order int(11) NOT NULL DEFAULT 0,
+  active tinyint(1) NOT NULL DEFAULT 1,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}memberships (
@@ -526,6 +540,7 @@ final class Install {
 				$wpdb->insert( $cat, array( 'name' => $s[0], 'kind' => $s[1], 'fiscal_group' => $s[2] ) );
 			}
 		}
+		Levels::seed();
 		FiscalYears::seed(); // l'anno solare in corso (e quelli con movimenti) esiste sempre
 		$acc = Db::t( 'accounts' );
 		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ) ) {

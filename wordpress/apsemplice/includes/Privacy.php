@@ -81,7 +81,7 @@ final class Privacy {
 			'generato_il' => Db::now(),
 			'associazione' => (string) Settings::get( 'association_name' ),
 			'anagrafica'  => array(
-				'tipo' => MemberType::label( $p['type'] ), 'nome' => $p['first_name'], 'cognome' => $p['last_name'], 'email' => $p['email'], 'cellulare' => $p['phone'],
+				'tipo' => Levels::label( $p ), 'nome' => $p['first_name'], 'cognome' => $p['last_name'], 'email' => $p['email'], 'cellulare' => $p['phone'],
 				'codice_fiscale' => $p['tax_code'], 'tessera' => $p['card_number'], 'iscritto_dal' => $p['joined_on'], 'carica' => BoardRole::label( $p['board_role'] ?? null ), 'note' => $p['notes'],
 				'regolamento_accettato' => $p['rules_accepted_at'] ?? null, 'regolamento_versione' => $p['rules_accepted_version'] ?? null,
 				'consenso_privacy' => $p['privacy_consent_at'], 'consenso_modalita' => $p['privacy_consent_source'] ? ( self::SOURCES[ $p['privacy_consent_source'] ] ?? $p['privacy_consent_source'] ) : null,

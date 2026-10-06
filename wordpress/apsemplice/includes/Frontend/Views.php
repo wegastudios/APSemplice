@@ -131,7 +131,7 @@ final class Views {
 		return '<section class="apsf-section"><div class="apsf-memcard">'
 			. ( '' !== $assoc ? '<div class="apsf-memcard-assoc">' . esc_html( $assoc ) . '</div>' : '' )
 			. '<div class="apsf-memcard-name">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div>'
-			. '<div class="apsf-memcard-type">' . esc_html( MemberType::label( $p['type'] ) ) . '</div>'
+			. '<div class="apsf-memcard-type">' . esc_html( \ApSemplice\Levels::label( $p ) ) . '</div>'
 			. '<dl class="apsf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'

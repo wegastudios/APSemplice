@@ -22,6 +22,7 @@ final class Settings {
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
+			'family_discount_pct'     => 0,     // sconto sulla quota dei familiari del capofamiglia (%)
 			'entity_type'             => 'associazione', // tipo di ente: i testi si adattano (articoli compresi)
 			'entity_types_custom'     => '',    // tipi aggiunti a mano, uno per riga: nome;m|f
 			'member_term'             => 'socio', // come si chiamano le persone che partecipano (singolare)
@@ -106,6 +107,7 @@ final class Settings {
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
+		$clean['family_discount_pct']      = max( 0, min( 100, (int) $clean['family_discount_pct'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['entity_type']         = substr( trim( (string) $clean['entity_type'] ), 0, 60 );
 		$clean['member_term']         = substr( trim( (string) $clean['member_term'] ), 0, 60 );
@@ -252,6 +254,11 @@ final class Settings {
 
 	/** Anno della tessera associativa: l'anno solare, la scadenza è sempre il 31 dicembre (i soci fondatori sono a parte). */
 	/** Posti da consigliere nel consiglio direttivo. */
+	/** Sconto (%) sulla quota dei familiari di un capofamiglia. */
+	public static function family_discount(): int {
+		return max( 0, min( 100, (int) self::get( 'family_discount_pct' ) ) );
+	}
+
 	public static function councillors(): int {
 		return max( 0, (int) self::get( 'board_councillors' ) );
 	}

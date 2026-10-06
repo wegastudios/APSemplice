@@ -76,7 +76,7 @@ final class PeoplePage {
 			}
 			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
 			echo '<td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
-			echo '<td>' . esc_html( MemberType::label( $p['type'] ) ) . '</td><td>' . ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ) . '</td><td>' . $state . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<td>' . esc_html( \ApSemplice\Levels::label( $p ) ) . '</td><td>' . ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ) . '</td><td>' . $state . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<td><a class="button button-small" href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
 		}
 		echo '</tbody></table>';
@@ -108,6 +108,30 @@ final class PeoplePage {
 		echo '<table class="form-table apse-form"><tbody>';
 		echo '<tr><th>Tipo</th><td><select name="type" id="apse-type">' . Ui::options( MemberType::labels(), $type ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description" id="apse-type-hint"></p></td></tr>';
+		$lv_opts = '<option value="">Livello predefinito del tipo</option>';
+		foreach ( \ApSemplice\Levels::all() as $lv ) {
+			$sel = $p && (int) $p['level_id'] === (int) $lv['id'];
+			if ( ! (int) $lv['active'] && ! $sel ) {
+				continue;
+			}
+			$lv_opts .= '<option value="' . (int) $lv['id'] . '" data-base="' . esc_attr( $lv['base_type'] ) . '"' . selected( $sel, true, false ) . '>' . esc_html( $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' — ' . \ApSemplice\Money::format( (int) $lv['fee_cents'] ) ) ) . '</option>';
+		}
+		echo '<tr class="apse-row-level"><th>Livello</th><td><select name="level_id" id="apse-level">' . $lv_opts . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p class="description">Decide il nome sulla tessera e la quota associativa (si definiscono in Impostazioni).</p></td></tr>';
+		$fam_heads = array_values( array_filter( $hosts, function ( $x ) use ( $id ) {
+			return empty( $x['family_head_id'] ) && (int) $x['id'] !== $id;
+		} ) );
+		echo '<tr class="apse-row-level"><th>Nucleo familiare</th><td>' . Ui::person_select( 'family_head_id', $fam_heads, $p ? (int) $p['family_head_id'] : 0, '— nessuno (paga la quota piena) —', 'apse-family' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p class="description">Scegli il capofamiglia se questo socio fa parte del suo nucleo familiare: ' . ( \ApSemplice\Settings::family_discount() > 0 ? 'la quota è ridotta del ' . (int) \ApSemplice\Settings::family_discount() . '%.' : 'lo sconto familiare si imposta in Impostazioni (ora è 0%).' ) . '</p>';
+		if ( $p ) {
+			$fam = $people->family_of( $id );
+			if ( $fam ) {
+				echo '<p>Familiari: ' . esc_html( implode( ', ', array_map( function ( $f ) {
+					return $f['first_name'] . ' ' . $f['last_name'];
+				}, $fam ) ) ) . '</p>';
+			}
+		}
+		echo '</td></tr>';
 		echo '<tr class="apse-row-host"><th>Socio ospitante *</th><td>' . Ui::person_select( 'host_person_id', $hosts, $host_id, '— scegli il socio —', 'apse-host' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr class="apse-row-card"><th>N. tessera</th><td><input type="text" name="card_number" id="apse-card" value="' . esc_attr( $val( 'card_number' ) ) . '" class="regular-text"> '
 			. '<button type="button" class="button" id="apse-next-card" data-next="' . esc_attr( $people->next_free_card() ) . '">Prossimo libero</button>'

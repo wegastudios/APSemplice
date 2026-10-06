@@ -173,11 +173,11 @@ final class DashboardPage {
 	private static function payments_due(): void {
 		$acts   = Plugin::activities();
 		$people = Plugin::people();
-		$fee    = (int) \ApSemplice\Settings::get( 'membership_fee_cents' );
 		$today  = current_time( 'Y-m-d' );
 		$by     = array(); // person_id => [person, what[], cents]
-		$member_due = function ( array $p ) use ( $people, $fee, $today ) {
-			if ( $fee <= 0 || ! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
+		$member_due = function ( array $p ) use ( $people, $today ) {
+			$fee = \ApSemplice\Levels::fee_for( $p );
+			if ( $fee <= 0 ||! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
 				return null;
 			}
 			$until = $people->active_until( (int) $p['id'], $today );

@@ -175,7 +175,7 @@ final class Api {
 		$out    = array(
 			'id'           => (int) $p['id'],
 			'type'         => $p['type'],
-			'type_label'   => MemberType::label( $p['type'] ),
+			'type_label'   => \ApSemplice\Levels::label( $p ),
 			'card_number'  => $p['card_number'],
 			'first_name'   => $p['first_name'],
 			'last_name'    => $p['last_name'],
