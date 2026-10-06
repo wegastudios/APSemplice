@@ -162,6 +162,7 @@ final class PeoplePage {
 			self::panel_access( $p );
 			self::panel_guest_status( $p );
 			self::panel_membership( $p );
+				RegistersPage::panel_left( $p );
 			self::panel_card_qr( $p );
 			if ( current_user_can( \ApSemplice\Plugin::CAP ) ) { // riservati agli amministratori
 				self::panel_board( $p );
