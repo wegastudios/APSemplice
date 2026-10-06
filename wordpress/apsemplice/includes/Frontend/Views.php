@@ -998,11 +998,11 @@ final class Views {
 		}
 		$push = \ApSemplice\Push::enabled();
 		$html = '<section class="apsf-section apsf-app"><h3>App e notifiche</h3>'
-			. '<p class="apsf-small apsf-muted">Aggiungi ' . esc_html( \ApSemplice\Pwa::app_name() ) . ' alla schermata Home del telefono: si apre come un'app, con la tessera sempre a portata di mano.</p>'
-			. '<p><button type="button" class="apsf-btn" data-apse-install hidden>Installa l'app</button></p>'
+			. '<p class="apsf-small apsf-muted">Aggiungi ' . esc_html( \ApSemplice\Pwa::app_name() ) . ' alla schermata Home del telefono: si apre come un\'app, con la tessera sempre a portata di mano.</p>'
+			. '<p><button type="button" class="apsf-btn" data-apse-install hidden>Installa l\'app</button></p>'
 			. '<p class="apsf-small apsf-muted" data-apse-ios hidden>Su iPhone: tocca <strong>Condividi</strong> e poi <strong>Aggiungi alla schermata Home</strong>.</p>';
 		if ( $push ) {
-			$html .= '<div data-apse-push><p class="apsf-small apsf-muted">Ricevi sul telefono gli avvisi dei corsi e degli eventi, i promemoria e le comunicazioni dell'associazione.</p>'
+			$html .= '<div data-apse-push><p class="apsf-small apsf-muted">Ricevi sul telefono gli avvisi dei corsi e degli eventi, i promemoria e le comunicazioni dell\'associazione.</p>'
 				. '<p><button type="button" class="apsf-btn" data-apse-push-on>Attiva le notifiche su questo dispositivo</button> <button type="button" class="apsf-btn apsf-btn-ghost" data-apse-push-off hidden>Disattiva le notifiche</button></p>'
 				. '<p class="apsf-small apsf-muted" data-apse-push-msg></p></div>';
 		}

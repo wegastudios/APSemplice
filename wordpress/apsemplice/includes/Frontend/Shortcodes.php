@@ -33,7 +33,7 @@ final class Shortcodes {
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
-		'app'             => 'App e notifiche (installa l'app, attiva le notifiche)',
+		'app'             => 'App e notifiche (installazione e notifiche sul telefono)',
 		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
 		'accesso'         => 'Accesso / login',
 	);
