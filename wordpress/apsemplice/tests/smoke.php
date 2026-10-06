@@ -2290,7 +2290,7 @@ apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Pagamenti online' 
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
-apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Contabilità', 'Impostazioni' ) === $visible, 'menu: solo cinque voci (' . implode( ', ', $visible ) . ')' );
+apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Contabilità', 'Registri', 'Impostazioni' ) === $visible, 'menu: solo sei voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );

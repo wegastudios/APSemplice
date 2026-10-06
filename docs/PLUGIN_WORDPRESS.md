@@ -244,7 +244,7 @@ I conti sono sempre conti reali: non si trasformano in fondi né viceversa. Di u
 
 ## Menu e impostazioni
 
-Il menu di amministrazione ha cinque voci: **Bacheca** (cassa rapida per incassi e spese semplici, richieste di accesso, soci da rinnovare, ospiti attesi che dovrebbero iscriversi), **Rubrica** (soci e ospiti con i link per scrivere via email o WhatsApp; import da Excel/CSV), **Corsi ed eventi**, **Contabilità** (prima nota, incassi, spese, giroconti, conti e fondi, report) e **Impostazioni**.
+Il menu di amministrazione ha sei voci: **Bacheca** (cassa rapida per incassi e spese semplici, richieste di accesso, soci da rinnovare, ospiti attesi che dovrebbero iscriversi), **Rubrica** (soci e ospiti con i link per scrivere via email o WhatsApp; import da Excel/CSV), **Corsi ed eventi**, **Contabilità** (prima nota, incassi, spese, giroconti, conti e fondi, report, rendiconto), **Registri** (libro soci, verbali, volontari e assicurazione, presenze) e **Impostazioni**.
 
 Le **Impostazioni** hanno le schede *Generale*, *Pagamenti online*, *Tessera, QR e Wallet* e *Registro azioni*. QR della tessera, biglietti QR delle prenotazioni, Apple/Google Wallet e pagamenti online sono **spenti di default**: se non servono restano invisibili ai soci e nelle schede degli eventi.
 
