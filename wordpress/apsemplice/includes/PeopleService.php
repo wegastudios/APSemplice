@@ -126,6 +126,58 @@ class PeopleService {
 		return null !== $until && $until >= $date;
 	}
 
+	// ---------- Consiglio direttivo ----------
+
+	/** Soci con una carica: presidente, poi vicepresidente, poi consiglieri. Ognuno con 'in_regola' (tessera valida e non sospeso). */
+	public function board(): array {
+		$rows = $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND board_role IS NOT NULL AND board_role <> \'\' ORDER BY last_name, first_name', ARRAY_A ) ?: array();
+		$order = array_flip( array_keys( BoardRole::labels() ) );
+		foreach ( $rows as &$r ) {
+			$r['in_regola'] = $this->is_active_member( (int) $r['id'] );
+		}
+		unset( $r );
+		usort(
+			$rows,
+			function ( $a, $b ) use ( $order ) {
+				return ( $order[ $a['board_role'] ] ?? 9 ) <=> ( $order[ $b['board_role'] ] ?? 9 );
+			}
+		);
+		return $rows;
+	}
+
+	/**
+	 * Assegna (o toglie, con null) una carica. Solo soci fondatori e ordinari in regola; i posti sono limitati (1 presidente, 1 vicepresidente, N consiglieri).
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function set_board_role( int $person_id, ?string $role ): void {
+		$p = $this->get( $person_id );
+		if ( ! $p ) {
+			throw new \InvalidArgumentException( 'Persona non trovata.' );
+		}
+		$role = null === $role || '' === $role ? null : $role;
+		if ( null !== $role ) {
+			if ( ! BoardRole::is_valid( $role ) ) {
+				throw new \InvalidArgumentException( 'Carica non valida.' );
+			}
+			if ( ! BoardRole::eligible_type( $p['type'] ) ) {
+				throw new \InvalidArgumentException( 'Una carica può averla solo un socio fondatore o ordinario.' );
+			}
+			if ( ! $this->is_active_member( $person_id ) ) {
+				throw new \InvalidArgumentException( 'Per avere una carica il socio deve essere in regola con la tessera.' );
+			}
+			if ( (string) $p['board_role'] !== $role ) {
+				$taken = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND board_role = %s AND id <> %d', $role, $person_id ) );
+				$max   = BoardRole::seats( $role, Settings::councillors() );
+				if ( $taken >= $max ) {
+					throw new \InvalidArgumentException( 'Posti già coperti per questa carica (' . $max . '): togli prima la carica a qualcun altro.' );
+				}
+			}
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'board_role' => $role ), array( 'id' => $person_id ) );
+		Audit::log( 'board.role', 'person', $person_id, array( 'role' => $role ) );
+	}
+
 	public function is_suspended( int $person_id ): bool {
 		return (bool) $this->db()->get_var( $this->db()->prepare( 'SELECT suspended_at FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $person_id ) );
 	}

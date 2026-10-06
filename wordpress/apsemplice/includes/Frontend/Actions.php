@@ -30,6 +30,7 @@ final class Actions {
 		'apse_front_checkin'        => 'do_checkin',
 		'apse_front_checkin_scan'   => 'do_checkin_scan',
 		'apse_front_door'           => 'do_door',
+		'apse_front_collect'        => 'do_collect',
 		'apse_front_notice'         => 'do_notice',
 	);
 
@@ -255,6 +256,37 @@ final class Actions {
 		return 'Nessun ingresso da annullare per ' . $name . '.';
 	}
 
+	/** Incasso del tesoriere dall'area riservata. */
+	public static function do_collect( array $post ): string {
+		self::require_cap( 'apse_collect', 0 );
+		$ledger = Plugin::ledger();
+		$lines  = array();
+		foreach ( (array) ( $post['lines'] ?? array() ) as $l ) {
+			$what = (string) ( $l['what'] ?? '' );
+			if ( '' === $what ) {
+				continue;
+			}
+			$cents = Money::parse( $l['amount'] ?? '' ) ?? 0;
+			if ( 'm' === $what ) {
+				$lines[] = array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => $cents );
+			} elseif ( 0 === strpos( $what, 's:' ) ) {
+				$s = Plugin::activities()->session( (int) substr( $what, 2 ) );
+				if ( ! $s ) {
+					throw new \InvalidArgumentException( 'Data dell\'evento non trovata.' );
+				}
+				$lines[] = array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => $cents, 'activity_id' => (int) $s['activity_id'], 'session_id' => (int) $s['id'] );
+			} elseif ( 0 === strpos( $what, 'c:' ) ) {
+				$lines[] = array( 'category_id' => (int) substr( $what, 2 ), 'amount_cents' => $cents );
+			}
+		}
+		if ( ! $lines ) {
+			throw new \InvalidArgumentException( 'Scegli almeno una voce da incassare.' );
+		}
+		$pid = (int) ( $post['person_id'] ?? 0 );
+		$ledger->record_receipt( array( 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $post['account_id'] ?? 0 ), 'method' => '', 'person_id' => $pid, 'lines' => $lines ) );
+		return 'Incasso registrato.';
+	}
+
 	/** Registra (o annulla) l'ingresso di una persona prenotata: solo per chi gestisce l'evento (referente, gestori indicati, amministratori). */
 	public static function do_checkin( array $post ): string {
 		$sid     = (int) ( $post['session_id'] ?? 0 );
@@ -268,7 +300,7 @@ final class Actions {
 		return self::checkin_message( $r, $sid, $pid );
 	}
 
-	/** Ingresso sul posto: chi non ha prenotato viene prenotato (se c'è posto), paga il biglietto in cassa contanti e entra. Solo con l'incasso abilitato. */
+	/** Ingresso sul posto: chi non ha prenotato viene prenotato (se c'è posto), paga il biglietto in contanti o con il POS e entra. Solo soci e solo con l'incasso abilitato. */
 	public static function do_door( array $post ): string {
 		$sid     = (int) ( $post['session_id'] ?? 0 );
 		$session = Plugin::activities()->session( $sid );
@@ -280,8 +312,8 @@ final class Actions {
 		if ( $session['session_date'] !== current_time( 'Y-m-d' ) && ! current_user_can( Plugin::CAP ) ) {
 			throw new \InvalidArgumentException( 'L\'ingresso sul posto si registra nel giorno dell\'evento.' );
 		}
-		$account = 0;
-		foreach ( Plugin::ledger()->accounts() as $acc ) {
+		$account = (int) ( $post['account_id'] ?? 0 );
+		foreach ( $account ? array() : Plugin::ledger()->accounts() as $acc ) {
 			if ( 'cash' === $acc['type'] ) {
 				$account = (int) $acc['id'];
 				break;
@@ -294,8 +326,7 @@ final class Actions {
 		return \ApSemplice\DoorSales::sell(
 			array(
 				'session_id' => $sid, 'activity_id' => $aid, 'person_id' => (int) ( $post['person_id'] ?? 0 ),
-				'new_first_name' => (string) ( $post['new_first_name'] ?? '' ), 'new_last_name' => (string) ( $post['new_last_name'] ?? '' ), 'new_phone' => (string) ( $post['new_phone'] ?? '' ),
-				'host_person_id' => (int) ( $post['host_person_id'] ?? 0 ), 'pay' => $pay, 'account_id' => $account, 'checkin' => true,
+				'pay' => $pay, 'account_id' => $account, 'checkin' => true,
 			),
 			true
 		);

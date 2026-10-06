@@ -33,12 +33,15 @@ final class DoorSales {
 		}
 		$msg = '';
 		Plugin::ledger()->in_batch(
-			function () use ( $p, $sid, $aid, $svc, &$msg ) {
+			function () use ( $p, $sid, $aid, $svc, $cash_only, &$msg ) {
 				$people = Plugin::people();
 				$ledger = Plugin::ledger();
 				$pid    = (int) ( $p['person_id'] ?? 0 );
 				$first  = trim( (string) ( $p['new_first_name'] ?? '' ) );
 				$last   = trim( (string) ( $p['new_last_name'] ?? '' ) );
+				if ( ! $pid && $cash_only && ( '' !== $first || '' !== $last ) ) {
+					throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' );
+				}
 				if ( ! $pid && ( '' !== $first || '' !== $last ) ) {
 					$host = (int) ( $p['host_person_id'] ?? 0 );
 					if ( ! $host ) {
@@ -48,6 +51,12 @@ final class DoorSales {
 				}
 				if ( ! $pid ) {
 					throw new \InvalidArgumentException( 'Scegli una persona oppure inserisci un nuovo ospite.' );
+				}
+				if ( $cash_only ) {
+					$who = $people->get( $pid );
+					if ( ! $who || ! MemberType::is_member( $who['type'] ) ) {
+						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' );
+					}
 				}
 				if ( ! $svc->has_active_booking( $sid, $pid ) ) {
 					$svc->book( $sid, $pid ); // se i posti sono finiti lancia "Posti esauriti"

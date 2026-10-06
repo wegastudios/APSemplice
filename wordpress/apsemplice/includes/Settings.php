@@ -21,6 +21,7 @@ final class Settings {
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
+			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
 			'license_key'             => '',    // chiave di licenza (verifica in standby, vedi License)
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
@@ -86,6 +87,7 @@ final class Settings {
 		$clean['membership_fee_cents']    = max( 0, (int) $clean['membership_fee_cents'] );
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
+		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['license_key']             = substr( trim( (string) $clean['license_key'] ), 0, 120 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
@@ -213,6 +215,11 @@ final class Settings {
 	}
 
 	/** Anno della tessera associativa: l'anno solare, la scadenza è sempre il 31 dicembre (i soci fondatori sono a parte). */
+	/** Posti da consigliere nel consiglio direttivo. */
+	public static function councillors(): int {
+		return max( 0, (int) self::get( 'board_councillors' ) );
+	}
+
 	public static function membership_year( ?string $date = null ): SocialYear {
 		return SocialYear::for_date( $date ?? Db::today(), 1 );
 	}

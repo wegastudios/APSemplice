@@ -28,6 +28,7 @@ final class Access {
 		'apse_manage_event',       // id attività: gestire un evento (lista prenotati, registrazione ingressi): referente e gestori indicati
 		'apse_door_cash',          // id attivita': incassare il biglietto sul posto a chi non ha prenotato (referente e gestori con l'incasso abilitato)
 		'apse_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area riservata
+		'apse_collect',            // (nessun oggetto) tesoriere: incassare dall'area riservata
 	);
 
 	/**
@@ -57,6 +58,7 @@ final class Access {
 				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) );
 			case 'apse_door_cash':
 				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['can_cash'] ) );
+			case 'apse_collect':
 			case 'apse_add_expense':
 				return ! empty( $ctx['is_treasurer'] ) && MemberType::is_member( (string) $actor['type'] );
 			case 'apse_view_activity':
@@ -134,7 +136,7 @@ final class Access {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
-		if ( 'apse_add_expense' === $ability ) {
+		if ( 'apse_add_expense' === $ability || 'apse_collect' === $ability ) {
 			$ctx['is_treasurer'] = self::is_treasurer( $user_id );
 		}
 		if ( 'apse_book_for' === $ability ) {

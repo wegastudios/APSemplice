@@ -2830,11 +2830,14 @@ apse_ok( 2 === $seat['capacity'] && 0 === $seat['taken'] && 2 === $seat['free'],
 $acts->book( $kar_s, $q );
 apse_ok( 1 === $acts->seats( $kar_s )['free'], 'posti: una prenotazione lascia un posto libero' );
 wp_set_current_user( $u_tre );
-$dm = $front::do_door( array( 'session_id' => $kar_s, 'new_first_name' => 'Luca', 'new_last_name' => 'Lastminute', 'new_phone' => '333 7770001', 'host_person_id' => $founder, 'pay' => '1' ) );
-$lm = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Luca' AND last_name = 'Lastminute'", ARRAY_A );
+$lm_id = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Luca', 'last_name' => 'Lastminute', 'email' => 'luca.lastminute@example.com' ) );
+$dm = $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $lm_id, 'pay' => '1' ) );
+$lm = $people->get( $lm_id );
+$guest_door = $people->create( array( 'type' => 'guest', 'first_name' => 'Gina', 'last_name' => 'Ospite', 'phone' => '333 7770009', 'host_person_id' => $founder ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $kar_s, $guest_door ) { $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $guest_door, 'pay' => '1' ) ); } ), 'solo dai soci' ) && false !== strpos( (string) apse_throws( function () use ( $front, $kar_s ) { $front::do_door( array( 'session_id' => $kar_s, 'new_first_name' => 'Nuovo', 'new_last_name' => 'Ospite', 'new_phone' => '333 7770010', 'host_person_id' => 1 ) ); } ), 'solo dai soci' ) && ! $acts->has_active_booking( $kar_s, $guest_door ), 'ingresso sul posto: lo staff non incassa dagli ospiti (nemmeno nuovi), li gestisce la segreteria' );
 $cash_acc = $wpdb->get_var( 'SELECT account_id FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = ' . $kar_s . ' AND person_id = ' . (int) $lm['id'] . ' AND voided_at IS NULL' );
-apse_ok( $lm && 'guest' === $lm['type'] && false !== strpos( $dm, 'incassati' ) && 800 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = ' . $kar_s . ' AND person_id = ' . (int) $lm['id'] . " AND type = 'income' AND voided_at IS NULL" ) && 'cash' === $wpdb->get_var( 'SELECT type FROM ' . Db::t( 'accounts' ) . ' WHERE id = ' . (int) $cash_acc ) && 0 === $acts->seats( $kar_s )['free'], 'ingresso sul posto: l\'amico dell\'ultimo minuto viene prenotato, paga in contanti ed entra; i posti finiscono' );
-apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $kar_s, $founder ) { $front::do_door( array( 'session_id' => $kar_s, 'new_first_name' => 'Uno', 'new_last_name' => 'Troppo', 'new_phone' => '333 7770002', 'host_person_id' => $founder, 'pay' => '1' ) ); } ), 'Posti esauriti' ), 'ingresso sul posto: a posti esauriti viene rifiutato' );
+apse_ok( $lm && 'ordinary' === $lm['type'] && false !== strpos( $dm, 'incassati' ) && 800 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = ' . $kar_s . ' AND person_id = ' . (int) $lm['id'] . " AND type = 'income' AND voided_at IS NULL" ) && 'cash' === $wpdb->get_var( 'SELECT type FROM ' . Db::t( 'accounts' ) . ' WHERE id = ' . (int) $cash_acc ) && 0 === $acts->seats( $kar_s )['free'], 'ingresso sul posto: l\'socio non prenotato viene prenotato, paga in contanti ed entra; i posti finiscono' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $kar_s, $founder ) { $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $founder, 'pay' => '1' ) ); } ), 'Posti esauriti' ), 'ingresso sul posto: a posti esauriti viene rifiutato' );
 $_GET['apse_session'] = (string) $kar_s;
 $kdet = $as( $u_tre, '[apsemplice_ingressi]' );
 unset( $_GET['apse_session'] );
@@ -2851,6 +2854,54 @@ unset( $_GET['apse_session'] );
 apse_ok( false !== strpos( $kdet, 'Posti liberi: 3' ) && false === strpos( $kdet, 'Prenota, incassa' ) && null !== apse_throws( function () use ( $front, $kar_s, $q ) { $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $q ) ); } ), 'staff senza incasso: vede i posti ma non può vendere sul posto' );
 wp_set_current_user( 1 );
 $acts->remove_staff( $kar, $tre_p );
+
+// ---------- Tesoriere che incassa, cariche del consiglio ----------
+wp_set_current_user( 1 );
+Access::set_treasurer( $u_tre, true );
+apse_ok( user_can( $u_tre, 'apse_collect', 0 ) && ! user_can( $uq, 'apse_collect', 0 ), 'tesoriere: può incassare, un socio qualsiasi no' );
+$tc_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tina', 'last_name' => 'Cassiera', 'email' => 'tina.cassiera@example.com' ) );
+$tc_ev  = $mkev( 'Tombola', 700, 900 );
+$tc_s   = $first_session( $tc_ev );
+wp_set_current_user( $u_tre );
+$front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '10' ), array( 'what' => 's:' . $tc_s, 'amount' => '7' ), array( 'what' => '', 'amount' => '' ) ) ) );
+$tc_tot = (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND person_id = $tc_p" );
+apse_ok( 1700 === $tc_tot && $people->has_membership( $tc_p, Settings::membership_year()->label() ), 'tesoriere: incassa quota associativa ed evento in un solo incasso' );
+apse_ok( null !== apse_throws( function () use ( $front, $tc_p, $cash ) { $front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => '', 'amount' => '' ) ) ) ); } ), 'tesoriere: senza voci non incassa' );
+wp_set_current_user( $uq );
+apse_ok( null !== apse_throws( function () use ( $front, $tc_p, $cash ) { $front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '10' ) ) ) ); } ), 'incasso dall\'area soci: un socio qualsiasi viene rifiutato' );
+wp_set_current_user( 1 );
+Access::set_treasurer( $u_tre, false );
+
+// cariche
+apse_ok( 7 === Settings::councillors(), 'consiglio: sette consiglieri di default' );
+$bp = array();
+for ( $i = 0; $i < 10; $i++ ) {
+	$bp[ $i ] = $people->create( array( 'type' => 0 === $i % 2 ? 'ordinary' : 'founder', 'first_name' => 'Cons' . $i, 'last_name' => 'Direttivo' . $i, 'email' => "cons$i@example.com" ) );
+	if ( 'ordinary' === $people->get( $bp[ $i ] )['type'] ) {
+		$people->set_membership( $bp[ $i ], Settings::membership_year()->label(), true );
+	}
+}
+$people->set_board_role( $bp[0], 'president' );
+apse_ok( null !== apse_throws( function () use ( $people, $bp ) { $people->set_board_role( $bp[1], 'president' ); } ), 'consiglio: un solo presidente' );
+$people->set_board_role( $bp[1], 'vice_president' );
+apse_ok( null !== apse_throws( function () use ( $people, $bp ) { $people->set_board_role( $bp[2], 'vice_president' ); } ), 'consiglio: un solo vicepresidente' );
+for ( $i = 2; $i < 9; $i++ ) {
+	$people->set_board_role( $bp[ $i ], 'councillor' );
+}
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $people, $bp ) { $people->set_board_role( $bp[9], 'councillor' ); } ), 'Posti già coperti' ), 'consiglio: massimo sette consiglieri' );
+Settings::update( array( 'board_councillors' => 8 ) );
+$people->set_board_role( $bp[9], 'councillor' );
+apse_ok( 10 === count( $people->board() ) && 'president' === $people->board()[0]['board_role'] && 'vice_president' === $people->board()[1]['board_role'], 'consiglio: il numero dei consiglieri si cambia nelle impostazioni; elenco ordinato per carica' );
+Settings::update( array( 'board_councillors' => 7 ) );
+$vol_b = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Vera', 'last_name' => 'Volontaria', 'email' => 'vera.volontaria@example.com' ) );
+$exp_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Scaduto', 'email' => 'ugo.scaduto@example.com' ) );
+apse_ok( null !== apse_throws( function () use ( $people, $vol_b ) { $people->set_board_role( $vol_b, 'councillor' ); } ) && null !== apse_throws( function () use ( $people, $guest_door ) { $people->set_board_role( $guest_door, 'councillor' ); } ), 'consiglio: solo soci fondatori e ordinari (non volontari né ospiti)' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $people, $exp_b ) { $people->set_board_role( $exp_b, 'president' ); } ), 'in regola' ), 'consiglio: serve la tessera in regola' );
+$people->set_board_role( $bp[0], null );
+apse_ok( '' === (string) $people->get( $bp[0] )['board_role'] && 9 === count( $people->board() ), 'consiglio: si toglie la carica' );
+apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Consiglio direttivo' );
+apse_render( array( Admin\SettingsPage::class, 'render' ), 'consiglieri' );
+apse_ok( has_action( 'admin_post_apse_set_board_role' ), 'consiglio: azione di assegnazione registrata' );
 
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );

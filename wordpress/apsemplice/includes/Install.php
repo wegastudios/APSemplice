@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '22';
+	const DB_VERSION        = '23';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -114,6 +114,7 @@ final class Install {
   host_person_id bigint(20) unsigned DEFAULT NULL,
   joined_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,
+  board_role varchar(20) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,

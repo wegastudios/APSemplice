@@ -32,6 +32,15 @@ final class PeoplePage {
 			. Exports::link( 'people', array(), 'Esporta CSV' )
 		);
 
+		$board = Plugin::people()->board();
+		if ( $board ) {
+			$parts = array();
+			foreach ( $board as $b ) {
+				$parts[] = '<strong>' . esc_html( \ApSemplice\BoardRole::label( $b['board_role'] ) ) . '</strong> <a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => (int) $b['id'] ) ) ) . '">' . esc_html( $b['first_name'] . ' ' . $b['last_name'] ) . '</a>' . ( $b['in_regola'] ? '' : ' <span class="apse-neg">(tessera non in regola)</span>' );
+			}
+			echo '<p class="apse-board">Consiglio direttivo: ' . implode( ' · ', $parts ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-people">';
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
@@ -130,6 +139,7 @@ final class PeoplePage {
 			self::panel_guest_status( $p );
 			self::panel_membership( $p );
 			self::panel_card_qr( $p );
+			self::panel_board( $p );
 			self::panel_treasurer( $p );
 			self::panel_guests( $p );
 			self::panel_activities( $p );
@@ -288,6 +298,27 @@ final class PeoplePage {
 			. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p></div>';
 	}
 
+	/** Carica nel consiglio direttivo: presidente, vicepresidente, consigliere. */
+	private static function panel_board( array $p ): void {
+		if ( ! ApSempliceBoardRole::eligible_type( $p['type'] ) ) {
+			return;
+		}
+		$svc  = Plugin::people();
+		echo '<div class="apse-card"><h2>Consiglio direttivo</h2>';
+		Ui::form_open( 'apse_set_board_role', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
+		echo Ui::hidden( 'id', $p['id'] ) . '<select name="board_role"><option value="">Nessuna carica</option>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		foreach ( ApSempliceBoardRole::labels() as $k => $l ) {
+			echo '<option value="' . esc_attr( $k ) . '"' . selected( (string) $p['board_role'], $k, false ) . '>' . esc_html( $l ) . '</option>';
+		}
+		echo '</select> <button class="button">Salva</button>';
+		Ui::form_close();
+		echo '<p class="description">Presidente e vicepresidente sono uno ciascuno, i consiglieri sono al massimo ' . (int) ApSempliceSettings::councillors() . ' (si cambia in Impostazioni). Serve la tessera in regola.</p>';
+		if ( ! $svc->is_active_member( (int) $p['id'] ) && '' !== (string) $p['board_role'] ) {
+			echo '<p class="apse-neg">Attenzione: questo socio non Ã¨ piÃ¹ in regola con la tessera.</p>';
+		}
+		echo '</div>';
+	}
+
 	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */
 	private static function panel_treasurer( array $p ): void {
 		if ( MemberType::GUEST === $p['type'] || empty( $p['wp_user_id'] ) ) {
@@ -295,7 +326,7 @@ final class PeoplePage {
 		}
 		$on = \ApSemplice\Access::is_treasurer( (int) $p['wp_user_id'] );
 		echo '<div class="apse-card"><h2>Tesoriere</h2>';
-		echo '<p>' . ( $on ? '<strong class="apse-ok">Può registrare spese dall\'area riservata</strong>' : 'Non può registrare spese.' ) . '</p>';
+		echo '<p>' . ( $on ? '<strong class="apse-ok">Può registrare spese e incassare dall\'area riservata</strong>' : 'Non può registrare spese né incassare.' ) . '</p>';
 		Ui::form_open( 'apse_set_treasurer', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
 		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>';

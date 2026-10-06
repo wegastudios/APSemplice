@@ -329,6 +329,42 @@ final class Views {
 	}
 
 	/** Spese del tesoriere: modulo con scatto dello scontrino + le ultime spese registrate da lui (nessun saldo, nessun altro movimento). */
+	/** Incassi del tesoriere: una persona, un conto e fino a tre voci (quota associativa, eventi, altre entrate). Il resto lo calcola la contabilità. */
+	private static function section_collect(): string {
+		if ( ! current_user_can( 'apse_collect', 0 ) ) {
+			return '';
+		}
+		$ledger = Plugin::ledger();
+		$people = '<option value="">— scegli —</option>';
+		foreach ( Plugin::people()->search() as $p ) {
+			$people .= '<option value="' . (int) $p['id'] . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</option>';
+		}
+		$accounts = '';
+		foreach ( $ledger->accounts() as $a ) {
+			$accounts .= '<option value="' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . '</option>';
+		}
+		$what = '<option value="">— niente —</option><option value="m">Quota associativa</option><optgroup label="Eventi">';
+		foreach ( Plugin::activities()->upcoming_sessions( 40 ) as $s ) {
+			$what .= '<option value="s:' . (int) $s['id'] . '">' . esc_html( $s['activity_name'] . ' · ' . self::d( $s['session_date'] ) ) . '</option>';
+		}
+		$what .= '</optgroup><optgroup label="Altre entrate">';
+		foreach ( $ledger->categories() as $c ) {
+			if ( Labels::category_kinds()[ $c['kind'] ][1] && ! in_array( $c['kind'], array( 'membership', 'activity_fee', 'adjustment' ), true ) ) {
+				$what .= '<option value="c:' . (int) $c['id'] . '">' . esc_html( $c['name'] ) . '</option>';
+			}
+		}
+		$what .= '</optgroup>';
+		$rows  = '';
+		for ( $i = 0; $i < 3; $i++ ) {
+			$rows .= '<div class="apsf-fields"><label>Voce <select name="lines[' . $i . '][what]">' . $what . '</select></label>'
+				. '<label>Importo (€) <input type="text" name="lines[' . $i . '][amount]" inputmode="decimal" placeholder="0,00"></label></div>';
+		}
+		$fields = '<div class="apsf-fields"><label>Chi paga <select name="person_id" required>' . $people . '</select></label>'
+			. '<label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
+		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi e altre entrate. Per le quote l\'anno si calcola da solo.</p>'
+			. self::form( 'apse_front_collect', $fields, 'Registra l\'incasso' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
 	public static function section_expenses( array $p ): string {
 		if ( ! current_user_can( 'apse_add_expense', 0 ) ) {
 			return '';
@@ -387,7 +423,7 @@ final class Views {
 			}
 			$html .= '</ul>';
 		}
-		return $html . '</section>';
+		return self::section_collect() . $html . '</section>';
 	}
 
 	/** Scelta dei documenti: file dal telefono o dal computer, oppure scatto con la fotocamera. */
@@ -543,23 +579,25 @@ final class Views {
 		if ( 0 === $seat['free'] ) {
 			return '<p class="apsf-small apsf-muted">Posti esauriti: nessun ingresso sul posto possibile.</p>';
 		}
-		$people     = Plugin::people()->search();
-		$members    = '<option value="">— chi lo ospita —</option>';
-		$all        = '<option value="">— scegli —</option>';
-		foreach ( $people as $p ) {
-			$label = esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) );
-			$all  .= '<option value="' . (int) $p['id'] . '">' . $label . '</option>';
+		$all = '<option value="">— scegli il socio —</option>';
+		foreach ( Plugin::people()->search() as $p ) {
 			if ( MemberType::is_member( $p['type'] ) ) {
-				$members .= '<option value="' . (int) $p['id'] . '">' . $label . '</option>';
+				$all .= '<option value="' . (int) $p['id'] . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</option>';
+			}
+		}
+		$accs = '';
+		foreach ( Plugin::ledger()->accounts() as $acc ) {
+			if ( in_array( $acc['type'], array( 'cash', 'pos' ), true ) ) {
+				$accs .= '<option value="' . (int) $acc['id'] . '">' . esc_html( $acc['name'] ) . '</option>';
 			}
 		}
 		$ids = self::hidden( 'session_id', $s['id'] );
-		return '<details class="apsf-door"><summary><strong>＋ Ingresso sul posto</strong> <span class="apsf-small apsf-muted">per chi non ha prenotato (socio: ' . esc_html( Money::format( (int) $a['fee_cents'] ) ) . ', ospite: ' . esc_html( Money::format( Plugin::activities()->fee_for( $a, MemberType::GUEST ) ) ) . ')</span></summary>'
+		return '<details class="apsf-door"><summary><strong>＋ Ingresso sul posto</strong> <span class="apsf-small apsf-muted">socio non prenotato (biglietto socio: ' . esc_html( Money::format( Plugin::activities()->fee_for( $a, MemberType::ORDINARY ) ) ) . ')</span></summary>'
 			. self::form(
 				'apse_front_door',
-				$ids . '<fieldset><legend>Nuovo ospite</legend><label>Nome <input name="new_first_name"></label> <label>Cognome <input name="new_last_name"></label> <label>Cellulare <input name="new_phone" type="tel"></label> <label>Ospite di <select name="host_person_id">' . $members . '</select></label></fieldset>' // phpcs:ignore WordPress.Security.EscapeOutput
-				. '<p class="apsf-small apsf-muted">Oppure una persona già in anagrafica:</p><label>Persona <select name="person_id">' . $all . '</select></label>'
-				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il biglietto in contanti</label>',
+				$ids . '<label>Socio <select name="person_id" required>' . $all . '</select></label>'
+				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il biglietto</label>'
+				. ( '' !== $accs ? '<label>Pagamento <select name="account_id">' . $accs . '</select></label>' : '' ),
 				'Prenota, incassa e registra l\'ingresso',
 				true
 			) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput

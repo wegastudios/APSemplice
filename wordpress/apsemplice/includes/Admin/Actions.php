@@ -26,6 +26,7 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_set_board_role'     => 'set_board_role',
 			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_card'          => 'save_card',
 			'apse_save_wallet_apple'  => 'save_wallet_apple',
@@ -151,6 +152,13 @@ final class Actions {
 	private static function set_membership( array $p ): array {
 		Plugin::people()->set_membership( (int) $p['id'], (string) $p['social_year'], ! empty( $p['enabled'] ) );
 		return array( Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), 'Iscrizione aggiornata.' );
+	}
+
+	private static function set_board_role( array $p ): array {
+		$id   = (int) ( $p['id'] ?? 0 );
+		$role = (string) ( $p['board_role'] ?? '' );
+		Plugin::people()->set_board_role( $id, '' === $role ? null : $role );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . ApSempliceBoardRole::label( $role ) . '.' );
 	}
 
 	private static function set_treasurer( array $p ): array {
@@ -766,6 +774,7 @@ final class Actions {
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
 				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
+				'board_councillors'       => (int) ( $p['board_councillors'] ?? 7 ),
 				'member_area_page_id'     => (int) ( $p['member_area_page_id'] ?? 0 ),
 				'license_key'             => $txt( 'license_key' ),
 				'cancel_policy_default'   => $txt( 'cancel_policy_default' ),
