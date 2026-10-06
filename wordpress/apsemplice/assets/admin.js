@@ -238,19 +238,7 @@
 				row.appendChild(prev); row.appendChild(el('span', { text: monthLabel(l.month) })); row.appendChild(next);
 			}
 			if (l.kind === 'membership') {
-				var ys = el('select', { name: n + '[social_year]' });
-				[D.socialYear, D.nextYear].forEach(function (y) {
-					var o = el('option', { value: y, text: 'Tessera ' + y + ' (scade il 31 dicembre)' }); if (y === l.socialYear) { o.selected = true; } ys.appendChild(o);
-				});
-				ys.addEventListener('change', function () { l.socialYear = ys.value; render(); });
-				row.appendChild(ys);
-				var covered = !!(ctx && ctx.active_until && ctx.active_until >= D.yearEnd);
-				if (l.socialYear === D.nextYear && !covered) {
-					var fc = el('input', { type: 'checkbox', name: n + '[free_current_year]', value: '1' });
-					if (l.freeCurrent) { fc.checked = true; }
-					fc.addEventListener('change', function () { l.freeCurrent = fc.checked; });
-					row.appendChild(el('label', { 'class': 'apse-free-year' }, [fc, document.createTextNode(' anno ' + D.socialYear + ' gratis')]));
-				}
+				row.appendChild(el('span', { 'class': 'description', text: l.note || 'tessera fino al 31 dicembre' }));
 			}
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
 			amt.addEventListener('input', function () { l.amount = amt.value; update(); });
@@ -313,9 +301,15 @@
 	}
 
 	/* Voci: quota associativa, mensilità, altro */
+	/* La quota va all'anno più recente creato (se non è quello in corso, l'anno in corso è in omaggio): lo decide il programma */
+	function membershipLine(c) {
+		var plan = ctx && ctx.membership;
+		var note = plan ? 'tessera ' + plan.year + ' fino al 31 dicembre' + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al 31 dicembre';
+		return { title: 'Quota associativa' + (plan ? ' ' + plan.year : ''), category: c.id, kind: 'membership', amount: plain(D.membershipFee), note: note };
+	}
 	$('#apse-add-membership').addEventListener('click', function () {
 		var c = catByKind('membership'); if (!c) { return; }
-		addLine({ title: 'Quota associativa', category: c.id, kind: 'membership', socialYear: D.socialYear, amount: plain(D.membershipFee) });
+		addLine(membershipLine(c));
 	});
 
 	var actSel = $('#apse-add-activity-select'), otherSel = $('#apse-add-other-select');
@@ -356,13 +350,20 @@
 		addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, amount: plain(b.amount) });
 	});
 
-	var autofilled = false;
+	var autofilled = false, autoPid = null;
+	/* Con qualunque operazione di cassa su una persona con la tessera non valida, la quota associativa si inserisce da sola (si può togliere) */
+	function autoMembership() {
+		var mc = catByKind('membership');
+		if (!mc || !ctx || !ctx.person || autoPid === ctx.person.id) { return; }
+		autoPid = ctx.person.id;
+		if (ctx.needs_membership && !ctx.suspended && !ctx.is_guest && !ctx.is_founder && !lines.some(function (l) { return l.kind === 'membership'; })) { addLine(membershipLine(mc)); }
+	}
 	/* Dal pulsante "Incassa": le voci dovute si inseriscono da sole, con gli importi mancanti */
 	function autofillDues() {
 		if (autofilled || !D.autofill || !ctx) { return; }
 		autofilled = true;
 		var c = catByKind('activity_fee');
-		if (!c || lines.length) { return; }
+		if (!c) { return; }
 		(ctx.dues || []).forEach(function (d) {
 			addLine({ title: d.name, category: c.id, kind: 'activity_fee', activity: d.activity_id, month: d.month, amount: plain(d.amount) });
 		});
@@ -380,10 +381,11 @@
 		fd.append('action', 'apse_person_context'); fd.append('nonce', D.nonce); fd.append('person_id', pid); fd.append('date', $('#apse-date').value);
 		fetch(D.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
 			if (!res.success || !res.data.person) { return; }
-			ctx = res.data; fillActivities(); fillBookings(); autofillDues();
+			ctx = res.data; fillActivities(); fillBookings(); autoMembership(); autofillDues();
 			var txt = ctx.person.type_label;
 			if (ctx.is_guest) { txt += ' · non è socio: paga solo le attività'; }
 			else if (ctx.is_founder) { txt += ' · tessera sempre rinnovata'; }
+			else if (ctx.suspended) { txt += ' · ⚠ socio sospeso (inattivo): riattivalo dalla sua scheda prima di incassare'; info.className = 'apse-info apse-info-warn'; }
 			else if (ctx.needs_membership) { txt += ' · ⚠ tessera non valida: serve la quota associativa'; info.className = 'apse-info apse-info-warn'; }
 			else { txt += ' · tessera valida fino al ' + ctx.active_until.split('-').reverse().join('/'); }
 			info.textContent = txt;

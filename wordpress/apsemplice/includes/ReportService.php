@@ -47,10 +47,12 @@ class ReportService {
 			);
 		}
 
-		$group = function ( string $type ) use ( $rows ) {
+		// Rimborsi dei fondi: la spesa è già contata quando si accantona (nell'anno dell'incasso), quindi il pagamento del rimborso non si conta una seconda volta
+		$payouts = Plugin::funds()->payout_transactions();
+		$group   = function ( string $type ) use ( $rows, $payouts ) {
 			$by = array();
 			foreach ( $rows as $r ) {
-				if ( $r['type'] !== $type ) {
+				if ( $r['type'] !== $type || ( 'expense' === $type && isset( $payouts[ (int) $r['id'] ] ) ) ) {
 					continue;
 				}
 				$key = $r['category_id'];
@@ -70,8 +72,14 @@ class ReportService {
 		};
 		$income   = $decorate( $group( 'income' ) );
 		$expenses = $decorate( $group( 'expense' ) );
-		$ti       = array_sum( array_column( $income, 'cents' ) );
-		$te       = array_sum( array_column( $expenses, 'cents' ) );
+		// Fondi accantonati: sono uscite dell'anno in cui si accantonano, anche se il rimborso non è ancora stato pagato
+		$fund_accrued  = Plugin::funds()->accrued_in( $from, $to );
+		$fund_released = Plugin::funds()->released_in( $from, $to );
+		if ( 0 !== $fund_accrued - $fund_released ) {
+			$expenses[] = array( 'name' => 'Accantonamenti per rimborsi (fondi)', 'cents' => $fund_accrued - $fund_released, 'fiscal_group' => null );
+		}
+		$ti = array_sum( array_column( $income, 'cents' ) );
+		$te = array_sum( array_column( $expenses, 'cents' ) );
 
 		$funds = Plugin::funds()->available( $to );
 
@@ -80,6 +88,8 @@ class ReportService {
 			'total_income' => $ti, 'total_expense' => $te, 'result' => $ti - $te,
 			'opening_total' => array_sum( array_column( $accounts, 'opening' ) ),
 			'closing_total' => array_sum( array_column( $accounts, 'closing' ) ),
+			'fund_accrued'  => $fund_accrued,
+			'fund_released' => $fund_released,
 			'funds_total'   => $funds['funds'],
 			'available'     => array_sum( array_column( $accounts, 'closing' ) ) - $funds['funds'],
 		);

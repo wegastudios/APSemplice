@@ -2358,14 +2358,16 @@ try {
 }
 apse_ok( $threw, 'incasso: importo zero senza sconto non vale' );
 
-// iscrizione a fine anno: quota del prossimo anno e anno in corso gratis
+// quota associativa automatica: va all'anno solare più recente creato; se non è quello in corso, l'anno in corso è in omaggio
 $fy_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Fine', 'last_name' => 'Anno', 'email' => 'fine.anno@example.com' ) );
 $si   = new ReflectionMethod( Admin\Actions::class, 'save_income' );
 $si->setAccessible( true );
-$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_p, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::membership_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
+$cy = (int) substr( $today, 0, 4 );
+\ApSemplice\FiscalYears::create( $cy + 1 );
+$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_p, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00' ) ) ) );
 $fy_years = $wpdb->get_col( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $fy_p . ' AND deleted_at IS NULL ORDER BY social_year' );
-apse_ok( 2 === count( $fy_years ) && in_array( Settings::membership_year()->label(), $fy_years, true ) && in_array( Settings::membership_year()->next()->label(), $fy_years, true ), 'iscrizione a fine anno: si paga il prossimo anno e quello in corso è gratuito (' . implode( ',', $fy_years ) . ')' );
-apse_ok( $people->is_active_member( $fy_p ), 'iscrizione a fine anno: il socio è attivo subito' );
+apse_ok( array( (string) $cy, (string) ( $cy + 1 ) ) === $fy_years, 'quota automatica: un nuovo socio paga l\'anno più recente e ha l\'anno in corso in omaggio (' . implode( ',', $fy_years ) . ')' );
+apse_ok( $people->is_active_member( $fy_p ), 'quota automatica: il socio è attivo subito' );
 
 // iscrizione rapida dalla Bacheca
 $qe = new ReflectionMethod( Admin\Actions::class, 'quick_enroll' );
@@ -2395,7 +2397,7 @@ $wd_row = array_values( array_filter( $wd_s, function ( $r ) use ( $wd_c ) {
 } ) )[0];
 $first = \ApSemplice\PaymentCalc::first_lesson( substr( $today, 0, 7 ), 4 );
 apse_ok( $first <= $today ? 3000 === $wd_row['summary']['total_due'] : ( 0 === $wd_row['summary']['total_due'] && $first === $wd_row['summary']['upcoming']['date'] ), 'corso: la mensilità del mese in corso è dovuta solo dalla prima lezione (' . $first . ')' );
-$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Mensilità da incassare' );
+$dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Pagamenti da incassare' );
 apse_ok( false !== strpos( $dash, 'Corso Rapido' ) && false !== strpos( $dash, 'apse-income' ), 'bacheca: le mensilità già dovute compaiono con il pulsante per incassare' );
 $inc_page = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p ) );
 apse_ok( false !== strpos( $inc_page, 'value="' . $fy_p . '" selected' ) || false !== strpos( $inc_page, "value='" . $fy_p . "' selected" ) || false !== strpos( $inc_page, 'selected=\'selected\'' ), 'incasso: la persona arriva già scelta dalla bacheca' );
@@ -2495,33 +2497,174 @@ $mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera',
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mb_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) );
 apse_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_p ), 'tessera: la scadenza è il 31 dicembre (' . $people->active_until( $mb_p ) . ')' );
 apse_ok( substr( $today, 0, 4 ) === Settings::membership_year()->label() && ( (int) substr( $today, 0, 4 ) + 1 ) . '' === Settings::membership_year()->next()->label(), 'tessera: l\'anno della tessera è l\'anno solare' );
-$mb_fy = new ReflectionMethod( Admin\Actions::class, 'save_income' );
-$mb_fy->setAccessible( true );
-$mb_q = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Prossima', 'email' => 'tessera.prossima@example.com' ) );
-$mb_fy->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $mb_q, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => Settings::membership_year()->next()->label(), 'free_current_year' => '1' ) ) ) );
-$next_y = (int) substr( $today, 0, 4 ) + 1;
-apse_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_q ) && $next_y . '-12-31' === $people->active_until( $mb_q, $next_y . '-01-02' ), 'tessera: anno in corso gratis fino al 31 dicembre, poi quella pagata vale fino al 31 dicembre dell\'anno dopo' );
 $founder_until = $people->active_until( $founder );
 apse_ok( null !== $founder_until && $founder_until > ( (int) substr( $today, 0, 4 ) + 5 ) . '-01-01', 'tessera: il socio fondatore resta fuori da questa regola' );
 
-// ---------- Fine anno: l'anno in corso gratis solo se ora si compra l'anno prossimo ----------
-$cur_label  = Settings::membership_year()->label();
-$next_label = Settings::membership_year()->next()->label();
-$count_mb   = function ( int $pid ) use ( $wpdb ) {
-	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $pid . ' AND deleted_at IS NULL' );
+// ---------- Anni solari: quota automatica, anni chiusi, fondi ----------
+$count_mb = function ( int $pid ) use ( $wpdb ) {
+	return $wpdb->get_col( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $pid . ' AND deleted_at IS NULL ORDER BY social_year' );
 };
-$fy_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Corrente', 'email' => 'anno.corrente@example.com' ) );
-$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_a, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => $cur_label, 'free_current_year' => '1' ) ) ) );
-apse_ok( 1 === $count_mb( $fy_a ), 'fine anno: comprando la tessera in corso non c\'è nessun anno gratis' );
-$fy_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Coperto', 'email' => 'anno.coperto@example.com' ) );
-$people->set_membership( $fy_b, $cur_label, true, 'manual' );
-$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_b, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => $next_label, 'free_current_year' => '1' ) ) ) );
-apse_ok( 2 === $count_mb( $fy_b ), 'fine anno: se la tessera in corso c\'è già, l\'anno prossimo non regala nulla (2 tessere, non 3)' );
-$fy_c = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Senza', 'email' => 'anno.senza@example.com' ) );
-$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_c, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00', 'social_year' => $next_label ) ) ) );
-apse_ok( 1 === $count_mb( $fy_c ), 'fine anno: senza la spunta si compra solo l\'anno prossimo' );
-$inc_js = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data' );
-apse_ok( false !== strpos( $inc_js, '"yearEnd"' ), 'incasso: la pagina conosce la fine dell\'anno della tessera' );
+$pay_q = function ( int $pid ) use ( $si, $cash, $today, $cat ) {
+	$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $pid, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00' ) ) ) );
+};
+$p_cov = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Coperto', 'email' => 'anno.coperto@example.com' ) );
+$people->set_membership( $p_cov, (string) $cy, true, 'manual' );
+apse_ok( array( 'year' => (string) ( $cy + 1 ), 'free' => null ) === $people->membership_plan( $p_cov, $today ), 'quota automatica: chi ha l\'anno in corso rinnova in anticipo, senza regali' );
+$pay_q( $p_cov );
+apse_ok( array( (string) $cy, (string) ( $cy + 1 ) ) === $count_mb( $p_cov ), 'quota automatica: il socio in regola paga solo l\'anno più recente' );
+$p_lap = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Scaduto', 'email' => 'anno.scaduto@example.com' ) );
+$people->set_membership( $p_lap, (string) ( $cy - 1 ), true, 'manual' );
+apse_ok( array( 'year' => (string) $cy, 'free' => null ) === $people->membership_plan( $p_lap, $today ), 'quota automatica: chi non ha rinnovato l\'anno in corso paga prima quello, niente omaggio' );
+$pay_q( $p_lap );
+apse_ok( array( (string) ( $cy - 1 ), (string) $cy ) === $count_mb( $p_lap ), 'quota automatica: il socio scaduto rinnova l\'anno in corso (poi la segreteria gestisce il resto)' );
+$p_new = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Nuovo', 'email' => 'anno.nuovo@example.com' ) );
+apse_ok( array( 'year' => (string) ( $cy + 1 ), 'free' => (string) $cy ) === $people->membership_plan( $p_new, $today ), 'quota automatica: il nuovo socio paga l\'anno più recente e ha l\'anno in corso in omaggio' );
+$dash_new = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Pagamenti da incassare' );
+apse_ok( false !== strpos( $dash_new, 'Anno Nuovo' ) && false !== strpos( $dash_new, 'Quota associativa ' . ( $cy + 1 ) ), 'bacheca: i nuovi soci che devono pagare compaiono nei pagamenti da incassare' );
+// annullando l'incasso salta anche l'anno in omaggio
+$p_void = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Annullato', 'email' => 'anno.annullato@example.com' ) );
+$pay_q( $p_void );
+apse_ok( 2 === count( $count_mb( $p_void ) ), 'quota automatica: due anni dopo l\'incasso' );
+$void_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . $p_void . ' ORDER BY id DESC LIMIT 1' );
+$ledger->void( $void_tx, 'prova' );
+apse_ok( array() === $count_mb( $p_void ), 'quota automatica: annullando l\'incasso si annullano anche i due anni' );
+
+// anni solari: creare, chiudere, riaprire
+$fy_far = $cy + 4;
+\ApSemplice\FiscalYears::create( $fy_far );
+$threw = false;
+try {
+	\ApSemplice\FiscalYears::create( $fy_far );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw && \ApSemplice\FiscalYears::is_open( $fy_far ), 'anni solari: si crea aperto e non si crea due volte' );
+$far_date = $fy_far . '-06-15';
+$ledger->record_expense( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno lontano' ) );
+\ApSemplice\FiscalYears::close( $fy_far );
+foreach (
+	array(
+		'spesa' => function () use ( $ledger, $far_date, $cash, $cat ) {
+			$ledger->record_expense( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'x' ) );
+		},
+		'incasso' => function () use ( $ledger, $far_date, $cash, $cat ) {
+			$ledger->record_receipt( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'category_id' => $cat['other_income'], 'amount_cents' => 100 ) ) ) );
+		},
+		'giroconto' => function () use ( $ledger, $far_date, $cash ) {
+			$ledger->record_transfer( $far_date, (int) $cash['id'], (int) $GLOBALS['wpdb']->get_var( 'SELECT id FROM ' . Db::t( 'accounts' ) . ' WHERE id <> ' . (int) $cash['id'] . ' AND closed_at IS NULL LIMIT 1' ), 100, '' );
+		},
+	) as $what => $fn
+) {
+	$threw = false;
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		$threw = false !== strpos( $e->getMessage(), 'chiuso' );
+	}
+	apse_ok( $threw, 'anno chiuso: non accetta ' . $what );
+}
+$far_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . " WHERE tx_date = '$far_date' ORDER BY id DESC LIMIT 1" );
+$threw = false;
+try {
+	$ledger->void( $far_tx, 'x' );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'anno chiuso: non si annullano i suoi movimenti' );
+\ApSemplice\FiscalYears::reopen( $fy_far );
+$ledger->record_expense( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'riaperto' ) );
+apse_ok( true, 'anno riaperto: accetta di nuovo i movimenti' );
+$threw = false;
+try {
+	$ledger->record_expense( array( 'date' => ( $cy + 9 ) . '-01-10', 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'non creato' ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'non è stato creato' );
+}
+apse_ok( $threw, 'anni solari: si registra solo negli anni creati' );
+
+// fondi e chiusura dell'anno
+$fyear_fund = $funds->create( 'Fondo anno', 0 );
+$funds->deposit( $fyear_fund, 4000, $today );
+$yr = $funds->yearly();
+apse_ok( 4000 === $yr['per_fund'][ $fyear_fund ][ $cy ]['unsettled'] && $funds->unsettled_until_year( $cy ) >= 4000, 'fondi: per ogni anno solare si vede quanto resta da rimborsare' );
+$threw = false;
+try {
+	\ApSemplice\FiscalYears::close( $cy );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'fondi' );
+}
+apse_ok( $threw && \ApSemplice\FiscalYears::is_open( $cy ), 'anni solari: con fondi non rimborsati l\'anno non si chiude' );
+$rep_a = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
+apse_ok( $rep_a['fund_accrued'] >= 4000 && array() !== array_filter( $rep_a['expenses'], function ( $x ) {
+	return 0 === strpos( $x['name'], 'Accantonamenti' );
+} ), 'anno solare: i fondi accantonati sono uscite dell\'anno anche se non rimborsati' );
+$funds->settle( $fyear_fund, (int) $cash['id'], 'cash', $today );
+$rep_b = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
+apse_ok( $rep_b['total_expense'] === $rep_a['total_expense'], 'anno solare: pagare il rimborso non conta due volte (' . $rep_a['total_expense'] . ' = ' . $rep_b['total_expense'] . ')' );
+\ApSemplice\FiscalYears::close( $cy );
+$threw = false;
+try {
+	$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno chiuso' ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'anno chiuso: l\'anno in corso chiuso blocca le spese' );
+\ApSemplice\FiscalYears::reopen( $cy );
+apse_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno solare' );
+$rep_html = apse_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
+apse_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno sociale (attività)' ) && strpos( $rep_html, 'Anno sociale (attività)' ) < strpos( $rep_html, 'Anno solare (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
+apse_render( array( Admin\ReportsPage::class, 'render' ), 'Fondi per anno solare', array( 'mode' => 'solar' ) );
+
+// ---------- Soci sospesi (inattivi) ----------
+$sp_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sospeso', 'last_name' => 'Manuale', 'email' => 'sospeso.manuale@example.com' ) );
+$people->set_membership( $sp_a, (string) ( $cy - 1 ), true, 'manual' );
+$dash_sp = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Soci da rinnovare' );
+apse_ok( false !== strpos( $dash_sp, 'Sospeso Manuale' ) && false !== strpos( $dash_sp, 'apse_suspend_member' ) && false !== strpos( $dash_sp, 'Incassa' ), 'bacheca: i soci che non hanno rinnovato hanno i pulsanti Incassa e Sospendi' );
+$susp = new ReflectionMethod( Admin\Actions::class, 'suspend_member' );
+$susp->setAccessible( true );
+$susp->invoke( null, array( 'id' => (string) $sp_a ) );
+apse_ok( $people->is_suspended( $sp_a ) && ! $people->is_active_member( $sp_a ), 'sospensione: il socio diventa inattivo' );
+$dash_sp2 = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Cassa rapida' );
+apse_ok( false === strpos( $dash_sp2, 'Sospeso Manuale' ), 'sospensione: i soci inattivi non si vedono più in bacheca' );
+$threw = false;
+try {
+	$pay_q( $sp_a );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'sospeso' );
+}
+apse_ok( $threw, 'sospensione: prima di incassare la quota va riattivato a mano' );
+$qe_susp = new ReflectionMethod( Admin\Actions::class, 'quick_enroll' );
+$qe_susp->setAccessible( true );
+$threw = false;
+try {
+	$qe_susp->invoke( null, array( 'person_id' => (string) $sp_a, 'target' => 'a:' . $qe_c ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'sospeso' );
+}
+apse_ok( $threw, 'sospensione: un socio sospeso non si iscrive a corsi né eventi' );
+$list_sp = apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Sospeso (inattivo)', array( 'status' => 'suspended' ) );
+apse_ok( false !== strpos( $list_sp, 'Sospeso Manuale' ) || false !== strpos( $list_sp, 'Manuale' ), 'elenco soci: filtro dei sospesi' );
+$react = new ReflectionMethod( Admin\Actions::class, 'reactivate_member' );
+$react->setAccessible( true );
+$react->invoke( null, array( 'id' => (string) $sp_a ) );
+apse_ok( ! $people->is_suspended( $sp_a ), 'sospensione: si riattiva a mano' );
+$pay_q( $sp_a );
+apse_ok( $people->is_active_member( $sp_a ), 'sospensione: dopo la riattivazione si incassa il rinnovo e il socio è attivo' );
+
+// sospensione in blocco: scaduti da oltre 8 mesi
+$old_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Molto', 'last_name' => 'Scaduto', 'email' => 'molto.scaduto@example.com' ) );
+$people->set_membership( $old_a, (string) ( $cy - 3 ), true, 'manual' );
+$recent_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Appena', 'last_name' => 'Scaduto', 'email' => 'appena.scaduto@example.com' ) );
+$people->set_membership( $recent_a, (string) ( $cy - 1 ), true, 'manual' );
+$stale_ids = array_column( $people->expired_for_months( 8 ), 'id' );
+apse_ok( in_array( (string) $old_a, array_map( 'strval', $stale_ids ), true ), 'sospensione in blocco: chi è scaduto da anni è tra i candidati' );
+$list_btn = apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Sospendi soci scaduti da oltre 8 mesi' );
+apse_ok( false !== strpos( $list_btn, 'apse_suspend_expired' ), 'elenco soci: pulsante "sospendi soci scaduti da oltre 8 mesi"' );
+$n_susp = $people->suspend_expired( 8 );
+apse_ok( $n_susp >= 1 && $people->is_suspended( $old_a ), 'sospensione in blocco: i soci scaduti da molto diventano inattivi' );
+$founder_ok = ! $people->is_suspended( $founder );
+apse_ok( $founder_ok, 'sospensione in blocco: i fondatori non si toccano' );
+apse_ok( 0 === $people->suspend_expired( 8 ), 'sospensione in blocco: rilanciarla non cambia nulla' );
 
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
@@ -2650,7 +2793,7 @@ apse_ok( count( $dop_occ ) >= 4 && 1 === count( $dop_fri ), 'doposcuola: tutti i
 $au_html = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p, 'due' => '1' ) );
 apse_ok( false !== strpos( $au_html, '"autofill":true' ), 'incassa: dal pulsante della bacheca la pagina si autocompila' );
 apse_ok( false === strpos( apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p ) ), '"autofill":true' ), 'incasso aperto a mano: nessuna compilazione automatica' );
-$dash_due = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Mensilità da incassare' );
+$dash_due = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Pagamenti da incassare' );
 apse_ok( false !== strpos( $dash_due, 'due=1' ), 'bacheca: il pulsante Incassa chiede la compilazione automatica' );
 
 // ---------- Tessera: migrazione delle iscrizioni dall'anno sociale all'anno solare ----------

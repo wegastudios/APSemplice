@@ -69,6 +69,8 @@ final class IncomePage {
 				'activities'       => $acts,
 				'bookings'         => $bookings,
 				'dues'             => $dues,
+				'membership'       => Plugin::people()->membership_plan( (int) $person['id'], $date ),
+				'suspended'        => Plugin::people()->is_suspended( (int) $person['id'] ),
 			)
 		);
 	}

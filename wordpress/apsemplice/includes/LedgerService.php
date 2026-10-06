@@ -246,6 +246,7 @@ class LedgerService {
 	public function record_receipt( array $d ): int {
 		$date = (string) ( $d['date'] ?? '' );
 		$this->assert_date( $date );
+		FiscalYears::assert_open_for_date( $date );
 		$d['method'] = $this->assert_account_method( (int) ( $d['account_id'] ?? 0 ), (string) ( $d['method'] ?? '' ) );
 		$lines = $d['lines'] ?? array();
 		if ( ! $lines ) {
@@ -297,6 +298,7 @@ class LedgerService {
 				throw new \InvalidArgumentException( "Voce $n: i corsi non hanno date: indica il mese di competenza." );
 			}
 			$social_year = null;
+			$free_year   = null;
 			if ( 'membership' === $cat['kind'] ) {
 				if ( ! $person ) {
 					throw new \InvalidArgumentException( "Voce $n: la quota associativa richiede di indicare il socio." );
@@ -307,9 +309,15 @@ class LedgerService {
 				if ( MemberType::is_auto_renewed( $person['type'] ) ) {
 					throw new \InvalidArgumentException( "Voce $n: il socio fondatore ha la tessera sempre rinnovata." );
 				}
-				$social_year = ! empty( $l['social_year'] ) ? $l['social_year'] : Settings::membership_year( $date )->label();
+				if ( Plugin::people()->is_suspended( (int) $person['id'] ) ) {
+					throw new \InvalidArgumentException( "Voce $n: il socio è sospeso (inattivo): riattivalo a mano dalla sua scheda prima di incassare la quota." );
+				}
+				// La quota va all'anno più recente creato; se non è quello in corso, l'anno in corso è in omaggio (a chi non è un socio scaduto).
+				$plan        = Plugin::people()->membership_plan( (int) $person['id'], $date );
+				$social_year = ! empty( $l['social_year'] ) ? (string) $l['social_year'] : $plan['year'];
+				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}
-			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'line' => $l );
+			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
@@ -337,6 +345,9 @@ class LedgerService {
 					);
 					if ( 'membership' === $p['cat']['kind'] ) {
 						Plugin::people()->set_membership( (int) $person['id'], $p['social_year'], true, 'payment', $tx_id );
+						if ( ! empty( $p['free_year'] ) ) {
+							Plugin::people()->set_membership( (int) $person['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
+						}
 					}
 					if ( $p['activity_id'] ) {
 						$activity = Plugin::activities()->get( (int) $p['activity_id'] );
@@ -354,6 +365,7 @@ class LedgerService {
 	public function record_expense( array $d ): int {
 		$date = (string) ( $d['date'] ?? '' );
 		$this->assert_date( $date );
+		FiscalYears::assert_open_for_date( $date );
 		$d['method'] = $this->assert_account_method( (int) ( $d['account_id'] ?? 0 ), (string) ( $d['method'] ?? '' ) );
 		$cat = $this->category( (int) ( $d['category_id'] ?? 0 ) );
 		if ( ! $cat || ! Labels::category_kinds()[ $cat['kind'] ][2] || 'adjustment' === $cat['kind'] ) {
@@ -384,6 +396,7 @@ class LedgerService {
 	/** Giroconto tra due conti (versamento contanti in banca, accredito POS...). */
 	public function record_transfer( string $date, int $from_id, int $to_id, int $cents, string $method, string $description = '' ): string {
 		$this->assert_date( $date );
+		FiscalYears::assert_open_for_date( $date );
 		if ( $from_id === $to_id ) {
 			throw new \InvalidArgumentException( 'Scegli due conti diversi.' );
 		}
@@ -416,6 +429,7 @@ class LedgerService {
 		if ( ! $tx ) {
 			throw new \InvalidArgumentException( 'Movimento non trovato o già annullato.' );
 		}
+		FiscalYears::assert_open_for_date( (string) $tx['tx_date'] ); // un anno solare chiuso non si modifica
 		$ids = array( $tx_id );
 		if ( ! empty( $tx['transfer_id'] ) ) {
 			$ids = array_map( 'intval', $this->db()->get_col( $this->db()->prepare( "SELECT id FROM $tbl WHERE transfer_id = %s AND voided_at IS NULL", $tx['transfer_id'] ) ) );
@@ -441,6 +455,9 @@ class LedgerService {
 	 */
 	public function record_cash_count( int $account_id, string $date, int $counted_cents, bool $adjust, ?string $notes = null ): int {
 		$this->assert_date( $date );
+		if ( $adjust ) {
+			FiscalYears::assert_open_for_date( $date );
+		}
 		$account = $this->account( $account_id );
 		if ( ! $account ) {
 			throw new \InvalidArgumentException( $this->account_any( $account_id ) ? 'Il conto è chiuso: riaprilo per registrare movimenti.' : 'Conto non valido.' );
@@ -508,6 +525,7 @@ class LedgerService {
 	 */
 	public function import_row( array $d ): int {
 		$this->assert_date( (string) $d['date'] );
+		FiscalYears::assert_open_for_date( (string) $d['date'] );
 		$d['method'] = $this->assert_account_method( (int) $d['account_id'], (string) $d['method'] );
 		if ( ! in_array( $d['type'], array( 'income', 'expense' ), true ) || (int) $d['cents'] <= 0 ) {
 			throw new \InvalidArgumentException( 'Movimento non valido.' );

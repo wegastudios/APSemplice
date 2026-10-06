@@ -60,6 +60,12 @@ final class Actions {
 			'apse_save_transfer'      => 'save_transfer',
 			'apse_void_tx'            => 'void_tx',
 			'apse_add_account'        => 'add_account',
+			'apse_suspend_member'     => 'suspend_member',
+			'apse_suspend_expired'    => 'suspend_expired',
+			'apse_reactivate_member'  => 'reactivate_member',
+			'apse_create_year'        => 'create_year',
+			'apse_close_year'         => 'close_year',
+			'apse_reopen_year'        => 'reopen_year',
 			'apse_update_account'     => 'update_account',
 			'apse_close_account'      => 'close_account',
 			'apse_reopen_account'     => 'reopen_account',
@@ -320,8 +326,10 @@ final class Actions {
 	}
 
 	private static function book( array $p ): array {
-		Plugin::activities()->book( (int) $p['session_id'], (int) ( $p['person_id'] ?? 0 ) );
-		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
+		$pid = (int) ( $p['person_id'] ?? 0 );
+		self::assert_not_suspended( $pid );
+		Plugin::activities()->book( (int) $p['session_id'], $pid );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' . self::membership_warning( $pid ) );
 	}
 
 	/**
@@ -433,8 +441,10 @@ final class Actions {
 	}
 
 	private static function enroll( array $p ): array {
-		Plugin::activities()->enroll( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ), (string) $p['start_month'] );
-		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' );
+		$pid = (int) ( $p['person_id'] ?? 0 );
+		self::assert_not_suspended( $pid );
+		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' . self::membership_warning( $pid ) );
 	}
 
 	private static function cancel_enrollment( array $p ): array {
@@ -458,25 +468,6 @@ final class Actions {
 				'discount_cents'   => Money::parse( $l['discount'] ?? '' ) ?? 0,
 				'discount_note'    => (string) ( $l['discount_note'] ?? '' ),
 			);
-			// Iscrizione a fine anno: si versa la quota dell'anno successivo e quello in corso è gratuito (sconto del 100%)
-			$cat = null;
-			foreach ( Plugin::ledger()->categories() as $c ) {
-				if ( (int) $c['id'] === (int) ( $l['category_id'] ?? 0 ) ) {
-					$cat = $c;
-				}
-			}
-			$on_date = (string) ( $p['date'] ?? '' ) ?: current_time( 'Y-m-d' );
-			$current = Settings::membership_year( $on_date )->label();
-			$next    = Settings::membership_year( $on_date )->next();
-			$covered = ! empty( $p['person_id'] ) && (string) Plugin::people()->active_until( (int) $p['person_id'], $on_date ) >= Settings::membership_year( $on_date )->end()->format( 'Y-m-d' );
-			// vale solo se ora si compra proprio la tessera dell'anno prossimo e quella in corso non c'è già
-			if ( ! empty( $l['free_current_year'] ) && $cat && 'membership' === $cat['kind'] && ( $l['social_year'] ?? '' ) === $next->label() && ! $covered ) {
-				$lines[] = array(
-					'category_id' => (int) $cat['id'], 'amount_cents' => 0, 'social_year' => $current,
-					'discount_cents' => (int) Settings::get( 'membership_fee_cents' ), 'discount_note' => 'iscrizione a fine anno: anno in corso gratuito',
-					'description' => 'Quota associativa ' . $current,
-				);
-			}
 		}
 		$n = Plugin::ledger()->record_receipt(
 			array(
@@ -538,6 +529,52 @@ final class Actions {
 	}
 
 	// ---------- Conti ----------
+
+	private static function suspend_expired( array $p ): array {
+		$n = Plugin::people()->suspend_expired( 8 );
+		return array( Ui::url( 'apse-people' ), 0 === $n ? 'Nessun socio da sospendere.' : $n . ( 1 === $n ? ' socio sospeso' : ' soci sospesi' ) . ': sono inattivi finché non li riattivi a mano.' );
+	}
+
+	/** Un socio sospeso è inattivo: va riattivato a mano prima di prenotarlo, iscriverlo o incassargli la quota. */
+	/** Avviso quando si iscrive o prenota un socio con la tessera non valida: deve rinnovare (la quota compare tra i pagamenti da incassare). */
+	private static function membership_warning( int $person_id ): string {
+		$person = $person_id ? Plugin::people()->get( $person_id ) : null;
+		if ( $person && MemberType::is_member( $person['type'] ) && ! MemberType::is_auto_renewed( $person['type'] ) && ! Plugin::people()->is_active_member( $person_id ) ) {
+			return ' Attenzione: la tessera non è valida, il socio deve rinnovare (la quota è tra i pagamenti da incassare in Bacheca).';
+		}
+		return '';
+	}
+
+	private static function assert_not_suspended( int $person_id ): void {
+		if ( $person_id && Plugin::people()->is_suspended( $person_id ) ) {
+			throw new \InvalidArgumentException( 'Il socio è sospeso (inattivo): riattivalo a mano dalla sua scheda prima di continuare.' );
+		}
+	}
+
+	private static function suspend_member( array $p ): array {
+		Plugin::people()->suspend( (int) ( $p['id'] ?? 0 ) );
+		return array( $p['_back'] ?? Ui::url( 'apse' ), 'Socio sospeso: è inattivo finché non rinnova la tessera (oppure lo riattivi).' );
+	}
+
+	private static function reactivate_member( array $p ): array {
+		Plugin::people()->reactivate( (int) ( $p['id'] ?? 0 ) );
+		return array( $p['_back'] ?? Ui::url( 'apse' ), 'Socio riattivato.' );
+	}
+
+	private static function create_year( array $p ): array {
+		\ApSemplice\FiscalYears::create( (int) ( $p['year'] ?? 0 ) );
+		return array( Ui::url( 'apse-years' ), 'Anno solare creato.' );
+	}
+
+	private static function close_year( array $p ): array {
+		\ApSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ) );
+		return array( Ui::url( 'apse-years' ), 'Anno solare chiuso: non accetta più incassi né spese.' );
+	}
+
+	private static function reopen_year( array $p ): array {
+		\ApSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ) );
+		return array( Ui::url( 'apse-years' ), 'Anno solare riaperto.' );
+	}
 
 	private static function add_account( array $p ): array {
 		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
@@ -602,6 +639,7 @@ final class Actions {
 		if ( ! $person ) {
 			throw new \InvalidArgumentException( 'Scegli chi si iscrive.' );
 		}
+		self::assert_not_suspended( $pid );
 		$target = (string) ( $p['target'] ?? '' );
 		$name   = trim( $person['first_name'] . ' ' . $person['last_name'] );
 		if ( 0 === strpos( $target, 'a:' ) ) {
@@ -610,11 +648,11 @@ final class Actions {
 				throw new \InvalidArgumentException( 'Corso non trovato.' );
 			}
 			Plugin::activities()->enroll( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
-			return array( Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.' );
+			return array( Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.' . self::membership_warning( $pid ) );
 		}
 		if ( 0 === strpos( $target, 's:' ) ) {
 			Plugin::activities()->book( (int) substr( $target, 2 ), $pid );
-			return array( Ui::url( 'apse' ), $name . ' è prenotato/a.' );
+			return array( Ui::url( 'apse' ), $name . ' è prenotato/a.' . self::membership_warning( $pid ) );
 		}
 		throw new \InvalidArgumentException( 'Scegli a cosa iscriverlo.' );
 	}

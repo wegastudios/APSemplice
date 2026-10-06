@@ -35,10 +35,16 @@ final class PeoplePage {
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-people">';
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
-		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)' ), $status, 'Qualsiasi stato' ) . '</select> ';
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
+		$stale = Plugin::people()->expired_for_months( 8 );
+		if ( $stale ) {
+			Ui::form_open( 'apse_suspend_expired', Ui::url( 'apse-people' ), false, 'apse-inline' );
+			echo '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre 8 mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre 8 mesi (' . count( $stale ) . ')</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Tessera</th><th>Nome</th><th>Tipo</th><th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
@@ -47,6 +53,8 @@ final class PeoplePage {
 		foreach ( $rows as $p ) {
 			if ( MemberType::GUEST === $p['type'] ) {
 				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $gov[ (int) $p['id'] ] ?? null );
+			} elseif ( ! empty( $p['suspended_at'] ) ) {
+				$state = '<span class="apse-warn">Sospeso (inattivo)</span>';
 			} elseif ( ! empty( $p['active_until'] ) && $p['active_until'] >= $today ) {
 				$state = '<span class="apse-ok">Valida fino al ' . Ui::date( $p['active_until'] ) . '</span>';
 			} elseif ( ! empty( $p['active_until'] ) ) {
@@ -159,6 +167,15 @@ final class PeoplePage {
 		echo '<button class="button" name="enabled" value="1">Segna iscritto</button> <button class="button" name="enabled" value="0">Togli iscrizione</button></p>';
 		Ui::form_close();
 		echo '<p class="description">L\'incasso di una "Quota associativa" iscrive in automatico. Qui puoi iscrivere a mano chi ha già pagato.</p>';
+		if ( ! empty( $p['suspended_at'] ) ) {
+			Ui::form_open( 'apse_reactivate_member', Ui::url( 'apse-person', array( 'id' => $p['id'] ) ), false, 'apse-inline' );
+			echo '<p><strong class="apse-warn">Socio sospeso dal ' . esc_html( mysql2date( 'd/m/Y', $p['suspended_at'] ) ) . ' (inattivo).</strong> ' . Ui::hidden( 'id', $p['id'] ) . '<button class="button">Riattiva il socio</button> <span class="description">Va riattivato a mano prima di poter incassare la quota o prenotare.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		} else {
+			Ui::form_open( 'apse_suspend_member', Ui::url( 'apse-person', array( 'id' => $p['id'] ) ), false, 'apse-inline' );
+			echo Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Sospendere questo socio? Diventa inattivo finché non lo riattivi.">Sospendi il socio</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
 		$rows = $people->memberships( (int) $p['id'] );
 		if ( $rows ) {
 			echo '<table class="widefat striped"><thead><tr><th>Anno sociale</th><th>Dal</th><th>Al</th><th>Origine</th></tr></thead><tbody>';

@@ -122,6 +122,71 @@ class FundService {
 		Audit::log( 'fund.deposited', 'fund', $fund_id, array( 'cents' => $cents ) );
 	}
 
+	/** Movimenti dei fondi (quelli di pagamenti annullati non contano), con l'anno solare in cui sono stati registrati. @return array[] fund_id, kind, cents, year */
+	private function year_entries(): array {
+		$e = Db::t( 'fund_entries' );
+		$t = Db::t( 'transactions' );
+		return $this->db()->get_results(
+			"SELECT e.fund_id, e.kind, e.cents, YEAR(e.entry_date) AS year FROM $e e LEFT JOIN $t t ON t.id = e.tx_id WHERE (e.tx_id IS NULL OR t.voided_at IS NULL) ORDER BY e.entry_date, e.id",
+			ARRAY_A
+		) ?: array();
+	}
+
+	/**
+	 * Per ogni fondo e per ogni anno solare: accantonato, già rimborsato o liberato, ancora da rimborsare.
+	 *
+	 * @return array ['per_fund' => [fund_id => [anno => [accrued, settled, unsettled]]], 'totals' => [anno => [...]]]
+	 */
+	public function yearly(): array {
+		$by = array();
+		foreach ( $this->year_entries() as $r ) {
+			$by[ (int) $r['fund_id'] ][] = $r;
+		}
+		$per = array();
+		foreach ( $by as $fid => $rows ) {
+			$per[ $fid ] = FundYears::by_year( $rows );
+		}
+		return array( 'per_fund' => $per, 'totals' => FundYears::totals( $per ) );
+	}
+
+	/** Quanto resta da rimborsare degli accantonamenti fatti fino a quell'anno solare (compreso): se è più di zero, quell'anno non si chiude. */
+	public function unsettled_until_year( int $year ): int {
+		$sum = 0;
+		foreach ( $this->yearly()['totals'] as $y => $r ) {
+			if ( (int) $y <= $year ) {
+				$sum += (int) $r['unsettled'];
+			}
+		}
+		return $sum;
+	}
+
+	/** Totale accantonato (quote dei pagamenti e somme messe a mano) con data nel periodo. */
+	public function accrued_in( string $from, string $to ): int {
+		return (int) $this->db()->get_var( $this->db()->prepare( $this->sum_sql( "e.kind = 'share'" ), $from, $to ) );
+	}
+
+	/** Totale liberato (tornato nella disponibilità dell'associazione) con data nel periodo. */
+	public function released_in( string $from, string $to ): int {
+		return (int) $this->db()->get_var( $this->db()->prepare( $this->sum_sql( "e.kind = 'release'" ), $from, $to ) );
+	}
+
+	private function sum_sql( string $kind_cond ): string {
+		$e = Db::t( 'fund_entries' );
+		$t = Db::t( 'transactions' );
+		return "SELECT COALESCE(SUM(e.cents), 0) FROM $e e LEFT JOIN $t t ON t.id = e.tx_id WHERE (e.tx_id IS NULL OR t.voided_at IS NULL) AND $kind_cond AND e.entry_date BETWEEN %s AND %s";
+	}
+
+	/** Uscite di rimborso già conteggiate come accantonamento: id del movimento => centesimi (per non contarle due volte nel rendiconto dell'anno in cui si pagano). */
+	public function payout_transactions(): array {
+		$e   = Db::t( 'fund_entries' );
+		$t   = Db::t( 'transactions' );
+		$out = array();
+		foreach ( $this->db()->get_results( "SELECT e.tx_id, e.cents FROM $e e JOIN $t t ON t.id = e.tx_id AND t.voided_at IS NULL WHERE e.kind = 'payout'", ARRAY_A ) ?: array() as $r ) {
+			$out[ (int) $r['tx_id'] ] = (int) $r['cents'];
+		}
+		return $out;
+	}
+
 	/** Libera parte del fondo: torna nella disponibilità dell'associazione (nessun movimento di cassa). */
 	public function release( int $fund_id, int $cents, string $date, string $note = '' ): void {
 		$f = $this->get( $fund_id );

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '17';
+	const DB_VERSION        = '19';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -80,6 +80,7 @@ final class Install {
   tax_code varchar(32) DEFAULT NULL,
   host_person_id bigint(20) unsigned DEFAULT NULL,
   joined_on date DEFAULT NULL,
+  suspended_at datetime DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
@@ -115,6 +116,14 @@ final class Install {
   sort_order int(11) NOT NULL DEFAULT 0,
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}fiscal_years (
+  year smallint(5) unsigned NOT NULL,
+  status varchar(8) NOT NULL DEFAULT 'open',
+  created_at datetime NOT NULL,
+  closed_at datetime DEFAULT NULL,
+  PRIMARY KEY  (year)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}funds (
@@ -405,6 +414,7 @@ final class Install {
 				$wpdb->insert( $cat, array( 'name' => $s[0], 'kind' => $s[1], 'fiscal_group' => $s[2] ) );
 			}
 		}
+		FiscalYears::seed(); // l'anno solare in corso (e quelli con movimenti) esiste sempre
 		$acc = Db::t( 'accounts' );
 		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ) ) {
 			$wpdb->insert( $acc, array( 'name' => 'Cassa contanti', 'type' => 'cash', 'sort_order' => 0 ) );

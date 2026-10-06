@@ -93,6 +93,9 @@ class PeopleService {
 						if ( 'noaccess' === $f['status'] ) {
 							return empty( $r['wp_user_id'] );
 						}
+						if ( 'suspended' === $f['status'] ) {
+							return ! empty( $r['suspended_at'] );
+						}
 						$active = ! empty( $r['active_until'] ) && $r['active_until'] >= $today;
 						return 'active' === $f['status'] ? $active : ! $active;
 					}
@@ -115,9 +118,63 @@ class PeopleService {
 	}
 
 	public function is_active_member( int $person_id, ?string $date = null ): bool {
+		if ( $this->is_suspended( $person_id ) ) {
+			return false; // un socio sospeso è inattivo anche con la tessera valida
+		}
 		$date  = $date ?? Db::today();
 		$until = $this->active_until( $person_id, $date );
 		return null !== $until && $until >= $date;
+	}
+
+	public function is_suspended( int $person_id ): bool {
+		return (bool) $this->db()->get_var( $this->db()->prepare( 'SELECT suspended_at FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $person_id ) );
+	}
+
+	/** Sospende un socio (inattivo: non prenota e non compare tra quelli da rinnovare) finché non rinnova o non lo si riattiva. */
+	public function suspend( int $person_id ): void {
+		$p = $this->get( $person_id );
+		if ( ! $p || ! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Si possono sospendere solo i soci (non i fondatori né gli ospiti).' );
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $person_id ) );
+		Audit::log( 'person.suspended', 'person', $person_id );
+	}
+
+	/**
+	 * Sospende i soci con la tessera scaduta da più di $months mesi (non i fondatori, né chi non ha mai pagato).
+	 *
+	 * @return int soci sospesi
+	 */
+	public function suspend_expired( int $months = 8 ): int {
+		$n = 0;
+		foreach ( $this->expired_for_months( $months ) as $p ) {
+			$this->suspend( (int) $p['id'] );
+			$n++;
+		}
+		return $n;
+	}
+
+	/** Soci attivi in anagrafica con la tessera scaduta da più di $months mesi. @return array[] */
+	public function expired_for_months( int $months = 8 ): array {
+		$limit = gmdate( 'Y-m-d', strtotime( Db::today() . ' -' . $months . ' months' ) );
+		$out   = array();
+		foreach ( $this->search() as $p ) {
+			if ( ! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) || empty( $p['active_until'] ) ) {
+				continue;
+			}
+			if ( $p['active_until'] < $limit ) {
+				$out[] = $p;
+			}
+		}
+		return $out;
+	}
+
+	public function reactivate( int $person_id ): void {
+		if ( ! $this->get( $person_id ) ) {
+			throw new \InvalidArgumentException( 'Persona non trovata.' );
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $person_id ) );
+		Audit::log( 'person.reactivated', 'person', $person_id );
 	}
 
 	/** Iscrizioni (tessere) di una persona, dalla più recente. */
@@ -549,6 +606,36 @@ class PeopleService {
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $person_id, 'social_year' => $year->label() ) );
 		}
 		Audit::log( $enabled ? 'membership.set' : 'membership.removed', 'person', $person_id, array( 'social_year' => $year->label(), 'source' => $source ) );
+	}
+
+	/** Il socio ha un'iscrizione (non cancellata) per quell'anno della tessera (es. "2026")? */
+	public function has_membership( int $person_id, string $label ): bool {
+		return (bool) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $person_id, $label ) );
+	}
+
+	/**
+	 * Per quale anno paga la quota un socio che versa oggi, e quale anno gli è regalato.
+	 * La quota va all'anno solare più recente creato. Se non è quello in corso:
+	 *  - chi ha già l'anno in corso rinnova in anticipo (paga il più recente);
+	 *  - chi è nuovo (non aveva la tessera nemmeno l'anno scorso) paga il più recente e ha l'anno in corso in omaggio;
+	 *  - chi non ha rinnovato l'anno in corso, ma aveva la tessera l'anno scorso, paga prima l'anno in corso (poi la segreteria gestisce il resto a mano).
+	 *
+	 * @return array{year:string, free:?string}
+	 */
+	public function membership_plan( int $person_id, string $date ): array {
+		$cur    = (int) substr( $date, 0, 4 );
+		$latest = FiscalYears::latest();
+		$year   = (string) $cur;
+		$free   = null;
+		if ( null !== $latest && $latest > $cur ) {
+			if ( $this->has_membership( $person_id, (string) $cur ) ) {
+				$year = (string) $latest;
+			} elseif ( ! $this->has_membership( $person_id, (string) ( $cur - 1 ) ) ) {
+				$year = (string) $latest;
+				$free = (string) $cur;
+			}
+		}
+		return array( 'year' => $year, 'free' => $free );
 	}
 
 	/** Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento). */

@@ -70,14 +70,11 @@ class PaymentService {
 			// Quota associativa: solo per il socio stesso (i fondatori e gli ospiti non la pagano)
 			$fee = (int) Settings::get( 'membership_fee_cents' );
 			if ( $pid === (int) $actor['id'] && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
-				$sy    = Settings::membership_year();
-				$until = $people->active_until( $pid );
-				if ( ! $until || $until < $sy->end()->format( 'Y-m-d' ) ) {
-					if ( ! $until || $until < Db::today() ) {
-						$i           = array( 'type' => PaymentItems::MEMBERSHIP, 'person_id' => $pid, 'person_name' => $name, 'social_year' => $sy->label(), 'amount_cents' => $fee, 'label' => 'Quota associativa ' . $sy->label() );
-						$i['key']    = PaymentItems::key( $i );
-						$items[ $i['key'] ] = $i;
-					}
+				$plan = $people->membership_plan( $pid, Db::today() ); // anno più recente (o quello in corso, se è scaduto)
+				if ( ! $people->has_membership( $pid, $plan['year'] ) ) {
+					$i                  = array( 'type' => PaymentItems::MEMBERSHIP, 'person_id' => $pid, 'person_name' => $name, 'social_year' => $plan['year'], 'amount_cents' => $fee, 'label' => 'Quota associativa ' . $plan['year'] . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ) );
+					$i['key']           = PaymentItems::key( $i );
+					$items[ $i['key'] ] = $i;
 				}
 			}
 			foreach ( $acts->status_for_person( $pid ) as $s ) {

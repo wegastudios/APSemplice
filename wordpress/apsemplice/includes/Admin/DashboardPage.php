@@ -44,7 +44,7 @@ final class DashboardPage {
 
 		self::quick_cash();
 		self::quick_enroll();
-		self::course_dues();
+		self::payments_due();
 		self::renewals();
 		self::expected_guests();
 
@@ -158,43 +158,80 @@ final class DashboardPage {
 		echo '</div>';
 	}
 
-	/** Corsi: iscritti che hanno una mensilità già dovuta (prima lezione del mese passata) e non ancora pagata. */
-	private static function course_dues(): void {
-		$acts = Plugin::activities();
-		$rows = array();
-		foreach ( $acts->for_year( Settings::social_year()->label() ) as $a ) {
+	/** Pagamenti da incassare: per ogni persona, la quota associativa (se la tessera non è valida), le mensilità dei corsi già dovute e i contributi non versati. */
+	private static function payments_due(): void {
+		$acts   = Plugin::activities();
+		$people = Plugin::people();
+		$fee    = (int) \ApSemplice\Settings::get( 'membership_fee_cents' );
+		$today  = current_time( 'Y-m-d' );
+		$by     = array(); // person_id => [person, what[], cents]
+		$member_due = function ( array $p ) use ( $people, $fee, $today ) {
+			if ( $fee <= 0 || ! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
+				return null;
+			}
+			$until = $people->active_until( (int) $p['id'], $today );
+			if ( $until && $until >= $today ) {
+				return null; // tessera valida
+			}
+			$plan = $people->membership_plan( (int) $p['id'], $today );
+			return array( 'Quota associativa ' . $plan['year'] . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ), $fee );
+		};
+		$add = function ( array $p, string $what, int $cents ) use ( &$by ) {
+			$pid = (int) $p['id'];
+			if ( ! isset( $by[ $pid ] ) ) {
+				$by[ $pid ] = array( 'person' => $p, 'what' => array(), 'cents' => 0 );
+			}
+			$by[ $pid ]['what'][] = $what;
+			$by[ $pid ]['cents'] += $cents;
+		};
+		// nuovi soci che non hanno mai pagato la quota
+		foreach ( $people->search() as $p ) {
+			if ( empty( $p['active_until'] ) && ( $m = $member_due( $p ) ) ) {
+				$add( $p, $m[0], $m[1] );
+			}
+		}
+		// iscritti ai corsi con mensilità dovute: se la tessera non è valida, si aggiunge anche la quota associativa
+		foreach ( $acts->for_year( \ApSemplice\Settings::social_year()->label() ) as $a ) {
 			if ( 'course' !== $a['kind'] ) {
 				continue;
 			}
 			foreach ( $acts->status_for_activity( (int) $a['id'] ) as $s ) {
-				if ( null === $s['enrollment']['end_month'] && $s['summary']['unpaid_months'] ) {
-					$rows[] = array( 'activity' => $a, 'enrollment' => $s['enrollment'], 'summary' => $s['summary'] );
+				if ( null !== $s['enrollment']['end_month'] || ! $s['summary']['unpaid_months'] ) {
+					continue;
 				}
+				$p = $people->get( (int) $s['enrollment']['person_id'] );
+				if ( ! $p ) {
+					continue;
+				}
+				if ( ! isset( $by[ (int) $p['id'] ] ) && ( $m = $member_due( $p ) ) ) {
+					$add( $p, $m[0], $m[1] );
+				}
+				$months = implode( ', ', array_map( function ( $mm ) {
+					return Ui::month( $mm['month'] );
+				}, $s['summary']['unpaid_months'] ) );
+				$add( $p, $a['name'] . ' · ' . $months, max( 0, -$s['summary']['balance'] ) );
 			}
 		}
-		if ( ! $rows ) {
+		if ( ! $by ) {
 			return;
 		}
-		echo '<div class="apse-card"><h2>Mensilità da incassare (' . count( $rows ) . ')</h2><p class="description">Corsi che si rinnovano ogni mese: la mensilità è dovuta dalla prima lezione del mese.</p><ul>';
+		$rows = array_values( $by );
+		echo '<div class="apse-card"><h2>Pagamenti da incassare (' . count( $rows ) . ')</h2><p class="description">Quote dei nuovi soci o con la tessera non valida, mensilità dei corsi (dovute dalla prima lezione del mese) e contributi non ancora versati.</p><ul>';
 		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
-			$e       = $r['enrollment'];
-			$missing = max( 0, -$r['summary']['balance'] );
-			$months  = implode( ', ', array_map( function ( $m ) {
-				return Ui::month( $m['month'] );
-			}, $r['summary']['unpaid_months'] ) );
-			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $e['person_id'] ) ) ) . '">' . esc_html( $e['first_name'] . ' ' . $e['last_name'] ) . '</a> <span class="description">' . esc_html( $r['activity']['name'] . ' · ' . $months ) . '</span> <strong>' . esc_html( Money::format( $missing ) ) . '</strong> '
-				. '<a class="button button-small" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => $e['person_id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $e ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			$p = $r['person'];
+			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">' . esc_html( implode( ' + ', $r['what'] ) ) . '</span> <strong>' . esc_html( Money::format( (int) $r['cents'] ) ) . '</strong> '
+				. '<a class="button button-small" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $p ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '. Li trovi nelle schede dei corsi.</p>' : '' ) . '</div>';
+		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '.</p>' : '' ) . '</div>';
 	}
 
-	/** Soci con la tessera scaduta o in scadenza nei prossimi 30 giorni. */
+	/** Soci che non hanno rinnovato (tessera scaduta) o stanno per scadere (30 giorni): si incassa il rinnovo o si sospende il socio. */
 	private static function renewals(): void {
 		$today = current_time( 'Y-m-d' );
 		$soon  = gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) );
 		$list  = array();
 		foreach ( Plugin::people()->search() as $p ) {
-			if ( MemberType::GUEST === $p['type'] || empty( $p['active_until'] ) || MemberType::is_auto_renewed( $p['type'] ) ) {
+			if ( MemberType::GUEST === $p['type'] || empty( $p['active_until'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
 				continue;
 			}
 			if ( $p['active_until'] <= $soon ) {
@@ -207,11 +244,19 @@ final class DashboardPage {
 		usort( $list, function ( $a, $b ) {
 			return strcmp( $a['active_until'], $b['active_until'] );
 		} );
-		echo '<div class="apse-card"><h2>Soci da rinnovare (' . count( $list ) . ')</h2><p class="description">Tessera scaduta o in scadenza entro 30 giorni.</p><ul>';
+		echo '<div class="apse-card"><h2>Soci da rinnovare (' . count( $list ) . ')</h2><p class="description">Tessera scaduta o in scadenza entro 30 giorni. Un socio con la tessera scaduta non può prenotare: incassa il rinnovo oppure sospendilo (diventa inattivo, finché non rinnova).</p><ul>';
 		foreach ( array_slice( $list, 0, 10 ) as $p ) {
 			$expired = $p['active_until'] < $today;
 			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">'
-				. ( $expired ? 'scaduta il ' : 'scade il ' ) . esc_html( Ui::date( $p['active_until'] ) ) . '</span> ' . Ui::contact_links( $p ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( $expired ? 'scaduta il ' : 'scade il ' ) . esc_html( Ui::date( $p['active_until'] ) ) . '</span> '
+				. '<a class="button button-small" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> '; // phpcs:ignore WordPress.Security.EscapeOutput
+			if ( $expired ) {
+				Ui::form_open( 'apse_suspend_member', Ui::url( 'apse' ), false, 'apse-inline' );
+				echo Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small" data-confirm="Sospendere ' . esc_attr( $p['first_name'] . ' ' . $p['last_name'] ) . '? Diventa inattivo finché non rinnova.">Sospendi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo ' ';
+			}
+			echo Ui::contact_links( $p ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</ul>' . ( count( $list ) > 10 ? '<p><a href="' . esc_url( Ui::url( 'apse-people', array( 'status' => 'inactive' ) ) ) . '">Vedi tutti →</a></p>' : '' ) . '</div>';
 	}

@@ -111,6 +111,8 @@ final class AccountsPage {
 			echo '<p>Nessun fondo aperto. Si creano da soli quando incassi un corso o un evento con una quota per il rimborso (si imposta nella scheda dell\'attività), oppure a mano con "Nuovo fondo" qui sotto.</p>';
 		}
 
+		ReportsPage::funds_by_year();
+
 		if ( $closed ) {
 			echo '<h2>Conti chiusi</h2><div class="apse-grid">';
 			foreach ( $closed as $a ) {
