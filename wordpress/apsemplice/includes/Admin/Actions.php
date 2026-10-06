@@ -1013,6 +1013,11 @@ final class Actions {
 				'gate_message'            => $txt( 'gate_message' ),
 			)
 		);
+		$feat = array();
+		foreach ( array_keys( SettingsPage::FEATURES ) as $k ) {
+			$feat[ $k ] = ! empty( $p[ $k ] ) ? 1 : 0;
+		}
+		Settings::update( $feat );
 		return array( Ui::url( 'apse-settings' ), 'Impostazioni salvate.' );
 	}
 

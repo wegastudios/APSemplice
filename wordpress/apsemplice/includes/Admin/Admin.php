@@ -16,6 +16,7 @@ final class Admin {
 		IncomePage::register_ajax();
 		LicenseNotice::register();
 		RegistersActions::register();
+		TechActions::register();
 		\ApSemplice\Docs::register();
 	}
 
@@ -25,11 +26,18 @@ final class Admin {
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto' ) ),
 		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze', 'apse-fivepm' => '5x1000' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-backup' => 'Copia di sicurezza', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-guide' => 'Guida iniziale', 'apse-tech' => 'Integrazioni', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni', 'apse-acct' => 'Opzioni contabili' ) ),
+	);
+
+	/** Le Impostazioni sono in tre sezioni: ente e funzioni, tecniche, contabilità. Titolo => pagine (la prima è quella a cui porta la scheda). */
+	const SETTINGS_SECTIONS = array(
+		'Ente e funzioni' => array( 'apse-settings' => 'Generale', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-guide' => 'Guida iniziale' ),
+		'Tecniche'        => array( 'apse-tech' => 'Integrazioni', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni' ),
+		'Contabilità'     => array( 'apse-acct' => 'Opzioni contabili' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years' );
+	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities' );
@@ -75,6 +83,9 @@ final class Admin {
 			array( 'apse-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
 			array( 'apse-volunteers', 'Assicurazioni', array( RegistersPage::class, 'render_volunteers' ) ),
 			array( 'apse-guide', 'Guida iniziale', array( GuidePage::class, 'render' ) ),
+			array( 'apse-tech', 'Integrazioni', array( TechPage::class, 'render_integrations' ) ),
+			array( 'apse-roles', 'Ruoli e accessi', array( TechPage::class, 'render_roles' ) ),
+			array( 'apse-acct', 'Opzioni contabili', array( TechPage::class, 'render_accounting' ) ),
 			array( 'apse-fivepm', '5x1000', array( FivePmPage::class, 'render' ) ),
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
@@ -111,14 +122,68 @@ final class Admin {
 		if ( ! $tabs || isset( self::PARENTS[ $page ] ) ) {
 			return '';
 		}
+		$off     = self::disabled_pages();
+		$visible = function ( string $slug ) use ( $off ) {
+			return ! in_array( $slug, $off, true ) && ( ! in_array( $slug, self::ADMIN_ONLY, true ) || current_user_can( Plugin::CAP ) );
+		};
+		if ( 'apse-settings' === $main ) { // Impostazioni: prima la sezione, poi le schede della sezione
+			$current = null;
+			foreach ( self::SETTINGS_SECTIONS as $title => $pages ) {
+				if ( isset( $pages[ $page ] ) ) {
+					$current = $title;
+				}
+			}
+			$html = '<nav class="nav-tab-wrapper apse-tabs">';
+			foreach ( self::SETTINGS_SECTIONS as $title => $pages ) {
+				$first = null;
+				foreach ( array_keys( $pages ) as $slug ) {
+					if ( $visible( $slug ) ) {
+						$first = $slug;
+						break;
+					}
+				}
+				if ( null !== $first ) {
+					$html .= '<a class="nav-tab' . ( $title === $current ? ' nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( $first ) ) . '">' . esc_html( $title ) . '</a>';
+				}
+			}
+			$html .= '</nav>';
+			if ( null !== $current ) {
+				$links = array();
+				foreach ( self::SETTINGS_SECTIONS[ $current ] as $slug => $label ) {
+					if ( $visible( $slug ) ) {
+						$links[] = '<li><a' . ( $slug === $page ? ' class="current"' : '' ) . ' href="' . esc_url( Ui::url( $slug ) ) . '">' . esc_html( $label ) . '</a></li>';
+					}
+				}
+				if ( count( $links ) > 1 ) {
+					$html .= '<ul class="subsubsub apse-subtabs">' . implode( ' | ', $links ) . '</ul><br class="clear">';
+				}
+			}
+			return $html;
+		}
 		$html = '<nav class="nav-tab-wrapper apse-tabs">';
 		foreach ( $tabs as $slug => $label ) {
-			if ( in_array( $slug, self::ADMIN_ONLY, true ) && ! current_user_can( Plugin::CAP ) ) {
+			if ( ! $visible( $slug ) ) {
 				continue;
 			}
 			$html .= '<a class="nav-tab' . ( $slug === $page ? ' nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( $slug ) ) . '">' . esc_html( $label ) . '</a>';
 		}
 		return $html . '</nav>';
+	}
+
+	/** Schede spente dalle impostazioni (report e rendiconto). @return string[] */
+	public static function disabled_pages(): array {
+		return \ApSemplice\Settings::get( 'reports_enabled' ) ? array() : array( 'apse-reports', 'apse-statement' );
+	}
+
+	/** Se le schede dei report sono spente scrive l'avviso e dice di fermarsi. */
+	public static function reports_off( string $title ): bool {
+		if ( \ApSemplice\Settings::get( 'reports_enabled' ) ) {
+			return false;
+		}
+		Ui::header( $title );
+		echo '<p>Report e rendiconto sono spenti. Si riaccendono da <a href="' . esc_url( Ui::url( 'apse-acct' ) ) . '">Impostazioni → Contabilità</a>.</p>';
+		Ui::footer();
+		return true;
 	}
 
 	public static function assets( string $hook ): void {

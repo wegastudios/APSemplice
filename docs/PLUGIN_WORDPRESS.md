@@ -427,3 +427,19 @@ Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Reg
 - **Guida iniziale** (Impostazioni → Guida iniziale): sette passi controllati sullo stato reale dei dati (denominazione e codice fiscale, quota, soci, presidente, area riservata, primo corso o evento, copia di sicurezza), le funzioni facoltative con il loro stato (attive/spente) e le risposte alle domande più comuni. In Bacheca compare un avviso finché mancano passi; si può nascondere (per utente).
 - **Lingue** (Impostazioni → Testi personalizzati, in cima): i testi sono scritti in italiano; un **pacchetto di traduzione** è una tabella «testo italiano → traduzione» applicata a pagine, email e PDF prima delle personalizzazioni (che hanno sempre la precedenza). Il pacchetto **inglese** è incluso (`languages/en.json`). Si possono caricare altre lingue (CSV, Excel o JSON con colonne «Originale» e «Traduzione», partendo dall'esportazione dei testi) con un codice (`fr`, `de`, `es`…) e un nome. Le parole singole e brevi («Salva», «Data») si traducono solo se sono il testo intero. Le frasi senza traduzione restano in italiano; la pagina dei testi resta sempre in italiano.
 - Database v30: tabella `fivepm`; impostazioni `fivepm_enabled`, `fivepm_text`, `language`.
+
+## Impostazioni in sezioni e WooCommerce
+
+**Impostazioni** ha tre sezioni, ognuna con le sue schede:
+
+- **Ente e funzioni**: Generale (denominazione, anno sociale, quota, livelli, sconto familiare e l'elenco delle **funzioni attive**: tessera digitale, QR della tessera, biglietti QR, Wallet, calendario pubblicato, regolamento, promemoria, assicurazioni, 5x1000), promemoria/privacy/regolamento/ricevute, testi e lingua, guida iniziale.
+- **Tecniche** (solo amministratori): Integrazioni (WooCommerce, collegamenti con gli altri servizi), Pagamenti online (Stripe e PayPal), Tessera/QR/Wallet (credenziali e rigenerazione), **Ruoli e accessi**, Copia di sicurezza, Registro azioni.
+- **Contabilità**: opzioni contabili (interruttore per **Report e rendiconto**: spento, le schede spariscono ma la prima nota resta) con i rimandi a quota, anni solari, conti e fondi, ricevute.
+
+**Ruoli e accessi**: oltre ad amministratori e «Segreteria APS» (assegnata dalla scheda del socio) si può dare l'accesso operativo — lo stesso della segreteria, senza impostazioni, pagamenti, copia e testi — a qualunque altro ruolo di WordPress (capability `apse_operate`). Tesoriere e staff degli eventi restano ruoli sulle persone.
+
+**WooCommerce** (Impostazioni → Tecniche → Integrazioni, spento di default): la compatibilità si attiva con «Usa WooCommerce per i pagamenti online» e sostituisce Stripe e PayPal come gateway.
+- Ogni **quota associativa** (per livello di socio) e ogni **corso o evento** si collega a un prodotto semplice (meglio se virtuale); un **prodotto generico** copre le voci senza un prodotto proprio, come le mensilità.
+- Il socio sceglie le voci da «Pagamenti» nell'area soci e va al checkout del negozio: nel carrello il **prezzo è quello calcolato dal server** (quota del livello, sconto familiare, mensilità dovute), non quello di listino.
+- Quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota (conto «WooCommerce», ricevuta e tessera rinnovata) **una sola volta**; se l'importo pagato è diverso da quello atteso entra come «non abbinato» e il pagamento va controllato. Ordini annullati o falliti chiudono il pagamento in attesa. Gli ordini senza voci APSemplice non vengono toccati; i rimborsi si registrano a mano.
+- Database v31: tabella `woo_links`; impostazioni `woo_default_product`, `card_enabled`, `reports_enabled`.

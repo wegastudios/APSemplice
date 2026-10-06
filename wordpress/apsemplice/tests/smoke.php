@@ -757,7 +757,7 @@ ob_start();
 Admin\SettingsPage::render();
 $general_html = ob_get_clean();
 apse_ok( false === strpos( $settings_html, 'sk_test_51Abc1234' ) && false !== strpos( $settings_html, '••••1234' ) && false === strpos( $settings_html, 'whsec_abc1234' ), 'impostazioni: la chiave segreta non viene mai stampata, solo la maschera' );
-apse_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (integrazione non disponibile)' ) && false !== strpos( $general_html, 'Termine predefinito per annullare' ) && false === strpos( $general_html, 'Verifica connessione Stripe' ), 'impostazioni: i pagamenti stanno nella loro scheda, le cancellazioni nel generale' );
+apse_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (negozio del sito)' ) && false !== strpos( $general_html, 'Termine predefinito per annullare' ) && false === strpos( $general_html, 'Verifica connessione Stripe' ), 'impostazioni: i pagamenti stanno nella loro scheda, le cancellazioni nel generale' );
 Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
 apse_ok( array() === PaymentConfig::validate( Settings::payment_config() )['errors'], 'configurazione PayPal valida' );
 Settings::update( array( 'payment_provider' => 'bogus' ) );
@@ -2286,7 +2286,7 @@ wp_set_current_user( 1 );
 apse_ok( 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
 $tabs = Admin\Admin::tabs( 'apse-income' );
 apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-activities' ), 'Calendario' ), 'menu: la Contabilità ha le sue schede, i corsi elenco e calendario, la Bacheca nessuna' );
-apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Pagamenti online' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Registro azioni' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Pagamenti online' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Tecniche' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
@@ -3987,6 +3987,154 @@ apse_ok( array( 'Quota associativa' => 'Beitrag' ) === $lg_pairs && null !== aps
 Settings::update( array( 'language' => 'it' ) );
 \ApSemplice\Texts::flush();
 apse_ok( ! isset( \ApSemplice\Languages::available()['fr'] ) && 'it' === \ApSemplice\Languages::current() && Admin\Actions::required_cap( 'apse_import_language' ) === Plugin::CAP && Admin\Actions::required_cap( 'apse_save_language' ) === Plugin::CAP, 'lingue: si elimina un pacchetto caricato; scegliere e caricare è riservato agli amministratori' );
+
+// ---------- Impostazioni in sezioni, ruoli, interruttori e WooCommerce ----------
+wp_set_current_user( 1 );
+$st_tabs = Admin\Admin::tabs( 'apse-settings' );
+$tc_tabs = Admin\Admin::tabs( 'apse-tech' );
+apse_ok( false !== strpos( $st_tabs, 'Ente e funzioni' ) && false !== strpos( $st_tabs, 'Tecniche' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $tc_tabs, 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: tre sezioni (ente e funzioni, tecniche, contabilità) con le loro schede' );
+foreach ( array( 'apse-tech', 'apse-roles', 'apse-acct' ) as $pg ) {
+	apse_ok( in_array( $pg, Admin\Admin::ADMIN_ONLY, true ), 'impostazioni: ' . $pg . ' è riservata agli amministratori' );
+}
+apse_render( array( Admin\SettingsPage::class, 'render' ), 'Funzioni attive' );
+apse_render( array( Admin\TechPage::class, 'render_integrations' ), 'WooCommerce' );
+apse_render( array( Admin\TechPage::class, 'render_roles' ), 'Come la segreteria' );
+apse_render( array( Admin\TechPage::class, 'render_accounting' ), 'Report e rendiconto' );
+// ruoli
+$ro = Admin\TechPage::roles();
+apse_ok( isset( $ro['editor'] ) && ! isset( $ro['administrator'] ) && ! isset( $ro['apse_secretary'] ) && ! isset( $ro['apse_member'] ), 'ruoli: elenco dei ruoli modificabili (senza amministratore, segreteria e soci)' );
+Admin\TechActions::save_roles( array( 'roles' => array( 'editor' ) ) );
+apse_ok( get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && ! get_role( 'editor' )->has_cap( Plugin::CAP ), 'ruoli: un altro ruolo può avere l\'accesso operativo, senza quello da amministratore' );
+Admin\TechActions::save_roles( array() );
+apse_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && null !== apse_throws( function () { Admin\TechPage::set_role_access( 'administrator', false ); } ) && null !== apse_throws( function () { Admin\TechPage::set_role_access( 'ruolo_inesistente', true ); } ), 'ruoli: l\'accesso si toglie; amministratore e ruoli inesistenti si rifiutano' );
+// interruttori
+$ft = Settings::all();
+Settings::update( array( 'card_enabled' => 0 ) );
+$ft_p = $people->get( $rg_p );
+apse_ok( '' === \ApSemplice\Frontend\Views::section_card( $ft_p ), 'funzioni: la tessera digitale si spegne dalle impostazioni' );
+Settings::update( array( 'card_enabled' => 1 ) );
+apse_ok( '' !== \ApSemplice\Frontend\Views::section_card( $ft_p ) && isset( Admin\SettingsPage::FEATURES['fivepm_enabled'], Admin\SettingsPage::FEATURES['insurance_volunteers'], Admin\SettingsPage::FEATURES['card_qr_enabled'] ), 'funzioni: e si riaccende; le altre funzioni sono nello stesso elenco' );
+// contabilità: report e rendiconto
+Admin\TechActions::save_acct( array() );
+apse_ok( false === strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-reports' ) && false === strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-statement' ), 'contabilità: spegnendo i report le schede spariscono' );
+apse_render( array( Admin\ReportsPage::class, 'render' ), 'Report e rendiconto sono spenti' );
+apse_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Report e rendiconto sono spenti' );
+Admin\TechActions::save_acct( array( 'reports_enabled' => '1' ) );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-reports' ), 'contabilità: e tornano' );
+// WooCommerce
+if ( ! \ApSemplice\WooBridge::active() ) {
+	apse_ok( null !== apse_throws( function () { Admin\TechActions::save_woo( array( 'woo_enabled' => '1' ) ); } ) && ! \ApSemplice\WooBridge::enabled(), 'woocommerce: se il negozio non c\'è l\'integrazione non si accende' );
+} else {
+	$wc_mk = function ( string $name, string $price, string $type = 'simple' ) {
+		$p = 'variable' === $type ? new WC_Product_Variable() : new WC_Product_Simple();
+		$p->set_name( $name );
+		$p->set_status( 'publish' );
+		if ( 'simple' === $type ) {
+			$p->set_regular_price( $price );
+			$p->set_virtual( true );
+		}
+		return (int) $p->save();
+	};
+	$wc_q   = $wc_mk( 'Quota associativa (negozio)', '25' );
+	$wc_c   = $wc_mk( 'Corso presenze (negozio)', '20' );
+	$wc_def = $wc_mk( 'Pagamento generico', '1' );
+	$wc_var = $wc_mk( 'Prodotto variabile', '', 'variable' );
+	$lv_ordn = 0;
+	foreach ( \ApSemplice\Levels::all( true ) as $l ) {
+		if ( 'ordinary' === $l['base_type'] && ! $lv_ordn ) {
+			$lv_ordn = (int) $l['id'];
+		}
+	}
+	\ApSemplice\WooLinks::set( 'level', $lv_ordn, $wc_q );
+	\ApSemplice\WooLinks::set( 'activity', $at_c, $wc_c );
+	apse_ok( $wc_q === \ApSemplice\WooLinks::product_id( 'level', $lv_ordn ) && $wc_c === \ApSemplice\WooLinks::product_id( 'activity', $at_c ) && count( \ApSemplice\WooBridge::products() ) >= 3, 'woocommerce: quote e attività collegate a prodotti' );
+	apse_ok( null !== apse_throws( function () use ( $lv_ordn ) { \ApSemplice\WooLinks::set( 'level', $lv_ordn, 999999 ); } ) && null !== apse_throws( function () use ( $lv_ordn, $wc_var ) { \ApSemplice\WooLinks::set( 'level', $lv_ordn, $wc_var ); } ) && null !== apse_throws( function () use ( $wc_q ) { \ApSemplice\WooLinks::set( 'level', 999999, $wc_q ); } ) && null !== apse_throws( function () use ( $wc_q ) { \ApSemplice\WooLinks::set( 'strano', 1, $wc_q ); } ), 'woocommerce: prodotto inesistente o variabile, livello inesistente e tipo non valido si rifiutano' );
+	apse_ok( ! \ApSemplice\WooBridge::enabled() && '' === Plugin::payments()->provider(), 'woocommerce: spento finché non lo attivi dalle impostazioni' );
+	Admin\TechActions::save_woo( array( 'woo_enabled' => '1', 'woo_default_product' => (string) $wc_def ) );
+	apse_ok( \ApSemplice\WooBridge::enabled() && 'woocommerce' === Plugin::payments()->provider() && $wc_def === (int) Settings::get( 'woo_default_product' ), 'woocommerce: attivato dalle impostazioni, al posto di Stripe e PayPal' );
+	// una voce: la quota del socio
+	$wc_p   = $mkb( 'Walter', 'Negozio' );
+	$wc_uid = (int) $people->get( $wc_p )['wp_user_id'];
+	$wc_dues = Plugin::payments()->dues_for( $people->get( $wc_p ) );
+	$wc_fee  = ApSempliceevels::fee_for( $people->get( $wc_p ) );
+	$wc_sy   = (string) ( array_values( $wc_dues )[0]['social_year'] ?? '' );
+	apse_ok( 1 === count( $wc_dues ) && $wc_fee === (int) array_values( $wc_dues )[0]['amount_cents'] && $wc_fee > 0, 'woocommerce: le voci dovute sono quelle di sempre (quota associativa)' );
+	wp_set_current_user( $wc_uid );
+	$wc_url = '';
+	$wc_err = '';
+	try {
+		$wc_url = Plugin::payments()->create_checkout( $people->get( $wc_p ), $wc_uid, array_keys( $wc_dues ), home_url( '/' ) );
+	} catch ( \Throwable $e ) {
+		$wc_err = $e->getMessage();
+	}
+	apse_ok( '' === $wc_err && $wc_url === wc_get_checkout_url(), 'woocommerce: il pagamento porta al checkout del negozio' . ( '' !== $wc_err ? ' (' . $wc_err . ')' : '' ) );
+	$wc_cart = WC()->cart;
+	$wc_cart->calculate_totals();
+	$wc_lines = array_values( $wc_cart->get_cart() );
+	apse_ok( 1 === count( $wc_lines ) && $wc_q === (int) $wc_lines[0]['product_id'] && $wc_fee === (int) $wc_lines[0]['apse_cents'] && abs( (float) $wc_lines[0]['data']->get_price() - $wc_fee / 100 ) < 0.001, 'woocommerce: nel carrello c\'è il prodotto della quota con il prezzo calcolato dal server' );
+	$wc_pay = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+	apse_ok( $wc_pay && 'pending' === $wc_pay['status'] && $wc_fee === (int) $wc_pay['amount_cents'] && (int) $wc_pay['payer_person_id'] === $wc_p, 'woocommerce: il pagamento resta in attesa finché l\'ordine non è pagato' );
+	$wc_order = function ( string $public, int $product, float $price ) use ( $wc_uid ) {
+		$o  = wc_create_order( array( 'customer_id' => $wc_uid ) );
+		$id = $o->add_product( wc_get_product( $product ), 1, array( 'subtotal' => $price, 'total' => $price ) );
+		wc_add_order_item_meta( $id, '_apse_pay', $public );
+		$o->calculate_totals();
+		$o->save();
+		return $o;
+	};
+	$tx_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+	$wc_o = $wc_order( $wc_pay['public_id'], $wc_q, $wc_fee / 100 );
+	apse_ok( $wc_fee === ( \ApSemplice\WooBridge::paid_by_payment( $wc_o )[ $wc_pay['public_id'] ] ?? 0 ), 'woocommerce: l\'importo pagato per le voci APSemplice si legge dall\'ordine' );
+	$wc_o->set_status( 'processing' );
+	$wc_o->save();
+	$wc_after = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay['id'], ARRAY_A );
+	apse_ok( 'paid' === $wc_after['status'] && 0 === (int) $wc_after['review'] && $wc_fee === (int) $wc_after['allocated_cents'] && $tx_before + 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && $people->has_membership( $wc_p, $wc_sy ), 'woocommerce: ordine pagato => incasso in prima nota e tessera rinnovata' );
+	\ApSemplice\WooBridge::on_paid( $wc_o->get_id() );
+	$wc_o->set_status( 'completed' );
+	$wc_o->save();
+	apse_ok( $tx_before + 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'woocommerce: lo stesso ordine non si registra due volte' );
+	// importo diverso: i soldi entrano comunque, da controllare
+	$wc_p2   = $mkb( 'Ornella', 'Negozio' );
+	$wc_uid2 = (int) $people->get( $wc_p2 )['wp_user_id'];
+	wp_set_current_user( $wc_uid2 );
+	$wc_d2 = Plugin::payments()->dues_for( $people->get( $wc_p2 ) );
+	Plugin::payments()->create_checkout( $people->get( $wc_p2 ), $wc_uid2, array_keys( $wc_d2 ), home_url( '/' ) );
+	$wc_pay2 = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+	$wc_o2   = $wc_order( $wc_pay2['public_id'], $wc_q, $wc_fee / 100 + 3 );
+	$wc_o2->set_status( 'completed' );
+	$wc_o2->save();
+	$wc_a2 = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay2['id'], ARRAY_A );
+	apse_ok( 'paid' === $wc_a2['status'] && 1 === (int) $wc_a2['review'] && ! $people->has_membership( $wc_p2, $wc_sy ), 'woocommerce: importo diverso da quello atteso => registrato come non abbinato e da controllare' );
+	// ordine annullato
+	$wc_p3   = $mkb( 'Ugo', 'Negozio' );
+	$wc_uid3 = (int) $people->get( $wc_p3 )['wp_user_id'];
+	wp_set_current_user( $wc_uid3 );
+	$wc_d3 = Plugin::payments()->dues_for( $people->get( $wc_p3 ) );
+	Plugin::payments()->create_checkout( $people->get( $wc_p3 ), $wc_uid3, array_keys( $wc_d3 ), home_url( '/' ) );
+	$wc_pay3 = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+	$wc_o3   = $wc_order( $wc_pay3['public_id'], $wc_q, $wc_fee / 100 );
+	$wc_o3->set_status( 'cancelled' );
+	$wc_o3->save();
+	apse_ok( 'cancelled' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay3['id'] ), 'woocommerce: ordine annullato => il pagamento in attesa si chiude' );
+	// un ordine senza voci APSemplice non cambia nulla
+	$tx_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+	$wc_x = wc_create_order();
+	$wc_x->add_product( wc_get_product( $wc_q ), 1 );
+	$wc_x->calculate_totals();
+	$wc_x->set_status( 'completed' );
+	$wc_x->save();
+	apse_ok( $tx_n === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'woocommerce: gli ordini del negozio senza voci APSemplice non vengono toccati' );
+	// voce senza prodotto
+	wp_set_current_user( 1 );
+	$wc_fake = array( 'type' => 'booking', 'person_id' => $wc_p, 'session_id' => 1, 'activity_id' => 999999, 'amount_cents' => 500, 'key' => 'b:1:' . $wc_p, 'label' => 'Prova', 'person_name' => 'X' );
+	apse_ok( $wc_def === \ApSemplice\WooLinks::product_for_item( $wc_fake ), 'woocommerce: una voce senza prodotto proprio usa quello generico' );
+	Settings::update( array( 'woo_default_product' => 0 ) );
+	apse_ok( 0 === \ApSemplice\WooLinks::product_for_item( $wc_fake ) && false !== strpos( (string) apse_throws( function () use ( $wc_fake ) { \ApSemplice\WooBridge::checkout_url( array( $wc_fake ), 'prova' ); } ), 'non sono collegate' ), 'woocommerce: senza prodotto generico le voci non collegate non si pagano online' );
+	apse_render( array( Admin\TechPage::class, 'render_integrations' ), 'Quote associative' );
+	Admin\TechActions::save_woo( array() );
+	apse_ok( ! \ApSemplice\WooBridge::enabled() && '' === Plugin::payments()->provider(), 'woocommerce: si spegne dalle impostazioni' );
+}
+wp_set_current_user( 1 );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 wp_set_current_user( 1 );

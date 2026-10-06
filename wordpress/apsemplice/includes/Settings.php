@@ -22,6 +22,9 @@ final class Settings {
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
+			'card_enabled'            => 1,     // tessera digitale nell'area soci
+			'reports_enabled'         => 1,     // report e rendiconto
+			'woo_default_product'     => 0,     // prodotto WooCommerce per le voci senza un prodotto proprio
 			'language'                => 'it',  // lingua dei testi (pacchetti di traduzione)
 			'fivepm_enabled'          => 0,     // 5x1000: spento di default
 			'fivepm_text'             => '',    // messaggio personalizzato (vuoto = quello standard)
@@ -112,6 +115,9 @@ final class Settings {
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
+		$clean['card_enabled']            = empty( $clean['card_enabled'] ) ? 0 : 1;
+		$clean['reports_enabled']         = empty( $clean['reports_enabled'] ) ? 0 : 1;
+		$clean['woo_default_product']     = max( 0, (int) $clean['woo_default_product'] );
 		$clean['language']                = preg_match( '/^[a-z]{2,3}(_[A-Z]{2})?$/', (string) $clean['language'] ) ? (string) $clean['language'] : 'it';
 		$clean['fivepm_enabled']          = empty( $clean['fivepm_enabled'] ) ? 0 : 1;
 		$clean['fivepm_text']             = mb_substr( trim( (string) $clean['fivepm_text'] ), 0, 1000 );

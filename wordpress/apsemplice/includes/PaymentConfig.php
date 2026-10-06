@@ -17,7 +17,7 @@ final class PaymentConfig {
 	public static function providers(): array {
 		return array(
 			self::NONE        => 'Nessuno (pagamento in sede)',
-			self::WOOCOMMERCE => 'WooCommerce (integrazione non disponibile)',
+			self::WOOCOMMERCE => 'WooCommerce (negozio del sito)',
 			self::STRIPE      => 'Stripe (alternativa a WooCommerce)',
 			self::PAYPAL      => 'PayPal (alternativa a WooCommerce)',
 		);
@@ -88,7 +88,7 @@ final class PaymentConfig {
 			}
 		}
 		if ( self::WOOCOMMERCE === $provider ) {
-			$warnings[] = 'WooCommerce: l\'integrazione non è disponibile; i pagamenti restano in sede.';
+			$warnings[] = 'WooCommerce: collega le quote ai prodotti in Impostazioni → Tecniche → Integrazioni; le voci senza prodotto non si possono pagare online.';
 		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}

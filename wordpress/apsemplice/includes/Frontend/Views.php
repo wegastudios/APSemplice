@@ -123,6 +123,9 @@ final class Views {
 	// ---------- Sezioni dell'area soci ----------
 
 	public static function section_card( array $p ): string {
+		if ( ! Settings::get( 'card_enabled' ) ) {
+			return ''; // tessera digitale spenta nelle impostazioni
+		}
 		$people = Plugin::people();
 		$until  = MemberType::GUEST === $p['type'] ? null : $people->active_until( (int) $p['id'] );
 		$active = $until && $until >= current_time( 'Y-m-d' );
@@ -314,8 +317,10 @@ final class Views {
 					. '<strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
 			}
 			$fields .= '</ul><p class="apsf-paytotal">Totale: <strong class="apsf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
-			$html   .= self::form( 'apse_front_pay', $fields, 'paypal' === $pay->provider() ? 'Paga con PayPal' : 'Paga con carta' )
-				. '<p class="apsf-small apsf-muted">Paghi su una pagina sicura di ' . ( 'paypal' === $pay->provider() ? 'PayPal' : 'Stripe' ) . ': i dati della carta non passano da questo sito.</p>';
+			$html   .= self::form( 'apse_front_pay', $fields, 'woocommerce' === $pay->provider() ? 'Paga nel negozio' : ( 'paypal' === $pay->provider() ? 'Paga con PayPal' : 'Paga con carta' ) )
+				. ( 'woocommerce' === $pay->provider()
+					? '<p class="apsf-small apsf-muted">Completi il pagamento nel negozio del sito: appena risulta pagato lo registriamo.</p>'
+					: '<p class="apsf-small apsf-muted">Paghi su una pagina sicura di ' . ( 'paypal' === $pay->provider() ? 'PayPal' : 'Stripe' ) . ': i dati della carta non passano da questo sito.</p>' );
 		}
 		$recent = $pay->list( array( 'payer_person_id' => (int) $p['id'] ), 5 );
 		if ( $recent ) {

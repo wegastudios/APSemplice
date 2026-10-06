@@ -38,6 +38,9 @@ class PaymentService {
 	/** Gateway attivo: stripe | paypal, oppure '' se non scelto o con configurazione incompleta. */
 	public function provider(): string {
 		$c = Settings::payment_config();
+		if ( PaymentConfig::WOOCOMMERCE === $c['payment_provider'] ) {
+			return WooBridge::active() ? PaymentConfig::WOOCOMMERCE : '';
+		}
 		if ( ! in_array( $c['payment_provider'], array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ), true ) ) {
 			return '';
 		}
@@ -175,6 +178,19 @@ class PaymentService {
 
 		$public = wp_generate_uuid4();
 		$now    = Db::now();
+		if ( PaymentConfig::WOOCOMMERCE === $provider ) { // negozio WooCommerce: le voci vanno nel carrello e si paga al checkout
+			$url = WooBridge::checkout_url( $items, $public );
+			$this->db()->insert(
+				Db::t( 'payments' ),
+				array(
+					'public_id' => $public, 'provider' => $provider, 'status' => 'pending', 'amount_cents' => $total, 'currency' => 'EUR',
+					'payer_person_id' => (int) $actor['id'], 'payer_user_id' => $user_id, 'items' => wp_json_encode( $items ), 'created_at' => $now, 'updated_at' => $now,
+				)
+			);
+			$wid = (int) $this->db()->insert_id;
+			Audit::log( 'payment.created', 'payment', $wid, array( 'provider' => $provider, 'cents' => $total, 'items' => count( $items ) ) );
+			return $url;
+		}
 		$this->db()->insert(
 			Db::t( 'payments' ),
 			array(
@@ -233,8 +249,8 @@ class PaymentService {
 
 	/** Interroga il gateway e, se il pagamento risulta riuscito, lo registra. @return bool true se è stato registrato ora */
 	private function confirm_with_gateway( array $p ): bool {
-		if ( ! in_array( $p['status'], array( 'created', 'pending' ), true ) || empty( $p['provider_ref'] ) ) {
-			return false;
+		if ( ! in_array( $p['status'], array( 'created', 'pending' ), true ) || empty( $p['provider_ref'] ) || PaymentConfig::WOOCOMMERCE === $p['provider'] ) {
+			return false; // WooCommerce non si interroga: è il negozio a segnalare l'ordine pagato
 		}
 		$cfg = Settings::payment_config();
 		try {
@@ -332,7 +348,8 @@ class PaymentService {
 		$method      = $p['provider'];
 		$today       = Db::today();
 		$ref         = substr( (string) $p['provider_ref'], 0, 80 );
-		$note        = 'Pagamento online (' . ( 'paypal' === $p['provider'] ? 'PayPal' : 'Stripe' ) . ')';
+		$labels      = array( 'paypal' => 'PayPal', 'woocommerce' => 'WooCommerce' );
+		$note        = 'Pagamento online (' . ( $labels[ $p['provider'] ] ?? 'Stripe' ) . ')';
 		$allocated   = 0;
 		$review      = false;
 		$error       = null;
@@ -374,6 +391,26 @@ class PaymentService {
 		Audit::log( 'payment.paid', 'payment', (int) $p['id'], array( 'provider' => $p['provider'], 'cents' => $paid_cents, 'review' => $review ) );
 		$this->send_receipt_email( $this->get( (int) $p['id'] ), $items );
 		return true;
+	}
+
+	/** Ordine WooCommerce pagato: registra l'incasso del pagamento corrispondente (una sola volta).  bool true se registrato ora */
+	public function finalize_external( string $public_id, int $paid_cents, string $ref ): bool {
+		$p = $this->get_by_public( $public_id );
+		if ( ! $p || PaymentConfig::WOOCOMMERCE !== $p['provider'] ) {
+			return false;
+		}
+		$this->update( (int) $p['id'], array( 'provider_ref' => substr( $ref, 0, 120 ) ) );
+		$p = $this->get( (int) $p['id'] );
+		return $p ? $this->finalize( $p, $paid_cents, $ref ) : false;
+	}
+
+	/** Ordine WooCommerce annullato o fallito: il pagamento in attesa si chiude. */
+	public function cancel_external( string $public_id ): void {
+		$p = $this->get_by_public( $public_id );
+		if ( $p && PaymentConfig::WOOCOMMERCE === $p['provider'] && in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
+			$this->update( (int) $p['id'], array( 'status' => 'cancelled' ) );
+			Audit::log( 'payment.cancelled', 'payment', (int) $p['id'], array( 'provider' => 'woocommerce' ) );
+		}
 	}
 
 	private function line_for( array $i, string $note, LedgerService $ledger ): array {
