@@ -1,14 +1,2 @@
-*.iml
-.gradle/
-/local.properties
-/.idea/
 .DS_Store
-/build/
-/app/build/
-/captures/
-.externalNativeBuild/
-.cxx/
-*.keystore
-*.jks
-/dist/
-/APSemplice-debug.apk
+/APSemplice-plugin.zip

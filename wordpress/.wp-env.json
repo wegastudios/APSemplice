@@ -1,0 +1,13 @@
+{
+	"phpVersion": "8.1",
+	"plugins": [
+		"./apsemplice",
+		"https://downloads.wordpress.org/plugin/elementor.latest-stable.zip",
+		"https://downloads.wordpress.org/plugin/wp-all-import.latest-stable.zip"
+	],
+	"config": {
+		"WP_DEBUG": true,
+		"WP_DEBUG_DISPLAY": false,
+		"WP_DEBUG_LOG": true
+	}
+}

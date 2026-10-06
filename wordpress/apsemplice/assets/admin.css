@@ -1,0 +1,37 @@
+.apse .apse-ok { color: #007017; }
+.apse .apse-neg { color: #b32d2e; }
+.apse .apse-warn { color: #996800; }
+.apse .apse-big { font-size: 26px; font-weight: 600; margin: 4px 0 10px; }
+.apse .apse-cols { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.apse .apse-col { flex: 1 1 420px; min-width: 300px; }
+.apse .apse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 12px 0; }
+.apse .apse-card { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 4px 16px 14px; margin: 12px 0; }
+.apse .apse-grid .apse-card { margin: 0; }
+.apse .apse-card h2, .apse .apse-card h3 { margin-top: 12px; }
+.apse .apse-kv { width: 100%; border-collapse: collapse; }
+.apse .apse-kv td { padding: 3px 0; }
+.apse .apse-kv td:last-child { text-align: right; }
+.apse .apse-filters { margin: 12px 0; }
+.apse .apse-detail { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 8px 12px; margin: 8px 0; }
+.apse .apse-detail summary { cursor: pointer; }
+.apse .apse-months { margin: 8px 0; max-width: 560px; }
+.apse .apse-filter-select .apse-filter { width: 130px; }
+.apse .apse-info { margin-top: 6px; }
+.apse .apse-info.apse-info-warn { color: #996800; font-weight: 600; }
+.apse .apse-line { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 8px 12px; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.apse .apse-line .apse-line-title { flex: 1 1 220px; font-weight: 600; }
+.apse .apse-total { font-size: 18px; }
+.apse .apse-change { font-size: 18px; font-weight: 600; }
+.apse .apse-quick button { margin-right: 6px; }
+.apse .apse-form th { width: 190px; }
+
+/* Popup di licenza non in regola */
+.apse-overlay { position: fixed; inset: 0; background: rgba(20, 20, 20, .78); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+.apse-overlay-box { background: #fff; border-radius: 6px; max-width: 520px; width: calc(100% - 32px); padding: 8px 28px 22px; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
+.apse-overlay-box h2 { margin-top: 18px; }
+.apse .apse-attach { margin: 4px 0; }
+.apse .apse-attach ul { margin: 6px 0; padding-left: 16px; list-style: disc; }
+.apse form.apse-inline { display: inline; }
+.apse .apse-shot { cursor: pointer; }
+.apse .apse-doc-info { margin-left: 8px; }
+.apse .apse-tabs { margin: 12px 0 16px; }
