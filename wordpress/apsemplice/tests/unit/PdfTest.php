@@ -30,7 +30,7 @@ final class PdfTest extends TestCase {
 		$this->assertStringContainsString( "\x80", $s ); // €
 		$this->assertStringContainsString( '\(50', $s );
 		$this->assertStringContainsString( '\)', $s );
-		$this->assertStringContainsString( 'a\\b', $s );
+		$this->assertStringContainsString( 'a' . '\\' . '\\' . 'b', $s ); // la barra va raddoppiata
 	}
 
 	public function test_width_and_wrap(): void {
