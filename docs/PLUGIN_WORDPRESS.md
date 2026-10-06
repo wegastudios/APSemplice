@@ -365,3 +365,12 @@ Chi non ha email (un ospite) riceve il messaggio tramite il socio che lo ospita 
 - **Attestazione annuale** dei versamenti di una persona (quote, contributi, erogazioni liberali con i totali): scheda persona e area soci.
 - Nell'area soci: shortcode `[apsemplice_ricevute]` (incluso in `[apsemplice_area_soci]`) con l'elenco e i download. Le vede solo chi ha pagato (o il socio che ospita chi ha pagato) e gli amministratori.
 - Il PDF è generato dal plugin senza librerie esterne; in CI si controlla con `pdfinfo`/`pdftotext`.
+
+## Testi personalizzati (Impostazioni → Testi personalizzati)
+
+Tutti i testi che il plugin mostra si possono cambiare: pagine dei soci, email e promemoria, ricevute e attestazioni in PDF, messaggi di conferma ed errore, etichette, amministrazione.
+
+- **Come funziona**: l'elenco dei testi si ricava dal codice (ogni frase scritta nei file) e si divide in gruppi (Area soci e pagine pubbliche, Email e promemoria, Ricevute e attestazioni PDF, Etichette e messaggi comuni, Messaggi di sistema, Amministrazione). Quello che scrivi nella colonna **Personalizzato** sostituisce l'originale ovunque compaia (testo delle pagine, segnaposto e title dei campi, messaggi, oggetto e corpo delle email, PDF). Il nuovo testo è protetto: niente HTML.
+- **Modifica rapida**: **Esporta tutti i testi (CSV)** (si apre in Excel: Gruppo ; Originale ; Personalizzato), cambia la colonna Personalizzato, **importa** il file (CSV o Excel). Personalizzato vuoto = torna all'originale. Si può esportare anche solo ciò che hai personalizzato.
+- **Pezzi mancanti**: i testi composti da più parti (nomi, date, importi) si cambiano pezzo per pezzo; se un pezzo non è nell'elenco lo aggiungi con «Aggiungi una sostituzione» (compare nel file come gruppo "Aggiunte a mano").
+- **Limiti**: la sostituzione vale per tutte le occorrenze di quel testo (anche dentro frasi più lunghe); i testi scritti negli script delle pagine (es. «Resto da dare» della calcolatrice) e le voci del menu di WordPress non passano da qui.

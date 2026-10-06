@@ -37,7 +37,7 @@ final class Views {
 
 	private static function wrap( string $inner, string $class = '' ): string {
 		Assets::enqueue();
-		return '<div class="apsf ' . esc_attr( $class ) . '">' . self::flash() . $inner . '</div>';
+		return \ApSemplice\Texts::html( '<div class="apsf ' . esc_attr( $class ) . '">' . self::flash() . $inner . '</div>' ); // testi personalizzati
 	}
 
 	/** Esito dell'ultima azione (una sola volta per pagina, anche con più viste). */

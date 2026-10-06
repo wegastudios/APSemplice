@@ -26,6 +26,10 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_save_texts'         => 'save_texts',
+			'apse_import_texts'       => 'import_texts',
+			'apse_reset_texts'        => 'reset_texts',
+			'apse_add_text'           => 'add_text',
 			'apse_privacy_consent'    => 'privacy_consent',
 			'apse_privacy_anonymize'  => 'privacy_anonymize',
 			'apse_save_comms'         => 'save_comms',
@@ -213,6 +217,68 @@ final class Actions {
 	private static function receipt_email( array $p ): array {
 		\ApSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
 		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), 'Ricevuta inviata per email.' );
+	}
+
+	private static function save_texts( array $p ): array {
+		$ov = \ApSemplice\Texts::overrides();
+		$by = array();
+		foreach ( \ApSemplice\Texts::rows() as $r ) {
+			$by[ md5( $r['text'] ) ] = $r['text'];
+		}
+		foreach ( (array) ( $p['t'] ?? array() ) as $hash => $custom ) {
+			if ( ! isset( $by[ (string) $hash ] ) ) {
+				continue; // solo testi che esistono davvero
+			}
+			$custom = trim( str_replace( "\r\n", "\n", (string) $custom ) );
+			if ( '' === $custom ) {
+				unset( $ov[ $by[ $hash ] ] );
+			} else {
+				$ov[ $by[ $hash ] ] = $custom;
+			}
+		}
+		\ApSemplice\Texts::save_overrides( $ov );
+		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Testi salvati.' );
+	}
+
+	private static function import_texts( array $p ): array {
+		if ( empty( $_FILES['texts_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['texts_file']['error'] || ! is_uploaded_file( $_FILES['texts_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Scegli il file da importare.' );
+		}
+		if ( (int) $_FILES['texts_file']['size'] > 5 * 1048576 ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Il file è troppo grande (massimo 5 MB).' );
+		}
+		$sheets = \ApSemplice\SheetReader::read( (string) $_FILES['texts_file']['tmp_name'], (string) $_FILES['texts_file']['name'] ); // phpcs:ignore WordPress.Security
+		$res    = null;
+		$err    = null;
+		foreach ( $sheets as $s ) {
+			try {
+				$res = \ApSemplice\Texts::import_rows( $s['rows'] );
+				break;
+			} catch ( \InvalidArgumentException $e ) {
+				$err = $e;
+			}
+		}
+		if ( ! $res ) {
+			throw $err ?: new \InvalidArgumentException( 'File non valido.' );
+		}
+		return array( Ui::url( 'apse-texts' ), 'Importazione completata: ' . $res['set'] . ' testi impostati, ' . $res['removed'] . ' ripristinati, ' . $res['manual'] . ' aggiunte a mano' . ( $res['ignored'] ? ', ' . $res['ignored'] . ' righe ignorate' : '' ) . '.' );
+	}
+
+	private static function reset_texts( array $p ): array {
+		\ApSemplice\Texts::save_overrides( array() );
+		return array( Ui::url( 'apse-texts' ), 'Testi originali ripristinati.' );
+	}
+
+	private static function add_text( array $p ): array {
+		$o = trim( (string) ( $p['original'] ?? '' ) );
+		$c = trim( (string) ( $p['custom'] ?? '' ) );
+		if ( strlen( $o ) < \ApSemplice\Texts::MIN_LEN || '' === $c ) {
+			throw new \InvalidArgumentException( 'Scrivi il testo di oggi (almeno 3 caratteri) e quello nuovo.' );
+		}
+		$ov       = \ApSemplice\Texts::overrides();
+		$ov[ $o ] = $c;
+		\ApSemplice\Texts::save_overrides( $ov );
+		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Sostituzione aggiunta.' );
 	}
 
 	private static function set_treasurer( array $p ): array {

@@ -22,7 +22,7 @@ final class Flash {
 		if ( '' === $kind ) {
 			return $url;
 		}
-		$msg = 'err' === $kind ? $err : $ok;
+		$msg = Texts::plain( 'err' === $kind ? $err : $ok ); // testi personalizzati
 		return add_query_arg( array( $prefix . '_' . $kind => $msg, $prefix . '_sig' => self::sign( $kind, $msg ) ), $url );
 	}
 

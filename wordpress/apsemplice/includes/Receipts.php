@@ -250,6 +250,7 @@ final class Receipts {
 		$label  = $num['number'] . '/' . $num['year'];
 		$kinds  = array_unique( array_column( $rows, 'category_kind' ) );
 		$title  = array( 'donation' ) === array_values( $kinds ) ? 'RICEVUTA DI EROGAZIONE LIBERALE' : 'RICEVUTA DI PAGAMENTO';
+		Pdf::$filter = array( Texts::class, 'plain' ); // testi personalizzati nel PDF
 		$pdf    = new Pdf();
 		$y      = self::header( $pdf );
 		$pdf->text( 50, $y, $title, 14, true );
@@ -310,6 +311,7 @@ final class Receipts {
 		}
 		self::footer( $pdf, 770 );
 		$who = $payer ? Text::normalize( $payer['last_name'] ) : 'ricevuta';
+		Pdf::$filter = null;
 		return array( 'pdf' => $pdf->output(), 'filename' => 'ricevuta-' . $num['number'] . '-' . $num['year'] . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer );
 	}
 
@@ -340,6 +342,7 @@ final class Receipts {
 		$groups = array( 'membership' => 'Quote associative', 'activity_fee' => 'Contributi per attività ed eventi', 'donation' => 'Erogazioni liberali' );
 		$sums   = array();
 		$total  = 0;
+		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf    = new Pdf();
 		$y      = self::header( $pdf );
 		$pdf->text( 50, $y, 'ATTESTAZIONE DEI VERSAMENTI — ANNO ' . $year, 14, true );
@@ -398,6 +401,7 @@ final class Receipts {
 			$pdf->text( Pdf::W - 60, $y + 47, 'Il Presidente ' . $pres, 9, false, 'R' );
 		}
 		self::footer( $pdf, 800 );
+		Pdf::$filter = null;
 		return array( 'pdf' => $pdf->output(), 'filename' => 'attestazione-' . $year . '-' . preg_replace( '/[^a-z0-9]/', '', Text::normalize( $person['last_name'] ) ) . '.pdf', 'total_cents' => $total );
 	}
 
@@ -420,7 +424,7 @@ final class Receipts {
 		file_put_contents( $dst, $r['pdf'] );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		$assoc = (string) Settings::get( 'association_name' );
-		$ok    = wp_mail(
+		$ok    = \ApSemplice\Texts::mail(
 			$to,
 			'Ricevuta n. ' . $r['number'] . ( '' !== $assoc ? ' — ' . $assoc : '' ),
 			'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie!",

@@ -132,7 +132,7 @@ final class Notices {
 		foreach ( $rcpt as $r ) {
 			$text = 'Ciao ' . $r['name'] . ",\n\n" . $body . "\n\n—\nAvviso di " . $by . ' per «' . $a['name'] . '»' . $when . ( '' !== $assoc ? ' — ' . $assoc : '' )
 				. ".\nPer rispondere rivolgiti alla segreteria dell'associazione.";
-			if ( wp_mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
+			if ( \ApSemplice\Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
 				$sent++;
 			}
 		}

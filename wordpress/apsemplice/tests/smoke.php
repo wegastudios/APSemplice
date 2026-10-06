@@ -3184,6 +3184,93 @@ apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Ricevute e attest
 Settings::update( array( 'receipt_footer' => '' ) );
 remove_all_filters( 'pre_wp_mail' );
 
+// ---------- Testi personalizzabili ----------
+wp_set_current_user( 1 );
+\ApSemplice\Texts::save_overrides( array() );
+$tx_cat   = \ApSemplice\Texts::catalog();
+$tx_texts = array_column( $tx_cat, 'text' );
+$tx_by    = array_column( $tx_cat, 'group', 'text' );
+$tx_groups = array_count_values( array_column( $tx_cat, 'group' ) );
+echo "TESTI: " . count( $tx_cat ) . ' nel catalogo; per gruppo: ' . wp_json_encode( $tx_groups, JSON_UNESCAPED_UNICODE ) . "\n";
+foreach ( array_keys( $tx_groups ) as $gname ) {
+	$sample = array();
+	foreach ( $tx_cat as $i => $c ) {
+		if ( $c['group'] === $gname && 0 === $i % 17 && count( $sample ) < 14 ) {
+			$sample[] = $c['text'];
+		}
+	}
+	echo "  [$gname] " . implode( ' | ', $sample ) . "\n";
+}
+apse_ok( count( $tx_cat ) > 300 && in_array( 'Il mio profilo', $tx_texts, true ) && in_array( 'Le mie ricevute', $tx_texts, true ) && in_array( 'RICEVUTA DI PAGAMENTO', $tx_texts, true ), 'testi: il catalogo ricavato dal codice contiene i testi del sito' );
+apse_ok( 'Area soci e pagine pubbliche' === $tx_by['Il mio profilo'] && 'Ricevute e attestazioni (PDF)' === $tx_by['RICEVUTA DI PAGAMENTO'], 'testi: ogni testo ha il suo gruppo' );
+$tx_bad = array();
+foreach ( $tx_texts as $t ) {
+	if ( preg_match( '/^(apse_|apsf-|SELECT |INSERT )|<|\$|::|->/', $t ) ) {
+		$tx_bad[] = $t;
+	}
+}
+apse_ok( array() === $tx_bad, 'testi: nel catalogo niente codice, query o classi' . ( $tx_bad ? ' (' . implode( ' | ', array_slice( $tx_bad, 0, 5 ) ) . ')' : '' ) );
+
+// sostituzione nell'area soci, nei messaggi, nelle email e nei PDF
+\ApSemplice\Texts::save_overrides( array( 'Il mio profilo' => 'La mia scheda', 'Ospite aggiunto.' => 'Fatto: ospite inserito', 'RICEVUTA DI PAGAMENTO' => 'RICEVUTA N. TEST' ) );
+$tx_front = $as( $u_f, '[apsemplice_profilo]' );
+apse_ok( false !== strpos( $tx_front, 'La mia scheda' ) && false === strpos( $tx_front, 'Il mio profilo' ), 'testi: la sostituzione compare nell\'area soci' );
+parse_str( (string) wp_parse_url( \ApSemplice\Flash::url( 'https://example.org/a/', 'apsf', 'Ospite aggiunto.' ), PHP_URL_QUERY ), $tx_q );
+$tx_old = $_GET;
+$_GET   = $tx_q;
+$tx_fl  = \ApSemplice\Flash::read( 'apsf' );
+$_GET   = $tx_old;
+apse_ok( 'Fatto: ospite inserito' === $tx_fl['ok'], 'testi: la sostituzione vale anche nei messaggi di conferma' );
+$tx_mail = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$tx_mail ) {
+		$tx_mail[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+\ApSemplice\Texts::save_overrides( array_merge( \ApSemplice\Texts::overrides(), array( 'Promemoria di prova' => 'Promemoria cambiato' ) ) );
+\ApSemplice\Texts::mail( 'a@example.com', 'Promemoria di prova', 'Corpo: Promemoria di prova.' );
+apse_ok( 1 === count( $tx_mail ) && 'Promemoria cambiato' === $tx_mail[0]['subject'] && 'Corpo: Promemoria cambiato.' === $tx_mail[0]['message'], 'testi: la sostituzione vale nelle email (oggetto e testo)' );
+remove_all_filters( 'pre_wp_mail' );
+$tx_pdf = \ApSemplice\Receipts::build( $rc_list[0]['key'] );
+apse_ok( false !== strpos( $tx_pdf['pdf'], 'RICEVUTA N. TEST' ) && false === strpos( $tx_pdf['pdf'], 'RICEVUTA DI PAGAMENTO' ) && null === \ApSemplice\Pdf::$filter, 'testi: la sostituzione vale nei PDF' );
+apse_ok( false !== strpos( \ApSemplice\Texts::html( '<h3>Il mio profilo</h3><input placeholder="Il mio profilo">' ), '<h3>La mia scheda</h3><input placeholder="La mia scheda">' ), 'testi: in amministrazione la pagina passa dalla stessa sostituzione' );
+
+// esportazione e importazione
+$tx_csv = \ApSemplice\Texts::export_csv( true );
+apse_ok( 0 === strpos( $tx_csv, "\xEF\xBB\xBFGruppo;Originale;Personalizzato" ) && false !== strpos( $tx_csv, 'Il mio profilo;La mia scheda' ) && false !== strpos( $tx_csv, 'Aggiunte a mano;Promemoria di prova;Promemoria cambiato' ), 'testi: esportazione CSV con i soli personalizzati' );
+$tx_all = \ApSemplice\Texts::export_csv();
+apse_ok( substr_count( $tx_all, "\r\n" ) > count( $tx_cat ), 'testi: esportazione CSV di tutti i testi' );
+$tx_file = wp_tempnam( 'apse-testi' );
+file_put_contents( $tx_file, str_replace( 'Il mio profilo;La mia scheda', 'Il mio profilo;La mia area personale', $tx_csv ) );
+$tx_sheets = \ApSemplice\SheetReader::read( $tx_file, 'testi.csv' );
+unlink( $tx_file );
+$tx_res = \ApSemplice\Texts::import_rows( $tx_sheets[0]['rows'] );
+$tx_ov  = \ApSemplice\Texts::overrides();
+apse_ok( 'La mia area personale' === $tx_ov['Il mio profilo'] && 1 === $tx_res['set'] && 'Promemoria cambiato' === $tx_ov['Promemoria di prova'], 'testi: importazione del file modificato (CSV con BOM e punto e virgola)' );
+$tx_res2 = \ApSemplice\Texts::import_rows( array( array( 'Gruppo', 'Originale', 'Personalizzato' ), array( 'x', 'Il mio profilo', '' ), array( 'x', 'Frase inventata dal test', 'Frase nuova' ), array( 'x', 'ab', 'xx' ) ) );
+$tx_ov2 = \ApSemplice\Texts::overrides();
+apse_ok( ! isset( $tx_ov2['Il mio profilo'] ) && 'Frase nuova' === $tx_ov2['Frase inventata dal test'] && 1 === $tx_res2['removed'] && 1 === $tx_res2['manual'] && 1 === $tx_res2['ignored'], 'testi: Personalizzato vuoto ripristina, una frase nuova diventa aggiunta a mano, righe troppo corte ignorate' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Texts::import_rows( array( array( 'a', 'b' ), array( '1', '2' ) ) ); } ), 'testi: un file senza le colonne giuste viene rifiutato' );
+
+// pagina e azioni dell'amministrazione
+$tx_save = new ReflectionMethod( Admin\Actions::class, 'save_texts' );
+$tx_save->invoke( null, array( 't' => array( md5( 'Il mio profilo' ) => 'Nuova area', md5( 'testo che non esiste nel catalogo' ) => 'x' ) ) );
+apse_ok( 'Nuova area' === \ApSemplice\Texts::overrides()['Il mio profilo'] && ! isset( \ApSemplice\Texts::overrides()['testo che non esiste nel catalogo'] ), 'testi: salvataggio dalla pagina (solo testi veri)' );
+$tx_add = new ReflectionMethod( Admin\Actions::class, 'add_text' );
+$tx_add->invoke( null, array( 'original' => 'Pezzo mancante', 'custom' => 'Pezzo nuovo' ) );
+apse_ok( 'Pezzo nuovo' === \ApSemplice\Texts::overrides()['Pezzo mancante'] && null !== apse_throws( function () use ( $tx_add ) { $tx_add->invoke( null, array( 'original' => 'ab', 'custom' => 'x' ) ); } ), 'testi: aggiunta di una sostituzione a mano' );
+$tx_html = apse_render( array( Admin\TextsPage::class, 'render' ), 'Esporta tutti i testi', array( 'page' => 'apse-texts' ) );
+apse_ok( false !== strpos( $tx_html, 'Il mio profilo' ) && false !== strpos( $tx_html, 'Nuova area' ) && false !== strpos( $tx_html, 'apse_import_texts' ), 'testi: la pagina elenca originali e personalizzati e permette l\'importazione' );
+apse_render( array( Admin\TextsPage::class, 'render' ), 'Nessun testo con questi filtri', array( 'page' => 'apse-texts', 'q' => 'zzzzqqqq' ) );
+$tx_reset = new ReflectionMethod( Admin\Actions::class, 'reset_texts' );
+$tx_reset->invoke( null, array() );
+apse_ok( array() === \ApSemplice\Texts::overrides(), 'testi: ripristino di tutti i testi originali' );
+apse_ok( has_action( 'admin_post_apse_export_texts' ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );

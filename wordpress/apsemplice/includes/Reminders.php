@@ -65,7 +65,7 @@ final class Reminders {
 	private static function send( array $to, string $subject, string $body ): bool {
 		$assoc = (string) Settings::get( 'association_name' );
 		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
-		return (bool) wp_mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
+		return (bool) \ApSemplice\Texts::mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
 	}
 
 	// ---------- Esecuzione ----------

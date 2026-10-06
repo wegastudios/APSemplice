@@ -65,7 +65,13 @@ final class Pdf {
 	/**
 	 * @param string $align L (sinistra), R (destra: $x è il bordo destro) o C (centro: $x è il centro)
 	 */
+	/**  callable|null funzione che cambia ogni testo prima di scriverlo (testi personalizzati) */
+	public static $filter = null;
+
 	public function text( float $x, float $y, string $s, float $size = 11, bool $bold = false, string $align = 'L' ): void {
+		if ( null !== self::$filter ) {
+			$s = (string) call_user_func( self::$filter, $s );
+		}
 		if ( '' === $s ) {
 			return;
 		}
