@@ -83,6 +83,7 @@ final class Privacy {
 			'anagrafica'  => array(
 				'tipo' => MemberType::label( $p['type'] ), 'nome' => $p['first_name'], 'cognome' => $p['last_name'], 'email' => $p['email'], 'cellulare' => $p['phone'],
 				'codice_fiscale' => $p['tax_code'], 'tessera' => $p['card_number'], 'iscritto_dal' => $p['joined_on'], 'carica' => BoardRole::label( $p['board_role'] ?? null ), 'note' => $p['notes'],
+				'regolamento_accettato' => $p['rules_accepted_at'] ?? null, 'regolamento_versione' => $p['rules_accepted_version'] ?? null,
 				'consenso_privacy' => $p['privacy_consent_at'], 'consenso_modalita' => $p['privacy_consent_source'] ? ( self::SOURCES[ $p['privacy_consent_source'] ] ?? $p['privacy_consent_source'] ) : null,
 			),
 			'iscrizioni_tessera' => $memberships,
@@ -94,7 +95,7 @@ final class Privacy {
 	}
 
 	public static function can_export( int $person_id ): bool {
-		return $person_id > 0 && ( current_user_can( Plugin::CAP ) || current_user_can( 'apse_view_person', $person_id ) );
+		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'apse_view_person', $person_id ) );
 	}
 
 	public static function export_url( int $person_id ): string {
@@ -137,7 +138,7 @@ final class Privacy {
 		if ( ! empty( $p['anonymized_at'] ) ) {
 			return 'Già anonimizzata.';
 		}
-		if ( ! empty( $p['wp_user_id'] ) && user_can( (int) $p['wp_user_id'], Plugin::CAP ) ) {
+		if ( ! empty( $p['wp_user_id'] ) && user_can( (int) $p['wp_user_id'], Plugin::CAP_OPS ) ) {
 			return 'È un amministratore del sito: togli prima il ruolo.';
 		}
 		if ( ! empty( $p['board_role'] ) ) {
@@ -181,7 +182,7 @@ final class Privacy {
 			Db::t( 'people' ),
 			array(
 				'first_name' => 'Persona', 'last_name' => 'anonimizzata #' . $person_id, 'email' => null, 'phone' => null, 'tax_code' => null, 'card_number' => null, 'notes' => null,
-				'wp_user_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
+				'wp_user_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
 			),
 			array( 'id' => $person_id )
 		);

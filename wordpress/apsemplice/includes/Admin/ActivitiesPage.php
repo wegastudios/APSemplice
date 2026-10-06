@@ -460,6 +460,18 @@ final class ActivitiesPage {
 			echo '<details class="apse-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — ' // phpcs:ignore WordPress.Security.EscapeOutput
 				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="apse-neg">· ANNULLATA</span>' : '' ) . '</summary>';
 
+			$queue = \ApSemplice\Waitlist::waiting( (int) $s['id'] );
+			if ( $queue ) {
+				echo '<p><strong>Lista d\'attesa (' . count( $queue ) . ')</strong> <span class="description">entrano da soli, nell\'ordine, se si libera un posto.</span></p><ol>';
+				foreach ( $queue as $w ) {
+					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ';
+					Ui::form_open( 'apse_waitlist_remove', $back, false, 'apse-inline' );
+					echo Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $w['person_id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button-link">togli</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+					echo '</li>';
+				}
+				echo '</ol>';
+			}
 			if ( $bookings ) {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {

@@ -87,6 +87,9 @@ class PeopleService {
 				array_filter(
 					$rows,
 					function ( $r ) use ( $f, $today ) {
+						if ( 'norules' === $f['status'] ) {
+							return Regulation::applies_to( $r ) && ! Regulation::accepted( $r );
+						}
 						if ( 'noconsent' === $f['status'] ) {
 							return empty( $r['privacy_consent_at'] );
 						}

@@ -22,8 +22,11 @@ final class Admin {
 		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import' ) ),
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-comms' => 'Promemoria, privacy e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-audit' => 'Registro azioni' ) ),
 	);
+
+	/** Pagine riservate agli amministratori (la segreteria non le vede). */
+	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-audit', 'apse-wpai', 'apse-years' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities' );
@@ -42,7 +45,7 @@ final class Admin {
 	}
 
 	public static function menu(): void {
-		$cap = Plugin::CAP;
+		$cap = Plugin::CAP_OPS;
 		add_menu_page( 'APSemplice', 'APSemplice', $cap, 'apse', array( DashboardPage::class, 'render' ), 'dashicons-groups', 30 );
 		$visible = array(
 			array( 'apse', 'Bacheca', array( DashboardPage::class, 'render' ) ),
@@ -52,7 +55,7 @@ final class Admin {
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
 		foreach ( $visible as $s ) {
-			add_submenu_page( 'apse', $s[1], $s[1], $cap, $s[0], $s[2] );
+			add_submenu_page( 'apse', $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], $s[2] );
 		}
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
@@ -66,7 +69,7 @@ final class Admin {
 			array( 'apse-reports', 'Report', array( ReportsPage::class, 'render' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'apse-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),
-			array( 'apse-comms', 'Promemoria, privacy e ricevute', array( CommsPage::class, 'render' ) ),
+			array( 'apse-comms', 'Promemoria, privacy, regolamento e ricevute', array( CommsPage::class, 'render' ) ),
 			array( 'apse-texts', 'Testi personalizzati', array( TextsPage::class, 'render' ) ),
 			array( 'apse-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),
 			array( 'apse-person', 'Scheda persona', array( PeoplePage::class, 'render_edit' ) ),
@@ -75,7 +78,7 @@ final class Admin {
 			array( 'apse-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
 		);
 		foreach ( $hidden as $s ) {
-			add_submenu_page( null, $s[1], $s[1], $cap, $s[0], $s[2] );
+			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], $s[2] );
 		}
 	}
 
@@ -98,6 +101,9 @@ final class Admin {
 		}
 		$html = '<nav class="nav-tab-wrapper apse-tabs">';
 		foreach ( $tabs as $slug => $label ) {
+			if ( in_array( $slug, self::ADMIN_ONLY, true ) && ! current_user_can( Plugin::CAP ) ) {
+				continue;
+			}
 			$html .= '<a class="nav-tab' . ( $slug === $page ? ' nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( $slug ) ) . '">' . esc_html( $label ) . '</a>';
 		}
 		return $html . '</nav>';

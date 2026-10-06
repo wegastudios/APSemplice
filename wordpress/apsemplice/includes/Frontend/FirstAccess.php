@@ -47,7 +47,7 @@ final class FirstAccess {
 			return false;
 		}
 		$person = \ApSemplice\Access::person_for_user( (int) $user->ID );
-		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP ) ) {
+		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
 			return false; // solo i soci (mai gli amministratori)
 		}
 		$key = get_password_reset_key( $user );

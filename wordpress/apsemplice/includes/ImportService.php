@@ -522,7 +522,7 @@ final class ImportService {
 	/** Toglie l'utente WordPress creato da un import, ma solo se è un semplice socio (mai amministratori né utenti con altri ruoli o contenuti). */
 	private static function remove_import_user( int $user_id ): bool {
 		$u = get_userdata( $user_id );
-		if ( ! $u || user_can( $u, 'manage_options' ) || user_can( $u, Plugin::CAP ) || user_can( $u, 'edit_posts' ) ) {
+		if ( ! $u || user_can( $u, 'manage_options' ) || user_can( $u, Plugin::CAP_OPS ) || user_can( $u, 'edit_posts' ) ) {
 			return false;
 		}
 		$extra = array_diff( (array) $u->roles, array( Plugin::ROLE_MEMBER, 'subscriber' ) );

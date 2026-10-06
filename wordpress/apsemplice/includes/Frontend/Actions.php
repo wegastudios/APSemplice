@@ -21,6 +21,9 @@ final class Actions {
 
 	const MAP = array(
 		'apse_front_book'           => 'do_book',
+		'apse_front_accept_rules'   => 'do_accept_rules',
+		'apse_front_waitlist_join'  => 'do_waitlist_join',
+		'apse_front_waitlist_leave' => 'do_waitlist_leave',
 		'apse_front_cancel_booking' => 'do_cancel_booking',
 		'apse_front_transfer_booking' => 'do_transfer_booking',
 		'apse_front_add_guest'      => 'do_add_guest',
@@ -118,6 +121,10 @@ final class Actions {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::require_cap( 'apse_book_for', $person_id );
+		$block = \ApSemplice\Regulation::booking_block( $actor );
+		if ( '' !== $block ) {
+			throw new \InvalidArgumentException( $block );
+		}
 		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
 			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
 		}
@@ -133,7 +140,45 @@ final class Actions {
 		return 'Prenotazione registrata' . ( $person ? ' per ' . $person['first_name'] : '' ) . '.';
 	}
 
-	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
+	/** Mette in lista d'attesa sé stessi o un proprio ospite per una data senza più posti. */
+	public static function do_waitlist_join( array $post ): string {
+		$actor     = self::actor();
+		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
+		self::require_cap( 'apse_book_for', $person_id );
+		$block = \ApSemplice\Regulation::booking_block( $actor );
+		if ( '' !== $block ) {
+			throw new \InvalidArgumentException( $block );
+		}
+		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
+			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
+		}
+		$sid = (int) ( $post['session_id'] ?? 0 );
+		\ApSemplice\Waitlist::join( $sid, $person_id, (int) $actor['id'] );
+		return 'Sei in lista d\'attesa (posizione ' . (int) \ApSemplice\Waitlist::position( $sid, $person_id ) . '): se si libera un posto vieni prenotato automaticamente e ricevi una email.';
+	}
+
+	public static function do_waitlist_leave( array $post ): string {
+		$actor     = self::actor();
+		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
+		self::require_cap( 'apse_book_for', $person_id );
+		\ApSemplice\Waitlist::leave( (int) ( $post['session_id'] ?? 0 ), $person_id );
+		return 'Sei uscito dalla lista d\'attesa.';
+	}
+
+	/** Il socio accetta il regolamento in vigore. */	/** Il socio accetta il regolamento in vigore. */
+	public static function do_accept_rules( array $post ): string {
+		$actor = self::actor();
+		if ( ! \ApSemplice\Regulation::enabled() ) {
+			throw new \InvalidArgumentException( 'Non c\'è nessun regolamento da accettare.' );
+		}
+		if ( empty( $post['rules_ok'] ) ) {
+			throw new \InvalidArgumentException( 'Per continuare spunta la casella di accettazione.' );
+		}
+		\ApSemplice\Regulation::accept( (int) $actor['id'], 'web' );
+		return 'Grazie, il ' . mb_strtolower( \ApSemplice\Regulation::title(), 'UTF-8' ) . ' è stato accettato.';
+	}
+
+	/** Annulla una prenotazione se la regola lo consente	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
 	public static function do_cancel_booking( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
@@ -161,6 +206,10 @@ final class Actions {
 		self::require_cap( 'apse_book_for', $from_id );
 		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
 			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per gestire le prenotazioni.' );
+		}
+		$block = \ApSemplice\Regulation::booking_block( $actor );
+		if ( '' !== $block ) {
+			throw new \InvalidArgumentException( $block );
 		}
 		$to_id = (int) ( $post['to_person_id'] ?? 0 );
 		$first = trim( (string) ( $post['new_first_name'] ?? '' ) );
@@ -428,7 +477,7 @@ final class Actions {
 		);
 		foreach ( array_keys( $people ) as $pid ) { // chi paga all'ingresso entra: ingresso registrato per tutti
 			try {
-				Plugin::activities()->check_in( $sid, (int) $pid, false, current_user_can( Plugin::CAP ) );
+				Plugin::activities()->check_in( $sid, (int) $pid, false, current_user_can( Plugin::CAP_OPS ) );
 			} catch ( \InvalidArgumentException $e ) {
 				unset( $e );
 			}
@@ -445,7 +494,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Data non trovata.' );
 		}
 		self::require_cap( 'apse_manage_event', (int) $session['activity_id'] );
-		$r = Plugin::activities()->check_in( $sid, $pid, ! empty( $post['undo'] ), current_user_can( Plugin::CAP ) );
+		$r = Plugin::activities()->check_in( $sid, $pid, ! empty( $post['undo'] ), current_user_can( Plugin::CAP_OPS ) );
 		return self::checkin_message( $r, $sid, $pid );
 	}
 
@@ -458,7 +507,7 @@ final class Actions {
 		}
 		$aid = (int) $session['activity_id'];
 		self::require_cap( 'apse_door_cash', $aid );
-		if ( $session['session_date'] !== current_time( 'Y-m-d' ) && ! current_user_can( Plugin::CAP ) ) {
+		if ( $session['session_date'] !== current_time( 'Y-m-d' ) && ! current_user_can( Plugin::CAP_OPS ) ) {
 			throw new \InvalidArgumentException( 'L\'ingresso sul posto si registra nel giorno dell\'evento.' );
 		}
 		$account = (int) ( $post['account_id'] ?? 0 );
@@ -497,7 +546,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
 		}
 		self::require_cap( 'apse_manage_event', (int) $session['activity_id'] );
-		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP ) ), $t[0], $t[1] );
+		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP_OPS ) ), $t[0], $t[1] );
 	}
 
 	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */

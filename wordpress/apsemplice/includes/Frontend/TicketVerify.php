@@ -76,7 +76,7 @@ final class TicketVerify {
 		}
 		$s    = $r['session'];
 		$back = Settings::ticket_url( (int) $s['id'], (int) $r['person']['id'] );
-		if ( 'valid' === $r['status'] && ! $r['today'] && ! current_user_can( \ApSemplice\Plugin::CAP ) ) {
+		if ( 'valid' === $r['status'] && ! $r['today'] && ! current_user_can( \ApSemplice\Plugin::CAP_OPS ) ) {
 			return '<div class="w">Gli ingressi si registrano nel giorno dell\'evento.</div>';
 		}
 		$undo = 'used' === $r['status'];

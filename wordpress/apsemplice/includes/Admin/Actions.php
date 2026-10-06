@@ -20,18 +20,33 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Actions {
 
+	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
+	const ADMIN_ONLY = array(
+		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
+		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
+		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
+		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role',
+	);
+
+	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
+	public static function required_cap( string $action ): string {
+		return in_array( $action, self::ADMIN_ONLY, true ) ? Plugin::CAP : Plugin::CAP_OPS;
+	}
+
 	public static function register(): void {
 		$map = array(
 			'apse_save_person'        => 'save_person',
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_set_secretary'      => 'set_secretary',
 			'apse_save_terms'         => 'save_terms',
 			'apse_save_texts'         => 'save_texts',
 			'apse_import_texts'       => 'import_texts',
 			'apse_reset_texts'        => 'reset_texts',
 			'apse_add_text'           => 'add_text',
 			'apse_privacy_consent'    => 'privacy_consent',
+			'apse_rules_record'       => 'rules_record',
 			'apse_privacy_anonymize'  => 'privacy_anonymize',
 			'apse_save_comms'         => 'save_comms',
 			'apse_reminders_run'      => 'reminders_run',
@@ -65,6 +80,7 @@ final class Actions {
 			'apse_check_payments'     => 'check_payments',
 			'apse_payment_reviewed'   => 'payment_reviewed',
 			'apse_cancel_booking'     => 'cancel_booking',
+			'apse_waitlist_remove'    => 'waitlist_remove',
 			'apse_save_income'        => 'save_income',
 			'apse_save_group_cash'    => 'save_group_cash',
 			'apse_save_expense'       => 'save_expense',
@@ -107,7 +123,7 @@ final class Actions {
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
-					if ( ! current_user_can( Plugin::CAP ) ) {
+					if ( ! current_user_can( self::required_cap( $action ) ) ) {
 						wp_die( 'Non autorizzato.', 403 );
 					}
 					check_admin_referer( $action );
@@ -182,7 +198,18 @@ final class Actions {
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Consenso registrato.' );
 	}
 
-	private static function privacy_anonymize( array $p ): array {
+	private static function rules_record( array $p ): array {
+		$id   = (int) ( $p['id'] ?? 0 );
+		$mode = (string) ( $p['mode'] ?? '' );
+		if ( 'clear' === $mode ) {
+			\ApSemplice\Regulation::clear( $id );
+			return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Accettazione rimossa.' );
+		}
+		\ApSemplice\Regulation::accept( $id, $mode );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Accettazione registrata.' );
+	}
+
+	private static function privacy_anonymize( array $p ): array {	private static function privacy_anonymize( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		\ApSemplice\Privacy::anonymize( $id );
 		return array( Ui::url( 'apse-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' );
@@ -201,6 +228,12 @@ final class Actions {
 				'reminders_events'          => ! empty( $p['reminders_events'] ) ? 1 : 0,
 				'privacy_url'               => $txt( 'privacy_url' ),
 				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
+				'rules_enabled'             => ! empty( $p['rules_enabled'] ) ? 1 : 0,
+				'rules_title'               => $txt( 'rules_title' ),
+				'rules_text'                => (string) ( $p['rules_text'] ?? '' ),
+				'rules_url'                 => $txt( 'rules_url' ),
+				'rules_version'             => $txt( 'rules_version' ),
+				'rules_block_booking'       => ! empty( $p['rules_block_booking'] ) ? 1 : 0,
 				'receipt_footer'            => $txt( 'receipt_footer' ),
 			)
 		);
@@ -305,6 +338,25 @@ final class Actions {
 		$ov[ $o ] = $c;
 		\ApSemplice\Texts::save_overrides( $ov );
 		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Sostituzione aggiunta.' );
+	}
+
+	private static function set_secretary( array $p ): array {
+		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
+		$user   = $person && ! empty( $person['wp_user_id'] ) ? get_userdata( (int) $person['wp_user_id'] ) : null;
+		if ( ! $person || ! $user || ! MemberType::is_member( $person['type'] ) ) {
+			throw new \InvalidArgumentException( 'Solo un socio con accesso al sito può far parte della segreteria.' );
+		}
+		if ( $user->has_cap( Plugin::CAP ) ) {
+			throw new \InvalidArgumentException( 'È già amministratore del sito.' );
+		}
+		$on = ! empty( $p['enabled'] );
+		if ( $on ) {
+			$user->add_role( Plugin::ROLE_SECRETARY );
+		} else {
+			$user->remove_role( Plugin::ROLE_SECRETARY );
+		}
+		Audit::log( $on ? 'secretary.granted' : 'secretary.revoked', 'person', (int) $person['id'] );
+		return array( Ui::url( 'apse-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte della segreteria.' : 'Non fa più parte della segreteria.' );
 	}
 
 	private static function set_treasurer( array $p ): array {
@@ -540,7 +592,12 @@ final class Actions {
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'recorded' === $r['status'] ? 'Ingresso registrato.' : ( 'undone' === $r['status'] ? 'Registrazione annullata.' : 'Ingresso già registrato.' ) );
 	}
 
-	private static function cancel_booking( array $p ): array {
+	private static function waitlist_remove( array $p ): array {
+		\ApSemplice\Waitlist::leave( (int) ( $p['session_id'] ?? 0 ), (int) ( $p['person_id'] ?? 0 ) );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ), 'Tolto dalla lista d\'attesa.' );
+	}
+
+	private static function cancel_booking( array $p ): array {	private static function cancel_booking( array $p ): array {
 		Plugin::activities()->cancel_booking( (int) $p['session_id'], (int) $p['person_id'] );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata (eventuali pagamenti vanno rimborsati a mano).' );
 	}

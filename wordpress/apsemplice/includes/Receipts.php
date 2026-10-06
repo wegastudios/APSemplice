@@ -120,7 +120,7 @@ final class Receipts {
 		if ( ! $rows ) {
 			return false;
 		}
-		if ( current_user_can( Plugin::CAP ) ) {
+		if ( current_user_can( Plugin::CAP_OPS ) ) {
 			return true;
 		}
 		$payer = self::payer( $rows );
@@ -128,7 +128,7 @@ final class Receipts {
 	}
 
 	public static function can_statement( int $person_id ): bool {
-		return $person_id > 0 && ( current_user_can( Plugin::CAP ) || current_user_can( 'apse_book_for', $person_id ) );
+		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'apse_book_for', $person_id ) );
 	}
 
 	public static function url( string $key ): string {

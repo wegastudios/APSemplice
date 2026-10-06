@@ -8,12 +8,12 @@ use ApSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Impostazioni → Promemoria, privacy e ricevute. */
+/** Impostazioni → Promemoria, privacy, regolamento e ricevute. */
 final class CommsPage {
 
 	public static function render(): void {
 		$s = Settings::all();
-		Ui::header( 'Promemoria, privacy e ricevute' );
+		Ui::header( 'Promemoria, privacy, regolamento e ricevute' );
 		Ui::form_open( 'apse_save_comms', Ui::url( 'apse-comms' ) );
 		echo '<h2>Promemoria per email</h2><p class="description">Ogni giorno il sito invia i promemoria ai soci. Sono disattivati finché non li attivi. Chi non ha un indirizzo email (un ospite) riceve il messaggio tramite il socio che lo ospita; ogni promemoria viene inviato una sola volta.</p>';
 		echo '<table class="form-table"><tbody>';
@@ -28,6 +28,15 @@ final class CommsPage {
 		echo '<tr><th>Pagina dell\'informativa</th><td><input type="url" name="privacy_url" value="' . esc_attr( (string) $s['privacy_url'] ) . '" class="regular-text" placeholder="https://…/privacy">'
 			. '<p class="description">Se la indichi, chi attiva il proprio accesso deve accettarla e il consenso viene registrato. Per gli altri soci registri il consenso dalla loro scheda (modulo cartaceo, a voce…).</p></td></tr>';
 		echo '<tr><th>Ex soci da anonimizzare</th><td>dopo <input type="number" min="1" max="30" name="privacy_retention_years" value="' . (int) $s['privacy_retention_years'] . '" style="width:70px"> anni di inattività<p class="description">Tempo oltre il quale proponi di togliere i dati personali di chi non partecipa più. Decidi tu caso per caso: i movimenti contabili restano.</p></td></tr>';
+		echo '</tbody></table>';
+
+		echo '<h2>Regolamento</h2><p class="description">Facoltativo: se lo attivi, chi si iscrive online deve accettarlo (e chi è già socio lo trova in cima alla propria area). Per chi si iscrive di persona registri l\'accettazione dalla scheda del socio.</p><table class="form-table"><tbody>';
+		echo '<tr><th>Regolamento attivo</th><td><label><input type="checkbox" name="rules_enabled" value="1"' . checked( ! empty( $s['rules_enabled'] ), true, false ) . '> Richiedi l\'accettazione ai soci</label></td></tr>';
+		echo '<tr><th>Titolo</th><td><input type="text" name="rules_title" value="' . esc_attr( (string) $s['rules_title'] ) . '" class="regular-text" placeholder="Regolamento"></td></tr>';
+		echo '<tr><th>Testo</th><td><textarea name="rules_text" rows="8" class="large-text">' . esc_textarea( (string) $s['rules_text'] ) . '</textarea><p class="description">Si mostra in un riquadro scorrevole. In alternativa (o in aggiunta) indica qui sotto la pagina del sito che lo contiene.</p></td></tr>';
+		echo '<tr><th>Pagina del regolamento</th><td><input type="url" name="rules_url" value="' . esc_attr( (string) $s['rules_url'] ) . '" class="regular-text" placeholder="https://…/regolamento"></td></tr>';
+		echo '<tr><th>Versione</th><td><input type="text" name="rules_version" value="' . esc_attr( (string) $s['rules_version'] ) . '" maxlength="20" style="width:120px"><p class="description">Quando modifichi il regolamento cambia la versione (ad esempio 2): tutti i soci dovranno accettarlo di nuovo.</p></td></tr>';
+		echo '<tr><th>Prenotazioni</th><td><label><input type="checkbox" name="rules_block_booking" value="1"' . checked( ! empty( $s['rules_block_booking'] ), true, false ) . '> Senza accettazione il socio non può prenotare</label></td></tr>';
 		echo '</tbody></table>';
 
 		echo '<h2>Ricevute</h2><table class="form-table"><tbody>';

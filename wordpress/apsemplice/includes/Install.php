@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '24';
+	const DB_VERSION        = '25';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -118,6 +118,9 @@ final class Install {
   privacy_consent_at datetime DEFAULT NULL,
   privacy_consent_source varchar(20) DEFAULT NULL,
   anonymized_at datetime DEFAULT NULL,
+  rules_accepted_at datetime DEFAULT NULL,
+  rules_accepted_version varchar(20) DEFAULT NULL,
+  rules_accepted_source varchar(20) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
@@ -331,6 +334,19 @@ final class Install {
   KEY person_id (person_id)
 ) $c;";
 
+		$tables[] = "CREATE TABLE {$p}waitlist (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  session_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  requested_by bigint(20) unsigned DEFAULT NULL,
+  status varchar(12) NOT NULL DEFAULT 'waiting',
+  created_at datetime NOT NULL,
+  resolved_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY session_person (session_id,person_id),
+  KEY status (status)
+) $c;";
+
 		$tables[] = "CREATE TABLE {$p}reminders (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   person_id bigint(20) unsigned NOT NULL,
@@ -448,10 +464,15 @@ final class Install {
 		if ( ! get_role( Plugin::ROLE_MEMBER ) ) {
 			add_role( Plugin::ROLE_MEMBER, 'Socio APS', array( 'read' => true ) );
 		}
-		// Per ora solo gli amministratori gestiscono il plugin. I ruoli (tesoriere, operatore...) verranno dopo.
+		// Segreteria: lavora su soci, attività e contabilità, ma non tocca impostazioni, pagamenti online, privacy e testi.
+		if ( ! get_role( Plugin::ROLE_SECRETARY ) ) {
+			add_role( Plugin::ROLE_SECRETARY, 'Segreteria APS', array( 'read' => true, Plugin::CAP_OPS => true ) );
+		}
 		$admin = get_role( 'administrator' );
-		if ( $admin && ! $admin->has_cap( Plugin::CAP ) ) {
-			$admin->add_cap( Plugin::CAP );
+		foreach ( array( Plugin::CAP, Plugin::CAP_OPS ) as $cap ) {
+			if ( $admin && ! $admin->has_cap( $cap ) ) {
+				$admin->add_cap( $cap );
+			}
 		}
 	}
 

@@ -3324,6 +3324,160 @@ apse_ok( false !== strpos( $tm_cust, 'La scheda del socio' ) && false === strpos
 Settings::update( array( 'entity_type' => 'associazione', 'entity_types_custom' => '', 'member_term' => 'socio', 'member_terms_custom' => '' ) );
 remove_all_filters( 'pre_wp_mail' );
 
+// ---------- Segreteria, regolamento, lista d'attesa ----------
+wp_set_current_user( 1 );
+$mkmem = function ( string $first, string $last ) use ( $people ) {
+	$id = $people->create( array( 'type' => 'ordinary', 'first_name' => $first, 'last_name' => $last, 'email' => strtolower( $first . '.' . $last ) . '@example.com' ) );
+	$people->set_membership( $id, Settings::membership_year()->label(), true );
+	return array( $id, (int) $people->get( $id )['wp_user_id'] );
+};
+
+// segreteria
+list( $sec_p, $sec_u ) = $mkmem( 'Sara', 'Segreteria' );
+$set_sec = new ReflectionMethod( Admin\Actions::class, 'set_secretary' );
+$set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
+apse_ok( in_array( Plugin::ROLE_SECRETARY, (array) get_userdata( $sec_u )->roles, true ) && user_can( $sec_u, Plugin::CAP_OPS ) && ! user_can( $sec_u, Plugin::CAP ) && Access::is_admin_user( $sec_u ), 'segreteria: opera sul plugin ma non è amministratore' );
+apse_ok( Plugin::CAP === Admin\Actions::required_cap( 'apse_save_settings' ) && Plugin::CAP === Admin\Actions::required_cap( 'apse_privacy_anonymize' ) && Plugin::CAP === Admin\Actions::required_cap( 'apse_save_texts' ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'apse_save_person' ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'apse_save_income' ), 'segreteria: impostazioni, privacy e testi solo agli amministratori; soci e incassi anche alla segreteria' );
+wp_set_current_user( $sec_u );
+$tabs_sec = Admin\Admin::tabs( 'apse-ledger' );
+$set_tabs = Admin\Admin::tabs( 'apse-settings' );
+wp_set_current_user( 1 );
+$tabs_adm = Admin\Admin::tabs( 'apse-ledger' );
+apse_ok( false !== strpos( $tabs_sec, 'page=apse-ledger' ) && false === strpos( $tabs_sec, 'page=apse-years' ) && false !== strpos( $tabs_adm, 'page=apse-years' ) && false === strpos( $set_tabs, 'page=apse-texts' ), 'segreteria: non vede le schede riservate agli amministratori' );
+wp_set_current_user( $sec_u );
+$sec_page = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Privacy', array( 'id' => $sec_p ) );
+wp_set_current_user( 1 );
+apse_ok( false === strpos( $sec_page, 'Anonimizza' ) && false === strpos( $sec_page, 'Tesoriere' ) && false === strpos( $sec_page, 'apse_set_secretary' ), 'segreteria: nella scheda del socio non compaiono i comandi riservati' );
+$adm_page = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Segreteria', array( 'id' => $sec_p ) );
+apse_ok( false !== strpos( $adm_page, 'apse_set_secretary' ), 'segreteria: l\'amministratore la assegna dalla scheda del socio' );
+apse_ok( null !== apse_throws( function () use ( $set_sec, $guest_door ) { $set_sec->invoke( null, array( 'id' => $guest_door, 'enabled' => '1' ) ); } ), 'segreteria: un ospite non può farne parte' );
+$set_sec->invoke( null, array( 'id' => $sec_p ) );
+apse_ok( ! user_can( $sec_u, Plugin::CAP_OPS ) && ! Access::is_admin_user( $sec_u ), 'segreteria: si può togliere' );
+
+// regolamento
+list( $rg_p, $rg_u ) = $mkmem( 'Rino', 'Regolato' );
+$rg_ev = $mkev( 'Cena del regolamento', 500, 800 );
+$rg_s  = $first_session( $rg_ev );
+Settings::update( array( 'rules_enabled' => 0 ) );
+apse_ok( \ApSemplice\Regulation::accepted( $people->get( $rg_p ) ) && ! \ApSemplice\Regulation::enabled(), 'regolamento: spento di default, nessuna accettazione richiesta' );
+Settings::update( array( 'rules_enabled' => 1, 'rules_title' => 'Regolamento interno', 'rules_text' => "Art. 1 - I soci rispettano gli spazi.\nArt. 2 - Si prenota in anticipo.", 'rules_version' => '1', 'rules_block_booking' => 1 ) );
+apse_ok( \ApSemplice\Regulation::enabled() && ! \ApSemplice\Regulation::accepted( $people->get( $rg_p ) ) && \ApSemplice\Regulation::applies_to( $people->get( $rg_p ) ) && ! \ApSemplice\Regulation::applies_to( $people->get( $guest_door ) ), 'regolamento: i soci devono accettarlo, gli ospiti no' );
+wp_set_current_user( $rg_u );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $rg_s, $rg_p ) { $front::do_book( array( 'session_id' => $rg_s, 'person_id' => $rg_p ) ); } ), 'accettare il regolamento interno' ), 'regolamento: senza accettazione non si prenota' );
+$rg_front = $as( $rg_u, '[apsemplice_regolamento]' );
+apse_ok( false !== strpos( $rg_front, 'Regolamento interno' ) && false !== strpos( $rg_front, 'Art. 2' ) && false !== strpos( $rg_front, 'Ho letto e accetto' ), 'regolamento: in area soci compare il testo con la casella di accettazione' );
+apse_ok( null !== apse_throws( function () use ( $front ) { $front::do_accept_rules( array() ); } ), 'regolamento: serve spuntare la casella' );
+$front::do_accept_rules( array( 'rules_ok' => '1' ) );
+$rg_row = $people->get( $rg_p );
+apse_ok( \ApSemplice\Regulation::accepted( $rg_row ) && 'web' === $rg_row['rules_accepted_source'] && '1' === $rg_row['rules_accepted_version'], 'regolamento: accettazione registrata con versione e modalità' );
+$front::do_book( array( 'session_id' => $rg_s, 'person_id' => $rg_p ) );
+apse_ok( $acts->has_active_booking( $rg_s, $rg_p ) && '' === trim( strip_tags( $as( $rg_u, '[apsemplice_regolamento]' ) ) ), 'regolamento: dopo l\'accettazione si prenota e il riquadro sparisce' );
+wp_set_current_user( 1 );
+Settings::update( array( 'rules_version' => '2' ) );
+apse_ok( ! \ApSemplice\Regulation::accepted( $people->get( $rg_p ) ) && false !== strpos( $as( $rg_u, '[apsemplice_regolamento]' ), 'aggiornato' ), 'regolamento: cambiando versione tutti devono accettare di nuovo' );
+$norules = array_map( 'intval', array_column( $people->search( array( 'status' => 'norules' ) ), 'id' ) );
+apse_ok( in_array( $rg_p, $norules, true ) && ! in_array( $guest_door, $norules, true ), 'regolamento: filtro "regolamento non accettato" nella Rubrica' );
+Settings::update( array( 'rules_block_booking' => 0 ) );
+$rg_ev2 = $mkev( 'Seconda cena', 0, null );
+wp_set_current_user( $rg_u );
+$front::do_book( array( 'session_id' => $first_session( $rg_ev2 ), 'person_id' => $rg_p ) );
+wp_set_current_user( 1 );
+apse_ok( $acts->has_active_booking( $first_session( $rg_ev2 ), $rg_p ), 'regolamento: se non blocca le prenotazioni si può prenotare anche senza accettazione' );
+Settings::update( array( 'rules_block_booking' => 1 ) );
+$rg_rec = new ReflectionMethod( Admin\Actions::class, 'rules_record' );
+$rg_rec->invoke( null, array( 'id' => $rg_p, 'mode' => 'paper' ) );
+apse_ok( \ApSemplice\Regulation::accepted( $people->get( $rg_p ) ) && 'paper' === $people->get( $rg_p )['rules_accepted_source'] && '2' === $people->get( $rg_p )['rules_accepted_version'], 'regolamento: l\'amministrazione registra l\'accettazione su carta' );
+$rg_rec->invoke( null, array( 'id' => $rg_p, 'mode' => 'clear' ) );
+apse_ok( ! \ApSemplice\Regulation::accepted( $people->get( $rg_p ) ), 'regolamento: l\'accettazione si può rimuovere' );
+// accettazione all'attivazione dell'accesso
+$ad2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Attivato' ) );
+parse_str( (string) wp_parse_url( \ApSemplice\Frontend\Activation::url( $ad2 ), PHP_URL_QUERY ), $ad2_q );
+$ad2_post = array( 'email' => 'ugo.attivato@example.com', 'phone' => '333 4440077', 'password' => 'password-sicura-2', 'password2' => 'password-sicura-2' );
+$ad2_no   = \ApSemplice\Frontend\Activation::complete( (string) $ad2_q['apse_activate'], $ad2_post );
+apse_ok( ! $ad2_no['ok'] && false !== strpos( $ad2_no['error'], 'regolamento' ) && false !== strpos( \ApSemplice\Frontend\Activation::page( (string) $ad2_q['apse_activate'] ), 'rules_ok' ), 'regolamento: l\'attivazione richiede di accettarlo' );
+$ad2_yes = \ApSemplice\Frontend\Activation::complete( (string) $ad2_q['apse_activate'], array_merge( $ad2_post, array( 'rules_ok' => '1' ) ) );
+apse_ok( $ad2_yes['ok'] && \ApSemplice\Regulation::accepted( $people->get( $ad2 ) ), 'regolamento: accettato all\'attivazione' );
+apse_render( array( Admin\CommsPage::class, 'render' ), 'Regolamento attivo' );
+apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Regolamento interno', array( 'id' => $rg_p ) );
+Settings::update( array( 'rules_enabled' => 0, 'rules_text' => '', 'rules_title' => 'Regolamento', 'rules_version' => '1' ) );
+
+// lista d'attesa
+$wl_mail = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$wl_mail ) {
+		$wl_mail[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$wl_date = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+$wl_ev   = $mkev( 'Serata esaurita', 300, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ) ) );
+$wl_s    = $first_session( $wl_ev );
+list( $wa, $wa_u ) = $mkmem( 'Anna', 'Attesa' );
+list( $wb, $wb_u ) = $mkmem( 'Bruno', 'Attesa' );
+list( $wc, $wc_u ) = $mkmem( 'Carla', 'Attesa' );
+$acts->book( $wl_s, $wa );
+apse_ok( null !== apse_throws( function () use ( $front, $wl_s, $wb ) { wp_set_current_user( 0 ); $front::do_waitlist_join( array( 'session_id' => $wl_s, 'person_id' => $wb ) ); } ), 'lista d\'attesa: serve un socio che la chiede' );
+wp_set_current_user( $wb_u );
+$front::do_waitlist_join( array( 'session_id' => $wl_s, 'person_id' => $wb ) );
+wp_set_current_user( $wc_u );
+$wl_msg = $front::do_waitlist_join( array( 'session_id' => $wl_s ) );
+apse_ok( 1 === \ApSemplice\Waitlist::position( $wl_s, $wb ) && 2 === \ApSemplice\Waitlist::position( $wl_s, $wc ) && false !== strpos( $wl_msg, 'posizione 2' ) && 2 === \ApSemplice\Waitlist::count( $wl_s ), 'lista d\'attesa: ci si mette in coda a posti finiti, in ordine di arrivo' );
+apse_ok( null !== apse_throws( function () use ( $front, $wl_s ) { $front::do_waitlist_join( array( 'session_id' => $wl_s ) ); } ), 'lista d\'attesa: non ci si iscrive due volte' );
+$wl_free = $mkev( 'Serata con posti', 300, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 5 ) ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $wl_free, $first_session ) { $front::do_waitlist_join( array( 'session_id' => $first_session( $wl_free ) ) ); } ), 'posti liberi' ), 'lista d\'attesa: con posti liberi si prenota direttamente' );
+$wl_page = $as( $wc_u, '[apsemplice_attivita id="' . $wl_ev . '"]' );
+apse_ok( false !== strpos( $wl_page, 'apse_front_waitlist_leave' ) && false !== strpos( $wl_page, 'in lista d' ), 'lista d\'attesa: nell\'elenco eventi si vede la posizione e il pulsante per uscire' );
+wp_set_current_user( 1 );
+$wl_adm = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'apse_waitlist_remove', array( 'id' => $wl_ev ) );
+$wl_mail = array();
+$acts->cancel_booking( $wl_s, $wa );
+apse_ok( $acts->has_active_booking( $wl_s, $wb ) && ! $acts->has_active_booking( $wl_s, $wc ) && null === \ApSemplice\Waitlist::position( $wl_s, $wb ) && 1 === \ApSemplice\Waitlist::position( $wl_s, $wc ), 'lista d\'attesa: se qualcuno annulla entra il primo della lista' );
+$wl_to = array();
+foreach ( $wl_mail as $m ) {
+	$wl_to[] = implode( ',', (array) $m['to'] ) . '|' . $m['subject'];
+}
+apse_ok( in_array( 'bruno.attesa@example.com|Posto disponibile: Serata esaurita', $wl_to, true ), 'lista d\'attesa: chi entra riceve una email' );
+$acts->cancel_booking( $wl_s, $wb );
+apse_ok( $acts->has_active_booking( $wl_s, $wc ) && 0 === \ApSemplice\Waitlist::count( $wl_s ), 'lista d\'attesa: poi entra il secondo' );
+// più posti: entrano quelli in coda
+$wl_ev2 = $mkev( 'Serata che cresce', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ) ) );
+$wl_s2  = $first_session( $wl_ev2 );
+$acts->book( $wl_s2, $wa );
+\ApSemplice\Waitlist::join( $wl_s2, $wb );
+$acts->update_session( $wl_s2, array( 'capacity' => 2 ) );
+apse_ok( $acts->has_active_booking( $wl_s2, $wb ), 'lista d\'attesa: aumentando i posti entra chi era in coda' );
+// chi non può più essere prenotato viene saltato
+$wl_ev3 = $mkev( 'Serata con salti', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ) ) );
+$wl_s3  = $first_session( $wl_ev3 );
+$acts->book( $wl_s3, $wa );
+\ApSemplice\Waitlist::join( $wl_s3, $wb );
+\ApSemplice\Waitlist::join( $wl_s3, $wc );
+$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' -10 days' ) ) ), array( 'person_id' => $wb ) );
+$acts->cancel_booking( $wl_s3, $wa );
+apse_ok( ! $acts->has_active_booking( $wl_s3, $wb ) && $acts->has_active_booking( $wl_s3, $wc ) && null === \ApSemplice\Waitlist::position( $wl_s3, $wb ), 'lista d\'attesa: chi ha la tessera scaduta viene saltato e entra il successivo' );
+// uscire dalla lista e ospiti
+$wl_ev4 = $mkev( 'Serata ospiti', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ) ) );
+$wl_s4  = $first_session( $wl_ev4 );
+$acts->book( $wl_s4, $wa );
+$wl_g = $people->create( array( 'type' => 'guest', 'first_name' => 'Gigi', 'last_name' => 'Inattesa', 'phone' => '333 4440088', 'host_person_id' => $wc ) );
+wp_set_current_user( $wc_u );
+$front::do_waitlist_join( array( 'session_id' => $wl_s4, 'person_id' => $wl_g ) );
+$front::do_waitlist_leave( array( 'session_id' => $wl_s4, 'person_id' => $wl_g ) );
+wp_set_current_user( 1 );
+apse_ok( null === \ApSemplice\Waitlist::position( $wl_s4, $wl_g ), 'lista d\'attesa: si esce dalla lista' );
+\ApSemplice\Waitlist::join( $wl_s4, $wl_g, $wc );
+$wl_mail = array();
+$acts->cancel_booking( $wl_s4, $wa );
+$wl_guest_to = array();
+foreach ( $wl_mail as $m ) {
+	$wl_guest_to[] = implode( ',', (array) $m['to'] ) . '|' . $m['message'];
+}
+apse_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'per Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
+remove_all_filters( 'pre_wp_mail' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );
