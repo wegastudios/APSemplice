@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '21';
+	const DB_VERSION        = '22';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -320,6 +320,7 @@ final class Install {
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   activity_id bigint(20) unsigned NOT NULL,
   person_id bigint(20) unsigned NOT NULL,
+  can_cash tinyint(1) NOT NULL DEFAULT 0,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY activity_person (activity_id,person_id),

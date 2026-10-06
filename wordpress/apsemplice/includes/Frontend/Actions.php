@@ -29,6 +29,7 @@ final class Actions {
 		'apse_front_expense_docs'   => 'do_expense_docs',
 		'apse_front_checkin'        => 'do_checkin',
 		'apse_front_checkin_scan'   => 'do_checkin_scan',
+		'apse_front_door'           => 'do_door',
 		'apse_front_notice'         => 'do_notice',
 	);
 
@@ -265,6 +266,39 @@ final class Actions {
 		self::require_cap( 'apse_manage_event', (int) $session['activity_id'] );
 		$r = Plugin::activities()->check_in( $sid, $pid, ! empty( $post['undo'] ), current_user_can( Plugin::CAP ) );
 		return self::checkin_message( $r, $sid, $pid );
+	}
+
+	/** Ingresso sul posto: chi non ha prenotato viene prenotato (se c'è posto), paga il biglietto in cassa contanti e entra. Solo con l'incasso abilitato. */
+	public static function do_door( array $post ): string {
+		$sid     = (int) ( $post['session_id'] ?? 0 );
+		$session = Plugin::activities()->session( $sid );
+		if ( ! $session ) {
+			throw new \InvalidArgumentException( 'Data non trovata.' );
+		}
+		$aid = (int) $session['activity_id'];
+		self::require_cap( 'apse_door_cash', $aid );
+		if ( $session['session_date'] !== current_time( 'Y-m-d' ) && ! current_user_can( Plugin::CAP ) ) {
+			throw new \InvalidArgumentException( 'L\'ingresso sul posto si registra nel giorno dell\'evento.' );
+		}
+		$account = 0;
+		foreach ( Plugin::ledger()->accounts() as $acc ) {
+			if ( 'cash' === $acc['type'] ) {
+				$account = (int) $acc['id'];
+				break;
+			}
+		}
+		$pay = ! empty( $post['pay'] );
+		if ( $pay && ! $account ) {
+			throw new \InvalidArgumentException( 'Manca un conto di tipo "Cassa contanti": chiedi alla segreteria di crearlo.' );
+		}
+		return \ApSemplice\DoorSales::sell(
+			array(
+				'session_id' => $sid, 'activity_id' => $aid, 'person_id' => (int) ( $post['person_id'] ?? 0 ),
+				'new_first_name' => (string) ( $post['new_first_name'] ?? '' ), 'new_last_name' => (string) ( $post['new_last_name'] ?? '' ), 'new_phone' => (string) ( $post['new_phone'] ?? '' ),
+				'host_person_id' => (int) ( $post['host_person_id'] ?? 0 ), 'pay' => $pay, 'account_id' => $account, 'checkin' => true,
+			),
+			true
+		);
 	}
 
 	/** Ingresso da QR scansionato: accetta l'indirizzo letto dal QR (o il solo codice). */

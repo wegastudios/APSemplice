@@ -42,6 +42,7 @@ final class Actions {
 			'apse_book'               => 'book',
 			'apse_event_staff_add'    => 'event_staff_add',
 			'apse_event_staff_remove' => 'event_staff_remove',
+			'apse_event_staff_cash'   => 'event_staff_cash',
 			'apse_checkin'            => 'checkin',
 			'apse_promote_guest'      => 'promote_guest',
 			'apse_access_done'        => 'access_done',
@@ -338,64 +339,8 @@ final class Actions {
 	 * Tutto insieme: se qualcosa non va (posti esauriti, conto non valido...) non resta scritto nulla.
 	 */
 	private static function walk_in( array $p ): array {
-		$sid     = (int) ( $p['session_id'] ?? 0 );
-		$aid     = (int) ( $p['activity_id'] ?? 0 );
-		$svc     = Plugin::activities();
-		$session = $svc->session( $sid );
-		if ( ! $session || (int) $session['activity_id'] !== $aid ) {
-			throw new \InvalidArgumentException( 'Data non trovata.' );
-		}
-		$msg = '';
-		Plugin::ledger()->in_batch(
-			function () use ( $p, $sid, $aid, $svc, &$msg ) {
-				$people = Plugin::people();
-				$ledger = Plugin::ledger();
-				$pid    = (int) ( $p['person_id'] ?? 0 );
-				$first  = trim( (string) ( $p['new_first_name'] ?? '' ) );
-				$last   = trim( (string) ( $p['new_last_name'] ?? '' ) );
-				if ( ! $pid && ( '' !== $first || '' !== $last ) ) {
-					$host = (int) ( $p['host_person_id'] ?? 0 );
-					if ( ! $host ) {
-						throw new \InvalidArgumentException( 'Indica il socio che ospita il nuovo ospite.' );
-					}
-					$pid = $people->create( array( 'type' => MemberType::GUEST, 'host_person_id' => $host, 'first_name' => $first, 'last_name' => $last, 'phone' => (string) ( $p['new_phone'] ?? '' ) ) );
-				}
-				if ( ! $pid ) {
-					throw new \InvalidArgumentException( 'Scegli una persona oppure inserisci un nuovo ospite.' );
-				}
-				if ( ! $svc->has_active_booking( $sid, $pid ) ) {
-					$svc->book( $sid, $pid );
-				}
-				$row = null;
-				foreach ( $svc->bookings_for_session( $sid ) as $b ) {
-					if ( (int) $b['person_id'] === $pid ) {
-						$row = $b;
-					}
-				}
-				$person = $people->get( $pid );
-				$parts  = array( 'prenotato' );
-				if ( ! empty( $p['pay'] ) ) {
-					$due = $row ? (int) $row['remaining'] : 0;
-					if ( $due > 0 ) {
-						$ledger->record_receipt(
-							array(
-								'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $p['account_id'] ?? 0 ), 'method' => (string) ( $p['method'] ?? '' ), 'person_id' => $pid,
-								'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => $due, 'activity_id' => $aid, 'session_id' => $sid ) ),
-							)
-						);
-						$parts[] = 'incassati ' . Money::format( $due );
-					} else {
-						$parts[] = 'nulla da incassare';
-					}
-				}
-				if ( ! empty( $p['checkin'] ) ) {
-					$svc->check_in( $sid, $pid, false, true );
-					$parts[] = 'ingresso registrato';
-				}
-				$msg = 'Sul posto: ' . trim( $person['first_name'] . ' ' . $person['last_name'] ) . ' — ' . implode( ', ', $parts ) . '.';
-			}
-		);
-		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), $msg );
+		$msg = \ApSemplice\DoorSales::sell( $p );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ), $msg );
 	}
 
 	private static function send_notice( array $p ): array {
@@ -421,8 +366,13 @@ final class Actions {
 	}
 
 	private static function event_staff_add( array $p ): array {
-		Plugin::activities()->add_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ) );
+		Plugin::activities()->add_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ), ! empty( $p['can_cash'] ) );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Gestore dell\'evento aggiunto: ora vede i prenotati e registra gli ingressi dall\'area riservata.' );
+	}
+
+	private static function event_staff_cash( array $p ): array {
+		Plugin::activities()->set_staff_cash( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ), ! empty( $p['can_cash'] ) );
+		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Incasso sul posto aggiornato.' );
 	}
 
 	private static function event_staff_remove( array $p ): array {

@@ -191,7 +191,7 @@ La tessera nel wallet mostra nome, tipo, numero e scadenza **al momento dell'emi
 
 ## Gestione degli eventi: gestori, lista prenotati e registrazione degli ingressi
 
-Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre alil referente e agli amministratori) possono, dall'**area riservata** (shortcode `[apsemplice_ingressi]`, incluso in `[apsemplice_area_soci]`), solo per quell'evento:
+Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre al referente e agli amministratori) possono, dall'**area riservata** (shortcode `[apsemplice_ingressi]`, incluso in `[apsemplice_area_soci]`), solo per quell'evento:
 - vedere l'elenco delle date e, aprendone una, la **lista dei prenotati** con tipo (socio/ospite e di chi), contributo (versato, da versare, gratuito), ora di ingresso e contatori (prenotati, presenti, da registrare, contributi da versare), con ricerca per nome e filtri. Non compaiono email o telefoni;
 - **registrare l'ingresso** di ogni persona (o annullare la registrazione), **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno, dalla scheda dell'evento in amministrazione (colonna "Ingresso");
 - **scansionare il QR del biglietto** (se per l'evento è attivo il biglietto QR): dal pulsante "Scansiona", nei browser che sanno leggere i QR; altrimenti con la fotocamera del telefono, che apre la pagina del biglietto, dove chi gestisce l'evento (con l'accesso effettuato) trova il pulsante "Registra ingresso". Il biglietto già usato risulta "Ingresso già registrato", così una copia del QR non entra due volte, e se il contributo non è versato lo si vede subito.
@@ -307,3 +307,10 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 
 - **Solo rimborsi**: per soci e volontari esistono solo rimborsi (mai compensi) e gli istruttori non sono un ruolo: c e un unica voce, *Rimborso spese socio/volontario*, e chi tiene un attività è il *referente*. Le vecchie voci "compenso / rimborso istruttore" si uniscono da sole a quella dei rimborsi.
 - **Tesoriere**: dall area soci può solo registrare spese con la foto dello scontrino; incassi, casse e anni solari restano agli amministratori.
+
+## Staff degli eventi: ingressi, incasso sul posto e posti
+
+- Per ogni evento si indica lo **staff** (soci o volontari): controllano gli ingressi dall'area riservata, solo per quell'evento.
+- Per ogni membro dello staff c'è la spunta **"può incassare sul posto"**. Se attiva, nella schermata degli ingressi compare il modulo **"Ingresso sul posto"**: chi si presenta senza prenotare (un amico dell'ultimo minuto, un socio dimenticato) viene prenotato **solo se c'è posto**, paga il biglietto in **cassa contanti** (il primo conto di tipo contanti) e il suo ingresso è registrato subito. Il nuovo ospite richiede il socio che lo ospita. Tutto in un colpo solo: se i posti sono finiti o manca il conto non resta scritto nulla.
+- Il referente e gli amministratori possono sempre incassare sul posto (gli amministratori anche dalla pagina dell'evento, con qualunque conto). L'ingresso sul posto dello staff si registra solo nel giorno dell'evento.
+- **Contatore dei posti**: nella schermata degli ingressi "Posti liberi: N (x prenotati su y)" o "Posti esauriti"; nella pagina evento accanto a ogni data "x / y posti (n liberi)". Le prenotazioni (anche dall'area soci) si fermano a capienza raggiunta.

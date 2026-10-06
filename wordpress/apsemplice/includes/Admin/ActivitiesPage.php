@@ -404,19 +404,23 @@ final class ActivitiesPage {
 		echo '</div>';
 	}
 
-	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre alil referente. */
+	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre al referente. */
 	private static function staff_card( array $activity, string $back ): void {
 		$id    = (int) $activity['id'];
 		$svc   = Plugin::activities();
 		$staff = $svc->staff( $id );
 		$in    = array();
-		echo '<div class="apse-card"><h2>Gestori dell\'evento</h2>';
-		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Il referente e gli amministratori lo possono già fare.</p>';
+		echo '<div class="apse-card"><h2>Staff dell\'evento (ingressi e cassa)</h2>';
+		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Se abiliti l\'incasso, possono anche far pagare il biglietto sul posto a chi si presenta senza aver prenotato (se c\'è posto) e registrare subito l\'ingresso. Il referente e gli amministratori possono fare tutto questo già di default.</p>';
 		if ( $staff ) {
 			echo '<ul>';
 			foreach ( $staff as $m ) {
 				$in[] = (int) $m['person_id'];
 				echo '<li>' . esc_html( $m['first_name'] . ' ' . $m['last_name'] ) . ' <span class="description">' . esc_html( MemberType::label( $m['type'] ) ) . '</span> ';
+				Ui::form_open( 'apse_event_staff_cash', $back, false, 'apse-inline' );
+				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' onchange="this.form.submit()"> puÃ² incassare sul posto</label>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+				echo ' ';
 				Ui::form_open( 'apse_event_staff_remove', $back, false, 'apse-inline' );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questo gestore?">togli</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
@@ -428,7 +432,7 @@ final class ActivitiesPage {
 			return MemberType::is_member( $p['type'] ) && ! in_array( (int) $p['id'], $in, true ) && (int) $p['id'] !== (int) $activity['instructor_person_id'];
 		} ) );
 		Ui::form_open( 'apse_event_staff_add', $back );
-		echo Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'apse-staff-' . $id ) . ' <button class="button">Aggiungi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'apse-staff-' . $id ) . ' <label><input type="checkbox" name="can_cash" value="1"> può incassare sul posto</label> <button class="button">Aggiungi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
 		echo '</div>';
 	}
@@ -454,7 +458,7 @@ final class ActivitiesPage {
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<details class="apse-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — ' // phpcs:ignore WordPress.Security.EscapeOutput
-				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti' ) . ( $cancelled ? ' <span class="apse-neg">· ANNULLATA</span>' : '' ) . '</summary>';
+				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="apse-neg">· ANNULLATA</span>' : '' ) . '</summary>';
 
 			if ( $bookings ) {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';

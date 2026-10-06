@@ -23,7 +23,7 @@ class ActivityService {
 		return $row ?: null;
 	}
 
-	/** Attività di un anno sociale (etichetta "2025/2026"), con nome delil referente. */
+	/** Attività di un anno sociale (etichetta "2025/2026"), con nome del referente. */
 	public function for_year( string $label ): array {
 		return $this->db()->get_results(
 			$this->db()->prepare(
@@ -651,11 +651,11 @@ class ActivityService {
 
 	// ---------- Gestori dell'evento e registrazione degli ingressi ----------
 
-	/** Soci abilitati alla gestione di un evento (oltre alil referente e agli amministratori). */
+	/** Soci abilitati alla gestione di un evento (oltre al referente e agli amministratori). */
 	public function staff( int $activity_id ): array {
 		return $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT s.id AS staff_id, p.id AS person_id, p.first_name, p.last_name, p.type, p.card_number FROM ' . Db::t( 'activity_staff' ) . ' s '
+				'SELECT s.id AS staff_id, p.id AS person_id, p.first_name, p.last_name, p.type, p.card_number, s.can_cash FROM ' . Db::t( 'activity_staff' ) . ' s '
 				. 'JOIN ' . Db::t( 'people' ) . ' p ON p.id = s.person_id AND p.deleted_at IS NULL WHERE s.activity_id = %d ORDER BY p.last_name, p.first_name',
 				$activity_id
 			),
@@ -670,7 +670,7 @@ class ActivityService {
 	}
 
 	/** @throws \InvalidArgumentException */
-	public function add_staff( int $activity_id, int $person_id ): void {
+	public function add_staff( int $activity_id, int $person_id, bool $can_cash = false ): void {
 		$a = $this->get( $activity_id );
 		$p = Plugin::people()->get( $person_id );
 		if ( ! $a || ! ActivityKind::uses_sessions( $a['kind'] ) ) {
@@ -685,8 +685,31 @@ class ActivityService {
 		if ( $this->is_staff( $activity_id, $person_id ) ) {
 			throw new \InvalidArgumentException( 'È già tra i gestori dell\'evento.' );
 		}
-		$this->db()->insert( Db::t( 'activity_staff' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'created_at' => Db::now() ) );
-		Audit::log( 'event_staff.added', 'activity', $activity_id, array( 'person' => $person_id ) );
+		$this->db()->insert( Db::t( 'activity_staff' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'can_cash' => $can_cash ? 1 : 0, 'created_at' => Db::now() ) );
+		Audit::log( 'event_staff.added', 'activity', $activity_id, array( 'person' => $person_id, 'can_cash' => $can_cash ) );
+	}
+
+	/** Il gestore può incassare il biglietto sul posto? (il referente e gli amministratori lo possono sempre: qui si valuta solo lo staff indicato). */
+	public function staff_can_cash( int $activity_id, int $person_id ): bool {
+		return (bool) $this->db()->get_var(
+			$this->db()->prepare( 'SELECT can_cash FROM ' . Db::t( 'activity_staff' ) . ' WHERE activity_id = %d AND person_id = %d', $activity_id, $person_id )
+		);
+	}
+
+	public function set_staff_cash( int $activity_id, int $person_id, bool $can_cash ): void {
+		$this->db()->update( Db::t( 'activity_staff' ), array( 'can_cash' => $can_cash ? 1 : 0 ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
+		Audit::log( 'event_staff.cash', 'activity', $activity_id, array( 'person' => $person_id, 'can_cash' => $can_cash ) );
+	}
+
+	/** Posti di una data: capienza (null = illimitati), prenotati, liberi (null = illimitati). */
+	public function seats( int $session_id ): array {
+		$s = $this->session( $session_id );
+		if ( ! $s ) {
+			return array( 'capacity' => null, 'taken' => 0, 'free' => null );
+		}
+		$taken = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND status = 'booked'", $session_id ) );
+		$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
+		return array( 'capacity' => $cap, 'taken' => $taken, 'free' => null === $cap ? null : max( 0, $cap - $taken ) );
 	}
 
 	public function remove_staff( int $activity_id, int $person_id ): void {

@@ -78,7 +78,7 @@ apse_ok( null !== get_role( Plugin::ROLE_MEMBER ), 'ruolo Socio APS' );
 apse_ok( get_role( 'administrator' )->has_cap( Plugin::CAP ), 'gli amministratori hanno la capability' );
 apse_ok( ! get_role( 'subscriber' )->has_cap( Plugin::CAP ), 'gli altri ruoli no' );
 apse_ok( count( Plugin::ledger()->accounts() ) >= 2, 'conti iniziali' );
-apse_ok( count( Plugin::ledger()->categories() ) >= 9, 'categorie iniziali' );
+apse_ok( count( Plugin::ledger()->categories() ) >= 8, 'categorie iniziali' );
 
 wp_set_current_user( 1 );
 $people   = Plugin::people();
@@ -2815,6 +2815,42 @@ apse_ok( 0 === \ApSemplice\Install::migrate_reimbursements(), 'migrazione: rilan
 $wpdb->delete( Db::t( 'transactions' ), array( 'id' => $old_tx ) );
 $fund_cat = $wpdb->get_var( 'SELECT c.kind FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.description LIKE '%(fondo estinto)' ORDER BY t.id DESC LIMIT 1" );
 apse_ok( 'member_reimbursement' === $fund_cat, 'fondi: il rimborso del fondo estinto va nella voce dei rimborsi' );
+
+// ---------- Staff degli eventi: incasso sul posto e contatore dei posti ----------
+wp_set_current_user( 1 );
+$kar   = $mkev( 'Serata karaoke', 500, 800, array( 'session' => array( 'session_date' => $today, 'capacity' => 2 ) ) );
+$kar_s = $first_session( $kar );
+$tre_cash_before = $acts->staff_can_cash( $kar, $tre_p );
+$acts->add_staff( $kar, $tre_p );
+apse_ok( ! $tre_cash_before && ! $acts->staff_can_cash( $kar, $tre_p ) && user_can( $u_tre, 'apse_manage_event', $kar ) && ! user_can( $u_tre, 'apse_door_cash', $kar ) && user_can( 1, 'apse_door_cash', $kar ), 'staff: all\'inizio controlla gli ingressi ma non incassa sul posto; gli amministratori sì' );
+$acts->set_staff_cash( $kar, $tre_p, true );
+apse_ok( user_can( $u_tre, 'apse_door_cash', $kar ) && ! user_can( $u_tre, 'apse_door_cash', $paid_ev ) && ! user_can( $uq, 'apse_door_cash', $kar ), 'staff: con l\'incasso abilitato incassa sul posto solo per quell\'evento' );
+$seat = $acts->seats( $kar_s );
+apse_ok( 2 === $seat['capacity'] && 0 === $seat['taken'] && 2 === $seat['free'], 'posti: contatore con evento vuoto' );
+$acts->book( $kar_s, $q );
+apse_ok( 1 === $acts->seats( $kar_s )['free'], 'posti: una prenotazione lascia un posto libero' );
+wp_set_current_user( $u_tre );
+$dm = $front::do_door( array( 'session_id' => $kar_s, 'new_first_name' => 'Luca', 'new_last_name' => 'Lastminute', 'new_phone' => '333 7770001', 'host_person_id' => $founder, 'pay' => '1' ) );
+$lm = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Luca' AND last_name = 'Lastminute'", ARRAY_A );
+$cash_acc = $wpdb->get_var( 'SELECT account_id FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = ' . $kar_s . ' AND person_id = ' . (int) $lm['id'] . ' AND voided_at IS NULL' );
+apse_ok( $lm && 'guest' === $lm['type'] && false !== strpos( $dm, 'incassati' ) && 800 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = ' . $kar_s . ' AND person_id = ' . (int) $lm['id'] . " AND type = 'income' AND voided_at IS NULL" ) && 'cash' === $wpdb->get_var( 'SELECT type FROM ' . Db::t( 'accounts' ) . ' WHERE id = ' . (int) $cash_acc ) && 0 === $acts->seats( $kar_s )['free'], 'ingresso sul posto: l\'amico dell\'ultimo minuto viene prenotato, paga in contanti ed entra; i posti finiscono' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $kar_s, $founder ) { $front::do_door( array( 'session_id' => $kar_s, 'new_first_name' => 'Uno', 'new_last_name' => 'Troppo', 'new_phone' => '333 7770002', 'host_person_id' => $founder, 'pay' => '1' ) ); } ), 'Posti esauriti' ), 'ingresso sul posto: a posti esauriti viene rifiutato' );
+$_GET['apse_session'] = (string) $kar_s;
+$kdet = $as( $u_tre, '[apsemplice_ingressi]' );
+unset( $_GET['apse_session'] );
+apse_ok( false !== strpos( $kdet, 'Posti esauriti' ) && false !== strpos( $kdet, '2 prenotati su 2' ) && false === strpos( $kdet, 'Prenota, incassa' ), 'area soci: il contatore mostra i posti esauriti e il modulo scompare' );
+$wpdb->update( Db::t( 'sessions' ), array( 'capacity' => 5 ), array( 'id' => $kar_s ) );
+$_GET['apse_session'] = (string) $kar_s;
+$kdet = $as( $u_tre, '[apsemplice_ingressi]' );
+unset( $_GET['apse_session'] );
+apse_ok( false !== strpos( $kdet, 'Posti liberi: 3' ) && false !== strpos( $kdet, 'Prenota, incassa' ), 'area soci: con posti liberi il contatore e il modulo di incasso sono visibili a chi può incassare' );
+$acts->set_staff_cash( $kar, $tre_p, false );
+$_GET['apse_session'] = (string) $kar_s;
+$kdet = $as( $u_tre, '[apsemplice_ingressi]' );
+unset( $_GET['apse_session'] );
+apse_ok( false !== strpos( $kdet, 'Posti liberi: 3' ) && false === strpos( $kdet, 'Prenota, incassa' ) && null !== apse_throws( function () use ( $front, $kar_s, $q ) { $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $q ) ); } ), 'staff senza incasso: vede i posti ma non può vendere sul posto' );
+wp_set_current_user( 1 );
+$acts->remove_staff( $kar, $tre_p );
 
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );

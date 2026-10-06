@@ -525,6 +525,46 @@ final class Views {
 		return $html . '</section>';
 	}
 
+	/** Contatore dei posti e, per chi può incassare, il modulo dell'ingresso sul posto (amico dell'ultimo minuto). */
+	private static function seats_html( array $s ): string {
+		$seat = Plugin::activities()->seats( (int) $s['id'] );
+		if ( null === $seat['capacity'] ) {
+			return '';
+		}
+		$cls = 0 === $seat['free'] ? 'apsf-bad' : 'apsf-good';
+		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="apsf-small apsf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span></p>';
+	}
+
+	private static function door_form( array $s, array $a ): string {
+		if ( ! current_user_can( 'apse_door_cash', (int) $a['id'] ) || ! empty( $s['cancelled_at'] ) ) {
+			return '';
+		}
+		$seat = Plugin::activities()->seats( (int) $s['id'] );
+		if ( 0 === $seat['free'] ) {
+			return '<p class="apsf-small apsf-muted">Posti esauriti: nessun ingresso sul posto possibile.</p>';
+		}
+		$people     = Plugin::people()->search();
+		$members    = '<option value="">— chi lo ospita —</option>';
+		$all        = '<option value="">— scegli —</option>';
+		foreach ( $people as $p ) {
+			$label = esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) );
+			$all  .= '<option value="' . (int) $p['id'] . '">' . $label . '</option>';
+			if ( MemberType::is_member( $p['type'] ) ) {
+				$members .= '<option value="' . (int) $p['id'] . '">' . $label . '</option>';
+			}
+		}
+		$ids = self::hidden( 'session_id', $s['id'] );
+		return '<details class="apsf-door"><summary><strong>＋ Ingresso sul posto</strong> <span class="apsf-small apsf-muted">per chi non ha prenotato (socio: ' . esc_html( Money::format( (int) $a['fee_cents'] ) ) . ', ospite: ' . esc_html( Money::format( Plugin::activities()->fee_for( $a, MemberType::GUEST ) ) ) . ')</span></summary>'
+			. self::form(
+				'apse_front_door',
+				$ids . '<fieldset><legend>Nuovo ospite</legend><label>Nome <input name="new_first_name"></label> <label>Cognome <input name="new_last_name"></label> <label>Cellulare <input name="new_phone" type="tel"></label> <label>Ospite di <select name="host_person_id">' . $members . '</select></label></fieldset>' // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<p class="apsf-small apsf-muted">Oppure una persona già in anagrafica:</p><label>Persona <select name="person_id">' . $all . '</select></label>'
+				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il biglietto in contanti</label>',
+				'Prenota, incassa e registra l\'ingresso',
+				true
+			) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
 	private static function checkin_detail( array $s, array $a ): string {
 		$svc      = Plugin::activities();
 		$today    = current_time( 'Y-m-d' );
@@ -577,7 +617,7 @@ final class Views {
 			. ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ) . '</p>'
 			. '<dl class="apsf-dl apsf-counts"><div><dt>Prenotati</dt><dd>' . (int) $booked . ( null === $s['capacity'] ? '' : ' / ' . (int) $s['capacity'] ) . '</dd></div><div><dt>Presenti</dt><dd>' . (int) $present . '</dd></div>'
 			. '<div><dt>Da registrare</dt><dd>' . (int) ( $booked - $present ) . '</dd></div><div><dt>Contributo da versare</dt><dd>' . (int) $unpaid . '</dd></div></dl>'
-			. ( $s['session_date'] !== $today ? '<p class="apsf-small apsf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . $scan . self::notice_form( $a, (int) $s['id'] );
+			. ( $s['session_date'] !== $today ? '<p class="apsf-small apsf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . self::seats_html( $s ) . $scan . self::door_form( $s, $a ) . self::notice_form( $a, (int) $s['id'] );
 		if ( ! $booked ) {
 			return $html . '<p class="apsf-muted">Nessuna prenotazione.</p></section>';
 		}
