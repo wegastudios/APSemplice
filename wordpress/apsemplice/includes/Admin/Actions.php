@@ -25,7 +25,7 @@ final class Actions {
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
 		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
-		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels',
+		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
@@ -53,6 +53,9 @@ final class Actions {
 			'apse_receipt_email'      => 'receipt_email',
 			'apse_set_board_role'     => 'set_board_role',
 			'apse_save_levels'        => 'save_levels',
+			'apse_save_language'      => 'save_language',
+			'apse_import_language'    => 'import_language',
+			'apse_delete_language'    => 'delete_language',
 			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_card'          => 'save_card',
 			'apse_save_wallet_apple'  => 'save_wallet_apple',
@@ -196,6 +199,56 @@ final class Actions {
 		$role = (string) ( $p['board_role'] ?? '' );
 		Plugin::people()->set_board_role( $id, '' === $role ? null : $role );
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . \ApSemplice\BoardRole::label( $role ) . '.' );
+	}
+
+	private static function save_language( array $p ): array {
+		$code = (string) ( $p['language'] ?? '' );
+		if ( ! isset( \ApSemplice\Languages::available()[ $code ] ) ) {
+			throw new \InvalidArgumentException( 'Lingua non disponibile.' );
+		}
+		Settings::update( array( 'language' => $code ) );
+		\ApSemplice\Texts::flush();
+		return array( Ui::url( 'apse-texts' ), 'Lingua impostata: ' . \ApSemplice\Languages::available()[ $code ] . '.' );
+	}
+
+	private static function import_language( array $p ): array {
+		if ( empty( $_FILES['lang_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['lang_file']['error'] || ! is_uploaded_file( $_FILES['lang_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Scegli il file della traduzione.' );
+		}
+		if ( (int) $_FILES['lang_file']['size'] > 5 * 1048576 ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Il file è troppo grande (massimo 5 MB).' );
+		}
+		$name   = (string) $_FILES['lang_file']['name']; // phpcs:ignore WordPress.Security
+		$pairs  = array();
+		if ( 'json' === strtolower( pathinfo( $name, PATHINFO_EXTENSION ) ) ) {
+			$j = json_decode( (string) file_get_contents( (string) $_FILES['lang_file']['tmp_name'] ), true ); // phpcs:ignore WordPress.Security
+			$pairs = is_array( $j ) && isset( $j['strings'] ) && is_array( $j['strings'] ) ? $j['strings'] : ( is_array( $j ) ? $j : array() );
+		} else {
+			$err = null;
+			foreach ( \ApSemplice\SheetReader::read( (string) $_FILES['lang_file']['tmp_name'], $name ) as $s ) { // phpcs:ignore WordPress.Security
+				try {
+					$pairs = \ApSemplice\Languages::pairs_from_rows( $s['rows'] );
+					break;
+				} catch ( \InvalidArgumentException $e ) {
+					$err = $e;
+				}
+			}
+			if ( ! $pairs && $err ) {
+				throw $err;
+			}
+		}
+		$code = trim( (string) ( $p['code'] ?? '' ) );
+		$n    = \ApSemplice\Languages::save_pack( $code, (string) ( $p['name'] ?? '' ), $pairs );
+		return array( Ui::url( 'apse-texts' ), 'Traduzione caricata: ' . $n . ' frasi. Ora puoi sceglierla tra le lingue.' );
+	}
+
+	private static function delete_language( array $p ): array {
+		$code = (string) ( $p['code'] ?? '' );
+		\ApSemplice\Languages::delete_pack( $code );
+		if ( Settings::get( 'language' ) === $code ) {
+			Settings::update( array( 'language' => 'it' ) );
+		}
+		return array( Ui::url( 'apse-texts' ), 'Traduzione eliminata.' );
 	}
 
 	private static function save_levels( array $p ): array {
