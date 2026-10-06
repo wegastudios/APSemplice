@@ -60,7 +60,7 @@ final class IncomePage {
 		}
 		wp_send_json_success(
 			array(
-				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => MemberType::label( $person['type'] ) ),
+				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => \ApSemplice\Levels::label( $person ) ),
 				'is_guest'         => MemberType::GUEST === $person['type'],
 				'is_founder'       => MemberType::is_auto_renewed( $person['type'] ),
 				'active_until'     => $until,
@@ -71,6 +71,7 @@ final class IncomePage {
 				'dues'             => $dues,
 				'membership'       => Plugin::people()->membership_plan( (int) $person['id'], $date ),
 				'suspended'        => Plugin::people()->is_suspended( (int) $person['id'] ),
+				'membership_fee'   => \ApSemplice\Levels::fee_for( $person ),
 			)
 		);
 	}

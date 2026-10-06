@@ -184,6 +184,59 @@ class PeopleService {
 		Audit::log( 'board.role', 'person', $person_id, array( 'role' => $role ) );
 	}
 
+	/**
+	 * Livello di socio (null = quello predefinito della base) e capofamiglia (null = nessun nucleo familiare).
+	 * Il livello deve avere la stessa base del tipo della persona; il capofamiglia deve essere un socio e non un familiare a sua volta.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function set_level_and_family( int $person_id, ?int $level_id, ?int $head_id ): void {
+		$p = $this->get( $person_id );
+		if ( ! $p ) {
+			throw new \InvalidArgumentException( 'Persona non trovata.' );
+		}
+		$level_id = $level_id ? $level_id : null;
+		$head_id  = $head_id ? $head_id : null;
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			$level_id = null;
+			$head_id  = null; // gli ospiti non hanno livello né nucleo familiare
+		}
+		if ( null !== $level_id ) {
+			$lv = Levels::get( $level_id );
+			if ( ! $lv ) {
+				throw new \InvalidArgumentException( 'Livello non trovato.' );
+			}
+			if ( $lv['base_type'] !== $p['type'] ) {
+				throw new \InvalidArgumentException( 'Il livello «' . $lv['name'] . '» non corrisponde al tipo scelto (' . MemberType::label( $p['type'] ) . ').' );
+			}
+			if ( ! (int) $lv['active'] && (int) $p['level_id'] !== $level_id ) {
+				throw new \InvalidArgumentException( 'Il livello «' . $lv['name'] . '» non è più attivo.' );
+			}
+		}
+		if ( null !== $head_id ) {
+			$head = $this->get( $head_id );
+			if ( ! $head || ! MemberType::is_member( $head['type'] ) ) {
+				throw new \InvalidArgumentException( 'Il capofamiglia deve essere un socio.' );
+			}
+			if ( $head_id === $person_id ) {
+				throw new \InvalidArgumentException( 'Una persona non può essere capofamiglia di se stessa.' );
+			}
+			if ( ! empty( $head['family_head_id'] ) ) {
+				throw new \InvalidArgumentException( 'Il capofamiglia scelto è a sua volta familiare di qualcun altro: scegli il capofamiglia del nucleo.' );
+			}
+			if ( (int) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND family_head_id = %d', $person_id ) ) > 0 ) {
+				throw new \InvalidArgumentException( 'Questo socio è già capofamiglia di altri soci: togli prima loro dal nucleo.' );
+			}
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'level_id' => $level_id, 'family_head_id' => $head_id, 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
+		Audit::log( 'person.level', 'person', $person_id, array( 'level' => $level_id, 'head' => $head_id ) );
+	}
+
+	/** Familiari di un capofamiglia. @return array[] */
+	public function family_of( int $head_id ): array {
+		return $this->db()->get_results( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND family_head_id = %d ORDER BY last_name, first_name', $head_id ), ARRAY_A ) ?: array();
+	}
+
 	public function is_suspended( int $person_id ): bool {
 		return (bool) $this->db()->get_var( $this->db()->prepare( 'SELECT suspended_at FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $person_id ) );
 	}

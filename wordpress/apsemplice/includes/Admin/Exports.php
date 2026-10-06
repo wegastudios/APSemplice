@@ -152,7 +152,7 @@ final class Exports {
 		$csv = self::line( array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono', 'Codice fiscale', 'Ospite di', 'Tessera valida fino al' ) );
 		foreach ( Plugin::people()->search() as $p ) {
 			$csv .= self::line(
-				array( $p['card_number'], MemberType::label( $p['type'] ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ) )
+				array( $p['card_number'], \ApSemplice\Levels::label( $p ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ) )
 			);
 		}
 		return array( 'soci.csv', $csv );

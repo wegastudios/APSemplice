@@ -68,7 +68,7 @@ class PaymentService {
 			$pid  = (int) $p['id'];
 			$name = trim( $p['first_name'] . ' ' . $p['last_name'] );
 			// Quota associativa: solo per il socio stesso (i fondatori e gli ospiti non la pagano)
-			$fee = (int) Settings::get( 'membership_fee_cents' );
+			$fee = \ApSemplice\Levels::fee_for( $p );
 			if ( $pid === (int) $actor['id'] && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
 				$plan = $people->membership_plan( $pid, Db::today() ); // anno più recente (o quello in corso, se è scaduto)
 				if ( ! $people->has_membership( $pid, $plan['year'] ) ) {

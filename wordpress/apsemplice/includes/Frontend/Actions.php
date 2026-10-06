@@ -383,7 +383,7 @@ final class Actions {
 	private static function standard_cents( string $kind, int $ref, ?array $person ): int {
 		$type = $person ? (string) $person['type'] : MemberType::GUEST;
 		if ( 'membership' === $kind ) {
-			return (int) Settings::get( 'membership_fee_cents' );
+			return \ApSemplice\Levels::fee_for( $person );
 		}
 		if ( 'event' === $kind ) {
 			$s = Plugin::activities()->session( $ref );

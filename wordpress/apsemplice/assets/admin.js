@@ -74,6 +74,16 @@
 			$$('.apse-row-host').forEach(function (r) { r.style.display = guest ? '' : 'none'; });
 			$$('.apse-row-card').forEach(function (r) { r.style.display = guest ? 'none' : ''; });
 			$$('.apse-email-note').forEach(function (r) { r.style.display = guest ? 'none' : ''; });
+			$$('.apse-row-level').forEach(function (r) { r.style.display = guest ? 'none' : ''; });
+			var lvl = $('#apse-level');
+			if (lvl) {
+				$$('option', lvl).forEach(function (o) {
+					var b = o.getAttribute('data-base');
+					o.hidden = !!b && b !== t; o.disabled = !!b && b !== t;
+				});
+				var cur = lvl.options[lvl.selectedIndex];
+				if (cur && cur.getAttribute('data-base') && cur.getAttribute('data-base') !== t) { lvl.value = ''; }
+			}
 			var hint = $('#apse-type-hint'); if (hint) { hint.textContent = hints[t] || ''; }
 			var mail = $('#apse-email'); if (mail) { mail.required = false; }
 		};
@@ -164,6 +174,39 @@
 		}
 		$$('[data-add]', wrap).forEach(function (b) { b.addEventListener('click', function () { add({}); }); });
 		if (INIT.length) { INIT.forEach(add); } else { add({}); }
+	});
+
+	/* Livelli di socio: righe dinamiche nome + base + quota + attivo */
+	$$('.apse-levels').forEach(function (wrap) {
+		var rows = $('.apse-levels-rows', wrap), seq = 0;
+		var BASES = JSON.parse(wrap.getAttribute('data-bases') || '{}');
+		var INIT = JSON.parse(wrap.getAttribute('data-rows') || '[]');
+		function add(r) {
+			r = r || {};
+			var n = 'level[' + (seq++) + ']';
+			var row = el('div', { style: 'border:1px solid #ccd0d4;border-radius:6px;padding:8px;margin:6px 0;background:#fff' });
+			row.appendChild(el('input', { type: 'hidden', name: n + '[id]', value: r.id || '' }));
+			row.appendChild(el('input', { type: 'text', name: n + '[name]', value: r.name || '', placeholder: 'Nome del livello', maxlength: '80', 'class': 'regular-text', style: 'margin-right:10px' }));
+			var base = el('select', { name: n + '[base_type]', style: 'margin-right:10px' });
+			Object.keys(BASES).forEach(function (k) { var o = el('option', { value: k, text: BASES[k] }); if ((r.base || 'ordinary') === k) { o.selected = true; } base.appendChild(o); });
+			row.appendChild(base);
+			var fl = el('label', { style: 'margin-right:10px' });
+			fl.appendChild(document.createTextNode('Quota € '));
+			fl.appendChild(el('input', { type: 'text', name: n + '[fee]', value: r.fee || '', placeholder: 'predefinita', size: '9', inputmode: 'decimal' }));
+			row.appendChild(fl);
+			var al = el('label', { style: 'margin-right:10px' });
+			var act = el('input', { type: 'checkbox', name: n + '[active]', value: '1' });
+			if (r.active !== false) { act.checked = true; }
+			al.appendChild(act); al.appendChild(document.createTextNode(' attivo'));
+			row.appendChild(al);
+			if (r.used) { row.appendChild(el('span', { 'class': 'description', text: 'ha dei soci' })); row.appendChild(document.createTextNode(' ')); }
+			var rm = el('button', { type: 'button', 'class': 'button-link-delete', text: 'Togli' });
+			rm.addEventListener('click', function () { row.parentNode.removeChild(row); });
+			row.appendChild(rm);
+			rows.appendChild(row);
+		}
+		$$('[data-add]', wrap).forEach(function (b) { b.addEventListener('click', function () { add({}); }); });
+		INIT.forEach(add);
 	});
 
 	/* Cassa per più persone: chi paga e, per ognuno, eventi, corsi e quote; un solo totale e un solo resto */
@@ -257,7 +300,7 @@
 				bar.appendChild(evSel); bar.appendChild(document.createTextNode(' ')); bar.appendChild(coSel);
 				if (!b.isNew && b.type !== 'guest' && b.type !== 'founder' && G.cats.membership) {
 					var mb = el('button', { type: 'button', 'class': 'button', text: '+ Quota associativa' });
-					mb.addEventListener('click', function () { addLine(b, { kind: 'membership', title: 'Quota associativa', amount: plain(G.membershipFee) }); });
+					mb.addEventListener('click', function () { addLine(b, { kind: 'membership', title: 'Quota associativa', amount: plain(b.ctx && b.ctx.membership_fee != null ? b.ctx.membership_fee : G.membershipFee) }); });
 					bar.appendChild(document.createTextNode(' ')); bar.appendChild(mb);
 				}
 				if (!b.isNew && b.ctx && ((b.ctx.dues && b.ctx.dues.length) || (b.ctx.bookings && b.ctx.bookings.length))) {
@@ -289,7 +332,7 @@
 				if (!res.success || !res.data.person) { return; }
 				b.ctx = res.data;
 				if (autofill) {
-					if (b.ctx.needs_membership && !b.ctx.suspended && !b.ctx.is_guest && !b.ctx.is_founder && G.cats.membership) { b.lines.push({ kind: 'membership', title: 'Quota associativa' + (b.ctx.membership ? ' ' + b.ctx.membership.year : ''), amount: plain(G.membershipFee) }); }
+					if (b.ctx.needs_membership && !b.ctx.suspended && !b.ctx.is_guest && !b.ctx.is_founder && G.cats.membership) { b.lines.push({ kind: 'membership', title: 'Quota associativa' + (b.ctx.membership ? ' ' + b.ctx.membership.year : ''), amount: plain(b.ctx.membership_fee != null ? b.ctx.membership_fee : G.membershipFee) }); }
 					loadDues(b);
 				} else { render(); }
 			});
@@ -455,7 +498,7 @@
 	function membershipLine(c) {
 		var plan = ctx && ctx.membership;
 		var note = plan ? 'tessera ' + plan.year + ' fino al 31 dicembre' + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al 31 dicembre';
-		return { title: 'Quota associativa' + (plan ? ' ' + plan.year : ''), category: c.id, kind: 'membership', amount: plain(D.membershipFee), note: note };
+		return { title: 'Quota associativa' + (plan ? ' ' + plan.year : ''), category: c.id, kind: 'membership', amount: plain(ctx && ctx.membership_fee != null ? ctx.membership_fee : D.membershipFee), note: note };
 	}
 	$('#apse-add-membership').addEventListener('click', function () {
 		var c = catByKind('membership'); if (!c) { return; }

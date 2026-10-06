@@ -3738,6 +3738,76 @@ apse_render( array( Admin\SettingsPage::class, 'render' ), 'Crea le pagine stand
 apse_render( array( Admin\AuditPage::class, 'render' ), 'Registro azioni' );
 apse_render( array( Admin\ImportPage::class, 'render' ), 'Importa da Excel o CSV' );
 
+// ---------- Livelli di socio, quote differenziate e nucleo familiare ----------
+wp_set_current_user( 1 );
+$lv_seed = \ApSemplice\Levels::all();
+$lv_bases = array_unique( array_column( $lv_seed, 'base_type' ) );
+sort( $lv_bases );
+apse_ok( 3 === count( $lv_bases ) && count( $lv_seed ) >= 3 && ! in_array( 'guest', $lv_bases, true ), 'livelli: ce n\'è uno per ogni base fin dall\'inizio' );
+$lv_rows = array();
+foreach ( $lv_seed as $l ) {
+	$lv_rows[] = array( 'id' => $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : \ApSemplice\Money::plain( (int) $l['fee_cents'] ), 'active' => 1 );
+}
+$lv_rows[] = array( 'id' => 0, 'name' => 'Socio ridotto', 'base_type' => 'ordinary', 'fee' => '5,00', 'active' => 1 );
+$lv_rows[] = array( 'id' => 0, 'name' => 'Sostenitore', 'base_type' => 'ordinary', 'fee' => '', 'active' => 1 );
+\ApSemplice\Levels::save( $lv_rows );
+$lv_by = array();
+foreach ( \ApSemplice\Levels::all() as $l ) {
+	$lv_by[ $l['name'] ] = $l;
+}
+apse_ok( isset( $lv_by['Socio ridotto'], $lv_by['Sostenitore'] ) && 500 === (int) $lv_by['Socio ridotto']['fee_cents'] && null === $lv_by['Sostenitore']['fee_cents'], 'livelli: si aggiungono con o senza quota propria' );
+$lv_ridotto = (int) $lv_by['Socio ridotto']['id'];
+$lv_p1 = $mkb( 'Rita', 'Livelloridotto' );
+$people->set_level_and_family( $lv_p1, $lv_ridotto, null );
+$lv_row1 = $people->get( $lv_p1 );
+apse_ok( 'Socio ridotto' === \ApSemplice\Levels::label( $lv_row1 ) && 500 === \ApSemplice\Levels::fee_for( $lv_row1 ), 'livelli: nome e quota vengono dal livello' );
+$lv_p2 = $mkb( 'Sara', 'Livellodefault' );
+$lv_row2 = $people->get( $lv_p2 );
+apse_ok( 'Socio ordinario' === \ApSemplice\Levels::label( $lv_row2 ) || 0 === strpos( \ApSemplice\Levels::label( $lv_row2 ), 'Soc' ), 'livelli: senza livello vale il nome della base' );
+apse_ok( (int) Settings::get( 'membership_fee_cents' ) === \ApSemplice\Levels::fee_for( $lv_row2 ), 'livelli: senza livello vale la quota predefinita' );
+apse_ok( null !== apse_throws( function () use ( $people, $lv_ridotto ) {
+	$v = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Vito', 'last_name' => 'Livellosbagliato', 'email' => 'vito.livellosbagliato@example.com' ) );
+	$people->set_level_and_family( $v, $lv_ridotto, null );
+} ), 'livelli: il livello deve avere la stessa base del tipo' );
+// nucleo familiare
+Settings::update( array( 'family_discount_pct' => 20 ) );
+$lv_head = $mkb( 'Franco', 'Capofamiglia' );
+$lv_fam  = $mkb( 'Franca', 'Capofamiglia' );
+$people->set_level_and_family( $lv_fam, null, $lv_head );
+$fee_default = (int) Settings::get( 'membership_fee_cents' );
+apse_ok( $fee_default === \ApSemplice\Levels::fee_for( $people->get( $lv_head ) ) && (int) round( $fee_default * 0.8 ) === \ApSemplice\Levels::fee_for( $people->get( $lv_fam ) ), 'famiglia: il capofamiglia paga la quota piena, il familiare quella ridotta' );
+$people->set_level_and_family( $lv_p1, $lv_ridotto, $lv_head );
+apse_ok( 400 === \ApSemplice\Levels::fee_for( $people->get( $lv_p1 ) ), 'famiglia: lo sconto si applica alla quota del livello' );
+$lv_third = $mkb( 'Terzo', 'Capofamiglia' );
+apse_ok( null !== apse_throws( function () use ( $people, $lv_third, $lv_fam ) { $people->set_level_and_family( $lv_third, null, $lv_fam ); } ), 'famiglia: un familiare non può fare da capofamiglia' );
+apse_ok( null !== apse_throws( function () use ( $people, $lv_head ) { $people->set_level_and_family( $lv_head, null, $lv_head ); } ), 'famiglia: nessuno è capofamiglia di se stesso' );
+apse_ok( null !== apse_throws( function () use ( $people, $lv_head, $lv_third ) { $people->set_level_and_family( $lv_head, null, $lv_third ); } ), 'famiglia: chi ha già dei familiari non diventa familiare' );
+apse_ok( 2 <= count( $people->family_of( $lv_head ) ), 'famiglia: elenco dei familiari' );
+$lv_guest = $people->create( array( 'type' => 'guest', 'first_name' => 'Gino', 'last_name' => 'Livelloospite', 'phone' => '333 5550123', 'host_person_id' => $lv_head ) );
+$people->set_level_and_family( $lv_guest, $lv_ridotto, $lv_head );
+$lv_grow = $people->get( $lv_guest );
+apse_ok( empty( $lv_grow['level_id'] ) && empty( $lv_grow['family_head_id'] ), 'livelli: gli ospiti non hanno livello né nucleo' );
+// livello in uso: non si cancella, si disattiva
+$lv_rows2 = array();
+foreach ( \ApSemplice\Levels::all() as $l ) {
+	if ( 'Socio ridotto' === $l['name'] || 'Sostenitore' === $l['name'] ) {
+		continue;
+	}
+	$lv_rows2[] = array( 'id' => $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => '', 'active' => 1 );
+}
+\ApSemplice\Levels::save( $lv_rows2 );
+$lv_after = array();
+foreach ( \ApSemplice\Levels::all() as $l ) {
+	$lv_after[ $l['name'] ] = $l;
+}
+apse_ok( isset( $lv_after['Socio ridotto'] ) && 0 === (int) $lv_after['Socio ridotto']['active'] && ! isset( $lv_after['Sostenitore'] ), 'livelli: se ha dei soci resta disattivato, altrimenti viene tolto' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Levels::save( array( array( 'id' => 0, 'name' => 'Solo uno', 'base_type' => 'ordinary', 'fee' => '', 'active' => 1 ) ) ); } ), 'livelli: serve almeno un livello attivo per ogni base' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Levels::save( array( array( 'id' => 0, 'name' => 'A', 'base_type' => 'guest', 'fee' => '', 'active' => 1 ) ) ); } ), 'livelli: la base deve essere un tipo di socio' );
+apse_ok( Admin\Actions::required_cap( 'apse_save_levels' ) === Plugin::CAP, 'livelli: li modifica solo l\'amministratore' );
+apse_render( array( Admin\SettingsPage::class, 'render' ), 'Livelli di socio' );
+apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Nucleo familiare', array( 'id' => $lv_fam ) );
+Settings::update( array( 'family_discount_pct' => 0 ) );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 wp_set_current_user( 1 );
 delete_option( \ApSemplice\Backup::OPT_LAST );

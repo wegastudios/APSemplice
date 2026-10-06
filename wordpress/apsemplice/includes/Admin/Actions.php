@@ -25,7 +25,7 @@ final class Actions {
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
 		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
-		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore',
+		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels',
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
@@ -52,6 +52,7 @@ final class Actions {
 			'apse_reminders_run'      => 'reminders_run',
 			'apse_receipt_email'      => 'receipt_email',
 			'apse_set_board_role'     => 'set_board_role',
+			'apse_save_levels'        => 'save_levels',
 			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_card'          => 'save_card',
 			'apse_save_wallet_apple'  => 'save_wallet_apple',
@@ -168,9 +169,15 @@ final class Actions {
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
 			Plugin::people()->update( $id, $data );
+			if ( array_key_exists( 'level_id', $p ) ) {
+				Plugin::people()->set_level_and_family( $id, (int) $p['level_id'], (int) ( $p['family_head_id'] ?? 0 ) );
+			}
 			return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Scheda salvata.' );
 		}
 		$id = Plugin::people()->create( $data );
+		if ( array_key_exists( 'level_id', $p ) ) {
+			Plugin::people()->set_level_and_family( $id, (int) $p['level_id'], (int) ( $p['family_head_id'] ?? 0 ) );
+		}
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Persona creata.' );
 	}
 
@@ -189,6 +196,17 @@ final class Actions {
 		$role = (string) ( $p['board_role'] ?? '' );
 		Plugin::people()->set_board_role( $id, '' === $role ? null : $role );
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . \ApSemplice\BoardRole::label( $role ) . '.' );
+	}
+
+	private static function save_levels( array $p ): array {
+		$rows = array();
+		foreach ( (array) ( $p['level'] ?? array() ) as $r ) {
+			if ( is_array( $r ) ) {
+				$rows[] = $r;
+			}
+		}
+		\ApSemplice\Levels::save( $rows );
+		return array( Ui::url( 'apse-settings' ), 'Livelli di socio salvati.' );
 	}
 
 	private static function privacy_consent( array $p ): array {
@@ -928,6 +946,7 @@ final class Actions {
 				'tax_code'                => $txt( 'tax_code' ),
 				'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
+				'family_discount_pct'     => (int) ( $p['family_discount_pct'] ?? 0 ),
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
 				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
 				'board_councillors'       => (int) ( $p['board_councillors'] ?? 7 ),

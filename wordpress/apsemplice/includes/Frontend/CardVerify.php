@@ -77,7 +77,7 @@ final class CardVerify {
 		if ( $r['person'] ) {
 			$p     = $r['person'];
 			$until = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $r['until'] ? ( new \DateTimeImmutable( $r['until'] ) )->format( 'd/m/Y' ) : '—' );
-			$body  = '<div class="n">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div><div class="t">' . esc_html( MemberType::label( $p['type'] ) ) . '</div>'
+			$body  = '<div class="n">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div><div class="t">' . esc_html( \ApSemplice\Levels::label( $p ) ) . '</div>'
 				. '<dl><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div><div><dt>Valida fino al</dt><dd>' . esc_html( $until ) . '</dd></div></dl>';
 		} elseif ( 'invalid' === $r['status'] ) {
 			$body = '<p>Il codice non corrisponde a nessuna tessera attiva. Può essere stato sostituito: chiedi al socio di mostrare quello aggiornato.</p>';

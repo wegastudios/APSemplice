@@ -151,7 +151,7 @@ final class Wallet {
 			'id'          => (int) $person['id'],
 			'serial'      => 'apse-' . (int) $person['id'],
 			'name'        => trim( $person['first_name'] . ' ' . $person['last_name'] ),
-			'type'        => MemberType::label( $person['type'] ),
+			'type'        => Levels::label( $person ),
 			'card_number' => (string) ( $person['card_number'] ?: '—' ),
 			'until_text'  => MemberType::is_auto_renewed( $person['type'] ) ? 'Sempre rinnovata' : ( $until ? ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '—' ),
 			'expires_iso' => $exp,
