@@ -453,3 +453,15 @@ Impostazioni → Tecniche → **App e notifiche** (spenta di default; gli interr
 - **Notifiche push** (Web Push, RFC 8291 con cifratura aes128gcm e firma VAPID ES256, in puro PHP con openssl): il socio le attiva con un tocco dall'area soci su ogni dispositivo (al massimo 10 per utente). Partono insieme alle email per: **comunicazioni a gruppi**, **avvisi dei volontari** agli iscritti, **promemoria** e **posti liberati dalla lista d'attesa**; chi non le ha attivate riceve solo l'email. Gli indirizzi delle sottoscrizioni devono essere https e di un servizio di push noto (Google, Mozilla, Apple, Microsoft): niente richieste verso indirizzi arbitrari. Le sottoscrizioni scadute (404/410) o con 5 errori di seguito vengono tolte. Le chiavi VAPID sono create alla prima accensione (la privata è cifrata nel database) e si possono rigenerare.
 - Requisiti: sito in https, permalink «carini», estensione openssl di PHP per le notifiche. Su iPhone servono iOS 16.4+ e l'app aggiunta alla Home.
 - Database v32: tabella `push_subs`; impostazioni `pwa_enabled`, `push_enabled`, `pwa_name`, `pwa_short_name`, `pwa_icon_id`.
+
+## Controllo di sicurezza di tutto il codice (ottobre, terzo giro)
+
+Corretto:
+- **Copie di sicurezza**: i file salvati prima di un ripristino avevano un nome prevedibile (data e ora) in una cartella che su server diversi da Apache (dove `.htaccess` non vale) può essere raggiungibile da web, e contengono tutti i dati. Ora il nome ha un suffisso casuale di 16 caratteri esadecimali e le copie con il vecchio nome vengono rinominate alla prima apertura dell'elenco.
+- **Ripristino**: le impostazioni lette da una copia ora passano dai controlli delle impostazioni (come se le avesse salvate un amministratore), invece di essere scritte così come sono.
+- **Traduzioni**: una parola breve tradotta (corrispondenza sul testo intero) veniva inserita senza escape nell'HTML; ora è trattata come testo, anche negli attributi.
+- **Comunicazioni**: l'oggetto è sempre su una riga; due passaggi insieme (cron e pagina) non mandano più due volte la stessa email (ogni destinatario viene preso in carico prima dell'invio).
+- **Notifiche push**: tempo massimo per ogni invio (8 secondi) per non rallentare le email; chi resta indietro riceve comunque l'email.
+- **Privacy**: l'anonimizzazione toglie anche polizze, dispositivi con le notifiche, destinatari delle comunicazioni, motivo di uscita e legami del nucleo familiare; l'esportazione dei dati comprende polizze, presenze e data di uscita.
+
+Verificato senza trovare problemi: query SQL (tutte preparate o con valori fissi), permessi e nonce di ogni azione, escape dell'output delle pagine nuove, lettura dei file Excel (nessun DOCTYPE né entità), accesso alle ricevute, gli indirizzi dei servizi di push (solo https e servizi noti), ordini WooCommerce (il prezzo viene sempre dal server e l'ordine si registra una sola volta).
