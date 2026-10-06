@@ -329,7 +329,7 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->book( (int) $p['session_id'], $pid );
-		return self::after_signup( $pid, Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.' );
+		return self::after_signup( $pid, Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.', (int) $p['activity_id'], (int) $p['session_id'] );
 	}
 
 	/**
@@ -444,7 +444,7 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
-		return self::after_signup( $pid, Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' );
+		return self::after_signup( $pid, Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.', (int) $p['activity_id'] );
 	}
 
 	private static function cancel_enrollment( array $p ): array {
@@ -540,16 +540,22 @@ final class Actions {
 	 * Dopo un'iscrizione o una prenotazione: se c'è qualcosa da incassare (tessera non valida, mensilità dovuta, contributo non versato)
 	 * si apre direttamente l'incasso con quella persona e le voci già compilate; altrimenti si resta dove si era.
 	 */
-	private static function after_signup( int $pid, string $back, string $msg ): array {
+	private static function after_signup( int $pid, string $back, string $msg, int $activity_id = 0, int $session_id = 0 ): array {
 		$due = '' !== self::membership_warning( $pid );
 		if ( ! $due && $pid ) {
-			foreach ( Plugin::activities()->status_for_person( $pid ) as $st ) {
-				if ( $st['summary']['unpaid_months'] ) {
-					$due = true;
-					break;
+			if ( $session_id ) { // evento: il contributo di questa prenotazione non è ancora stato versato
+				foreach ( Plugin::activities()->unpaid_bookings_for_person( $pid ) as $b ) {
+					if ( (int) $b['session_id'] === $session_id ) {
+						$due = true;
+					}
+				}
+			} elseif ( $activity_id ) { // corso: c'è una mensilità dovuta di questo corso
+				foreach ( Plugin::activities()->status_for_person( $pid ) as $st ) {
+					if ( (int) $st['enrollment']['activity_id'] === $activity_id && $st['summary']['unpaid_months'] ) {
+						$due = true;
+					}
 				}
 			}
-			$due = $due || (bool) Plugin::activities()->unpaid_bookings_for_person( $pid );
 		}
 		if ( $due ) {
 			return array( Ui::url( 'apse-income', array( 'person_id' => $pid, 'due' => 1 ) ), $msg . ' Ecco l\'incasso già compilato con quanto è dovuto.' );
@@ -669,11 +675,11 @@ final class Actions {
 				throw new \InvalidArgumentException( 'Corso non trovato.' );
 			}
 			Plugin::activities()->enroll( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
-			return self::after_signup( $pid, Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.' );
+			return self::after_signup( $pid, Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.', (int) $a['id'] );
 		}
 		if ( 0 === strpos( $target, 's:' ) ) {
 			Plugin::activities()->book( (int) substr( $target, 2 ), $pid );
-			return self::after_signup( $pid, Ui::url( 'apse' ), $name . ' è prenotato/a.' );
+			return self::after_signup( $pid, Ui::url( 'apse' ), $name . ' è prenotato/a.', 0, (int) substr( $target, 2 ) );
 		}
 		throw new \InvalidArgumentException( 'Scegli a cosa iscriverlo.' );
 	}
