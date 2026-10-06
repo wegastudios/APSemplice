@@ -1,0 +1,120 @@
+/*
+ * APSemplice — front-end.
+ * Eredita font, dimensioni e colori del tema. Il colore d'accento segue il colore "primary" del tema a blocchi
+ * (--wp--preset--color--primary) e si può cambiare da CSS: .apsf { --apsf-accent: #c0392b; }
+ * Il layout esterno (colonne, spazi, sfondi) lo decide il builder (Gutenberg, Elementor).
+ */
+.apsf {
+	--apsf-accent: var(--wp--preset--color--primary, #1f6f5c);
+	--apsf-accent-text: var(--wp--preset--color--base, #fff);
+	--apsf-line: rgba(127, 127, 127, .28);
+	--apsf-soft: rgba(127, 127, 127, .08);
+	--apsf-radius: 10px;
+	--apsf-ok: #1e7b34;
+	--apsf-warn: #a56a00;
+	--apsf-bad: #b32d2e;
+	font: inherit;
+	color: inherit;
+	line-height: 1.5;
+	margin: 1.25em 0;
+}
+.apsf *, .apsf *::before, .apsf *::after { box-sizing: border-box; }
+.apsf h3, .apsf h4 { margin: 0 0 .5em; line-height: 1.25; }
+.apsf p { margin: .5em 0; }
+.apsf-small { font-size: .875em; }
+.apsf-muted { opacity: .72; }
+.apsf-good { color: var(--apsf-ok); font-weight: 600; }
+.apsf-warn { color: var(--apsf-warn); font-weight: 600; }
+.apsf-bad { color: var(--apsf-bad); font-weight: 600; }
+
+/* Struttura */
+.apsf-area { display: grid; gap: 1.5rem; }
+.apsf-hello { font-size: 1.1em; margin-bottom: .75rem; }
+.apsf-section { border: 1px solid var(--apsf-line); border-radius: var(--apsf-radius); padding: 1rem 1.25rem; }
+.apsf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.apsf-card { border: 1px solid var(--apsf-line); border-radius: var(--apsf-radius); padding: 1rem 1.25rem; background: var(--apsf-soft); }
+.apsf-card h3 { margin-top: .4em; }
+.apsf-details { margin-top: .75rem; }
+.apsf-details > summary { cursor: pointer; font-weight: 600; }
+
+/* Etichette */
+.apsf-badge { display: inline-block; font-size: .78em; padding: .1em .6em; border-radius: 999px; border: 1px solid var(--apsf-line); }
+.apsf-badge-ok { color: var(--apsf-ok); border-color: currentColor; }
+.apsf-badge-bad { color: var(--apsf-bad); border-color: currentColor; }
+
+/* Tessera digitale */
+.apsf-memcard { border-radius: 16px; padding: 1.25rem 1.5rem; max-width: 420px; color: var(--apsf-accent-text); background: var(--apsf-accent); position: relative; }
+.apsf-memcard-assoc { font-size: .85em; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+.apsf-memcard-name { font-size: 1.5em; font-weight: 700; margin-top: .35em; }
+.apsf-memcard-type { opacity: .9; }
+.apsf-memcard-data { display: flex; gap: 2rem; margin: 1rem 0 .75rem; }
+.apsf-memcard-data dt { font-size: .75em; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.apsf-memcard-data dd { margin: 0; font-size: 1.25em; font-weight: 600; }
+.apsf-memcard .apsf-badge { background: rgba(255, 255, 255, .92); border-color: transparent; }
+.apsf-memcard .apsf-badge-ok { color: var(--apsf-ok); }
+.apsf-memcard .apsf-badge-bad { color: var(--apsf-bad); }
+
+/* Elenchi e tabelle */
+.apsf-list { list-style: none; margin: .5rem 0; padding: 0; }
+.apsf-list > li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; padding: .6rem 0; border-top: 1px solid var(--apsf-line); }
+.apsf-list > li:first-child { border-top: 0; }
+.apsf-evt { font-weight: 700; }
+.apsf-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.apsf-table-wrap { overflow-x: auto; }
+.apsf-table { width: 100%; border-collapse: collapse; }
+.apsf-table th, .apsf-table td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--apsf-line); vertical-align: top; }
+.apsf-dl { display: grid; gap: .25rem; margin: 0 0 .5rem; }
+.apsf-dl > div { display: flex; gap: .75rem; }
+.apsf-dl dt { font-weight: 600; min-width: 5em; }
+.apsf-dl dd { margin: 0; }
+
+/* Moduli e pulsanti (se il tema li stila già tramite .wp-element-button, resta quello) */
+.apsf-form { margin: .5rem 0; }
+.apsf-inline { display: inline-flex; gap: .4rem; align-items: center; margin: 0; flex-wrap: wrap; }
+.apsf-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem; margin-bottom: .75rem; }
+.apsf-fields label { display: grid; gap: .25rem; font-weight: 600; }
+.apsf input[type="text"], .apsf input[type="email"], .apsf input[type="password"], .apsf select {
+	width: 100%; font: inherit; color: inherit; padding: .45em .6em; border: 1px solid var(--apsf-line); border-radius: 6px; background: transparent;
+}
+.apsf-inline select { width: auto; }
+.apsf .apsf-btn { cursor: pointer; font: inherit; padding: .45em 1em; border-radius: 6px; border: 1px solid var(--apsf-accent); background: var(--apsf-accent); color: var(--apsf-accent-text); text-decoration: none; display: inline-block; }
+.apsf .apsf-btn.wp-element-button { font: inherit; }
+.apsf .apsf-btn:hover { filter: brightness(.92); }
+.apsf-inline .apsf-btn { padding: .25em .75em; font-size: .9em; }
+
+/* Avvisi e riquadro "contenuto riservato" */
+.apsf-notice { padding: .75rem 1rem; border-radius: 8px; border: 1px solid var(--apsf-line); margin-bottom: 1rem; }
+.apsf-notice.apsf-ok { border-color: var(--apsf-ok); color: var(--apsf-ok); }
+.apsf-notice.apsf-err { border-color: var(--apsf-bad); color: var(--apsf-bad); }
+.apsf-gate { border: 1px dashed var(--apsf-line); border-radius: var(--apsf-radius); padding: 1rem 1.25rem; background: var(--apsf-soft); text-align: center; }
+.apsf-gate-text { font-weight: 600; margin-top: 0; }
+.apsf #loginform p { margin: .6em 0; }
+.apsf #loginform label { display: block; font-weight: 600; margin-bottom: .2em; }
+
+@media (max-width: 600px) {
+	.apsf-memcard-data { gap: 1rem; }
+	.apsf-list > li { align-items: flex-start; }
+}
+.apsf-manage { flex-basis: 100%; }
+
+/* Pagamenti online */
+.apsf-payrow { display: flex; gap: .6rem; align-items: flex-start; cursor: pointer; }
+.apsf-paytotal { font-size: 1.15em; margin: .75rem 0; }
+.apsf-paylist > li { align-items: flex-start; }
+.apsf-docs { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+.apsf-shot { cursor: pointer; display: inline-block; }
+.apsf-doc-info { margin-left: 4px; }
+.apsf-expenses h4 { margin: 18px 0 6px; }
+.apsf-memcard-qr { margin-top: 14px; text-align: center; }
+.apsf-memcard-qr svg { width: 170px; height: 170px; max-width: 100%; background: #fff; border-radius: 8px; }
+.apsf-wallet { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+.apsf-wallet .apsf-btn { text-decoration: none; }
+.apsf-checkin-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.apsf-search { flex: 1 1 180px; min-width: 0; }
+.apsf-chip { border: 1px solid currentColor; background: transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; opacity: .7; }
+.apsf-chip.is-on { opacity: 1; font-weight: 600; }
+.apsf-counts { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.apsf-scan-video { width: 100%; max-width: 360px; border-radius: 10px; display: block; margin: 8px 0; }
+.apsf-booked[hidden] { display: none; }
+.apsf-checkin-act { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.apsf-scan-form { display: none; }
