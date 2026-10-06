@@ -27,6 +27,8 @@ final class Plugin {
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
 		Reminders::register();   // promemoria giornalieri (spenti finché non li accendi nelle impostazioni)
+		Broadcasts::register();  // invio a gruppi in background
+		Backup::register();      // download della copia di sicurezza
 		Receipts::register();    // ricevute e attestazioni in PDF
 		Texts::register();       // esportazione dei testi personalizzati
 		Privacy::register();     // download dei propri dati

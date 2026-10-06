@@ -43,6 +43,13 @@ final class DashboardPage {
 		echo '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
+		if ( current_user_can( \ApSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
+			$bk = \ApSemplice\Backup::last();
+			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {
+				echo '<div class="notice notice-warning inline"><p>' . ( $bk ? 'L\'ultima copia di sicurezza dei dati risale a più di 30 giorni fa.' : 'Non hai ancora scaricato una copia di sicurezza dei dati.' )
+					. ' <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">Scaricala ora</a>.</p></div>';
+			}
+		}
 		self::quick_cash();
 		self::quick_enroll();
 		self::payments_due();

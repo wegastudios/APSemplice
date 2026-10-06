@@ -25,7 +25,7 @@ final class Actions {
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
 		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
-		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role',
+		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore',
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
@@ -81,6 +81,10 @@ final class Actions {
 			'apse_payment_reviewed'   => 'payment_reviewed',
 			'apse_cancel_booking'     => 'cancel_booking',
 			'apse_waitlist_remove'    => 'waitlist_remove',
+			'apse_backup_restore'     => 'backup_restore',
+			'apse_broadcast_send'     => 'broadcast_send',
+			'apse_broadcast_test'     => 'broadcast_test',
+			'apse_broadcast_retry'    => 'broadcast_retry',
 			'apse_save_income'        => 'save_income',
 			'apse_save_group_cash'    => 'save_group_cash',
 			'apse_save_expense'       => 'save_expense',
@@ -590,6 +594,37 @@ final class Actions {
 	private static function checkin( array $p ): array {
 		$r = Plugin::activities()->check_in( (int) $p['session_id'], (int) $p['person_id'], ! empty( $p['undo'] ), true );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'recorded' === $r['status'] ? 'Ingresso registrato.' : ( 'undone' === $r['status'] ? 'Registrazione annullata.' : 'Ingresso già registrato.' ) );
+	}
+
+	private static function backup_restore( array $p ): array {
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la casella di conferma per ripristinare.' );
+		}
+		if ( empty( $_FILES['backup_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['backup_file']['error'] || ! is_uploaded_file( $_FILES['backup_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+			throw new \InvalidArgumentException( 'Scegli il file della copia da ripristinare.' );
+		}
+		$r = \ApSemplice\Backup::restore( (string) $_FILES['backup_file']['tmp_name'] ); // phpcs:ignore WordPress.Security
+		return array( Ui::url( 'apse-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '. Copia di sicurezza dello stato precedente: ' . $r['safety'] . '.' );
+	}
+
+	private static function broadcast_send( array $p ): array {
+		list( $g, $ref ) = MessagesPage::parse_audience( (string) ( $p['audience'] ?? '' ) );
+		$id = \ApSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref );
+		$b  = \ApSemplice\Broadcasts::get( $id );
+		return array( Ui::url( 'apse-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . (int) $b['sent'] . ' email partite su ' . (int) $b['total'] . ( (int) $b['total'] > (int) $b['sent'] ? ', le altre continuano da sole in background.' : '.' ) );
+	}
+
+	private static function broadcast_test( array $p ): array {
+		if ( ! \ApSemplice\Broadcasts::send_test( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) ) ) {
+			throw new \InvalidArgumentException( 'Invio della prova non riuscito: controlla la posta in uscita del sito.' );
+		}
+		return array( $p['_back'] ?? Ui::url( 'apse-messages' ), 'Prova inviata al tuo indirizzo email.' );
+	}
+
+	private static function broadcast_retry( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		$n  = \ApSemplice\Broadcasts::retry_failed( $id );
+		return array( Ui::url( 'apse-messages', array( 'view' => $id ) ), $n . ( 1 === $n ? ' email rimessa in coda.' : ' email rimesse in coda.' ) );
 	}
 
 	private static function waitlist_remove( array $p ): array {
