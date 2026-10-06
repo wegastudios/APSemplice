@@ -38,7 +38,7 @@ Essere "volontario di Yoga" non è un ruolo WordPress: è il fatto che l'attivit
 Quindi:
 
 - si usano **capability "meta"** di WordPress (`map_meta_cap`): `apse_message_activity` + id attività, `apse_edit_person` + id persona…
-  La regola vive in **una sola classe** (`Access`): *amministratore → sì; volontario → solo se è l'istruttore di quell'attività;
+  La regola vive in **una sola classe** (`Access`): *amministratore → sì; volontario → solo se è il referente di quell'attività;
   socio → solo se la persona è la sua*.
 - Gli utenti non amministratori **non entrano in wp-admin**: lavorano solo nell'area riservata (admin bar nascosta,
   `/wp-admin` reindirizza all'area soci). Così il menu del plugin resta pulito e non si apre una superficie d'attacco in più.

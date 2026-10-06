@@ -119,7 +119,7 @@ final class Exports {
 		foreach ( MemberType::member_types() as $t ) {
 			$csv .= self::line( array( MemberType::label( $t ), $r['members_by_type'][ $t ] ?? 0 ) );
 		}
-		$csv .= "\r\n" . self::line( array( 'ATTIVITÀ', 'Istruttore', 'Iscritti attivi', 'Incassi', 'Costi', "Resta all'associazione" ) );
+		$csv .= "\r\n" . self::line( array( 'ATTIVITÀ', 'Referente', 'Iscritti attivi', 'Incassi', 'Costi', "Resta all'associazione" ) );
 		foreach ( $r['activities'] as $a ) {
 			$csv .= self::line( array( $a['activity']['name'], $a['activity']['instructor_name'], $a['participants'], Money::plain( $a['income'] ), Money::plain( $a['cost'] ), Money::plain( $a['margin'] ) ) );
 		}

@@ -121,7 +121,7 @@ final class ReportsPage {
 		}
 		echo '</tbody></table>';
 
-		echo '<h3>Attività</h3><table class="widefat striped"><thead><tr><th>Attività</th><th>Istruttore</th><th>Iscritti</th><th>Incassi</th><th>Costi</th><th>Resta all\'associazione</th></tr></thead><tbody>';
+		echo '<h3>Attività</h3><table class="widefat striped"><thead><tr><th>Attività</th><th>Referente</th><th>Iscritti</th><th>Incassi</th><th>Costi</th><th>Resta all\'associazione</th></tr></thead><tbody>';
 		foreach ( $r['activities'] as $a ) {
 			echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></td><td>' . esc_html( (string) $a['activity']['instructor_name'] ) . '</td><td>' . (int) $a['participants'] . '</td><td>' . Ui::money( $a['income'] ) . '</td><td>' . Ui::money( $a['cost'] ) . '</td><td><strong>' . Ui::money( $a['margin'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}

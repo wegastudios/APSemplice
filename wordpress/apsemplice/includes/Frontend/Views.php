@@ -448,7 +448,7 @@ final class Views {
 
 	// ---------- Gestione degli eventi: prenotati e ingressi ----------
 
-	/** Eventi che l'utente può gestire (istruttore, gestori indicati, amministratori). @return array[] attività */
+	/** Eventi che l'utente può gestire (referente, gestori indicati, amministratori). @return array[] attività */
 	private static function managed_events(): array {
 		$svc = Plugin::activities();
 		$out = array();
@@ -754,7 +754,7 @@ final class Views {
 			$html .= '</div>';
 		}
 		if ( ! $found ) {
-			$html .= '<p class="apsf-muted">Non risulti istruttore di attività dell\'anno sociale in corso.</p>';
+			$html .= '<p class="apsf-muted">Non risulti referente di attività dell\'anno sociale in corso.</p>';
 		}
 		return $html . '</section>';
 	}

@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
  * Chi può fare cosa. I permessi NON derivano da ruoli WordPress ma dai dati:
  *
  *  - amministratore del sito (capability `apse_manage`): tutto;
- *  - "socio e volontario": solo sulle attività di cui è l'istruttore;
+ *  - "socio e volontario": solo sulle attività di cui è il referente;
  *  - socio: solo sui propri dati.
  *
  * La regola è in {@see Access::decide()} (pura, testata). Le "capability meta" sono registrate
@@ -25,7 +25,7 @@ final class Access {
 		'apse_view_activity',      // id attività: vedere i dati base
 		'apse_view_participants',  // id attività: vedere chi è iscritto
 		'apse_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
-		'apse_manage_event',       // id attività: gestire un evento (lista prenotati, registrazione ingressi): istruttore e gestori indicati
+		'apse_manage_event',       // id attività: gestire un evento (lista prenotati, registrazione ingressi): referente e gestori indicati
 		'apse_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area riservata
 	);
 

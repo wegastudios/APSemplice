@@ -215,7 +215,7 @@ class FundService {
 		if ( $f['balance'] > 0 ) {
 			$tx_id = $ledger->record_expense(
 				array(
-					'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => $ledger->category_id_of_kind( $f['person_id'] ? 'instructor_reimbursement' : 'general_cost' ),
+					'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => $ledger->category_id_of_kind( $f['person_id'] ? 'member_reimbursement' : 'general_cost' ),
 					'amount_cents' => $f['balance'], 'activity_id' => $f['activity_id'] ? (int) $f['activity_id'] : null, 'person_id' => $f['person_id'] ? (int) $f['person_id'] : null,
 					'description' => substr( $f['name'] . ' (fondo estinto)', 0, 255 ),
 				)

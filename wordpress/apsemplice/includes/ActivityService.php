@@ -23,7 +23,7 @@ class ActivityService {
 		return $row ?: null;
 	}
 
-	/** Attività di un anno sociale (etichetta "2025/2026"), con nome dell'istruttore. */
+	/** Attività di un anno sociale (etichetta "2025/2026"), con nome delil referente. */
 	public function for_year( string $label ): array {
 		return $this->db()->get_results(
 			$this->db()->prepare(
@@ -651,7 +651,7 @@ class ActivityService {
 
 	// ---------- Gestori dell'evento e registrazione degli ingressi ----------
 
-	/** Soci abilitati alla gestione di un evento (oltre all'istruttore e agli amministratori). */
+	/** Soci abilitati alla gestione di un evento (oltre alil referente e agli amministratori). */
 	public function staff( int $activity_id ): array {
 		return $this->db()->get_results(
 			$this->db()->prepare(
@@ -680,7 +680,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Può gestire un evento solo un socio o volontario (non un ospite).' );
 		}
 		if ( $a['instructor_person_id'] && (int) $a['instructor_person_id'] === $person_id ) {
-			throw new \InvalidArgumentException( 'È già l\'istruttore dell\'evento: lo gestisce per definizione.' );
+			throw new \InvalidArgumentException( 'È già il referente dell\'evento: lo gestisce per definizione.' );
 		}
 		if ( $this->is_staff( $activity_id, $person_id ) ) {
 			throw new \InvalidArgumentException( 'È già tra i gestori dell\'evento.' );
@@ -694,7 +694,7 @@ class ActivityService {
 		Audit::log( 'event_staff.removed', 'activity', $activity_id, array( 'person' => $person_id ) );
 	}
 
-	/** Eventi (con date) che una persona gestisce: quelli che tiene come istruttore e quelli in cui è tra i gestori. @return int[] */
+	/** Eventi (con date) che una persona gestisce: quelli che tiene come referente e quelli in cui è tra i gestori. @return int[] */
 	public function managed_activity_ids( int $person_id ): array {
 		$ids = $this->db()->get_col(
 			$this->db()->prepare(
@@ -1058,7 +1058,7 @@ class ActivityService {
 		return array_values( array_unique( array_map( 'intval', array_merge( $courses, $events ) ) ) );
 	}
 
-	/** Attività tenute da una persona (istruttore). */
+	/** Attività tenute da una persona (referente). */
 	public function taught_activity_ids( int $person_id ): array {
 		return array_map(
 			'intval',

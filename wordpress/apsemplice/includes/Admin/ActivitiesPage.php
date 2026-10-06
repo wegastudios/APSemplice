@@ -60,7 +60,7 @@ final class ActivitiesPage {
 		$shown = \ApSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
 		return '<tr><th>Quota per il rimborso</th><td><select name="fund_mode">' . Ui::options( \ApSemplice\FundShare::modes(), $mode ) . '</select> '
 			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span>'
-			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (istruttore) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la quota è accantonata e si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare l\'istruttore.</p></td></tr>';
+			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la quota è accantonata e si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
 	}
 
 	/** Riga del modulo: biglietto QR per le prenotazioni (solo eventi ed eventi ricorrenti, spento di default). */
@@ -107,7 +107,7 @@ final class ActivitiesPage {
 			echo '<div class="apse-card"><p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
 			echo '<h2 style="margin-top:2px"><a href="' . esc_url( Ui::url( 'apse-activity', array( 'id' => $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></h2>';
 			echo '<p class="description">' . esc_html( self::fee_text( $a ) ) . '<br>' . (int) $s['participants'] . ' partecipanti · '
-				. ( $a['instructor_name'] ? 'tenuta da ' . esc_html( $a['instructor_name'] ) : 'senza istruttore' ) . '</p>';
+				. ( $a['instructor_name'] ? 'tenuta da ' . esc_html( $a['instructor_name'] ) : 'senza referente' ) . '</p>';
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 				$sessions = Plugin::activities()->sessions( (int) $a['id'] );
 				$next     = null;
@@ -140,7 +140,7 @@ final class ActivitiesPage {
 		echo self::weekday_row( null, 'apse-row-course', false ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th><span class="apse-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
-		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Le attività possono essere tenute solo da soci e volontari.</p></td></tr>';
 		echo self::fund_row( null ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>';
@@ -212,7 +212,7 @@ final class ActivitiesPage {
 		} else {
 			echo self::weekday_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr>';
+		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'apse-instructor' ) . '</td></tr>';
 		echo self::fund_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );
@@ -386,7 +386,7 @@ final class ActivitiesPage {
 		$id    = (int) $activity['id'];
 		$count = count( \ApSemplice\Notices::recipients( $id ) );
 		echo '<div class="apse-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area riservata. '
-			. 'L\'istruttore e i gestori dell\'evento li inviano dalla propria area riservata.</p>';
+			. 'Il referente e i gestori dell\'evento li inviano dalla propria area riservata.</p>';
 		Ui::form_open( 'apse_send_notice', $back );
 		echo Ui::hidden( 'activity_id', $id ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \ApSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>'
@@ -404,14 +404,14 @@ final class ActivitiesPage {
 		echo '</div>';
 	}
 
-	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre all'istruttore. */
+	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre alil referente. */
 	private static function staff_card( array $activity, string $back ): void {
 		$id    = (int) $activity['id'];
 		$svc   = Plugin::activities();
 		$staff = $svc->staff( $id );
 		$in    = array();
 		echo '<div class="apse-card"><h2>Gestori dell\'evento</h2>';
-		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. L\'istruttore e gli amministratori lo possono già fare.</p>';
+		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Il referente e gli amministratori lo possono già fare.</p>';
 		if ( $staff ) {
 			echo '<ul>';
 			foreach ( $staff as $m ) {

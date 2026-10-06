@@ -16,7 +16,7 @@ Per ora il plugin è **solo per amministratori** (capability `apse_manage`, asse
 
 Regole (in `Rules.php`, `MemberType.php`, verificate dai test):
 
-- **Le attività possono essere tenute solo da "soci e volontari"** (l'istruttore deve essere `volunteer`).
+- **Le attività possono essere tenute solo da "soci e volontari"** (il referente deve essere `volunteer`).
 - Alle attività partecipano soci e ospiti; l'ospite paga solo le mensilità, **non** la quota associativa.
 - Il fondatore non paga la quota (tessera sempre valida); l'ospite nemmeno (non è socio).
 - Il numero tessera è assegnato a mano, **univoco** (senza distinzione maiuscole/minuscole), modificabile; gli ospiti non ne hanno.
@@ -191,7 +191,7 @@ La tessera nel wallet mostra nome, tipo, numero e scadenza **al momento dell'emi
 
 ## Gestione degli eventi: gestori, lista prenotati e registrazione degli ingressi
 
-Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre all'istruttore e agli amministratori) possono, dall'**area riservata** (shortcode `[apsemplice_ingressi]`, incluso in `[apsemplice_area_soci]`), solo per quell'evento:
+Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre alil referente e agli amministratori) possono, dall'**area riservata** (shortcode `[apsemplice_ingressi]`, incluso in `[apsemplice_area_soci]`), solo per quell'evento:
 - vedere l'elenco delle date e, aprendone una, la **lista dei prenotati** con tipo (socio/ospite e di chi), contributo (versato, da versare, gratuito), ora di ingresso e contatori (prenotati, presenti, da registrare, contributi da versare), con ricerca per nome e filtri. Non compaiono email o telefoni;
 - **registrare l'ingresso** di ogni persona (o annullare la registrazione), **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno, dalla scheda dell'evento in amministrazione (colonna "Ingresso");
 - **scansionare il QR del biglietto** (se per l'evento è attivo il biglietto QR): dal pulsante "Scansiona", nei browser che sanno leggere i QR; altrimenti con la fotocamera del telefono, che apre la pagina del biglietto, dove chi gestisce l'evento (con l'accesso effettuato) trova il pulsante "Registra ingresso". Il biglietto già usato risulta "Ingresso già registrato", così una copia del QR non entra due volte, e se il contributo non è versato lo si vede subito.
@@ -211,7 +211,7 @@ Ai non soci è consentito partecipare solo poche volte (di solito 1 o 2: oltre, 
 
 ## Avvisi dei volontari agli iscritti
 
-Chi tiene un'attività (istruttore), chi gestisce un evento e gli amministratori possono inviare un **avviso** agli iscritti di quell'attività, dal modulo "Invia un avviso agli iscritti" sotto ogni attività nell'area volontari (o, per gli eventi, sotto la lista dei prenotati di una data, o dalla scheda in amministrazione).
+Chi tiene un'attività (referente), chi gestisce un evento e gli amministratori possono inviare un **avviso** agli iscritti di quell'attività, dal modulo "Invia un avviso agli iscritti" sotto ogni attività nell'area volontari (o, per gli eventi, sotto la lista dei prenotati di una data, o dalla scheda in amministrazione).
 
 - Arriva **per email a ciascun iscritto** (singolarmente: nessuno vede gli indirizzi degli altri) e resta nella **bacheca "Avvisi"** dell'area riservata (45 giorni). Per i corsi sono gli iscritti attivi; per gli eventi i prenotati delle date non ancora passate (o di una sola data). Gli ospiti senza email ricevono l'avviso tramite il socio che li ospita, che lo vede anche in bacheca.
 - Titolo fino a 120 caratteri, testo fino a 2000; al massimo 5 avvisi al giorno per attività. Con la licenza non in regola l'invio è sospeso. Nel registro azioni restano solo i conteggi, mai il testo.
@@ -234,7 +234,7 @@ In *Conti e cassa* ogni conto si può **rinominare**, cambiare di tipo e di **sa
 
 ## Fondi per il rimborso dei volontari
 
-Nella scheda di un corso o di un evento a pagamento si può impostare la **quota per il rimborso**: un importo fisso o una percentuale di *ogni* pagamento ricevuto (mai oltre il pagamento stesso). Serve indicare l'istruttore.
+Nella scheda di un corso o di un evento a pagamento si può impostare la **quota per il rimborso**: un importo fisso o una percentuale di *ogni* pagamento ricevuto (mai oltre il pagamento stesso). Serve indicare il referente.
 
 - Il pagamento entra per intero nel conto usato (la cassa torna con il contante contato) e conta come entrata.
 - La quota è **accantonata** nel fondo "Rimborso *volontario* — *attività*", creato al primo pagamento. Se il pagamento viene annullato in prima nota, si annulla anche la sua quota.
@@ -304,3 +304,6 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 - **Cassa per più persone** (Contabilità › Cassa per più persone, e pulsante in Bacheca): una persona paga eventi, corsi e quote per sé e per altri (familiari, altri soci, amici ospiti, anche nuovi ospiti creati lì). Un solo incasso con un solo totale e un solo resto; ogni voce resta intestata al beneficiario e in prima nota si legge "pagato da". Un evento si può pagare anche per un socio sospeso o con la tessera non in regola (e viene prenotato); per i corsi la tessera deve essere in regola (oppure si aggiunge la quota nello stesso incasso). Tutto o niente: se una voce non va, non resta scritto nulla. La cassa rapida resta com era.
 
 - **Anno in corso**: non si chiude (si chiude solo dopo la fine dell anno) e si apre da solo il primo giorno dell anno, o al primo movimento se non lo è; un anno non ancora iniziato non si chiude.
+
+- **Solo rimborsi**: per soci e volontari esistono solo rimborsi (mai compensi) e gli istruttori non sono un ruolo: c e un unica voce, *Rimborso spese socio/volontario*, e chi tiene un attività è il *referente*. Le vecchie voci "compenso / rimborso istruttore" si uniscono da sole a quella dei rimborsi.
+- **Tesoriere**: dall area soci può solo registrare spese con la foto dello scontrino; incassi, casse e anni solari restano agli amministratori.

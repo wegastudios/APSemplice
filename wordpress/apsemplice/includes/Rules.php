@@ -55,7 +55,7 @@ final class Rules {
 
 	/**
 	 * @param array      $d          name, kind, fee_cents, guest_fee_cents (null = come i soci)
-	 * @param array|null $instructor persona istruttore (con 'type'), se indicata
+	 * @param array|null $instructor persona referente (con 'type'), se indicata
 	 * @return string[]
 	 */
 	public static function validate_activity( array $d, ?array $instructor = null ): array {

@@ -254,7 +254,7 @@ final class Actions {
 		return 'Nessun ingresso da annullare per ' . $name . '.';
 	}
 
-	/** Registra (o annulla) l'ingresso di una persona prenotata: solo per chi gestisce l'evento (istruttore, gestori indicati, amministratori). */
+	/** Registra (o annulla) l'ingresso di una persona prenotata: solo per chi gestisce l'evento (referente, gestori indicati, amministratori). */
 	public static function do_checkin( array $post ): string {
 		$sid     = (int) ( $post['session_id'] ?? 0 );
 		$pid     = (int) ( $post['person_id'] ?? 0 );

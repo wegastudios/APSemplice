@@ -45,7 +45,7 @@ final class FundShare {
 			$errors[] = 'La percentuale per il rimborso non può superare il 100%.';
 		}
 		if ( ! $has_volunteer ) {
-			$errors[] = 'Per accantonare una quota di rimborso indica l\'istruttore (il volontario da rimborsare).';
+			$errors[] = 'Per accantonare una quota di rimborso indica il referente (il volontario da rimborsare).';
 		}
 		return $errors;
 	}

@@ -188,7 +188,7 @@ $cash_balance = $ledger->expected_balance( (int) $cash['id'], $today );
 apse_ok( $start_balance + 5000 === array_sum( array_column( $ledger->balances(), 'balance' ) ), 'saldo totale = iniziale + 50,00 incassati' );
 
 // ---------- Spesa, giroconto, annullamento, verifica cassa ----------
-$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['instructor_reimbursement'], 'amount_cents' => 1500, 'activity_id' => $yoga, 'person_id' => $vol, 'description' => 'Rimborso istruttrice' ) );
+$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['member_reimbursement'], 'amount_cents' => 1500, 'activity_id' => $yoga, 'person_id' => $vol, 'description' => 'Rimborso istruttrice' ) );
 $ledger->record_transfer( $today, (int) $cash['id'], (int) $bank['id'], 1000, 'bank_transfer', 'Versamento' );
 $by_id = array();
 foreach ( $ledger->balances() as $b ) {
@@ -2796,6 +2796,25 @@ apse_ok( $threw && $tx_mid === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . D
 $grp_html = apse_render( array( Admin\GroupCashPage::class, 'render' ), 'Cassa per più persone' );
 apse_ok( false !== strpos( $grp_html, 'apse-group-data' ) && false !== strpos( $grp_html, 'Nuovo ospite' ) && false !== strpos( $grp_html, 'apse_save_group_cash' ), 'cassa multipla: la pagina ha chi paga, le persone e il nuovo ospite' );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-group' ), 'Cassa per più persone' ), 'cassa multipla: è una scheda della Contabilità' );
+
+// ---------- Solo rimborsi: una voce unica per soci e volontari ----------
+apse_ok( ! isset( \ApSemplice\Labels::category_kinds()['instructor_reimbursement'] ) && 'Rimborso spese socio/volontario' === \ApSemplice\Labels::category_kinds()['member_reimbursement'][0], 'voci: niente compensi né istruttori, solo "Rimborso spese socio/volontario"' );
+$reimb_names = array_column( array_filter( $ledger->categories(), function ( $c ) {
+	return 'member_reimbursement' === $c['kind'];
+} ), 'name' );
+apse_ok( array( 'Rimborso spese socio/volontario' ) === array_values( $reimb_names ), 'voci: nel piano dei conti c\'è una sola voce di rimborso' );
+$wpdb->insert( Db::t( 'categories' ), array( 'name' => 'Compenso vecchio', 'kind' => 'instructor_reimbursement', 'fiscal_group' => 'Uscite' ) );
+$old_cat = (int) $wpdb->insert_id;
+$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => $today, 'type' => 'expense', 'amount_cents' => 1234, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $old_cat, 'description' => 'compenso storico', 'created_at' => Db::now() ) );
+$old_tx = (int) $wpdb->insert_id;
+apse_ok( 1 === \ApSemplice\Install::migrate_reimbursements(), 'migrazione: la vecchia voce "compenso/istruttore" si unisce a quella dei rimborsi' );
+$moved = $wpdb->get_row( 'SELECT category_id FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $old_tx, ARRAY_A );
+$gone  = $wpdb->get_var( 'SELECT deleted_at FROM ' . Db::t( 'categories' ) . ' WHERE id = ' . $old_cat );
+apse_ok( (int) $moved['category_id'] === (int) $cat['member_reimbursement'] && null !== $gone, 'migrazione: i movimenti passano alla voce unica e la vecchia sparisce' );
+apse_ok( 0 === \ApSemplice\Install::migrate_reimbursements(), 'migrazione: rilanciarla non cambia nulla' );
+$wpdb->delete( Db::t( 'transactions' ), array( 'id' => $old_tx ) );
+$fund_cat = $wpdb->get_var( 'SELECT c.kind FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.description LIKE '%(fondo estinto)' ORDER BY t.id DESC LIMIT 1" );
+apse_ok( 'member_reimbursement' === $fund_cat, 'fondi: il rimborso del fondo estinto va nella voce dei rimborsi' );
 
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );

@@ -36,8 +36,7 @@ final class LedgerImport {
 		'membership'               => array( 'quotaassoc', 'quotasoc', 'tessera', 'iscrizione' ),
 		'activity_fee'             => array( 'corso', 'attivita', 'lezione', 'quotacorso', 'contributo' ),
 		'donation'                 => array( 'donazion', 'erogazion', 'liberal', 'offert' ),
-		'instructor_reimbursement' => array( 'compens', 'istrutt', 'docent', 'insegnant' ),
-		'member_reimbursement'     => array( 'rimborso' ),
+		'member_reimbursement'     => array( 'rimborso', 'compens', 'istrutt', 'docent', 'insegnant' ),
 	);
 
 	public static function accepts_header( array $h ): bool {

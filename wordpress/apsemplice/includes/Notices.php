@@ -20,7 +20,7 @@ final class Notices {
 		return Db::db();
 	}
 
-	/** Chi può inviare avvisi per un'attività: l'istruttore, chi gestisce l'evento, gli amministratori. */
+	/** Chi può inviare avvisi per un'attività: il referente, chi gestisce l'evento, gli amministratori. */
 	public static function can_send( int $activity_id ): bool {
 		return current_user_can( 'apse_notify_activity', $activity_id ) || current_user_can( 'apse_manage_event', $activity_id );
 	}

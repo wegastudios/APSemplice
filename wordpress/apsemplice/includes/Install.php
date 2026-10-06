@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '20';
+	const DB_VERSION        = '21';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -20,6 +20,9 @@ final class Install {
 		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
 		if ( $old !== self::DB_VERSION ) {
 			self::activate();
+			if ( '' !== $old && version_compare( $old, '21', '<' ) ) {
+				self::migrate_reimbursements();
+			}
 			if ( '' !== $old && version_compare( $old, '17', '<' ) ) {
 				self::migrate_membership_years();
 			}
@@ -56,6 +59,36 @@ final class Install {
 				$db->update( $tbl, array( 'social_year' => $label, 'valid_to' => $to ), array( 'id' => (int) $r['id'] ) );
 			}
 			$n++;
+		}
+		return $n;
+	}
+
+	/**
+	 * Per soci e volontari esistono solo rimborsi (mai compensi) e gli istruttori non sono un ruolo: la voce
+	 * "Compenso / rimborso istruttore" si unisce a "Rimborso spese socio/volontario" (i movimenti passano alla voce unica).
+	 *
+	 * @return int voci unite
+	 */
+	public static function migrate_reimbursements(): int {
+		$db     = Db::db();
+		$cat    = Db::t( 'categories' );
+		$tx     = Db::t( 'transactions' );
+		$old    = $db->get_results( "SELECT * FROM $cat WHERE kind = 'instructor_reimbursement' AND deleted_at IS NULL ORDER BY id", ARRAY_A ) ?: array();
+		$target = $db->get_row( "SELECT * FROM $cat WHERE kind = 'member_reimbursement' AND deleted_at IS NULL ORDER BY id LIMIT 1", ARRAY_A );
+		$n      = 0;
+		if ( ! $target && $old ) {
+			$first = array_shift( $old ); // non c'è la voce unica: la prima vecchia diventa quella
+			$db->update( $cat, array( 'kind' => 'member_reimbursement' ), array( 'id' => (int) $first['id'] ) );
+			$target = $first;
+			$n++;
+		}
+		foreach ( $old as $o ) {
+			$db->query( $db->prepare( "UPDATE $tx SET category_id = %d WHERE category_id = %d", (int) $target['id'], (int) $o['id'] ) );
+			$db->update( $cat, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $o['id'] ) );
+			$n++;
+		}
+		if ( $target ) {
+			$db->update( $cat, array( 'name' => 'Rimborso spese socio/volontario' ), array( 'id' => (int) $target['id'] ) );
 		}
 		return $n;
 	}
@@ -405,8 +438,7 @@ final class Install {
 				array( 'Quota attività / corso', 'activity_fee', $entrate ),
 				array( 'Erogazione liberale', 'donation', 'Erogazioni liberali' ),
 				array( 'Altre entrate', 'other_income', 'Altre entrate' ),
-				array( 'Compenso / rimborso istruttore', 'instructor_reimbursement', $uscite ),
-				array( 'Rimborso spese socio', 'member_reimbursement', $uscite ),
+				array( 'Rimborso spese socio/volontario', 'member_reimbursement', $uscite ),
 				array( 'Costi attività (materiali, noleggi)', 'activity_cost', $uscite ),
 				array( 'Costi generali (affitto, utenze, assicurazione)', 'general_cost', 'Uscite di supporto generale' ),
 				array( 'Rettifica di cassa', 'adjustment', 'Rettifiche' ),
