@@ -4056,7 +4056,7 @@ if ( ! \ApSemplice\WooBridge::active() ) {
 	$wc_p   = $mkb( 'Walter', 'Negozio' );
 	$wc_uid = (int) $people->get( $wc_p )['wp_user_id'];
 	$wc_dues = Plugin::payments()->dues_for( $people->get( $wc_p ) );
-	$wc_fee  = ApSempliceevels::fee_for( $people->get( $wc_p ) );
+	$wc_fee  = \ApSemplice\Levels::fee_for( $people->get( $wc_p ) );
 	$wc_sy   = (string) ( array_values( $wc_dues )[0]['social_year'] ?? '' );
 	apse_ok( 1 === count( $wc_dues ) && $wc_fee === (int) array_values( $wc_dues )[0]['amount_cents'] && $wc_fee > 0, 'woocommerce: le voci dovute sono quelle di sempre (quota associativa)' );
 	wp_set_current_user( $wc_uid );
