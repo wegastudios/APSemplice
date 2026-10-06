@@ -67,14 +67,22 @@ final class Texts {
 
 	/** Testo semplice (email, PDF, messaggi): sostituzione diretta. */
 	public static function plain( string $s, ?array $map = null ): string {
+		$own = null === $map; // senza una mappa data: anche tipo di ente e termini scelti
 		$map = $map ?? self::overrides();
-		return $map && '' !== $s ? strtr( $s, $map ) : $s;
+		if ( '' === $s ) {
+			return $s;
+		}
+		if ( $map ) {
+			$s = strtr( $s, $map );
+		}
+		return $own ? Terms::apply( $s ) : $s;
 	}
 
 	/** HTML: si sostituisce solo nel testo (non nei tag, negli script e negli stili) e in placeholder/title/aria-label/alt; il nuovo testo è protetto. */
 	public static function html( string $html, ?array $map = null ): string {
-		$map = $map ?? self::overrides();
-		if ( ! $map || '' === $html ) {
+		$terms = null === $map ? Terms::map() : array();
+		$map   = $map ?? self::overrides();
+		if ( ( ! $map && ! $terms ) || '' === $html ) {
 			return $html;
 		}
 		$hmap = array();
@@ -95,12 +103,14 @@ final class Texts {
 				continue;
 			}
 			if ( 0 === $i % 2 ) {
-				$parts[ $i ] = strtr( $part, $hmap );
+				$part = $map ? strtr( $part, $hmap ) : $part;
+				$parts[ $i ] = $terms ? Terms::apply_map( str_replace( '&#039;', "'", $part ), $terms ) : $part;
 			} elseif ( '<' === $part[0] && false === stripos( $part, '<script' ) && false === stripos( $part, '<style' ) ) {
 				$parts[ $i ] = (string) preg_replace_callback(
 					'/\b(placeholder|title|aria-label|alt)="([^"]*)"/i',
-					function ( $m ) use ( $hmap ) {
-						return $m[1] . '="' . strtr( $m[2], $hmap ) . '"';
+					function ( $m ) use ( $hmap, $map, $terms ) {
+						$v = $map ? strtr( $m[2], $hmap ) : $m[2];
+						return $m[1] . '="' . ( $terms ? Terms::apply_map( $v, $terms ) : $v ) . '"';
 					},
 					$part
 				);
@@ -112,7 +122,7 @@ final class Texts {
 	/** Amministrazione: tutta la pagina passa dalla sostituzione (tranne la pagina dei testi stessa). */
 	public static function start_admin_buffer(): void {
 		static $started = false;
-		if ( $started || ! self::overrides() ) {
+		if ( $started || ( ! self::overrides() && ! Terms::map() ) ) {
 			return;
 		}
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
@@ -199,7 +209,7 @@ final class Texts {
 
 	const SKIP_FILES = array(
 		'Install.php', 'Secrets.php', 'QrCode.php', 'Png.php', 'Xlsx.php', 'SheetReader.php', 'ApplePass.php', 'GoogleWallet.php', 'WalletCredentials.php', 'StripeApi.php', 'PayPalApi.php',
-		'Gateways.php', 'StripeWebhook.php', 'ActivationToken.php', 'CardToken.php', 'Texts.php', 'Pdf.php', 'Ics.php', 'Schedule.php', 'Money.php', 'Db.php', 'Rest/Api.php', 'Audit.php',
+		'Gateways.php', 'StripeWebhook.php', 'ActivationToken.php', 'CardToken.php', 'Texts.php', 'Terms.php', 'Pdf.php', 'Ics.php', 'Schedule.php', 'Money.php', 'Db.php', 'Rest/Api.php', 'Audit.php',
 		'Color.php', 'Text.php', 'Phone.php', 'Settings.php', 'Plugin.php', 'License.php', 'LicenseRules.php', 'LicensePolicy.php', 'Wallet.php', 'Access.php', 'Rules.php',
 	);
 

@@ -22,6 +22,10 @@ final class Settings {
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
+			'entity_type'             => 'associazione', // tipo di ente: i testi si adattano (articoli compresi)
+			'entity_types_custom'     => '',    // tipi aggiunti a mano, uno per riga: nome;m|f
+			'member_term'             => 'socio', // come si chiamano le persone che partecipano (singolare)
+			'member_terms_custom'     => '',    // termini aggiunti a mano, uno per riga: singolare;plurale;m|f
 			'reminders_enabled'       => 0,     // promemoria automatici per email: spenti di default
 			'reminders_membership'    => 1,     // ... tessera in scadenza o scaduta
 			'reminders_membership_days' => 30,  // ... quanti giorni prima della scadenza
@@ -97,6 +101,11 @@ final class Settings {
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
+		$clean['entity_type']         = substr( trim( (string) $clean['entity_type'] ), 0, 60 );
+		$clean['member_term']         = substr( trim( (string) $clean['member_term'] ), 0, 60 );
+		$clean['entity_types_custom'] = substr( trim( (string) $clean['entity_types_custom'] ), 0, 1000 );
+		$clean['member_terms_custom'] = substr( trim( (string) $clean['member_terms_custom'] ), 0, 1000 );
+		\ApSemplice\Terms::flush();
 		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events' ) as $k ) {
 			$clean[ $k ] = empty( $clean[ $k ] ) ? 0 : 1;
 		}

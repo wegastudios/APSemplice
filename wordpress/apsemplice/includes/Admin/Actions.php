@@ -26,6 +26,7 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_save_terms'         => 'save_terms',
 			'apse_save_texts'         => 'save_texts',
 			'apse_import_texts'       => 'import_texts',
 			'apse_reset_texts'        => 'reset_texts',
@@ -217,6 +218,23 @@ final class Actions {
 	private static function receipt_email( array $p ): array {
 		\ApSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
 		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), 'Ricevuta inviata per email.' );
+	}
+
+	private static function save_terms( array $p ): array {
+		$ec = (string) ( $p['entity_types_custom'] ?? '' );
+		$mc = (string) ( $p['member_terms_custom'] ?? '' );
+		$ents = \ApSemplice\Terms::entity_types( $ec );
+		$mems = \ApSemplice\Terms::member_terms( $mc );
+		$ent  = mb_strtolower( trim( (string) ( $p['entity_type'] ?? '' ) ), 'UTF-8' );
+		$mem  = mb_strtolower( trim( (string) ( $p['member_term'] ?? '' ) ), 'UTF-8' );
+		if ( ! isset( $ents[ $ent ] ) ) {
+			throw new \InvalidArgumentException( 'Scegli un tipo di ente dall\'elenco (o aggiungilo a mano: una riga «nome;m» oppure «nome;f»).' );
+		}
+		if ( ! isset( $mems[ $mem ] ) ) {
+			throw new \InvalidArgumentException( 'Scegli un termine dall\'elenco (o aggiungilo a mano: una riga «singolare;plurale;m» oppure «…;f»).' );
+		}
+		Settings::update( array( 'entity_type' => $ent, 'entity_types_custom' => $ec, 'member_term' => $mem, 'member_terms_custom' => $mc ) );
+		return array( Ui::url( 'apse-texts' ), 'Tipo di ente e termini salvati: i testi sono adattati.' );
 	}
 
 	private static function save_texts( array $p ): array {

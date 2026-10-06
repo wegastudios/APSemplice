@@ -374,3 +374,9 @@ Tutti i testi che il plugin mostra si possono cambiare: pagine dei soci, email e
 - **Modifica rapida**: **Esporta tutti i testi (CSV)** (si apre in Excel: Gruppo ; Originale ; Personalizzato), cambia la colonna Personalizzato, **importa** il file (CSV o Excel). Personalizzato vuoto = torna all'originale. Si può esportare anche solo ciò che hai personalizzato.
 - **Pezzi mancanti**: i testi composti da più parti (nomi, date, importi) si cambiano pezzo per pezzo; se un pezzo non è nell'elenco lo aggiungi con «Aggiungi una sostituzione» (compare nel file come gruppo "Aggiunte a mano").
 - **Limiti**: la sostituzione vale per tutte le occorrenze di quel testo (anche dentro frasi più lunghe); i testi scritti negli script delle pagine (es. «Resto da dare» della calcolatrice) e le voci del menu di WordPress non passano da qui.
+
+## Tipo di ente e termini (Impostazioni → Testi personalizzati, in cima)
+
+- **Tipo di ente**: di serie *associazione* (femminile); si può scegliere *ente no profit*, *onlus*, *comitato*, *circolo* o aggiungerne altri a piacere (una riga `nome;f` oppure `nome;m`, es. `fondazione;f`). Il genere serve per gli articoli: «l'associazione» → «il comitato», «dell'associazione» → «del comitato», «un'associazione» → «un comitato», «la onlus»…
+- **Chi partecipa**: di serie *soci*; si può scegliere *iscritti*, *sostenitori*, *componenti* o aggiungere un termine (`singolare;plurale;f|m`, es. `tesserato;tesserati;m`). Gli articoli seguono (il socio → l'iscritto, ai soci → agli iscritti, dei soci → delle associate…).
+- I testi si adattano da soli in pagine, email, PDF, messaggi e amministrazione. Si sostituiscono **parole intere** (mai «soci» dentro «sociale» o «associazione») e gli indirizzi web e email non si toccano. Aggettivi e participi collegati possono restare al genere originale: si correggono nei testi personalizzati. C'è un'anteprima in pagina.

@@ -3271,6 +3271,45 @@ $tx_reset->invoke( null, array() );
 apse_ok( array() === \ApSemplice\Texts::overrides(), 'testi: ripristino di tutti i testi originali' );
 apse_ok( has_action( 'admin_post_apse_export_texts' ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
 
+// ---------- Tipo di ente e termini ----------
+wp_set_current_user( 1 );
+\ApSemplice\Texts::save_overrides( array() );
+$tm_mail = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$tm_mail ) {
+		$tm_mail[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$tm_def = $as( $u_f, '[apsemplice_ospiti]' );
+Settings::update( array( 'entity_type' => 'comitato', 'member_term' => 'iscritto' ) );
+$tm_front = $as( $u_f, '[apsemplice_ospiti]' );
+apse_ok( false !== strpos( $tm_def, 'senza essere soci' ) && false !== strpos( $tm_front, 'senza essere iscritti' ) && false === strpos( $tm_front, 'senza essere soci' ), 'ente e termini: l\'area soci si adatta ("soci" diventa "iscritti")' );
+\ApSemplice\Texts::mail( 'a@example.com', 'Tessera dell\'associazione', "Il socio dell'associazione. Area: https://example.org/area-soci/" );
+apse_ok( 1 === count( $tm_mail ) && 'Tessera del comitato' === $tm_mail[0]['subject'] && "L'iscritto del comitato. Area: https://example.org/area-soci/" === $tm_mail[0]['message'], 'ente e termini: email adattate (articoli giusti, indirizzi web intatti)' );
+$tm_pdf = \ApSemplice\Receipts::build( $rc_list[0]['key'] );
+apse_ok( false !== strpos( $tm_pdf['pdf'], 'Per il comitato' ) && false === strpos( $tm_pdf['pdf'], 'Per l\'associazione' ), 'ente e termini: anche i PDF' );
+parse_str( (string) wp_parse_url( \ApSemplice\Flash::url( 'https://example.org/a/', 'apsf', 'Il socio è stato aggiunto all\'associazione.' ), PHP_URL_QUERY ), $tm_q );
+$tm_old = $_GET;
+$_GET   = $tm_q;
+$tm_fl  = \ApSemplice\Flash::read( 'apsf' );
+$_GET   = $tm_old;
+apse_ok( "L'iscritto è stato aggiunto al comitato." === $tm_fl['ok'], 'ente e termini: anche i messaggi di conferma' );
+$tm_page = apse_render( array( Admin\TextsPage::class, 'render' ), 'Tipo di ente e termini', array( 'page' => 'apse-texts' ) );
+apse_ok( false !== strpos( $tm_page, 'ha rinnovato la tessera del comitato' ), 'ente e termini: la pagina mostra l\'anteprima adattata' );
+Settings::update( array( 'entity_type' => 'associazione', 'member_term' => 'socio' ) );
+$tm_back = $as( $u_f, '[apsemplice_ospiti]' );
+apse_ok( false !== strpos( $tm_back, 'senza essere soci' ), 'ente e termini: tornando ai valori di serie i testi sono quelli originali' );
+$tm_save = new ReflectionMethod( Admin\Actions::class, 'save_terms' );
+$tm_save->invoke( null, array( 'entity_type' => 'museo', 'entity_types_custom' => "museo;m\nfondazione;f", 'member_term' => 'tesserata', 'member_terms_custom' => 'tesserata;tesserate;f' ) );
+apse_ok( 'museo' === Settings::get( 'entity_type' ) && 'tesserata' === Settings::get( 'member_term' ) && 'Il museo e le tesserate' === \ApSemplice\Texts::plain( "L'associazione e i soci" ), 'ente e termini: tipo di ente e termine aggiunti a mano' );
+apse_ok( null !== apse_throws( function () use ( $tm_save ) { $tm_save->invoke( null, array( 'entity_type' => 'inesistente', 'member_term' => 'socio' ) ); } ), 'ente e termini: una scelta fuori elenco viene rifiutata' );
+Settings::update( array( 'entity_type' => 'associazione', 'entity_types_custom' => '', 'member_term' => 'socio', 'member_terms_custom' => '' ) );
+remove_all_filters( 'pre_wp_mail' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );

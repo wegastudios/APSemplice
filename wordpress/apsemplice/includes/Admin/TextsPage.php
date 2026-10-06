@@ -37,6 +37,38 @@ final class TextsPage {
 		$n_cust = count( Texts::overrides() );
 
 		Ui::header( 'Testi personalizzati' );
+		// Tipo di ente e termini
+		$s     = \ApSemplice\Settings::all();
+		$ents  = \ApSemplice\Terms::entity_types( (string) $s['entity_types_custom'] );
+		$mems  = \ApSemplice\Terms::member_terms( (string) $s['member_terms_custom'] );
+		$e_opt = array();
+		foreach ( $ents as $n => $gen ) {
+			$e_opt[ $n ] = $n . ' (' . ( 'f' === $gen ? 'femminile' : 'maschile' ) . ')';
+		}
+		$m_opt = array();
+		foreach ( $mems as $n => $d ) {
+			$m_opt[ $n ] = $n . ' / ' . $d[0] . ' (' . ( 'f' === $d[1] ? 'femminile' : 'maschile' ) . ')';
+		}
+		echo '<h2>Tipo di ente e termini</h2><p class="description">I testi sono scritti per un\'«associazione» con «soci». Scegli com\'è fatto il tuo ente e come chiami chi partecipa: tutti i testi si adattano da soli, con gli articoli giusti. '
+			. 'Il genere (femminile o maschile) serve per «la/il», «della/del», «le/i»…</p>';
+		Ui::form_open( 'apse_save_terms', Ui::url( 'apse-texts' ) );
+		echo '<table class="form-table"><tbody>';
+		echo '<tr><th>Tipo di ente</th><td><select name="entity_type">' . Ui::options( $e_opt, (string) $s['entity_type'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="description">Altri tipi, uno per riga: <code>nome;f</code> oppure <code>nome;m</code> (f = femminile come «associazione», m = maschile come «comitato»). Es. <code>fondazione;f</code></p>'
+			. '<textarea name="entity_types_custom" rows="3" class="large-text" placeholder="fondazione;f">' . esc_textarea( (string) $s['entity_types_custom'] ) . '</textarea></td></tr>';
+		echo '<tr><th>Chi partecipa sono</th><td><select name="member_term">' . Ui::options( $m_opt, (string) $s['member_term'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="description">Altri termini, uno per riga: <code>singolare;plurale;f|m</code>. Es. <code>tesserato;tesserati;m</code> oppure <code>amica;amiche;f</code></p>'
+			. '<textarea name="member_terms_custom" rows="3" class="large-text" placeholder="tesserato;tesserati;m">' . esc_textarea( (string) $s['member_terms_custom'] ) . '</textarea></td></tr>';
+		echo '</tbody></table>';
+		submit_button( 'Salva tipo di ente e termini' );
+		Ui::form_close();
+		$tmap = \ApSemplice\Terms::map();
+		echo '<p><strong>Anteprima</strong> <span class="description">(come si leggono ora i testi)</span></p><ul>';
+		foreach ( array( 'Il socio ha rinnovato la tessera dell\'associazione.', 'Ai soci e ai nuovi soci arriva un avviso dall\'associazione.', 'Benvenuto, nuovo socio! Nell\'associazione tutti i soci hanno gli stessi diritti.', 'Per l\'associazione, il Presidente' ) as $sample ) {
+			echo '<li>' . esc_html( \ApSemplice\Terms::apply_map( $sample, $tmap ) ) . '</li>';
+		}
+		echo '</ul><p class="description">Si cambiano parole intere (mai «soci» dentro «sociale») e gli aggettivi o i participi collegati possono restare al genere originale: se serve, correggili qui sotto nei testi personalizzati.</p><hr>';
+
 		echo '<p>Cambia qui qualsiasi testo che il sito mostra: pagine dei soci, email e promemoria, ricevute in PDF, messaggi di conferma ed errore, etichette e amministrazione. '
 			. 'Scrivi nella colonna <strong>Personalizzato</strong> il testo che vuoi al posto dell\'originale; lascia vuoto per tenere quello di default. '
 			. 'Per modificarne molti insieme <strong>esporta il file</strong> (si apre in Excel), cambia la colonna Personalizzato e <strong>importalo</strong>.</p>';
