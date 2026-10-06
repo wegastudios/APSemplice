@@ -3814,7 +3814,12 @@ $zbk->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'apsemp
 $zbk->addFromString( 'tabelle/apse_people.jsonl', "{ non json\n" );
 $zbk->close();
 $before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
-$err = (string) apse_throws( function () use ( $broken ) { \ApSemplice\Backup::restore( $broken ); } );
+$err = '';
+try {
+	\ApSemplice\Backup::restore( $broken );
+} catch ( \Throwable $e ) {
+	$err = $e->getMessage();
+}
 unlink( $broken );
 apse_ok( false !== strpos( $err, 'Nessun dato è stato cambiato' ) && $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'ripristino: se qualcosa non va non cambia nulla' );
 unlink( $bk_zip );
