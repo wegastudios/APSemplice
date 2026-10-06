@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '25';
+	const DB_VERSION        = '26';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -332,6 +332,36 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY activity_person (activity_id,person_id),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}broadcasts (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  subject varchar(190) NOT NULL,
+  body text NOT NULL,
+  audience varchar(40) NOT NULL,
+  audience_ref bigint(20) unsigned DEFAULT NULL,
+  status varchar(12) NOT NULL DEFAULT 'sending',
+  total int(10) unsigned NOT NULL DEFAULT 0,
+  sent int(10) unsigned NOT NULL DEFAULT 0,
+  failed int(10) unsigned NOT NULL DEFAULT 0,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  finished_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY status (status)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}broadcast_rcpt (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  broadcast_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
+  email varchar(190) NOT NULL,
+  name varchar(120) NOT NULL DEFAULT '',
+  status varchar(10) NOT NULL DEFAULT 'queued',
+  sent_at datetime DEFAULT NULL,
+  error varchar(190) DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY broadcast_status (broadcast_id,status)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}waitlist (

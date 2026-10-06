@@ -3478,6 +3478,95 @@ foreach ( $wl_mail as $m ) {
 apse_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'per Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
 remove_all_filters( 'pre_wp_mail' );
 
+// ---------- Comunicazioni a gruppi ----------
+wp_set_current_user( 1 );
+$bc_mail = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$bc_mail ) {
+		if ( ! empty( $GLOBALS['bc_fail'] ) && in_array( $GLOBALS['bc_fail'], (array) $atts['to'], true ) ) {
+			return false;
+		}
+		$bc_mail[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$bc_to = function () use ( &$bc_mail ) {
+	$out = array();
+	foreach ( $bc_mail as $m ) {
+		$out = array_merge( $out, (array) $m['to'] );
+	}
+	return $out;
+};
+$mkb = function ( string $first, string $last ) use ( $people ) {
+	$id = $people->create( array( 'type' => 'ordinary', 'first_name' => $first, 'last_name' => $last, 'email' => strtolower( $first . '.' . $last ) . '@example.com' ) );
+	return $id;
+};
+$bm_act = $mkb( 'Ada', 'Gruppoattiva' );
+$bm_exp = $mkb( 'Ugo', 'Grupposcaduto' );
+$people->set_membership( $bm_act, Settings::membership_year()->label(), true );
+$people->set_membership( $bm_exp, Settings::membership_year()->label(), true );
+$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' -20 days' ) ) ), array( 'person_id' => $bm_exp ) );
+$bm_guest = $people->create( array( 'type' => 'guest', 'first_name' => 'Gina', 'last_name' => 'Gruppoospite', 'phone' => '333 4441234', 'host_person_id' => $bm_act ) );
+$r_act = array_column( \ApSemplice\Broadcasts::recipients( 'members_active' )['list'], 'email' );
+$r_exp = array_column( \ApSemplice\Broadcasts::recipients( 'members_expired' )['list'], 'email' );
+$r_gst = \ApSemplice\Broadcasts::recipients( 'guests' )['list'];
+$r_soon = array_column( \ApSemplice\Broadcasts::recipients( 'members_expiring' )['list'], 'email' );
+apse_ok( in_array( 'ada.gruppoattiva@example.com', $r_act, true ) && ! in_array( 'ugo.grupposcaduto@example.com', $r_act, true ) && in_array( 'ugo.grupposcaduto@example.com', $r_exp, true ) && in_array( 'ugo.grupposcaduto@example.com', $r_soon, true ), 'comunicazioni: i gruppi dei soci (in regola, scaduti, in scadenza) sono quelli giusti' );
+$gst_mails = array_column( $r_gst, 'email' );
+apse_ok( in_array( 'ada.gruppoattiva@example.com', $gst_mails, true ), 'comunicazioni: un ospite senza email riceve tramite il socio che lo ospita' );
+$r_course = array_column( \ApSemplice\Broadcasts::recipients( 'activity', $acq )['list'], 'email' );
+$r_sess   = array_column( \ApSemplice\Broadcasts::recipients( 'session', $tc_s )['list'], 'email' );
+apse_ok( in_array( 'carla.corsista@example.com', $r_course, true ) && in_array( 'dario.corsista@example.com', $r_course, true ) && in_array( 'dario.corsista@example.com', $r_sess, true ), 'comunicazioni: iscritti a un corso e prenotati a una data' );
+// invio piccolo
+$bc_mail = array();
+$b1 = \ApSemplice\Broadcasts::create( 'Avviso del corso', 'Ciao {nome}, domani il corso inizia alle 18. A presto da {associazione}.', 'activity', $acq );
+$b1r = \ApSemplice\Broadcasts::get( $b1 );
+$m_carla = '';
+foreach ( $bc_mail as $m ) {
+	if ( in_array( 'carla.corsista@example.com', (array) $m['to'], true ) ) {
+		$m_carla = $m['message'];
+	}
+}
+apse_ok( 'done' === $b1r['status'] && (int) $b1r['sent'] === (int) $b1r['total'] && (int) $b1r['total'] >= 2 && false !== strpos( $m_carla, 'Ciao Carla,' ) && false !== strpos( $m_carla, 'Comunicazione di servizio' ), 'comunicazioni: ogni destinatario riceve la propria email personalizzata' );
+// invio grande: a gruppi di 25 e il resto in background
+$bc_mail = array();
+$b2  = \ApSemplice\Broadcasts::create( 'Avviso a tutti i soci', 'Un messaggio per tutti.', 'members_all' );
+$b2a = \ApSemplice\Broadcasts::get( $b2 );
+apse_ok( (int) $b2a['total'] > \ApSemplice\Broadcasts::BATCH && 'sending' === $b2a['status'] && \ApSemplice\Broadcasts::BATCH === (int) $b2a['sent'] && count( $bc_mail ) === \ApSemplice\Broadcasts::BATCH, 'comunicazioni: i primi 25 partono subito, gli altri restano in coda' );
+for ( $i = 0; $i < 40 && 'sending' === \ApSemplice\Broadcasts::get( $b2 )['status']; $i++ ) {
+	\ApSemplice\Broadcasts::process_all();
+}
+$b2b = \ApSemplice\Broadcasts::get( $b2 );
+apse_ok( 'done' === $b2b['status'] && (int) $b2b['sent'] === (int) $b2b['total'] && 0 === (int) $b2b['failed'] && count( $bc_mail ) === (int) $b2b['total'], 'comunicazioni: il resto parte in background fino al completamento (una email a persona)' );
+// email non partite e nuovo tentativo
+$GLOBALS['bc_fail'] = 'dario.corsista@example.com';
+$b3  = \ApSemplice\Broadcasts::create( 'Avviso con errore', 'Prova.', 'activity', $acq );
+$b3a = \ApSemplice\Broadcasts::get( $b3 );
+apse_ok( 1 === (int) $b3a['failed'] && (int) $b3a['sent'] === (int) $b3a['total'] - 1, 'comunicazioni: le email non partite sono contate' );
+$GLOBALS['bc_fail'] = '';
+apse_ok( 1 === \ApSemplice\Broadcasts::retry_failed( $b3 ) && 0 === (int) \ApSemplice\Broadcasts::get( $b3 )['failed'] && 'done' === \ApSemplice\Broadcasts::get( $b3 )['status'], 'comunicazioni: si possono riprovare' );
+// controlli
+apse_ok( null !== apse_throws( function () { \ApSemplice\Broadcasts::create( '', 'testo', 'members_all' ); } ) && null !== apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', 'testo', 'gruppo_inesistente' ); } ) && null !== apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', str_repeat( 'x', 6000 ), 'members_all' ); } ), 'comunicazioni: oggetto e testo obbligatori, gruppo valido, lunghezza limitata' );
+$empty_s = $first_session( $mkev( 'Evento senza prenotati', 0, null ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $empty_s ) { \ApSemplice\Broadcasts::create( 'Oggetto', 'testo', 'session', $empty_s ); } ), 'Nessun destinatario' ), 'comunicazioni: un gruppo senza destinatari viene rifiutato' );
+$bc_mail = array();
+\ApSemplice\Broadcasts::send_test( 'Oggetto prova', 'Testo di prova' );
+apse_ok( 1 === count( $bc_mail ) && 0 === strpos( $bc_mail[0]['subject'], '[Prova] ' ), 'comunicazioni: la prova va solo all\'utente collegato' );
+// pagine e azioni
+$bc_send = new ReflectionMethod( Admin\Actions::class, 'broadcast_send' );
+$bc_res  = $bc_send->invoke( null, array( 'audience' => 'activity:' . $acq, 'subject' => 'Dalla pagina', 'body' => 'Testo dalla pagina' ) );
+apse_ok( false !== strpos( $bc_res[1], 'Comunicazione avviata' ) && array( 'activity', $acq ) === Admin\MessagesPage::parse_audience( 'activity:' . $acq ) && array( 'members_all', 0 ) === Admin\MessagesPage::parse_audience( 'members_all' ), 'comunicazioni: invio dalla pagina' );
+apse_render( array( Admin\MessagesPage::class, 'render' ), 'Storico' );
+apse_render( array( Admin\MessagesPage::class, 'render' ), 'Destinatari:', array( 'audience' => 'members_active', 'subject' => 'Oggetto', 'body' => 'Testo', 'preview' => '1' ) );
+apse_render( array( Admin\MessagesPage::class, 'render' ), 'Tutte le comunicazioni', array( 'view' => $b1 ) );
+wp_set_current_user( $sec_u );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-people' ), 'page=apse-messages' ), 'comunicazioni: la segreteria le vede' );
+wp_set_current_user( 1 );
+remove_all_filters( 'pre_wp_mail' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );
@@ -3648,6 +3737,97 @@ apse_render( array( Admin\SettingsPage::class, 'render' ), 'Chiave di licenza' )
 apse_render( array( Admin\SettingsPage::class, 'render' ), 'Crea le pagine standard' );
 apse_render( array( Admin\AuditPage::class, 'render' ), 'Registro azioni' );
 apse_render( array( Admin\ImportPage::class, 'render' ), 'Importa da Excel o CSV' );
+
+// ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
+wp_set_current_user( 1 );
+delete_option( \ApSemplice\Backup::OPT_LAST );
+apse_render( array( Admin\DashboardPage::class, 'render' ), 'Non hai ancora scaricato una copia di sicurezza' );
+$bk_tables = \ApSemplice\Backup::tables();
+apse_ok( in_array( 'apse_people', $bk_tables, true ) && in_array( 'apse_transactions', $bk_tables, true ) && in_array( 'apse_waitlist', $bk_tables, true ) && in_array( 'apse_broadcasts', $bk_tables, true ), 'copia: elenco delle tabelle del plugin' );
+Attachments::prepare_dir();
+$bk_file = Attachments::dir() . '/' . str_repeat( 'a', 32 );
+file_put_contents( $bk_file, 'contenuto allegato' );
+Settings::update( array( 'association_name' => 'Associazione di prova' ) );
+$bk_zip = \ApSemplice\Backup::export( true );
+$za     = new ZipArchive();
+$za->open( $bk_zip );
+$man    = json_decode( (string) $za->getFromName( 'manifest.json' ), true );
+$ppl    = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+$txn    = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+$p_lines = array_filter( explode( "\n", (string) $za->getFromName( 'tabelle/apse_people.jsonl' ) ) );
+$settings_json = json_decode( (string) $za->getFromName( 'impostazioni.json' ), true );
+$has_att = false !== $za->locateName( 'allegati/' . str_repeat( 'a', 32 ) );
+$za->close();
+apse_ok( 'apsemplice' === $man['plugin'] && (int) $man['tables']['apse_people'] === $ppl && count( $p_lines ) === $ppl && $has_att && 'Associazione di prova' === $settings_json['settings']['association_name'] && ! isset( $settings_json['settings']['stripe_secret_key'] ) && \ApSemplice\Backup::last() > 0, 'copia: il file contiene tabelle, impostazioni (senza chiavi segrete), allegati e indice' );
+apse_ok( $man === \ApSemplice\Backup::inspect( $bk_zip ), 'copia: il file si riconosce come copia valida' );
+// file non validi
+$bad1 = wp_tempnam( 'apse-bad' );
+file_put_contents( $bad1, 'non è uno zip' );
+$bad2 = wp_tempnam( 'apse-bad' );
+$zb = new ZipArchive();
+$zb->open( $bad2, ZipArchive::OVERWRITE );
+$zb->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'altro', 'tables' => array( 'x' => 1 ) ) ) );
+$zb->close();
+$bad3 = wp_tempnam( 'apse-bad' );
+$zc = new ZipArchive();
+$zc->open( $bad3, ZipArchive::OVERWRITE );
+$zc->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'apsemplice', 'db_version' => '9999', 'tables' => array( 'apse_people' => 1 ) ) ) );
+$zc->close();
+$bad4 = wp_tempnam( 'apse-bad' );
+$zd = new ZipArchive();
+$zd->open( $bad4, ZipArchive::OVERWRITE );
+$zd->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'apsemplice', 'db_version' => '1', 'tables' => array( 'apse_tabella_finta' => 1 ) ) ) );
+$zd->close();
+$rej = 0;
+foreach ( array( $bad1, $bad2, $bad3, $bad4 ) as $bf ) {
+	$rej += null !== apse_throws( function () use ( $bf ) { \ApSemplice\Backup::restore( $bf ); } ) ? 1 : 0;
+	@unlink( $bf );
+}
+apse_ok( 4 === $rej, 'ripristino: file non validi, di altri plugin, più recenti o con tabelle sconosciute vengono rifiutati' );
+// modifiche dopo la copia, poi ripristino
+$victim = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE last_name = 'Corsista' ORDER BY id LIMIT 1" );
+$victim_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = $victim", ARRAY_A );
+$wpdb->delete( Db::t( 'people' ), array( 'id' => $victim ) );
+$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => $today, 'type' => 'income', 'amount_cents' => 777, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => (int) $ledger->category_id_of_kind( 'other_income' ), 'description' => 'riga di prova da cancellare', 'created_at' => Db::now() ) );
+Settings::update( array( 'association_name' => 'Nome cambiato dopo la copia' ) );
+\ApSemplice\Texts::save_overrides( array( 'Frase di prova' => 'Frase cambiata' ) );
+unlink( $bk_file );
+Settings::update( array( 'stripe_secret_key' => 'sk_test_0123456789abcdef' ) );
+$res = \ApSemplice\Backup::restore( $bk_zip );
+$back_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = $victim", ARRAY_A );
+apse_ok( $ppl === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $txn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && $back_row === $victim_row && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga di prova da cancellare'" ), 'ripristino: i dati tornano esattamente come nella copia (anche i record cancellati e identici campo per campo)' );
+apse_ok( 'Associazione di prova' === Settings::get( 'association_name' ) && array() === \ApSemplice\Texts::overrides() && Settings::has_secret( 'stripe_secret_key' ), 'ripristino: impostazioni e testi tornano come nella copia; le chiavi segrete del sito restano' );
+apse_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_file ) && $res['files'] >= 1 && $res['rows'] > 0 && $res['tables'] === count( $man['tables'] ), 'ripristino: gli allegati tornano al loro posto' );
+$saved = \ApSemplice\Backup::saved();
+apse_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
+$zs = new ZipArchive();
+$zs->open( \ApSemplice\Backup::dir() . '/' . $saved[0]['name'] );
+$safety_man = json_decode( (string) $zs->getFromName( 'manifest.json' ), true );
+$zs->close();
+apse_ok( 'apsemplice' === $safety_man['plugin'], 'ripristino: la copia di sicurezza è a sua volta un file valido' );
+Settings::clear_secret( 'stripe_secret_key' );
+// tutto o niente: una copia con una riga rovinata non cambia nulla
+$broken = wp_tempnam( 'apse-bad' );
+$zbk = new ZipArchive();
+$zbk->open( $broken, ZipArchive::OVERWRITE );
+$zbk->addFromString( 'manifest.json', wp_json_encode( array( 'plugin' => 'apsemplice', 'db_version' => (string) \ApSemplice\Install::DB_VERSION, 'tables' => array( 'apse_people' => 1 ) ) ) );
+$zbk->addFromString( 'tabelle/apse_people.jsonl', "{ non json\n" );
+$zbk->close();
+$before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+$err = '';
+try {
+	\ApSemplice\Backup::restore( $broken );
+} catch ( \Throwable $e ) {
+	$err = $e->getMessage();
+}
+unlink( $broken );
+apse_ok( false !== strpos( $err, 'Nessun dato è stato cambiato' ) && $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'ripristino: se qualcosa non va non cambia nulla' );
+unlink( $bk_zip );
+if ( is_file( $bk_file ) ) {
+	unlink( $bk_file );
+}
+apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=apse_backup' ) && has_action( 'admin_post_apse_backup' ) && Admin\Actions::required_cap( 'apse_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
+apse_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
 
 apse_ok( ! $GLOBALS['apse_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['apse_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['apse_warnings'], 0, 5 ) ) : '' ) );
 

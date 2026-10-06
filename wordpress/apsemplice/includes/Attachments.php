@@ -26,6 +26,11 @@ final class Attachments {
 		return rtrim( (string) $u['basedir'], '/\\' ) . '/' . self::DIR_NAME;
 	}
 
+	/** Crea (se manca) la cartella privata degli allegati e delle copie di sicurezza. */
+	public static function prepare_dir(): string {
+		return self::ensure_dir();
+	}
+
 	private static function ensure_dir(): string {
 		$dir = self::dir();
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
