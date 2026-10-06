@@ -300,19 +300,19 @@ final class PeoplePage {
 
 	/** Carica nel consiglio direttivo: presidente, vicepresidente, consigliere. */
 	private static function panel_board( array $p ): void {
-		if ( ! ApSempliceBoardRole::eligible_type( $p['type'] ) ) {
+		if ( ! \ApSemplice\BoardRole::eligible_type( $p['type'] ) ) {
 			return;
 		}
 		$svc  = Plugin::people();
 		echo '<div class="apse-card"><h2>Consiglio direttivo</h2>';
 		Ui::form_open( 'apse_set_board_role', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
 		echo Ui::hidden( 'id', $p['id'] ) . '<select name="board_role"><option value="">Nessuna carica</option>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		foreach ( ApSempliceBoardRole::labels() as $k => $l ) {
+		foreach ( \ApSemplice\BoardRole::labels() as $k => $l ) {
 			echo '<option value="' . esc_attr( $k ) . '"' . selected( (string) $p['board_role'], $k, false ) . '>' . esc_html( $l ) . '</option>';
 		}
 		echo '</select> <button class="button">Salva</button>';
 		Ui::form_close();
-		echo '<p class="description">Presidente e vicepresidente sono uno ciascuno, i consiglieri sono al massimo ' . (int) ApSempliceSettings::councillors() . ' (si cambia in Impostazioni). Serve la tessera in regola.</p>';
+		echo '<p class="description">Presidente e vicepresidente sono uno ciascuno, i consiglieri sono al massimo ' . (int) \ApSemplice\Settings::councillors() . ' (si cambia in Impostazioni). Serve la tessera in regola.</p>';
 		if ( ! $svc->is_active_member( (int) $p['id'] ) && '' !== (string) $p['board_role'] ) {
 			echo '<p class="apse-neg">Attenzione: questo socio non Ã¨ piÃ¹ in regola con la tessera.</p>';
 		}

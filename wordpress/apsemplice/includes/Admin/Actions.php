@@ -158,7 +158,7 @@ final class Actions {
 		$id   = (int) ( $p['id'] ?? 0 );
 		$role = (string) ( $p['board_role'] ?? '' );
 		Plugin::people()->set_board_role( $id, '' === $role ? null : $role );
-		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . ApSempliceBoardRole::label( $role ) . '.' );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . \ApSemplice\BoardRole::label( $role ) . '.' );
 	}
 
 	private static function set_treasurer( array $p ): array {
