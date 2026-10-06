@@ -183,7 +183,7 @@ final class DashboardPage {
 				return Ui::month( $m['month'] );
 			}, $r['summary']['unpaid_months'] ) );
 			echo '<li><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $e['person_id'] ) ) ) . '">' . esc_html( $e['first_name'] . ' ' . $e['last_name'] ) . '</a> <span class="description">' . esc_html( $r['activity']['name'] . ' · ' . $months ) . '</span> <strong>' . esc_html( Money::format( $missing ) ) . '</strong> '
-				. '<a class="button button-small" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => $e['person_id'] ) ) ) . '">Incassa</a> ' . Ui::contact_links( $e ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<a class="button button-small" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => $e['person_id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $e ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '. Li trovi nelle schede dei corsi.</p>' : '' ) . '</div>';
 	}

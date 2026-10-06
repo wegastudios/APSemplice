@@ -118,54 +118,48 @@
 		applyKind();
 	}
 
-	/* Scorciatoie dei giorni: "tutti i giorni", "lun-ven", "nessuno" */
-	document.addEventListener('click', function (e) {
-		var a = e.target.closest ? e.target.closest('.apse-days-set') : null;
-		if (!a) { return; }
-		e.preventDefault();
-		var set = a.getAttribute('data-set') ? a.getAttribute('data-set').split(',') : [];
-		$$('input[type="checkbox"]', a.closest('.apse-days-row')).forEach(function (c) { c.checked = set.indexOf(c.value) > -1; });
-	});
-
-	/* Programma a regole: date uniche e giorni ricorrenti con data di fine */
+	/* Programma: righe dinamiche "data + orario" con la spunta "ricorrente" (si ripete ogni settimana fino a una data di fine) */
 	$$('.apse-when').forEach(function (wrap) {
 		var rows = $('.apse-when-rows', wrap), seq = 0;
-		var DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+		var DEF = JSON.parse(wrap.getAttribute('data-default') || '{}');
+		var INIT = JSON.parse(wrap.getAttribute('data-rows') || '[]');
+		var DAYNAMES = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 		function field(label, input) { var l = el('label', { style: 'margin-right:10px' }); l.appendChild(document.createTextNode(label + ' ')); l.appendChild(input); return l; }
-		function add(type) {
+		function dayName(v) { if (!v) { return 'settimana'; } var d = new Date(v + 'T12:00:00'); return isNaN(d) ? 'settimana' : DAYNAMES[d.getDay()]; }
+		function add(r) {
+			r = r || {};
 			var i = seq++, n = 'when[' + i + ']';
 			var row = el('div', { 'class': 'apse-when-row', style: 'border:1px solid #ccd0d4;border-radius:6px;padding:8px;margin:6px 0;background:#fff' });
-			row.appendChild(el('input', { type: 'hidden', name: n + '[type]', value: type }));
-			if (type === 'single') {
-				row.appendChild(el('strong', { text: 'Data unica  ' }));
-				row.appendChild(field('Giorno', el('input', { type: 'date', name: n + '[date]' })));
-			} else {
-				row.appendChild(el('strong', { text: 'Ogni  ' }));
-				var span = el('span', { 'class': 'apse-days-row' });
-				DAYS.forEach(function (d, k) {
-					var c = el('input', { type: 'checkbox', name: n + '[days][]', value: String(k + 1) });
-					var l = el('label', { style: 'margin-right:6px' }); l.appendChild(c); l.appendChild(document.createTextNode(' ' + d)); span.appendChild(l);
-				});
-				[['tutti i giorni', '1,2,3,4,5,6,7'], ['lun-ven', '1,2,3,4,5'], ['nessuno', '']].forEach(function (p, k) {
-					if (k) { span.appendChild(document.createTextNode(' · ')); }
-					span.appendChild(el('a', { href: '#', 'class': 'apse-days-set', 'data-set': p[1], text: p[0] }));
-				});
-				row.appendChild(span);
-			}
-			row.appendChild(el('br'));
-			row.appendChild(field('dalle', el('input', { type: 'time', name: n + '[from]' })));
-			row.appendChild(field('alle', el('input', { type: 'time', name: n + '[to]' })));
-			if (type === 'weekly') {
-				row.appendChild(field('dal', el('input', { type: 'date', name: n + '[start]' })));
-				row.appendChild(field('fino al (data di fine)', el('input', { type: 'date', name: n + '[end]' })));
-			}
+			var date = el('input', { type: 'date', name: n + '[date]', value: r.date || DEF.date || '' });
+			var from = el('input', { type: 'time', name: n + '[from]', value: r.from || DEF.from || '' });
+			var to = el('input', { type: 'time', name: n + '[to]', value: r.to || DEF.to || '' });
+			var rec = el('input', { type: 'checkbox', name: n + '[recurring]', value: '1' });
+			if (r.recurring) { rec.checked = true; }
+			row.appendChild(field('Giorno', date));
+			row.appendChild(field('dalle', from));
+			row.appendChild(field('alle', to));
+			var rl = el('label', { style: 'margin-right:10px' }); rl.appendChild(rec); rl.appendChild(document.createTextNode(' ricorrente')); row.appendChild(rl);
+			var rbox = el('span', { 'class': 'apse-rec' });
+			var rep = el('select', { name: n + '[repeat]' });
+			var dn = el('option', { value: 'weekly', text: 'ogni ' + dayName(date.value) });
+			rep.appendChild(dn);
+			rep.appendChild(el('option', { value: 'daily', text: 'tutti i giorni' }));
+			rep.appendChild(el('option', { value: 'weekdays', text: 'dal lunedì al venerdì' }));
+			if (r.repeat) { rep.value = r.repeat; }
+			rbox.appendChild(rep);
+			rbox.appendChild(document.createTextNode(' '));
+			rbox.appendChild(field('fino al', el('input', { type: 'date', name: n + '[end]', value: r.end || '' })));
+			row.appendChild(rbox);
 			var rm = el('button', { type: 'button', 'class': 'button-link-delete', text: 'Togli' });
 			rm.addEventListener('click', function () { row.parentNode.removeChild(row); });
 			row.appendChild(rm);
+			function sync() { rbox.style.display = rec.checked ? '' : 'none'; dn.textContent = 'ogni ' + dayName(date.value); }
+			rec.addEventListener('change', sync); date.addEventListener('change', sync); date.addEventListener('input', sync);
+			sync();
 			rows.appendChild(row);
 		}
-		$$('[data-add]', wrap).forEach(function (b) { b.addEventListener('click', function () { add(b.getAttribute('data-add')); }); });
-		add('single');
+		$$('[data-add]', wrap).forEach(function (b) { b.addEventListener('click', function () { add({}); }); });
+		if (INIT.length) { INIT.forEach(add); } else { add({}); }
 	});
 
 	/* Calcolatrice del resto: dove si incassa in contanti (conto di tipo cassa) si scrive quanto si è ricevuto e dice il resto */
@@ -188,16 +182,11 @@
 		function active() {
 			return types[acc.value] === 'cash' && due() > 0 && (!income || !cat || income.indexOf(parseInt(cat.value, 10)) > -1);
 		}
-		function cashMode() {
-			// il riquadro si vede sempre quando si incassa in contanti, anche prima di scrivere l'importo
-			return types[acc.value] === 'cash' && (!income || !cat || income.indexOf(parseInt(cat.value, 10)) > -1) && (fixedFee !== null ? parseInt(fixedFee, 10) > 0 || parseInt(wrap.getAttribute('data-guest-fee'), 10) > 0 : true);
-		}
 		function refresh() {
-			var on = cashMode();
+			var on = active(); // a scomparsa: compare solo se si incassa in contanti e c'e' un importo
 			box.style.display = on ? '' : 'none';
 			if (!on) { return; }
 			var t = due(), got = parseMoney(tendered.value);
-			if (t <= 0) { quick.innerHTML = ''; out.className = 'apse-change-out description'; out.textContent = 'Scrivi l\'importo da incassare: qui comparirà il resto da dare.'; return; }
 			quick.innerHTML = '';
 			var q = [t]; [500, 1000, 2000, 5000, 10000, 20000].forEach(function (x) { if (x >= t && q.indexOf(x) < 0) { q.push(x); } });
 			q.slice(0, 4).forEach(function (v) {
@@ -367,6 +356,21 @@
 		addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, amount: plain(b.amount) });
 	});
 
+	var autofilled = false;
+	/* Dal pulsante "Incassa": le voci dovute si inseriscono da sole, con gli importi mancanti */
+	function autofillDues() {
+		if (autofilled || !D.autofill || !ctx) { return; }
+		autofilled = true;
+		var c = catByKind('activity_fee');
+		if (!c || lines.length) { return; }
+		(ctx.dues || []).forEach(function (d) {
+			addLine({ title: d.name, category: c.id, kind: 'activity_fee', activity: d.activity_id, month: d.month, amount: plain(d.amount) });
+		});
+		(ctx.bookings || []).forEach(function (b) {
+			addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, amount: plain(b.amount) });
+		});
+	}
+
 	/* Persona scelta: tessera, attività a cui è iscritta, mese da pagare */
 	function loadContext() {
 		var pid = $('#apse-person-select').value, info = $('#apse-person-info');
@@ -376,7 +380,7 @@
 		fd.append('action', 'apse_person_context'); fd.append('nonce', D.nonce); fd.append('person_id', pid); fd.append('date', $('#apse-date').value);
 		fetch(D.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
 			if (!res.success || !res.data.person) { return; }
-			ctx = res.data; fillActivities(); fillBookings();
+			ctx = res.data; fillActivities(); fillBookings(); autofillDues();
 			var txt = ctx.person.type_label;
 			if (ctx.is_guest) { txt += ' · non è socio: paga solo le attività'; }
 			else if (ctx.is_founder) { txt += ' · tessera sempre rinnovata'; }

@@ -49,6 +49,15 @@ final class IncomePage {
 				'amount'      => (int) $b['remaining'],
 			);
 		}
+		// Tutto ciò che la persona deve ancora versare: mensilità dei corsi (con l'importo mancante) e contributi degli eventi
+		$dues = array();
+		foreach ( Plugin::activities()->status_for_person( (int) $person['id'] ) as $st ) {
+			foreach ( $st['summary']['unpaid_months'] as $m ) {
+				if ( (int) $m['missing'] > 0 ) {
+					$dues[] = array( 'activity_id' => (int) $st['enrollment']['activity_id'], 'name' => $st['activity']['name'], 'month' => $m['month'], 'amount' => (int) $m['missing'] );
+				}
+			}
+		}
 		wp_send_json_success(
 			array(
 				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => MemberType::label( $person['type'] ) ),
@@ -59,6 +68,7 @@ final class IncomePage {
 				'social_year'      => $sy,
 				'activities'       => $acts,
 				'bookings'         => $bookings,
+				'dues'             => $dues,
 			)
 		);
 	}
@@ -94,6 +104,7 @@ final class IncomePage {
 			'socialYear'    => Settings::membership_year( $today )->label(),
 			'nextYear'      => Settings::membership_year( $today )->next()->label(),
 			'yearEnd'       => Settings::membership_year( $today )->end()->format( 'Y-m-d' ),
+			'autofill'      => 1 === Ui::get_int( 'due' ),
 			'accountTypes'  => $account_types,
 		);
 

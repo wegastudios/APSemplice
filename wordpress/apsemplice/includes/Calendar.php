@@ -32,9 +32,20 @@ final class Calendar {
 				continue;
 			}
 			$year  = SocialYear::from_label( $a['social_year'], Settings::start_month() );
-			$first = max( $from, $a['starts_on'] ?: $year->start()->format( 'Y-m-d' ) );
-			$last  = min( $to, $a['ends_on'] ?: $year->end()->format( 'Y-m-d' ) );
-			foreach ( ActivityService::slots( $a ) as $slot ) {
+			$base0 = $a['starts_on'] ?: $year->start()->format( 'Y-m-d' );
+			$base1 = $a['ends_on'] ?: $year->end()->format( 'Y-m-d' );
+			foreach ( ActivityService::lessons( $a ) as $slot ) {
+				if ( 'single' === $slot['type'] ) {
+					if ( $slot['date'] >= $from && $slot['date'] <= $to ) {
+						$out[] = array(
+							'date' => $slot['date'], 'start' => $slot['start'], 'end' => $slot['end'], 'title' => $a['name'], 'location' => (string) $a['location'],
+							'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
+						);
+					}
+					continue;
+				}
+				$first = max( $from, $slot['from'] ?: $base0 );
+				$last  = min( $to, $slot['until'] ?: $base1 );
 				foreach ( self::weekly_dates( $first, $last, (int) $slot['day'] ) as $d ) {
 					$out[] = array(
 						'date' => $d, 'start' => $slot['start'], 'end' => $slot['end'], 'title' => $a['name'], 'location' => (string) $a['location'],

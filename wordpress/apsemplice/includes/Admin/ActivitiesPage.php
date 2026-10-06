@@ -24,50 +24,33 @@ final class ActivitiesPage {
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
 			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
-	/** Casella dei giorni della settimana (lunedì…domenica) con le scorciatoie "tutti i giorni" e "lun-ven". */
-	private static function days_picker( string $name, array $checked ): string {
-		$short = array( 1 => 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
-		$html  = '<span class="apse-days-row">';
-		foreach ( $short as $n => $label ) {
-			$html .= '<label style="margin-right:6px"><input type="checkbox" name="' . esc_attr( $name ) . '[]" value="' . $n . '"' . checked( in_array( $n, $checked, true ), true, false ) . '> ' . esc_html( $label ) . '</label>';
-		}
-		return $html . '<a href="#" class="apse-days-set" data-set="1,2,3,4,5,6,7">tutti i giorni</a> · <a href="#" class="apse-days-set" data-set="1,2,3,4,5">lun-ven</a> · <a href="#" class="apse-days-set" data-set="">nessuno</a></span>';
-	}
-
-	/** Righe "giorni + dalle + alle" per le lezioni settimanali del corso (anche tutti i giorni): una riga per ogni orario diverso, più una vuota. */
-	private static function slot_inputs( ?array $a, array $days ): string {
-		$rows = $a ? \ApSemplice\Schedule::rows_from_slots( ActivityService::slots( $a ) ) : array();
-		$n    = max( 2, min( 6, count( $rows ) + 1 ) );
-		$html = '';
-		for ( $i = 0; $i < $n; $i++ ) {
-			$r     = $rows[ $i ] ?? array( 'days' => array(), 'from' => '', 'to' => '' );
-			$html .= '<p style="margin:4px 0">' . self::days_picker( 'slot_days[' . $i . ']', $r['days'] ) . '<br>dalle <input type="time" name="slot_start[' . $i . ']" value="' . esc_attr( (string) $r['from'] ) . '"> alle <input type="time" name="slot_end[' . $i . ']" value="' . esc_attr( (string) $r['to'] ) . '"></p>';
-		}
-		return $html;
-	}
-
-	/** Programma a regole: date uniche e giorni ricorrenti con data di fine (le righe si aggiungono con i pulsanti). */
-	private static function when_builder(): string {
-		return '<div class="apse-when"><div class="apse-when-rows"></div><p>'
-			. '<button type="button" class="button" data-add="single">+ Data unica</button> '
-			. '<button type="button" class="button" data-add="weekly">+ Giorni ricorrenti, con data di fine</button></p>'
-			. '<p class="description">Es.: <em>20 settembre dalle 15 alle 20</em> (data unica); <em>tutti i martedì e venerdì dalle 19 alle 20, fino al 31 luglio</em> (giorni ricorrenti). Puoi aggiungere quante righe vuoi.</p></div>';
+	/**
+	 * Programma a righe dinamiche: ogni riga ha giorno e orario e, con la spunta "ricorrente", si ripete ogni settimana
+	 * (o tutti i giorni) fino a una data di fine; senza spunta resta una data unica. Le righe si aggiungono senza limiti.
+	 *
+	 * @param array[] $rows righe già presenti (date, from, to, recurring, end, repeat); vuoto = una riga con i valori di default
+	 */
+	private static function when_builder( array $rows = array() ): string {
+		$def = array( 'date' => current_time( 'Y-m-d' ), 'from' => '18:00', 'to' => '19:00' );
+		return '<div class="apse-when" data-default="' . esc_attr( wp_json_encode( $def ) ) . '" data-rows="' . esc_attr( wp_json_encode( $rows ) ) . '"><div class="apse-when-rows"></div>'
+			. '<p><button type="button" class="button" data-add="1">+ Aggiungi data</button></p>'
+			. '<p class="description">Ogni riga è un giorno con il suo orario. Senza la spunta <em>ricorrente</em> è una data unica; con la spunta si ripete ogni settimana (o tutti i giorni) fino alla data di fine. '
+			. 'Per giorni e orari diversi aggiungi altre righe: ad esempio i martedì e giovedì alle 15 (due righe ricorrenti), i lunedì, mercoledì e venerdì alle 16 (tre righe) e un solo venerdì alle 15 (una riga senza spunta).</p></div>';
 	}
 
 	/** Righe del modulo: come si paga e quando si tiene il corso (solo corsi). */
-	private static function weekday_row( ?array $a, string $row_class ): string {
-		$days   = array( 0 => 'Non indicato (mensilità dovuta dal 1° del mese)', 1 => 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica' );
-		$billing = $a ? (string) $a['billing'] : 'monthly';
-		$val    = function ( string $k ) use ( $a ) {
+	private static function weekday_row( ?array $a, string $row_class, bool $with_when = true ): string {
+		$billing = $a ? (string) $a['billing'] : 'once';
+		$rows    = $a ? ActivityService::schedule_rows( $a, current_time( 'Y-m-d' ) ) : array();
+		$val     = function ( string $k ) use ( $a ) {
 			return $a && ! empty( $a[ $k ] ) ? esc_attr( (string) $a[ $k ] ) : '';
 		};
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
-		return $tr . '<th>Come si paga</th><td><select name="billing" class="apse-billing">' . Ui::options( array( 'monthly' => 'Rinnovo mensile automatico', 'once' => 'Pagamento unico (tutti gli incontri insieme)' ), $billing ) . '</select>'
-			. '<p class="description"><strong>Mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>. <strong>Unico:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione.</p></td></tr>'
-			. $tr . '<th>Giorni e orari</th><td>' . self::slot_inputs( $a, $days )
-			. '<p class="description">Anche più giorni a settimana (es. lunedì alle 20 e giovedì alle 19): lascia vuote le righe che non servono. Servono per il calendario e per sapere da quando chiedere la mensilità.</p></td></tr>'
+		return $tr . '<th>Come si paga</th><td><select name="billing" class="apse-billing">' . Ui::options( array( 'once' => 'Una tantum', 'monthly' => 'Rinnovo mensile' ), $billing ) . '</select>'
+			. '<p class="description"><strong>Una tantum:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
-			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data non si rinnova più</span></td></tr>';
+			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
 	}
 
 	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
@@ -149,12 +132,12 @@ final class ActivitiesPage {
 		echo '<tr><th>Tipo *</th><td><select name="kind" id="apse-kind">' . Ui::options( ActivityKind::labels(), ActivityKind::COURSE ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description" id="apse-kind-hint"></p></td></tr>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Yoga, Serata di giochi"></td></tr>';
-		echo '<tr class="apse-row-sessions"><th>Quando *</th><td>' . self::when_builder() . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Quando *</th><td>' . self::when_builder() . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr class="apse-row-sessions"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
 		echo '<tr class="apse-row-sessions"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
 		echo self::cancel_rows( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::qr_row( null, 'apse-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::weekday_row( null, 'apse-row-course' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::weekday_row( null, 'apse-row-course', false ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th><span class="apse-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
 		echo '<tr><th>Istruttore</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput

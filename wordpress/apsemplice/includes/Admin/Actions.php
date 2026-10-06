@@ -186,29 +186,59 @@ final class Actions {
 		return Money::parse( $raw ) ?? 0;
 	}
 
-	/** Lezioni settimanali dal modulo: righe giorno / dalle / alle (le righe senza giorno si ignorano). */
-	private static function lesson_slots( array $p ): array {
-		$rows = array();
-		foreach ( (array) ( $p['slot_days'] ?? array() ) as $i => $days ) { // ogni riga: più giorni con lo stesso orario
-			$rows[] = array( 'days' => (array) $days, 'from' => (string) ( $p['slot_start'][ $i ] ?? '' ), 'to' => (string) ( $p['slot_end'][ $i ] ?? '' ) );
+	/** Giorni della settimana (1..7) di una riga ricorrente: "ogni <giorno della data>", tutti i giorni oppure dal lunedì al venerdì. */
+	private static function repeat_days( array $w ): array {
+		$repeat = (string) ( $w['repeat'] ?? 'weekly' );
+		if ( 'daily' === $repeat ) {
+			return array( 1, 2, 3, 4, 5, 6, 7 );
 		}
-		return \ApSemplice\Schedule::slots( $rows );
+		if ( 'weekdays' === $repeat ) {
+			return array( 1, 2, 3, 4, 5 );
+		}
+		$ts = strtotime( (string) ( $w['date'] ?? '' ) . ' 12:00:00 UTC' );
+		return $ts ? array( (int) gmdate( 'N', $ts ) ) : array();
 	}
 
-	/** Righe "quando" del modulo eventi: date uniche e giorni ricorrenti con data di fine. */
+	/** Righe del modulo "quando": ogni riga ha data e orario e, se "ricorrente", si ripete ogni settimana fino a una data di fine. */
 	private static function when_rows( array $p ): array {
 		$rows = array();
 		foreach ( (array) ( $p['when'] ?? array() ) as $w ) {
 			$w = (array) $w;
-			if ( 'single' === ( $w['type'] ?? '' ) && '' === trim( (string) ( $w['date'] ?? '' ) ) ) {
+			if ( isset( $w['type'] ) ) { // formato esplicito (type = single | weekly)
+				if ( 'single' === $w['type'] && '' === trim( (string) ( $w['date'] ?? '' ) ) ) {
+					continue;
+				}
+				$rows[] = array(
+					'type' => (string) $w['type'], 'date' => (string) ( $w['date'] ?? '' ), 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ),
+					'days' => (array) ( $w['days'] ?? array() ), 'start' => (string) ( $w['start'] ?? '' ), 'end' => (string) ( $w['end'] ?? '' ),
+				);
+				continue;
+			}
+			if ( '' === trim( (string) ( $w['date'] ?? '' ) ) ) {
 				continue; // riga lasciata vuota
 			}
-			$rows[] = array(
-				'type' => (string) ( $w['type'] ?? '' ), 'date' => (string) ( $w['date'] ?? '' ), 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ),
-				'days' => (array) ( $w['days'] ?? array() ), 'start' => (string) ( $w['start'] ?? '' ), 'end' => (string) ( $w['end'] ?? '' ),
-			);
+			if ( ! empty( $w['recurring'] ) ) {
+				$rows[] = array( 'type' => 'weekly', 'days' => self::repeat_days( $w ), 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ), 'start' => (string) $w['date'], 'end' => (string) ( $w['end'] ?? '' ) );
+			} else {
+				$rows[] = array( 'type' => 'single', 'date' => (string) $w['date'], 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ) );
+			}
 		}
 		return $rows;
+	}
+
+	/** Lezioni di un corso dal modulo: le righe ricorrenti diventano lezioni settimanali, le altre date uniche. */
+	private static function lesson_slots( array $p ): array {
+		$out = array();
+		foreach ( self::when_rows( $p ) as $r ) {
+			if ( 'single' === $r['type'] ) {
+				$out[] = array( 'type' => 'single', 'date' => $r['date'], 'start' => $r['from'], 'end' => $r['to'] );
+				continue;
+			}
+			foreach ( \ApSemplice\Schedule::days( $r['days'] ) as $day ) {
+				$out[] = array( 'type' => 'weekly', 'day' => $day, 'start' => $r['from'], 'end' => $r['to'], 'from' => $r['start'], 'until' => $r['end'] );
+			}
+		}
+		return $out;
 	}
 
 	private static function add_dates( array $p ): array {
@@ -229,7 +259,7 @@ final class Actions {
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
-			'lesson_slots'         => isset( $p['slot_days'] ) ? self::lesson_slots( $p ) : null,
+			'lesson_slots'         => isset( $p['when'] ) ? self::lesson_slots( $p ) : null,
 			'lesson_weekday'       => (int) ( $p['lesson_weekday'] ?? 0 ),
 			'billing'              => (string) ( $p['billing'] ?? 'monthly' ),
 			'location'             => (string) ( $p['location'] ?? '' ),

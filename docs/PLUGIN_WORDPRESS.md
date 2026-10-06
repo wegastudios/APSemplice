@@ -283,3 +283,8 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 - **Corsi**: le lezioni settimanali si indicano con caselle dei giorni, anche *tutti i giorni* o *lun-ven*, e un orario per riga.
 - Le date degli eventi hanno anche l orario di fine, che compare nel calendario e nel file per Google Calendar.
 - **Calcolatrice del resto**: nella Bacheca (cassa rapida), nell incasso e nell ingresso sul posto, quando il conto è di tipo cassa contanti si scrive quanto si è ricevuto e il programma dice il resto (con i tagli).
+
+- **Programma a righe dinamiche** (corsi ed eventi): ogni riga ha giorno e orario; con la spunta *ricorrente* si ripete ogni settimana (o tutti i giorni / lun-ven) fino alla data di fine, senza spunta è una data unica. Si possono aggiungere righe senza limiti: ad esempio martedì e giovedì alle 15 (due righe ricorrenti) e un solo venerdì (una riga senza spunta).
+- **Come si paga** dei corsi: *Una tantum* (predefinito) oppure *Rinnovo mensile*.
+- Il pulsante **Incassa** della Bacheca apre l'incasso già compilato con le mensilità dovute (importi mancanti) e i contributi degli eventi non ancora pagati.
+- La calcolatrice del resto della cassa rapida compare solo quando si incassa in contanti e c'è un importo.

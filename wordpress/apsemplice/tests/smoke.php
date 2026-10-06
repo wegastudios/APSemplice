@@ -2473,8 +2473,8 @@ $acts->update( $ms_c, array( 'lesson_slots' => array( array( 'day' => 2, 'start'
 apse_ok( 1 === count( \ApSemplice\ActivityService::slots( $acts->get( $ms_c ) ) ) && 2 === (int) $acts->get( $ms_c )['lesson_weekday'], 'corso: le lezioni si modificano' );
 $acts->update( $ms_c, array( 'lesson_weekday' => 5 ) );
 apse_ok( array( 5 ) === \ApSemplice\ActivityService::slot_days( $acts->get( $ms_c ) ), 'corso: la modifica con il solo giorno resta valida' );
-$form_html = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Giorni e orari', array( 'id' => $ms_c ) );
-apse_ok( 2 <= substr_count( $form_html, 'name="slot_start[' ) && 14 <= substr_count( $form_html, 'name="slot_days[' ), 'scheda corso: righe per più giorni e orari' );
+$form_html = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Come si paga', array( 'id' => $ms_c ) );
+apse_ok( false !== strpos( $form_html, 'apse-when' ) && false !== strpos( $form_html, 'data-rows' ) && false !== strpos( $form_html, 'Aggiungi data' ) && false === strpos( $form_html, 'slot_days' ), 'scheda corso: il programma è a righe dinamiche (data, orario, ricorrente)' );
 $pos_enrolled = strpos( $form_html, 'Iscritti e pagamenti' );
 $pos_data     = strpos( $form_html, 'Dati dell' );
 apse_ok( false !== strpos( $form_html, 'Iscrivi un socio o un ospite' ) && false !== $pos_enrolled && $pos_enrolled < $pos_data, 'scheda corso: gli iscritti stanno nella prima colonna, sotto il modulo di iscrizione' );
@@ -2597,14 +2597,61 @@ $occ_end = array_values( array_filter( \ApSemplice\Calendar::occurrences( $od_da
 apse_ok( 1 === count( $occ_end ) && '20:00' === $occ_end[0]['end'], 'calendario: le date degli eventi hanno anche l\'orario di fine' );
 
 // corso tutti i giorni dal modulo
-$ev_c = $sa->invoke( null, array( 'name' => 'Corso ogni giorno', 'social_year' => $sy_label, 'kind' => 'course', 'fee' => '30', 'slot_days' => array( array( '1', '2', '3', '4', '5', '6', '7' ), array( '3' ) ), 'slot_start' => array( '10:00', '' ), 'slot_end' => array( '11:00', '' ) ) );
+$ev_c = $sa->invoke( null, array( 'name' => 'Corso ogni giorno', 'social_year' => $sy_label, 'kind' => 'course', 'fee' => '30', 'when' => array( array( 'date' => $base_d, 'from' => '10:00', 'to' => '11:00', 'recurring' => '1', 'repeat' => 'daily', 'end' => $end_d ), array( 'date' => $od_date, 'from' => '15:00', 'to' => '16:00' ) ) ) );
 parse_str( (string) wp_parse_url( $ev_c[0], PHP_URL_QUERY ), $q_ev );
 $evd = \ApSemplice\ActivityService::slot_days( $acts->get( (int) $q_ev['id'] ) );
 apse_ok( array( 1, 2, 3, 4, 5, 6, 7 ) === $evd, 'corso: si può tenere tutti i giorni' );
-$cform = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Giorni e orari', array( 'id' => (int) $q_ev['id'] ) );
-apse_ok( false !== strpos( $cform, 'name="slot_days[0][]"' ) && false !== strpos( $cform, 'tutti i giorni' ), 'scheda corso: caselle dei giorni con la scorciatoia "tutti i giorni"' );
+$cform = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Come si paga', array( 'id' => (int) $q_ev['id'] ) );
+$rows_ev  = \ApSemplice\ActivityService::schedule_rows( $acts->get( (int) $q_ev['id'] ), $today );
+$dates_ev = \ApSemplice\ActivityService::lesson_dates( $acts->get( (int) $q_ev['id'] ) );
+apse_ok( 8 === count( $rows_ev ) && 1 === count( $dates_ev ) && $od_date === $dates_ev[0]['date'] && false !== strpos( $cform, 'data-rows' ), 'corso: sette giorni ricorrenti più una data unica, riletti nel modulo' );
+$occ_ev = array_values(
+	array_filter(
+		\ApSemplice\Calendar::occurrences( $base_d, $end_d ),
+		function ( $o ) use ( $q_ev ) {
+			return (int) $o['activity_id'] === (int) $q_ev['id'];
+		}
+	)
+);
+apse_ok( count( $occ_ev ) >= 29 && count( $occ_ev ) <= 31 && '10:00' === $occ_ev[0]['start'], 'calendario: il corso tutti i giorni compare ogni giorno fino alla data di fine (' . count( $occ_ev ) . ')' );
 $nform = apse_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Quando *' );
-apse_ok( false !== strpos( $nform, 'apse-when' ) && false !== strpos( $nform, 'Giorni ricorrenti' ), 'nuova attività: costruttore del programma (data unica, giorni ricorrenti, data di fine)' );
+apse_ok( false !== strpos( $nform, 'apse-when' ) && false !== strpos( $nform, 'Aggiungi data' ) && false !== strpos( $nform, 'ricorrente' ), 'nuova attività: righe dinamiche con la spunta ricorrente' );
+// doposcuola: ogni martedì ricorrente e un solo venerdì
+$dop = $sa->invoke(
+	null,
+	array(
+		'name' => 'Doposcuola', 'social_year' => $sy_label, 'kind' => 'course', 'fee' => '40', 'billing' => 'monthly',
+		'when' => array(
+			array( 'date' => gmdate( 'Y-m-d', strtotime( 'next tuesday', strtotime( $today ) ) ), 'from' => '15:00', 'to' => '17:00', 'recurring' => '1', 'repeat' => 'weekly', 'end' => $end_d ),
+			array( 'date' => gmdate( 'Y-m-d', strtotime( 'next friday', strtotime( $today ) ) ), 'from' => '15:00', 'to' => '17:00' ),
+		),
+	)
+);
+parse_str( (string) wp_parse_url( $dop[0], PHP_URL_QUERY ), $q_dop );
+$dop_a = $acts->get( (int) $q_dop['id'] );
+apse_ok( array( 2 ) === \ApSemplice\ActivityService::slot_days( $dop_a ) && 1 === count( \ApSemplice\ActivityService::lesson_dates( $dop_a ) ) && 'monthly' === $dop_a['billing'], 'doposcuola: una riga ricorrente (martedì) e una data unica (un venerdì)' );
+$dop_occ = array_values(
+	array_filter(
+		\ApSemplice\Calendar::occurrences( $today, $end_d ),
+		function ( $o ) use ( $q_dop ) {
+			return (int) $o['activity_id'] === (int) $q_dop['id'];
+		}
+	)
+);
+$dop_fri = array_filter(
+	$dop_occ,
+	function ( $o ) {
+		return 5 === (int) ( new DateTimeImmutable( $o['date'] ) )->format( 'N' );
+	}
+);
+apse_ok( count( $dop_occ ) >= 4 && 1 === count( $dop_fri ), 'doposcuola: tutti i martedì fino alla fine e un solo venerdì in calendario' );
+
+// ---------- Incassa dalla bacheca: le voci dovute si compilano da sole ----------
+$au_html = apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p, 'due' => '1' ) );
+apse_ok( false !== strpos( $au_html, '"autofill":true' ), 'incassa: dal pulsante della bacheca la pagina si autocompila' );
+apse_ok( false === strpos( apse_render( array( Admin\IncomePage::class, 'render' ), 'apse-income-data', array( 'person_id' => (string) $fy_p ) ), '"autofill":true' ), 'incasso aperto a mano: nessuna compilazione automatica' );
+$dash_due = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Mensilità da incassare' );
+apse_ok( false !== strpos( $dash_due, 'due=1' ), 'bacheca: il pulsante Incassa chiede la compilazione automatica' );
 
 // ---------- Render di tutte le pagine ----------
 $_SERVER['REQUEST_METHOD'] = 'GET';

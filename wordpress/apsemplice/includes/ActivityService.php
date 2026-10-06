@@ -153,8 +153,8 @@ class ActivityService {
 		return $dt && $dt->format( 'Y-m-d' ) === $v ? $v : null;
 	}
 
-	/** Lezioni settimanali: [ ['day' => 1..7, 'start' => 'HH:MM'|null, 'end' => 'HH:MM'|null], ... ] (lunedì = 1). */
-	public static function slots( array $a ): array {
+	/** Tutte le lezioni del corso: settimanali (type weekly: day 1..7, start, end, from, until) e date uniche (type single: date, start, end). */
+	public static function lessons( array $a ): array {
 		$raw = ! empty( $a['lesson_slots'] ) ? json_decode( (string) $a['lesson_slots'], true ) : null;
 		if ( is_array( $raw ) ) {
 			return self::clean_slots( array( 'lesson_slots' => $raw ) );
@@ -162,11 +162,39 @@ class ActivityService {
 		return self::clean_slots( $a );
 	}
 
+	/** Lezioni settimanali: [ ['day' => 1..7 (lunedì = 1), 'start' => 'HH:MM'|null, 'end' => 'HH:MM'|null, 'from' => data|null, 'until' => data|null], ... ] */
+	public static function slots( array $a ): array {
+		return array_values( array_filter( self::lessons( $a ), function ( $s ) {
+			return 'weekly' === $s['type'];
+		} ) );
+	}
+
+	/** Date uniche di un corso (non ricorrenti). */
+	public static function lesson_dates( array $a ): array {
+		return array_values( array_filter( self::lessons( $a ), function ( $s ) {
+			return 'single' === $s['type'];
+		} ) );
+	}
+
 	/** Giorni della settimana (1..7) in cui si tiene il corso. @return int[] */
 	public static function slot_days( array $a ): array {
 		return array_values( array_unique( array_map( function ( $s ) {
 			return (int) $s['day'];
 		}, self::slots( $a ) ) ) );
+	}
+
+	/** Le lezioni come righe del modulo: data, orario, ricorrente (con "ogni giorno della settimana") e data di fine. @return array[] */
+	public static function schedule_rows( array $a, string $default_from ): array {
+		$rows = array();
+		foreach ( self::lessons( $a ) as $s ) {
+			if ( 'single' === $s['type'] ) {
+				$rows[] = array( 'date' => $s['date'], 'from' => (string) $s['start'], 'to' => (string) $s['end'], 'recurring' => false, 'end' => '', 'repeat' => 'weekly' );
+				continue;
+			}
+			$date   = Schedule::weekly_dates( $s['from'] ?: ( $a['starts_on'] ?: $default_from ), '9999-12-31', (int) $s['day'] );
+			$rows[] = array( 'date' => $date ? $date[0] : $default_from, 'from' => (string) $s['start'], 'to' => (string) $s['end'], 'recurring' => true, 'end' => (string) ( $s['until'] ?: '' ), 'repeat' => 'weekly' );
+		}
+		return $rows;
 	}
 
 	private static function clean_slots( array $in ): array {
@@ -179,21 +207,37 @@ class ActivityService {
 		}
 		$out = array();
 		foreach ( $raw as $s ) {
+			$start = self::clean_time( $s['start'] ?? '' );
+			$end   = self::clean_time( $s['end'] ?? '' );
+			if ( 'single' === ( $s['type'] ?? '' ) ) {
+				$date = self::clean_date( $s['date'] ?? '' );
+				if ( $date ) {
+					$out[ 's|' . $date . '|' . (string) $start ] = array( 'type' => 'single', 'date' => $date, 'start' => $start, 'end' => $end );
+				}
+				continue;
+			}
 			$day = (int) ( $s['day'] ?? 0 );
 			if ( $day < 1 || $day > 7 ) {
 				continue;
 			}
-			$out[ $day . '|' . (string) ( $s['start'] ?? '' ) ] = array( 'day' => $day, 'start' => self::clean_time( $s['start'] ?? '' ), 'end' => self::clean_time( $s['end'] ?? '' ) );
+			$from  = self::clean_date( $s['from'] ?? '' );
+			$until = self::clean_date( $s['until'] ?? '' );
+			$out[ 'w|' . $day . '|' . (string) $start . '|' . (string) $from ] = array( 'type' => 'weekly', 'day' => $day, 'start' => $start, 'end' => $end, 'from' => $from, 'until' => $until );
 		}
 		$out = array_values( $out );
 		usort( $out, function ( $x, $y ) {
-			return strcmp( $x['day'] . (string) $x['start'], $y['day'] . (string) $y['start'] );
+			$kx = 'weekly' === $x['type'] ? '0' . $x['day'] . (string) $x['start'] : '1' . $x['date'] . (string) $x['start'];
+			$ky = 'weekly' === $y['type'] ? '0' . $y['day'] . (string) $y['start'] : '1' . $y['date'] . (string) $y['start'];
+			return strcmp( $kx, $ky );
 		} );
-		return array_slice( $out, 0, 28 );
+		return array_slice( $out, 0, 60 );
 	}
 
 	private function normalize( array $in ): array {
-		$slots = self::clean_slots( $in );
+		$slots  = self::clean_slots( $in );
+		$weekly = array_values( array_filter( $slots, function ( $s ) {
+			return 'weekly' === $s['type'];
+		} ) );
 		$guest = null;
 		if ( array_key_exists( 'guest_fee_cents', $in ) && null !== $in['guest_fee_cents'] && '' !== $in['guest_fee_cents'] ) {
 			$guest = (int) $in['guest_fee_cents'];
@@ -208,12 +252,12 @@ class ActivityService {
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'booking_qr'           => ! empty( $in['booking_qr'] ) ? 1 : 0,
-			'lesson_weekday'       => $slots ? $slots[0]['day'] : 0,
+			'lesson_weekday'       => $weekly ? $weekly[0]['day'] : 0,
 			'slots'                => $slots,
 			'lesson_slots'         => $slots ? wp_json_encode( $slots ) : null,
 			'billing'              => isset( $in['billing'] ) && 'once' === $in['billing'] ? 'once' : 'monthly',
-			'lesson_start'        => $slots ? $slots[0]['start'] : null,
-			'lesson_end'          => $slots ? $slots[0]['end'] : null,
+			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
+			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
 			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? substr( trim( (string) $in['location'] ), 0, 190 ) : null,
 			'starts_on'           => self::clean_date( $in['starts_on'] ?? '' ),
 			'ends_on'             => self::clean_date( $in['ends_on'] ?? '' ),
