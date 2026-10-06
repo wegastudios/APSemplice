@@ -3872,7 +3872,7 @@ apse_ok( false !== strpos( $vl_doc['body'], 'REGISTRO DEI VOLONTARI' ) && false 
 apse_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Registra una polizza' );
 // polizze dell'associazione
 apse_ok( 'none' === \ApSemplice\AssocPolicies::rc_status(), 'polizze associazione: senza responsabilità civile risulta scoperta' );
-apse_render( array( Admin\DashboardPage::class, 'render' ), 'responsabilità civile dell\'associazione' );
+apse_render( array( Admin\DashboardPage::class, 'render' ), 'polizza di responsabilità civile' );
 $pl_old = \ApSemplice\AssocPolicies::add( 'rc', 'Compagnia RC', 'RC-1', $in_day( -400 ), $in_day( -35 ) );
 apse_ok( 'expired' === \ApSemplice\AssocPolicies::rc_status(), 'polizze associazione: scaduta' );
 \ApSemplice\AssocPolicies::add( 'rc', 'Compagnia RC', 'RC-2', $in_day( -5 ), $in_day( 10 ), '350,00', 'Massimale 1.000.000 €' );
