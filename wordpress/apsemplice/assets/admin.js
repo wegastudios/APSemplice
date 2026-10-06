@@ -133,6 +133,10 @@
 			var date = el('input', { type: 'date', name: n + '[date]', value: r.date || DEF.date || '' });
 			var from = el('input', { type: 'time', name: n + '[from]', value: r.from || DEF.from || '' });
 			var to = el('input', { type: 'time', name: n + '[to]', value: r.to || DEF.to || '' });
+			// Scrivendo l'inizio, la fine passa a un'ora dopo se è vuota o non è dopo l'inizio
+			function plusHour(t) { var m = /^(\d{2}):(\d{2})$/.exec(t); if (!m) { return ''; } var mins = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + 60; if (mins > 23 * 60 + 59) { mins = 23 * 60 + 59; } return ('0' + Math.floor(mins / 60)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2); }
+			function syncEnd() { if (from.value && (!to.value || to.value <= from.value)) { to.value = plusHour(from.value); } }
+			from.addEventListener('change', syncEnd); from.addEventListener('input', syncEnd);
 			var rec = el('input', { type: 'checkbox', name: n + '[recurring]', value: '1' });
 			if (r.recurring) { rec.checked = true; }
 			row.appendChild(field('Giorno', date));
