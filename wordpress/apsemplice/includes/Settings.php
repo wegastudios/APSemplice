@@ -22,6 +22,14 @@ final class Settings {
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
+			'reminders_enabled'       => 0,     // promemoria automatici per email: spenti di default
+			'reminders_membership'    => 1,     // ... tessera in scadenza o scaduta
+			'reminders_membership_days' => 30,  // ... quanti giorni prima della scadenza
+			'reminders_dues'          => 1,     // ... mensilità dei corsi non pagate
+			'reminders_events'        => 1,     // ... evento il giorno dopo
+			'privacy_url'             => '',    // pagina con l'informativa privacy: se c'è, chi attiva l'accesso deve accettarla
+			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
+			'receipt_footer'          => '',    // riga in fondo alle ricevute (es. riferimento normativo): la decide l'associazione
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
 			'license_key'             => '',    // chiave di licenza (verifica in standby, vedi License)
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
@@ -89,6 +97,13 @@ final class Settings {
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
+		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events' ) as $k ) {
+			$clean[ $k ] = empty( $clean[ $k ] ) ? 0 : 1;
+		}
+		$clean['reminders_membership_days'] = max( 1, min( 120, (int) $clean['reminders_membership_days'] ) );
+		$clean['privacy_url']             = esc_url_raw( trim( (string) $clean['privacy_url'] ) );
+		$clean['privacy_retention_years'] = max( 1, min( 30, (int) $clean['privacy_retention_years'] ) );
+		$clean['receipt_footer']          = substr( trim( (string) $clean['receipt_footer'] ), 0, 300 );
 		$clean['license_key']             = substr( trim( (string) $clean['license_key'] ), 0, 120 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );

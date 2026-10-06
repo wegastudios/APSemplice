@@ -79,6 +79,13 @@ final class LedgerPage {
 			if ( ! Labels::is_transfer( $r['type'] ) ) {
 				self::attachments_cell( (int) $r['id'], $att[ (int) $r['id'] ] ?? array(), $here );
 			}
+			if ( 'income' === $r['type'] ) {
+				$rkey = \ApSemplice\Receipts::key_of( $r );
+				echo '<a class="button button-small" target="_blank" href="' . esc_url( \ApSemplice\Receipts::url( $rkey ) ) . '">Ricevuta PDF</a> ';
+				Ui::form_open( 'apse_receipt_email', $here, false, 'apse-inline' );
+				echo Ui::hidden( 'key', $rkey ) . '<button class="button-link" data-confirm="Mandare la ricevuta per email a chi ha pagato?">invia per email</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+			}
 			echo '<details><summary>Annulla</summary>';
 			Ui::form_open( 'apse_void_tx', $here, false, 'apse-confirm' );
 			echo Ui::hidden( 'id', $r['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput

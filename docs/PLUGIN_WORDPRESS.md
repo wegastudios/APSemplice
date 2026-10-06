@@ -343,3 +343,25 @@ Controllo di accessi, permessi, query, pagamenti, allegati, token dei QR, calend
 
 - **Tesoriere**: nel riquadro "Incassa" ora ci sono anche i **corsi** (iscrive da solo e incassa il mese in corso, con le stesse regole sulla tessera). Sotto c'è **"Cassa per più persone"**: chi paga salda quote, eventi e corsi per sé e per altri (righe con persona o nuovo ospite); importo vuoto = importo standard; un solo incasso intestato a chi paga. La logica è la stessa degli amministratori (`GroupCash`).
 - **Staff con incasso abilitato**: nella schermata degli ingressi, **"Un socio paga per più soci"**: un socio paga il biglietto per sé e per altri soci. Limiti: solo soci con la tessera in regola, solo l'evento dello staff e solo nel giorno dell'evento, solo contanti o POS, importi calcolati dal sito; ingresso registrato per tutti. Se uno solo non va bene non resta scritto nulla.
+
+## Promemoria, privacy e ricevute
+
+Si configurano in **Impostazioni → Promemoria, privacy e ricevute**.
+
+**Promemoria per email** (spenti di default; uno al giorno, ognuno si manda una sola volta)
+- tessera in scadenza (N giorni prima, impostabile) e tessera scaduta da meno di una settimana;
+- mensilità dei corsi non pagate (al massimo un messaggio ogni 14 giorni);
+- evento il giorno dopo, per chi è prenotato.
+Chi non ha email (un ospite) riceve il messaggio tramite il socio che lo ospita ("per Nome Cognome"). La pagina mostra quanti ne partirebbero oggi e permette l'invio manuale.
+
+**Privacy (GDPR)**
+- *Consenso*: nella scheda persona si registra quando e come (cartaceo, sul sito, a voce, importato); filtro "Senza consenso privacy" nella Rubrica. Se indichi la pagina dell'informativa, chi attiva il proprio accesso deve accettarla e il consenso si registra da solo.
+- *Accesso ai dati*: ogni socio scarica i propri dati in JSON dal suo profilo; l'amministratore dalla scheda persona.
+- *Cancellazione*: **Anonimizza** toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti; i **movimenti contabili restano** (obbligo di conservazione). Non si può se ha ospiti, iscrizioni a corsi, prenotazioni future, cariche o è amministratore. Le persone anonimizzate spariscono dagli elenchi.
+- *Ex soci da anonimizzare*: elenco di chi è inattivo da più di N anni (impostabile, 5 di default); decidi tu caso per caso.
+
+**Ricevute in PDF**
+- Ogni incasso ha una **ricevuta** (Prima nota → "Ricevuta PDF", "invia per email" a chi ha pagato). Numero progressivo **N/AAAA** assegnato alla prima emissione e fisso; titolo "Ricevuta di erogazione liberale" se sono solo donazioni; firma "Per l'associazione" con il nome del Presidente (se assegnato) e una riga finale a tua scelta (es. riferimento normativo). Un incasso annullato non ha ricevuta.
+- **Attestazione annuale** dei versamenti di una persona (quote, contributi, erogazioni liberali con i totali): scheda persona e area soci.
+- Nell'area soci: shortcode `[apsemplice_ricevute]` (incluso in `[apsemplice_area_soci]`) con l'elenco e i download. Le vede solo chi ha pagato (o il socio che ospita chi ha pagato) e gli amministratori.
+- Il PDF è generato dal plugin senza librerie esterne; in CI si controlla con `pdfinfo`/`pdftotext`.

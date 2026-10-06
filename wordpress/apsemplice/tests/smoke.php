@@ -3005,6 +3005,155 @@ unset( $_GET['apse_session'] );
 apse_ok( false !== strpos( $qdet, 'apse_front_door_group' ), 'area soci: lo staff abilitato vede il modulo per più soci' );
 $acts->remove_staff( $quiz, $tre_p );
 
+// ---------- Promemoria, privacy, ricevute ----------
+wp_set_current_user( 1 );
+$rm = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$rm ) {
+		$atts['_exists'] = array();
+		foreach ( (array) ( $atts['attachments'] ?? array() ) as $f ) {
+			$atts['_exists'][] = file_exists( $f ) ? basename( $f ) : '';
+		}
+		$rm[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$mails_to = function ( string $email ) use ( &$rm ) {
+	$n = 0;
+	foreach ( $rm as $m ) {
+		if ( in_array( $email, (array) $m['to'], true ) ) {
+			$n++;
+		}
+	}
+	return $n;
+};
+$mail_text = function ( string $email ) use ( &$rm ) {
+	$t = '';
+	foreach ( $rm as $m ) {
+		if ( in_array( $email, (array) $m['to'], true ) ) {
+			$t .= $m['subject'] . "\n" . $m['message'] . "\n";
+		}
+	}
+	return $t;
+};
+$ym_label = Settings::membership_year()->label();
+
+// --- promemoria
+Settings::update( array( 'reminders_enabled' => 0, 'reminders_membership' => 1, 'reminders_membership_days' => 30, 'reminders_dues' => 0, 'reminders_events' => 1 ) );
+$rp   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rita', 'last_name' => 'Promemoria', 'email' => 'rita.promemoria@example.com' ) );
+$rp2  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Raul', 'last_name' => 'Scaduto', 'email' => 'raul.scaduto@example.com' ) );
+$people->set_membership( $rp, $ym_label, true );
+$people->set_membership( $rp2, $ym_label, true );
+$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' +10 days' ) ) ), array( 'person_id' => $rp ) );
+$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' -3 days' ) ) ), array( 'person_id' => $rp2 ) );
+$r_off = \ApSemplice\Reminders::run( $today );
+apse_ok( array( 0, 0, 0 ) === array_values( $r_off ) && 0 === $mails_to( 'rita.promemoria@example.com' ), 'promemoria: spenti di default, nessuna email' );
+$prev = \ApSemplice\Reminders::run( $today, false );
+apse_ok( $prev['membership'] >= 2 && 0 === $mails_to( 'rita.promemoria@example.com' ), 'promemoria: l\'anteprima conta ma non manda nulla' );
+$rm_ev   = $mkev( 'Gita sociale', 0, null, array( 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) ), 'start_time' => '09:30', 'location' => 'Piazza Grande', 'capacity' => 20 ) ) );
+$rm_s    = $first_session( $rm_ev );
+$rp_g    = $people->create( array( 'type' => 'guest', 'first_name' => 'Gianna', 'last_name' => 'Ospitedirita', 'phone' => '333 4440001', 'host_person_id' => $rp ) );
+$acts->book( $rm_s, $rp );
+$acts->book( $rm_s, $rp_g );
+Settings::update( array( 'reminders_enabled' => 1 ) );
+$r_on = \ApSemplice\Reminders::run( $today );
+$t_rita = $mail_text( 'rita.promemoria@example.com' );
+apse_ok( false !== strpos( $t_rita, 'sta per scadere' ) && false !== strpos( $t_rita, 'Gita sociale' ) && false !== strpos( $t_rita, 'per Gianna Ospitedirita' ) && false !== strpos( $mail_text( 'raul.scaduto@example.com' ), 'è scaduta' ), 'promemoria: tessera in scadenza, scaduta da poco, evento di domani anche per l\'ospite (via il socio)' );
+$n_rita = $mails_to( 'rita.promemoria@example.com' );
+\ApSemplice\Reminders::run( $today );
+apse_ok( $n_rita === $mails_to( 'rita.promemoria@example.com' ) && $r_on['events'] >= 2, 'promemoria: ogni promemoria si manda una sola volta' );
+$last = \ApSemplice\Reminders::last_run();
+apse_ok( ! empty( $last['at'] ), 'promemoria: l\'ultimo invio è registrato' );
+Settings::update( array( 'reminders_enabled' => 0, 'reminders_dues' => 1 ) );
+apse_render( array( Admin\CommsPage::class, 'render' ), 'Promemoria per email' );
+
+// --- privacy
+$pv = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Gianni', 'last_name' => 'Privacy', 'email' => 'gianni.privacy@example.com', 'phone' => '333 4440002', 'tax_code' => 'PRVGNN80A01H501Z' ) );
+$pv_uid = (int) $people->get( $pv )['wp_user_id'];
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $pv, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => 500, 'description' => 'Offerta di Gianni Privacy' ) ) ) );
+\ApSemplice\Privacy::set_consent( $pv, 'paper' );
+$ex = \ApSemplice\Privacy::export( $pv );
+apse_ok( \ApSemplice\Privacy::has_consent( $people->get( $pv ) ) && 'gianni.privacy@example.com' === $ex['anagrafica']['email'] && 1 === count( $ex['pagamenti'] ) && 'paper' === $people->get( $pv )['privacy_consent_source'], 'privacy: consenso registrato e dati esportati' );
+apse_ok( \ApSemplice\Privacy::can_export( $pv ) && ! \ApSemplice\Privacy::can_export( 0 ), 'privacy: l\'amministratore può scaricare i dati' );
+$pv_g = $people->create( array( 'type' => 'guest', 'first_name' => 'Ospite', 'last_name' => 'Dipv', 'phone' => '333 4440003', 'host_person_id' => $pv ) );
+apse_ok( false !== strpos( \ApSemplice\Privacy::blocker( $pv ), 'ospiti' ) && null !== apse_throws( function () use ( $pv ) { \ApSemplice\Privacy::anonymize( $pv ); } ), 'privacy: con ospiti collegati non si anonimizza' );
+$people->delete( $pv_g );
+$tx_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $pv" );
+\ApSemplice\Privacy::anonymize( $pv );
+$pv_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = $pv", ARRAY_A );
+$pv_desc = (string) $wpdb->get_var( 'SELECT description FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $pv LIMIT 1" );
+apse_ok( 'Persona' === $pv_row['first_name'] && null === $pv_row['email'] && null === $pv_row['phone'] && null === $pv_row['tax_code'] && ! empty( $pv_row['anonymized_at'] ) && false === get_user_by( 'id', $pv_uid ), 'privacy: anonimizzazione toglie dati personali e utente del sito' );
+apse_ok( $tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $pv" ) && false === strpos( $pv_desc, 'Gianni' ) && false !== strpos( $pv_desc, '[anonimizzato]' ), 'privacy: i movimenti restano, il nome nelle descrizioni no' );
+apse_ok( ! in_array( $pv, array_map( 'intval', array_column( $people->search(), 'id' ) ), true ), 'privacy: le persone anonimizzate non compaiono negli elenchi' );
+$pv2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Iscritta', 'email' => 'pia.iscritta@example.com' ) );
+$acts->enroll( $corso, $pv2, Settings::social_year()->clamp( substr( $today, 0, 7 ) ) );
+apse_ok( false !== strpos( \ApSemplice\Privacy::blocker( $pv2 ), 'corso' ), 'privacy: chi è iscritto a un corso non si anonimizza' );
+$old = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Oscar', 'last_name' => 'Antico', 'email' => 'oscar.antico@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'created_at' => '2015-01-01 10:00:00', 'joined_on' => '2015-01-01' ), array( 'id' => $old ) );
+$cand = array_column( \ApSemplice\Privacy::retention_candidates(), 'id' );
+apse_ok( in_array( $old, $cand, true ) && ! in_array( $pv2, $cand, true ), 'privacy: gli ex soci inattivi da anni sono proposti, gli altri no' );
+apse_ok( false !== strpos( apse_render( array( Admin\CommsPage::class, 'render' ), 'Ex soci da anonimizzare' ), 'Oscar Antico' ), 'privacy: la pagina elenca gli ex soci da anonimizzare' );
+apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Consenso non registrato', array( 'id' => $pv2 ) );
+$wpdb->delete( Db::t( 'enrollments' ), array( 'person_id' => $pv2 ) );
+// consenso all'attivazione dell'accesso
+Settings::update( array( 'privacy_url' => 'https://example.org/privacy' ) );
+$ada = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ada', 'last_name' => 'Attiva' ) );
+parse_str( (string) wp_parse_url( \ApSemplice\Frontend\Activation::url( $ada ), PHP_URL_QUERY ), $act_q );
+$ada_post = array( 'email' => 'ada.attiva@example.com', 'phone' => '333 4440004', 'password' => 'password-sicura-1', 'password2' => 'password-sicura-1' );
+$ada_no   = \ApSemplice\Frontend\Activation::complete( (string) $act_q['apse_activate'], $ada_post );
+apse_ok( ! $ada_no['ok'] && false !== strpos( $ada_no['error'], 'informativa' ) && empty( $people->get( $ada )['wp_user_id'] ), 'attivazione: con l\'informativa configurata serve accettarla' );
+$ada_yes = \ApSemplice\Frontend\Activation::complete( (string) $act_q['apse_activate'], array_merge( $ada_post, array( 'privacy_ok' => '1' ) ) );
+apse_ok( $ada_yes['ok'] && 'web' === $people->get( $ada )['privacy_consent_source'], 'attivazione: il consenso viene registrato' );
+Settings::update( array( 'privacy_url' => '' ) );
+
+// --- ricevute
+$rc_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rosa', 'last_name' => 'Ricevuta', 'email' => 'rosa.ricevuta@example.com', 'tax_code' => 'RCVRSO80A41H501X' ) );
+$rc_uid = (int) $people->get( $rc_p )['wp_user_id'];
+Settings::update( array( 'receipt_footer' => 'Operazione di prova per i test.' ) );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $rc_p, 'lines' => array(
+	array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => 1000 ),
+	array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => 500, 'description' => 'Per il progetto estate' ),
+) ) );
+$rc_list = \ApSemplice\Receipts::list_for_payer( $rc_p );
+apse_ok( 1 === count( $rc_list ) && 1500 === $rc_list[0]['cents'], 'ricevute: un incasso con più voci è una sola ricevuta' );
+$rc1 = \ApSemplice\Receipts::build( $rc_list[0]['key'] );
+$rc1b = \ApSemplice\Receipts::build( $rc_list[0]['key'] );
+$yr   = substr( $today, 0, 4 );
+apse_ok( 0 === strpos( $rc1['pdf'], '%PDF-1.4' ) && false !== strpos( $rc1['pdf'], 'RICEVUTA DI PAGAMENTO' ) && false !== strpos( $rc1['pdf'], 'Rosa Ricevuta' ) && false !== strpos( $rc1['pdf'], 'RCVRSO80A41H501X' ) && false !== strpos( $rc1['pdf'], 'Quota associativa' ) && false !== strpos( $rc1['pdf'], 'progetto estate' ) && false !== strpos( $rc1['pdf'], '15,00' ) && false !== strpos( $rc1['pdf'], 'Operazione di prova' ), 'ricevute: il PDF contiene chi, cosa, quanto e la riga in fondo' );
+apse_ok( $rc1['number'] === $rc1b['number'] && 1 === preg_match( '#^1/' . $yr . '$#', $rc1['number'] ), 'ricevute: il numero progressivo si assegna una volta e resta' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $rc_p, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => 2000, 'description' => 'Offerta' ) ) ) );
+$rc_list2 = \ApSemplice\Receipts::list_for_payer( $rc_p );
+$don_key  = '';
+foreach ( $rc_list2 as $r ) {
+	if ( 2000 === $r['cents'] ) {
+		$don_key = $r['key'];
+	}
+}
+$rc2 = \ApSemplice\Receipts::build( $don_key );
+apse_ok( 2 === count( $rc_list2 ) && 1 === preg_match( '#^2/' . $yr . '$#', $rc2['number'] ) && false !== strpos( $rc2['pdf'], 'EROGAZIONE LIBERALE' ), 'ricevute: la seconda ha il numero successivo; solo donazioni = ricevuta di erogazione liberale' );
+$st = \ApSemplice\Receipts::statement( $rc_p, (int) $yr );
+apse_ok( 3500 === $st['total_cents'] && false !== strpos( $st['pdf'], 'ATTESTAZIONE DEI VERSAMENTI' ) && false !== strpos( $st['pdf'], 'Erogazioni liberali' ) && null !== apse_throws( function () use ( $rc_p ) { \ApSemplice\Receipts::statement( $rc_p, 1999 ); } ), 'ricevute: attestazione annuale con i totali; un anno senza versamenti non si emette' );
+apse_ok( false !== strpos( \ApSemplice\Receipts::url( 'abc' ), 'action=apse_receipt' ) && false !== strpos( \ApSemplice\Receipts::statement_url( $rc_p, 2026 ), 'action=apse_statement' ), 'ricevute: indirizzi di scarico con controllo' );
+wp_set_current_user( $rc_uid );
+$rc_ok = \ApSemplice\Receipts::can_view( $rc_list[0]['key'] ) && \ApSemplice\Receipts::can_statement( $rc_p );
+$front_rc = $as( $rc_uid, '[apsemplice_ricevute]' );
+wp_set_current_user( $uq );
+$rc_no = \ApSemplice\Receipts::can_view( $rc_list[0]['key'] ) || \ApSemplice\Receipts::can_statement( $rc_p );
+wp_set_current_user( 1 );
+apse_ok( $rc_ok && ! $rc_no && false !== strpos( $front_rc, 'Ricevuta PDF' ) && false !== strpos( $front_rc, 'Attestazione' ), 'ricevute: le vede chi ha pagato (e l\'amministratore), non un altro socio; nell\'area soci c\'è l\'elenco' );
+$rm = array();
+\ApSemplice\Receipts::email( $rc_list[0]['key'] );
+apse_ok( 1 === count( $rm ) && in_array( 'rosa.ricevuta@example.com', (array) $rm[0]['to'], true ) && ! empty( $rm[0]['_exists'][0] ) && 0 === strpos( $rm[0]['_exists'][0], 'ricevuta-' ), 'ricevute: invio per email con il PDF allegato' );
+$wpdb->update( Db::t( 'transactions' ), array( 'voided_at' => Db::now(), 'void_reason' => 'prova' ), array( 'receipt_id' => $wpdb->get_var( 'SELECT receipt_id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $rc_p AND amount_cents = 2000" ) ) );
+apse_ok( null !== apse_throws( function () use ( $don_key ) { \ApSemplice\Receipts::build( $don_key ); } ), 'ricevute: un incasso annullato non ha ricevuta' );
+apse_render( array( Admin\LedgerPage::class, 'render' ), 'Ricevuta PDF' );
+apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Ricevute e attestazioni', array( 'id' => $rc_p ) );
+Settings::update( array( 'receipt_footer' => '' ) );
+remove_all_filters( 'pre_wp_mail' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );

@@ -26,6 +26,11 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_privacy_consent'    => 'privacy_consent',
+			'apse_privacy_anonymize'  => 'privacy_anonymize',
+			'apse_save_comms'         => 'save_comms',
+			'apse_reminders_run'      => 'reminders_run',
+			'apse_receipt_email'      => 'receipt_email',
 			'apse_set_board_role'     => 'set_board_role',
 			'apse_regen_qr'           => 'regen_qr',
 			'apse_save_card'          => 'save_card',
@@ -159,6 +164,55 @@ final class Actions {
 		$role = (string) ( $p['board_role'] ?? '' );
 		Plugin::people()->set_board_role( $id, '' === $role ? null : $role );
 		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . \ApSemplice\BoardRole::label( $role ) . '.' );
+	}
+
+	private static function privacy_consent( array $p ): array {
+		$id   = (int) ( $p['id'] ?? 0 );
+		$mode = (string) ( $p['mode'] ?? '' );
+		if ( 'clear' === $mode ) {
+			\ApSemplice\Privacy::clear_consent( $id );
+			return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Consenso rimosso.' );
+		}
+		\ApSemplice\Privacy::set_consent( $id, $mode );
+		return array( Ui::url( 'apse-person', array( 'id' => $id ) ), 'Consenso registrato.' );
+	}
+
+	private static function privacy_anonymize( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		\ApSemplice\Privacy::anonymize( $id );
+		return array( Ui::url( 'apse-comms' ), 'Persona anonimizzata: i dati personali sono stati tolti, i movimenti contabili restano.' );
+	}
+
+	private static function save_comms( array $p ): array {
+		$txt = function ( string $k ) use ( $p ) {
+			return trim( (string) ( $p[ $k ] ?? '' ) );
+		};
+		Settings::update(
+			array(
+				'reminders_enabled'         => ! empty( $p['reminders_enabled'] ) ? 1 : 0,
+				'reminders_membership'      => ! empty( $p['reminders_membership'] ) ? 1 : 0,
+				'reminders_membership_days' => (int) ( $p['reminders_membership_days'] ?? 30 ),
+				'reminders_dues'            => ! empty( $p['reminders_dues'] ) ? 1 : 0,
+				'reminders_events'          => ! empty( $p['reminders_events'] ) ? 1 : 0,
+				'privacy_url'               => $txt( 'privacy_url' ),
+				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
+				'receipt_footer'            => $txt( 'receipt_footer' ),
+			)
+		);
+		return array( Ui::url( 'apse-comms' ), 'Impostazioni salvate.' );
+	}
+
+	private static function reminders_run( array $p ): array {
+		if ( ! \ApSemplice\Reminders::enabled() ) {
+			throw new \InvalidArgumentException( 'I promemoria sono spenti: accendili e salva prima.' );
+		}
+		$r = \ApSemplice\Reminders::run();
+		return array( Ui::url( 'apse-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani.' );
+	}
+
+	private static function receipt_email( array $p ): array {
+		\ApSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
+		return array( $p['_back'] ?? Ui::url( 'apse-ledger' ), 'Ricevuta inviata per email.' );
 	}
 
 	private static function set_treasurer( array $p ): array {
