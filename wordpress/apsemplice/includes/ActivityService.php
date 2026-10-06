@@ -189,7 +189,7 @@ class ActivityService {
 		usort( $out, function ( $x, $y ) {
 			return strcmp( $x['day'] . (string) $x['start'], $y['day'] . (string) $y['start'] );
 		} );
-		return array_slice( $out, 0, 7 );
+		return array_slice( $out, 0, 28 );
 	}
 
 	private function normalize( array $in ): array {
