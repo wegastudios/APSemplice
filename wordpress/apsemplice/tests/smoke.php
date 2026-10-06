@@ -2940,6 +2940,71 @@ apse_ok( 'SEGRETO' === do_shortcode( '[apsemplice_riservato accesso="soci"][apse
 remove_shortcode( 'apse_probe' );
 apse_ok( null === \ApSemplice\Money::parse( '99999999999999999999' ) && null === \ApSemplice\Money::parse( '-5000000000' ) && 1050 === \ApSemplice\Money::parse( '10,50' ) && 100000000000 === \ApSemplice\Money::parse( '1.000.000.000' ), 'importi: i valori assurdi sono rifiutati, quelli normali no' );
 
+// ---------- Tesoriere: corsi e cassa per più persone; staff: cassa per più soci ----------
+wp_set_current_user( 1 );
+Access::set_treasurer( $u_tre, true );
+$mkm = function ( string $first, string $last ) use ( $people ) {
+	$id = $people->create( array( 'type' => 'ordinary', 'first_name' => $first, 'last_name' => $last, 'email' => strtolower( $first . '.' . $last ) . '@example.com' ) );
+	$people->set_membership( $id, Settings::membership_year()->label(), true );
+	return $id;
+};
+$acq   = $acts->create( array( 'name' => 'Acquerello', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'guest_fee_cents' => 3500 ) );
+$tc3   = $mkm( 'Carla', 'Corsista' );
+$tc4   = $mkm( 'Dario', 'Corsista' );
+wp_set_current_user( $u_tre );
+$front::do_collect( array( 'person_id' => $tc3, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'k:' . $acq, 'amount' => '20' ) ) ) );
+$tc3_in = (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND person_id = $tc3 AND activity_id = $acq" );
+apse_ok( in_array( $acq, $acts->active_activity_ids( $tc3 ), true ) && 2000 === $tc3_in, 'tesoriere: incassa un corso (si iscrive da solo e incassa il mese)' );
+$gm = $front::do_group_collect(
+	array(
+		'payer_id' => $tc3, 'account_id' => (int) $cash['id'],
+		'rows'     => array(
+			array( 'person' => '', 'first' => 'Gina', 'last' => 'Nuovaospite', 'phone' => '333 6660001', 'what' => 's:' . $tc_s, 'amount' => '' ),
+			array( 'person' => (string) $tc4, 'what' => 'k:' . $acq, 'amount' => '' ),
+			array( 'person' => (string) $tc4, 'what' => 's:' . $tc_s, 'amount' => '' ),
+			array( 'person' => '', 'what' => '' ),
+		),
+	)
+);
+$gina = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE last_name = 'Nuovaospite'", ARRAY_A );
+apse_ok( $gina && 'guest' === $gina['type'] && (int) $gina['host_person_id'] === $tc3 && $acts->has_active_booking( $tc_s, (int) $gina['id'] ) && $acts->has_active_booking( $tc_s, $tc4 ) && in_array( $acq, $acts->active_activity_ids( $tc4 ), true ) && false !== strpos( $gm, '2 persone' ) && false !== strpos( $gm, '36,00' ), 'tesoriere: cassa per più persone (nuovo ospite, evento e corso, importi standard, un solo incasso)' );
+$gp = (int) $wpdb->get_var( 'SELECT COUNT(DISTINCT receipt_id) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND payer_person_id = $tc3 AND person_id <> $tc3" );
+apse_ok( 1 === $gp, 'tesoriere: la cassa per più persone è un solo incasso intestato a chi paga' );
+wp_set_current_user( $uq );
+apse_ok( null !== apse_throws( function () use ( $front, $tc3, $cash ) { $front::do_group_collect( array( 'payer_id' => $tc3, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $tc3, 'what' => 'm', 'amount' => '10' ) ) ) ); } ), 'cassa per più persone: un socio qualsiasi viene rifiutato' );
+wp_set_current_user( 1 );
+Access::set_treasurer( $u_tre, false );
+
+// staff: cassa per più soci sul posto
+$quiz   = $mkev( 'Serata quiz', 500, 800, array( 'session' => array( 'session_date' => $today, 'capacity' => 10 ) ) );
+$quiz_s = $first_session( $quiz );
+$acts->add_staff( $quiz, $tre_p );
+$sa1 = $mkm( 'Sara', 'Quiz' );
+$sa2 = $mkm( 'Saul', 'Quiz' );
+$sa3 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sonia', 'last_name' => 'Scaduta', 'email' => 'sonia.scaduta@example.com' ) );
+$sg  = $people->create( array( 'type' => 'guest', 'first_name' => 'Gino', 'last_name' => 'Quizospite', 'phone' => '333 6660002', 'host_person_id' => $sa1 ) );
+wp_set_current_user( $u_tre );
+apse_ok( null !== apse_throws( function () use ( $front, $quiz_s, $sa1, $sa2, $cash ) { $front::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ), array( 'person' => (string) $sa2 ) ) ) ); } ), 'staff senza incasso abilitato: niente cassa per più soci' );
+$acts->set_staff_cash( $quiz, $tre_p, true );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $quiz_s, $sa1, $sa3, $cash ) { $front::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ), array( 'person' => (string) $sa3 ) ) ) ); } ), 'non è in regola' ) && ! $acts->has_active_booking( $quiz_s, $sa1 ), 'staff: un socio con la tessera scaduta blocca tutto, nulla resta scritto' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $quiz_s, $sa1, $sg, $cash ) { $front::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sg ) ) ) ); } ), 'solo dai soci' ), 'staff: gli ospiti non si incassano nella cassa per più soci' );
+$bank = $ledger->default_account_for( 'bank' );
+apse_ok( 'bank' === $bank['type'] && null !== apse_throws( function () use ( $front, $quiz_s, $sa1, $bank ) { $front::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $bank['id'], 'rows' => array( array( 'person' => (string) $sa1 ) ) ) ); } ), 'staff: solo contanti o POS' );
+$sm = $front::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ), array( 'person' => (string) $sa2 ), array( 'person' => (string) $sa2 ) ) ) );
+$sq = (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = $quiz_s" );
+apse_ok( 1000 === $sq && $acts->has_active_booking( $quiz_s, $sa1 ) && $acts->has_active_booking( $quiz_s, $sa2 ) && false !== strpos( $sm, '2 soci' ) && ! empty( $acts->booking( $quiz_s, $sa1 )['checked_in_at'] ), 'staff: un socio paga per due soci, importi calcolati dal sito, ingressi registrati' );
+wp_set_current_user( $uq );
+apse_ok( null !== apse_throws( function () use ( $front, $quiz_s, $sa1, $cash ) { $front::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ) ) ) ); } ), 'cassa per più soci sul posto: chi non è staff viene rifiutato' );
+wp_set_current_user( 1 );
+$acts->remove_staff( $quiz, $tre_p );
+$_GET['apse_session'] = (string) $quiz_s;
+$acts->add_staff( $quiz, $tre_p );
+$acts->set_staff_cash( $quiz, $tre_p, true );
+$qdet = $as( $u_tre, '[apsemplice_ingressi]' );
+unset( $_GET['apse_session'] );
+apse_ok( false !== strpos( $qdet, 'apse_front_door_group' ), 'area soci: lo staff abilitato vede il modulo per più soci' );
+$acts->remove_staff( $quiz, $tre_p );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );

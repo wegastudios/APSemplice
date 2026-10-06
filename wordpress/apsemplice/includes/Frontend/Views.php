@@ -351,6 +351,12 @@ final class Views {
 		foreach ( Plugin::activities()->upcoming_sessions( 40 ) as $s ) {
 			$what .= '<option value="s:' . (int) $s['id'] . '">' . esc_html( $s['activity_name'] . ' · ' . self::d( $s['session_date'] ) ) . '</option>';
 		}
+		$what .= '</optgroup><optgroup label="Corsi (mese in corso)">';
+		foreach ( Plugin::activities()->for_year( Settings::social_year()->label() ) as $a ) {
+			if ( ActivityKind::COURSE === $a['kind'] ) {
+				$what .= '<option value="k:' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . '</option>';
+			}
+		}
 		$what .= '</optgroup><optgroup label="Altre entrate">';
 		foreach ( $ledger->categories() as $c ) {
 			if ( Labels::category_kinds()[ $c['kind'] ][1] && ! in_array( $c['kind'], array( 'membership', 'activity_fee', 'adjustment' ), true ) ) {
@@ -365,8 +371,46 @@ final class Views {
 		}
 		$fields = '<div class="apsf-fields"><label>Chi paga <select name="person_id" required>' . $people . '</select></label>'
 			. '<label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
-		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi e altre entrate. Per le quote l\'anno si calcola da solo.</p>'
+		return '<section class="apsf-section apsf-collect"><h3>Incassa</h3><p class="apsf-small apsf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno si calcola da solo.</p>'
 			. self::form( 'apse_front_collect', $fields, 'Registra l\'incasso' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
+	/** Cassa per più persone del tesoriere: chi paga salda quote, eventi e corsi per sé e per altri (anche nuovi ospiti). Importo vuoto = importo standard. */
+	private static function section_group(): string {
+		if ( ! current_user_can( 'apse_collect', 0 ) ) {
+			return '';
+		}
+		$ledger = Plugin::ledger();
+		$opt    = '<option value="">— scegli —</option>';
+		foreach ( Plugin::people()->search() as $p ) {
+			$opt .= '<option value="' . (int) $p['id'] . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</option>';
+		}
+		$accounts = '';
+		foreach ( $ledger->accounts() as $a ) {
+			$accounts .= '<option value="' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . '</option>';
+		}
+		$what = '<option value="">— niente —</option><option value="m">Quota associativa</option><optgroup label="Eventi">';
+		foreach ( Plugin::activities()->upcoming_sessions( 40 ) as $s ) {
+			$what .= '<option value="s:' . (int) $s['id'] . '">' . esc_html( $s['activity_name'] . ' · ' . self::d( $s['session_date'] ) ) . '</option>';
+		}
+		$what .= '</optgroup><optgroup label="Corsi (mese in corso)">';
+		foreach ( Plugin::activities()->for_year( Settings::social_year()->label() ) as $a ) {
+			if ( ActivityKind::COURSE === $a['kind'] ) {
+				$what .= '<option value="k:' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . '</option>';
+			}
+		}
+		$what .= '</optgroup>';
+		$rows = '';
+		for ( $i = 0; $i < 6; $i++ ) {
+			$rows .= '<div class="apsf-fields"><label>Persona <select name="rows[' . $i . '][person]">' . $opt . '</select></label>'
+				. '<label>oppure nuovo ospite <input type="text" name="rows[' . $i . '][first]" placeholder="Nome"> <input type="text" name="rows[' . $i . '][last]" placeholder="Cognome"> <input type="tel" name="rows[' . $i . '][phone]" placeholder="Cellulare"></label>'
+				. '<label>Cosa <select name="rows[' . $i . '][what]">' . $what . '</select></label>'
+				. '<label>Importo (€) <input type="text" name="rows[' . $i . '][amount]" inputmode="decimal" placeholder="standard"></label></div>';
+		}
+		$fields = '<div class="apsf-fields"><label>Chi paga <select name="payer_id" required>' . $opt . '</select></label><label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
+		return '<section class="apsf-section apsf-collect"><details><summary><h3 style="display:inline">Cassa per più persone</h3></summary>'
+			. '<p class="apsf-small apsf-muted">Una persona paga per sé e per altri: un solo incasso. Ogni riga è una persona (o un nuovo ospite) con una voce; la stessa persona può comparire in più righe. Gli ospiti nuovi sono ospiti di chi paga. Un evento si può pagare anche per un socio con la tessera scaduta; per un corso la tessera deve essere in regola (o rinnovata nello stesso incasso).</p>'
+			. self::form( 'apse_front_group', $fields, 'Registra l\'incasso' ) . '</details></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
 	public static function section_expenses( array $p ): string {
@@ -427,7 +471,7 @@ final class Views {
 			}
 			$html .= '</ul>';
 		}
-		return self::section_collect() . $html . '</section>';
+		return self::section_collect() . self::section_group() . $html . '</section>';
 	}
 
 	/** Scelta dei documenti: file dal telefono o dal computer, oppure scatto con la fotocamera. */
@@ -604,7 +648,24 @@ final class Views {
 				. ( '' !== $accs ? '<label>Pagamento <select name="account_id">' . $accs . '</select></label>' : '' ),
 				'Prenota, incassa e registra l\'ingresso',
 				true
-			) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			) . self::door_group_form( $s, $all, $accs ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
+	/** Cassa per più persone sul posto: un socio paga il biglietto per sé e per altri soci (importi calcolati dal sito). */
+	private static function door_group_form( array $s, string $members_options, string $accounts_options ): string {
+		if ( '' === $accounts_options ) {
+			return '';
+		}
+		$rows = '';
+		for ( $i = 0; $i < 6; $i++ ) {
+			$rows .= '<label>Socio ' . ( $i + 1 ) . ' <select name="rows[' . $i . '][person]">' . $members_options . '</select></label>';
+		}
+		$fields = self::hidden( 'session_id', $s['id'] )
+			. '<label>Chi paga <select name="payer_id" required>' . $members_options . '</select></label>'
+			. '<label>Pagamento <select name="account_id">' . $accounts_options . '</select></label>'
+			. '<p class="apsf-small apsf-muted">Scegli i soci per cui paga (può esserci anche lui): ognuno viene prenotato, il biglietto è calcolato dal sito e c\'è un solo incasso.</p>' . $rows;
+		return '<details class="apsf-door-group"><summary><strong>＋ Un socio paga per più soci</strong></summary>'
+			. self::form( 'apse_front_door_group', $fields, 'Prenota e incassa per tutti', true ) . '</details>';
 	}
 
 	private static function checkin_detail( array $s, array $a ): string {

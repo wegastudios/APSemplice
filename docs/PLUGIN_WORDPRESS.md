@@ -338,3 +338,8 @@ Controllo di accessi, permessi, query, pagamenti, allegati, token dei QR, calend
 - **Importi**: un valore oltre il miliardo di euro (errore di battitura o tentativo di far traboccare il numero) è rifiutato.
 - **Importazione Excel**: rifiutati i file con XML in UTF-16 (potevano nascondere un DOCTYPE al controllo).
 - **Elenco eventi pubblico**: il numero massimo di righe è limitato a 50.
+
+## Cassa per più persone e corsi: tesoriere e staff
+
+- **Tesoriere**: nel riquadro "Incassa" ora ci sono anche i **corsi** (iscrive da solo e incassa il mese in corso, con le stesse regole sulla tessera). Sotto c'è **"Cassa per più persone"**: chi paga salda quote, eventi e corsi per sé e per altri (righe con persona o nuovo ospite); importo vuoto = importo standard; un solo incasso intestato a chi paga. La logica è la stessa degli amministratori (`GroupCash`).
+- **Staff con incasso abilitato**: nella schermata degli ingressi, **"Un socio paga per più soci"**: un socio paga il biglietto per sé e per altri soci. Limiti: solo soci con la tessera in regola, solo l'evento dello staff e solo nel giorno dell'evento, solo contanti o POS, importi calcolati dal sito; ingresso registrato per tutti. Se uno solo non va bene non resta scritto nulla.
