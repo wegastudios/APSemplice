@@ -252,15 +252,23 @@ class LedgerService {
 		if ( ! $lines ) {
 			throw new \InvalidArgumentException( 'Aggiungi almeno una voce all\'incasso.' );
 		}
-		$person = ! empty( $d['person_id'] ) ? Plugin::people()->get( (int) $d['person_id'] ) : null;
-		if ( ! empty( $d['person_id'] ) && ! $person ) {
+		$payer = ! empty( $d['person_id'] ) ? Plugin::people()->get( (int) $d['person_id'] ) : null; // chi paga
+		if ( ! empty( $d['person_id'] ) && ! $payer ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
 
 		// Validazione completa prima di scrivere
 		$prepared = array();
 		foreach ( $lines as $i => $l ) {
-			$n    = $i + 1;
+			$n      = $i + 1;
+			// Ogni voce vale per un beneficiario: di norma chi paga, ma si può pagare per altri (familiari, ospiti, altri soci)
+			$person = $payer;
+			if ( ! empty( $l['person_id'] ) && ( ! $payer || (int) $l['person_id'] !== (int) $payer['id'] ) ) {
+				$person = Plugin::people()->get( (int) $l['person_id'] );
+				if ( ! $person ) {
+					throw new \InvalidArgumentException( "Voce $n: persona non trovata." );
+				}
+			}
 			$cat  = $this->category( (int) ( $l['category_id'] ?? 0 ) );
 			$cents = (int) ( $l['amount_cents'] ?? 0 );
 			if ( ! $cat || ! Labels::category_kinds()[ $cat['kind'] ][1] || 'adjustment' === $cat['kind'] ) {
@@ -317,12 +325,12 @@ class LedgerService {
 				$social_year = ! empty( $l['social_year'] ) ? (string) $l['social_year'] : $plan['year'];
 				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}
-			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'line' => $l );
+			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
 		return $this->in_transaction(
-			function () use ( $prepared, $d, $date, $person, $receipt_id ) {
+			function () use ( $prepared, $d, $date, $payer, $receipt_id ) {
 				foreach ( $prepared as $p ) {
 					$tx_id = $this->insert_tx(
 						array(
@@ -334,7 +342,8 @@ class LedgerService {
 							'category_id'      => (int) $p['cat']['id'],
 							'activity_id'      => $p['activity_id'],
 							'session_id'       => $p['session_id'],
-							'person_id'        => $person ? (int) $person['id'] : null,
+							'person_id'        => $p['person'] ? (int) $p['person']['id'] : null,
+							'payer_person_id'  => $payer && $p['person'] && (int) $payer['id'] !== (int) $p['person']['id'] ? (int) $payer['id'] : null,
 							'description'      => substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),
 							'discount_cents'   => $p['discount'],
 							'competence_month' => ! empty( $p['line']['competence_month'] ) ? $p['line']['competence_month'] : null,
@@ -344,9 +353,9 @@ class LedgerService {
 						)
 					);
 					if ( 'membership' === $p['cat']['kind'] ) {
-						Plugin::people()->set_membership( (int) $person['id'], $p['social_year'], true, 'payment', $tx_id );
+						Plugin::people()->set_membership( (int) $p['person']['id'], $p['social_year'], true, 'payment', $tx_id );
 						if ( ! empty( $p['free_year'] ) ) {
-							Plugin::people()->set_membership( (int) $person['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
+							Plugin::people()->set_membership( (int) $p['person']['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
 						}
 					}
 					if ( $p['activity_id'] ) {
@@ -494,10 +503,11 @@ class LedgerService {
 	/** Prima nota con i nomi risolti. $asc = ordine cronologico (per gli export). */
 	public function rows( string $from, string $to, ?int $account_id = null, bool $asc = false ): array {
 		$sql  = 'SELECT t.*, a.name AS account_name, c.name AS category_name, CONCAT(p.first_name, " ", p.last_name) AS person_name, '
-			. 'p.card_number AS person_card, act.name AS activity_name FROM ' . Db::t( 'transactions' ) . ' t '
+			. 'p.card_number AS person_card, act.name AS activity_name, CONCAT(pp.first_name, " ", pp.last_name) AS payer_name FROM ' . Db::t( 'transactions' ) . ' t '
 			. 'JOIN ' . Db::t( 'accounts' ) . ' a ON a.id = t.account_id '
 			. 'JOIN ' . Db::t( 'categories' ) . ' c ON c.id = t.category_id '
 			. 'LEFT JOIN ' . Db::t( 'people' ) . ' p ON p.id = t.person_id '
+			. 'LEFT JOIN ' . Db::t( 'people' ) . ' pp ON pp.id = t.payer_person_id '
 			. 'LEFT JOIN ' . Db::t( 'activities' ) . ' act ON act.id = t.activity_id '
 			. 'WHERE t.voided_at IS NULL AND t.tx_date BETWEEN %s AND %s';
 		$args = array( $from, $to );

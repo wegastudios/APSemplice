@@ -2691,6 +2691,92 @@ $p_nocard = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Event
 $res_bn = $bk->invoke( null, array( 'session_id' => (string) $s_free, 'activity_id' => (string) $ev_free, 'person_id' => (string) $p_nocard ) );
 apse_ok( false !== strpos( $res_bn[0], 'apse-income' ) && false !== strpos( $res_bn[0], 'person_id=' . $p_nocard ), 'prenotazione evento gratuito con la tessera non valida: si apre l\'incasso (la quota associativa)' );
 
+// ---------- Cassa per più persone ----------
+$grp = new ReflectionMethod( Admin\Actions::class, 'save_group_cash' );
+$grp->setAccessible( true );
+$ev_g  = $mkev( 'Cena di gruppo', 800, 1200 );
+$s_g   = $first_session( $ev_g );
+$g_exp = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Familiare', 'last_name' => 'Scaduto', 'email' => 'familiare.scaduto@example.com' ) );
+$people->set_membership( $g_exp, (string) ( $cy - 2 ), true, 'manual' );
+$g_sus = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Familiare', 'last_name' => 'Sospeso', 'email' => 'familiare.sospeso@example.com' ) );
+$people->set_membership( $g_sus, (string) ( $cy - 2 ), true, 'manual' );
+$people->suspend( $g_sus );
+$tx_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+$line_ev   = array( array( 'kind' => 'event', 'session_id' => (string) $s_g, 'activity_id' => (string) $ev_g, 'amount' => '8,00' ) );
+$res_g     = $grp->invoke(
+	null,
+	array(
+		'payer_id' => (string) $p_cov, 'date' => $today, 'account_id' => (string) $cash['id'],
+		'people'   => array(
+			array( 'id' => (string) $p_cov, 'lines' => $line_ev ),
+			array( 'id' => (string) $g_exp, 'lines' => $line_ev ),
+			array( 'id' => (string) $g_sus, 'lines' => $line_ev ),
+			array( 'new' => '1', 'first' => 'Amico', 'last' => 'Ospite', 'phone' => '338 7776655', 'lines' => array( array( 'kind' => 'event', 'session_id' => (string) $s_g, 'activity_id' => (string) $ev_g, 'amount' => '12,00' ) ) ),
+		),
+	)
+);
+$g_rows = $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = ' . $s_g . ' AND voided_at IS NULL ORDER BY id', ARRAY_A );
+$g_guest = $wpdb->get_row( "SELECT * FROM " . Db::t( 'people' ) . " WHERE last_name = 'Ospite' AND first_name = 'Amico'", ARRAY_A );
+apse_ok( 4 === count( $g_rows ) && 1 === count( array_unique( array_column( $g_rows, 'receipt_id' ) ) ), 'cassa multipla: un solo incasso con quattro voci' );
+apse_ok( 3 === count( array_filter( $g_rows, function ( $r ) use ( $p_cov ) {
+	return (int) $r['payer_person_id'] === $p_cov;
+} ) ) && null === $g_rows[0]['payer_person_id'], 'cassa multipla: le voci per gli altri ricordano chi ha pagato' );
+apse_ok( $g_guest && 'guest' === $g_guest['type'] && (int) $g_guest['host_person_id'] === $p_cov, 'cassa multipla: il nuovo ospite è creato e collegato a chi paga' );
+apse_ok( $acts->has_active_booking( $s_g, $p_cov ) && $acts->has_active_booking( $s_g, $g_exp ) && $acts->has_active_booking( $s_g, $g_sus ) && $acts->has_active_booking( $s_g, (int) $g_guest['id'] ), 'cassa multipla: tutti prenotati, anche il socio sospeso e quello con la tessera scaduta (l\'eccezione per gli eventi)' );
+apse_ok( false !== strpos( $res_g[1], '4 voci per 4 persone' ) && false !== strpos( $res_g[1], '36,00' ), 'cassa multipla: messaggio con voci, persone e totale' );
+$ledger_html = apse_render( array( Admin\LedgerPage::class, 'render' ), 'pagato da' );
+apse_ok( false !== strpos( $ledger_html, 'pagato da' ), 'prima nota: si vede chi ha pagato per un altro' );
+
+// i corsi: tessera in regola, oppure quota nello stesso incasso
+$line_co = array( array( 'kind' => 'course', 'activity_id' => (string) $qe_c, 'month' => $month, 'amount' => '10,00' ) );
+$threw   = false;
+try {
+	$grp->invoke( null, array( 'payer_id' => (string) $p_cov, 'date' => $today, 'account_id' => (string) $cash['id'], 'people' => array( array( 'id' => (string) $g_exp, 'lines' => $line_co ) ) ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'tessera' );
+}
+apse_ok( $threw, 'cassa multipla: per un corso la tessera deve essere in regola' );
+$grp->invoke( null, array( 'payer_id' => (string) $p_cov, 'date' => $today, 'account_id' => (string) $cash['id'], 'people' => array( array( 'id' => (string) $g_exp, 'lines' => array_merge( array( array( 'kind' => 'membership', 'amount' => '10,00' ) ), $line_co ) ) ) ) );
+apse_ok( $people->is_active_member( $g_exp ) && in_array( $qe_c, $acts->active_activity_ids( $g_exp ), true ), 'cassa multipla: con la quota nello stesso incasso il corso è consentito' );
+$threw = false;
+try {
+	$grp->invoke( null, array( 'payer_id' => (string) $p_cov, 'date' => $today, 'account_id' => (string) $cash['id'], 'people' => array( array( 'id' => (string) $g_sus, 'lines' => $line_co ) ) ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw, 'cassa multipla: un socio sospeso non si iscrive a un corso' );
+$threw = false;
+try {
+	$grp->invoke( null, array( 'payer_id' => (string) $p_cov, 'date' => $today, 'account_id' => (string) $cash['id'], 'people' => array( array( 'id' => (string) $g_sus, 'lines' => array( array( 'kind' => 'membership', 'amount' => '10,00' ) ) ) ) ) );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'sospeso' );
+}
+apse_ok( $threw, 'cassa multipla: la quota di un socio sospeso richiede prima la riattivazione' );
+
+// tutto o niente
+$tx_mid = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+$ev_g2  = $mkev( 'Seconda cena', 500, null );
+$s_g2   = $first_session( $ev_g2 );
+$threw  = false;
+try {
+	$grp->invoke(
+		null,
+		array(
+			'payer_id' => (string) $p_cov, 'date' => $today, 'account_id' => (string) $cash['id'],
+			'people'   => array(
+				array( 'id' => (string) $p_cov, 'lines' => array( array( 'kind' => 'event', 'session_id' => (string) $s_g2, 'activity_id' => (string) $ev_g2, 'amount' => '5,00' ) ) ),
+				array( 'id' => (string) $g_sus, 'lines' => $line_co ),
+			),
+		)
+	);
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+apse_ok( $threw && $tx_mid === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && ! $acts->has_active_booking( $s_g2, $p_cov ), 'cassa multipla: se una voce non va, non resta scritto nulla (nemmeno le prenotazioni)' );
+$grp_html = apse_render( array( Admin\GroupCashPage::class, 'render' ), 'Cassa per più persone' );
+apse_ok( false !== strpos( $grp_html, 'apse-group-data' ) && false !== strpos( $grp_html, 'Nuovo ospite' ) && false !== strpos( $grp_html, 'apse_save_group_cash' ), 'cassa multipla: la pagina ha chi paga, le persone e il nuovo ospite' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-group' ), 'Cassa per più persone' ), 'cassa multipla: è una scheda della Contabilità' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );

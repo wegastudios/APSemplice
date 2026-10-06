@@ -21,6 +21,7 @@ final class DashboardPage {
 		Ui::header( 'APSemplice' . ( $name ? ' — ' . $name : '' ) );
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Nuovo incasso</a> '
+			. '<a class="button" href="' . esc_url( Ui::url( 'apse-group' ) ) . '">Cassa per più persone</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Nuova spesa</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a></p>';
 

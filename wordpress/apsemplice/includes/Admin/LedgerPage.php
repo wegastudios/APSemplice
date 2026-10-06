@@ -73,7 +73,7 @@ final class LedgerPage {
 			$title = Labels::is_transfer( $r['type'] ) ? Labels::tx_types()[ $r['type'] ] : $r['category_name'];
 			$extra = array_filter( array( $r['activity_name'], $r['competence_month'] ? 'competenza ' . $r['competence_month'] : null, $r['description'], $r['document_ref'] ? 'rif. ' . $r['document_ref'] : null ) );
 			echo '<tr><td>' . Ui::date( $r['tx_date'] ) . '</td><td><strong>' . esc_html( $title ) . '</strong><br><span class="description">' . esc_html( implode( ' · ', $extra ) ) . '</span></td>'; // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<td>' . esc_html( trim( ( $r['person_card'] ? 'n.' . $r['person_card'] . ' ' : '' ) . $r['person_name'] ) ) . '</td>';
+			echo '<td>' . esc_html( trim( ( $r['person_card'] ? 'n.' . $r['person_card'] . ' ' : '' ) . $r['person_name'] ) ) . ( ! empty( $r['payer_name'] ) ? ' <span class="description">(pagato da ' . esc_html( $r['payer_name'] ) . ')</span>' : '' ) . '</td>';
 			echo '<td>' . esc_html( $r['account_name'] . ' · ' . ( Labels::methods()[ $r['method'] ] ?? $r['method'] ) ) . '</td>';
 			echo '<td class="' . esc_attr( $cls ) . '">' . esc_html( $sign . ' ' . Money::format( (int) $r['amount_cents'] ) ) . '</td><td>';
 			if ( ! Labels::is_transfer( $r['type'] ) ) {

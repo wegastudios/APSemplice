@@ -166,6 +166,152 @@
 		if (INIT.length) { INIT.forEach(add); } else { add({}); }
 	});
 
+	/* Cassa per più persone: chi paga e, per ognuno, eventi, corsi e quote; un solo totale e un solo resto */
+	(function () {
+		var dataEl = $('#apse-group-data');
+		if (!dataEl) { return; }
+		var G = JSON.parse(dataEl.textContent);
+		var box = $('#apse-g-people'), blocks = [], seq = 0;
+		var payerSel = $('#apse-g-payer'), addSel = $('#apse-g-add-person');
+		G.people.forEach(function (p) { addSel.appendChild(el('option', { value: String(p.id), text: p.label })); });
+
+		function money(s) { return parseMoney(s) || 0; }
+		function fee(item, type) { return type === 'guest' ? item.guest_fee : item.fee; }
+		function total() {
+			var t = 0;
+			blocks.forEach(function (b) { b.lines.forEach(function (l) { t += money(l.amount); }); });
+			return t;
+		}
+		function refreshTotal() {
+			var t = total(), acc = $('#apse-g-account').value, cash = G.accountTypes[acc] === 'cash' && t > 0;
+			$('#apse-g-total').textContent = eur(t);
+			$('#apse-g-cash').style.display = cash ? '' : 'none';
+			if (!cash) { return; }
+			var tend = $('#apse-g-tendered'), got = parseMoney(tend.value), out = $('#apse-g-change'), quick = $('#apse-g-quick');
+			quick.innerHTML = '';
+			var q = [t]; [500, 1000, 2000, 5000, 10000, 20000].forEach(function (x) { if (x >= t && q.indexOf(x) < 0) { q.push(x); } });
+			q.slice(0, 4).forEach(function (v) {
+				var b = el('button', { type: 'button', 'class': 'button', text: v === t ? 'Esatto' : eur(v).replace(',00', '') });
+				b.addEventListener('click', function () { tend.value = plain(v); refreshTotal(); });
+				quick.appendChild(b);
+			});
+			if (got == null) { out.className = ''; out.textContent = ''; return; }
+			if (got < t) { out.className = 'apse-neg'; out.textContent = 'Mancano ' + eur(t - got); return; }
+			var rest = got - t, parts = [], D = [50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
+			D.forEach(function (d) { var k = Math.floor(rest / d); if (k > 0) { parts.push(k + ' × ' + eur(d)); rest -= k * d; } });
+			out.className = 'apse-ok'; out.textContent = 'Resto da dare: ' + eur(got - t) + (parts.length ? ' (' + parts.join(' · ') + ')' : '');
+		}
+
+		function addLine(b, l) { b.lines.push(l); render(); }
+		function render() {
+			box.innerHTML = '';
+			blocks.forEach(function (b, i) {
+				var n = 'people[' + i + ']';
+				var card = el('div', { 'class': 'apse-card', style: 'margin:8px 0' });
+				var head = el('h3', { text: b.label + (b.type === 'guest' ? ' (ospite)' : '') });
+				var rm = el('button', { type: 'button', 'class': 'button-link-delete', text: ' Togli', style: 'margin-left:10px' });
+				rm.addEventListener('click', function () { blocks.splice(i, 1); render(); });
+				head.appendChild(rm); card.appendChild(head);
+				if (b.isNew) {
+					card.appendChild(el('input', { type: 'hidden', name: n + '[new]', value: '1' }));
+					[['first', 'Nome', b.first], ['last', 'Cognome', b.last], ['phone', 'Cellulare', b.phone]].forEach(function (f) {
+						var inp = el('input', { type: 'text', name: n + '[' + f[0] + ']', value: f[2] || '', placeholder: f[1], size: '14', required: 'required' });
+						inp.addEventListener('input', function () { b[f[0]] = inp.value; b.label = ((b.first || '') + ' ' + (b.last || '')).trim() || 'Nuovo ospite'; });
+						card.appendChild(inp); card.appendChild(document.createTextNode(' '));
+					});
+					var host = el('select', { name: n + '[host]' });
+					host.appendChild(el('option', { value: '', text: 'ospite di chi paga' }));
+					G.people.filter(function (p) { return p.type !== 'guest'; }).forEach(function (p) { var o = el('option', { value: String(p.id), text: 'ospite di ' + p.label }); if (String(p.id) === String(b.host || '')) { o.selected = true; } host.appendChild(o); });
+					host.addEventListener('change', function () { b.host = host.value; });
+					card.appendChild(host);
+				} else {
+					card.appendChild(el('input', { type: 'hidden', name: n + '[id]', value: String(b.id) }));
+					if (b.ctx && b.ctx.suspended) { card.appendChild(el('p', { 'class': 'apse-warn', text: 'Socio sospeso (inattivo): puoi pagargli un evento, non un corso né la quota.' })); }
+					else if (b.ctx && b.ctx.needs_membership && !b.ctx.is_guest && !b.ctx.is_founder) { card.appendChild(el('p', { 'class': 'apse-warn', text: 'Tessera non in regola: puoi pagargli un evento; per un corso serve prima la quota associativa.' })); }
+				}
+				b.lines.forEach(function (l, j) {
+					var m = n + '[lines][' + j + ']';
+					var row = el('div', { 'class': 'apse-line' });
+					row.appendChild(el('span', { 'class': 'apse-line-title', text: l.title }));
+					['kind', 'session_id', 'activity_id', 'month', 'title'].forEach(function (k) { row.appendChild(el('input', { type: 'hidden', name: m + '[' + k + ']', value: l[k] == null ? '' : String(l[k]) })); });
+					var amt = el('input', { type: 'text', name: m + '[amount]', inputmode: 'decimal', value: l.amount, size: '8' });
+					amt.addEventListener('input', function () { l.amount = amt.value; refreshTotal(); });
+					row.appendChild(amt); row.appendChild(document.createTextNode(' € '));
+					var x = el('button', { type: 'button', 'class': 'button button-link-delete', text: 'Rimuovi' });
+					x.addEventListener('click', function () { b.lines.splice(j, 1); render(); });
+					row.appendChild(x); card.appendChild(row);
+				});
+				var bar = el('p', { 'class': 'apse-addbar' });
+				var evSel = el('select'); evSel.appendChild(el('option', { value: '', text: '+ Evento…' }));
+				G.events.forEach(function (e, k) { evSel.appendChild(el('option', { value: String(k), text: e.label + ' — ' + eur(fee(e, b.type)) })); });
+				evSel.addEventListener('change', function () {
+					var e = G.events[parseInt(evSel.value, 10)]; if (!e) { return; }
+					addLine(b, { kind: 'event', title: e.label, session_id: e.session_id, activity_id: e.activity_id, amount: plain(fee(e, b.type)) });
+				});
+				var coSel = el('select'); coSel.appendChild(el('option', { value: '', text: '+ Corso (mese in corso)…' }));
+				G.courses.forEach(function (c, k) { coSel.appendChild(el('option', { value: String(k), text: c.name + ' — ' + eur(fee(c, b.type)) })); });
+				coSel.addEventListener('change', function () {
+					var c = G.courses[parseInt(coSel.value, 10)]; if (!c) { return; }
+					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(fee(c, b.type)) });
+				});
+				bar.appendChild(evSel); bar.appendChild(document.createTextNode(' ')); bar.appendChild(coSel);
+				if (!b.isNew && b.type !== 'guest' && b.type !== 'founder' && G.cats.membership) {
+					var mb = el('button', { type: 'button', 'class': 'button', text: '+ Quota associativa' });
+					mb.addEventListener('click', function () { addLine(b, { kind: 'membership', title: 'Quota associativa', amount: plain(G.membershipFee) }); });
+					bar.appendChild(document.createTextNode(' ')); bar.appendChild(mb);
+				}
+				if (!b.isNew && b.ctx && ((b.ctx.dues && b.ctx.dues.length) || (b.ctx.bookings && b.ctx.bookings.length))) {
+					var db = el('button', { type: 'button', 'class': 'button', text: 'Carica quanto dovuto' });
+					db.addEventListener('click', function () { loadDues(b); });
+					bar.appendChild(document.createTextNode(' ')); bar.appendChild(db);
+				}
+				card.appendChild(bar);
+				box.appendChild(card);
+			});
+			refreshTotal();
+		}
+
+		function loadDues(b) {
+			(b.ctx.dues || []).forEach(function (d) { b.lines.push({ kind: 'course', title: d.name + ' · ' + d.month, activity_id: d.activity_id, month: d.month, amount: plain(d.amount) }); });
+			(b.ctx.bookings || []).forEach(function (e) { b.lines.push({ kind: 'event', title: e.label, session_id: e.session_id, activity_id: e.activity_id, amount: plain(e.amount) }); });
+			b.ctx.dues = []; b.ctx.bookings = [];
+			render();
+		}
+
+		function addPerson(id, autofill) {
+			if (blocks.some(function (b) { return !b.isNew && b.id === id; })) { return; }
+			var info = G.people.filter(function (p) { return p.id === id; })[0]; if (!info) { return; }
+			var b = { id: id, label: info.label, type: info.type, lines: [], ctx: null, key: ++seq };
+			blocks.push(b); render();
+			var fd = new FormData();
+			fd.append('action', 'apse_person_context'); fd.append('nonce', G.nonce); fd.append('person_id', String(id)); fd.append('date', $('input[name="date"]').value);
+			fetch(G.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
+				if (!res.success || !res.data.person) { return; }
+				b.ctx = res.data;
+				if (autofill) {
+					if (b.ctx.needs_membership && !b.ctx.suspended && !b.ctx.is_guest && !b.ctx.is_founder && G.cats.membership) { b.lines.push({ kind: 'membership', title: 'Quota associativa' + (b.ctx.membership ? ' ' + b.ctx.membership.year : ''), amount: plain(G.membershipFee) }); }
+					loadDues(b);
+				} else { render(); }
+			});
+		}
+
+		payerSel.addEventListener('change', function () { var id = parseInt(payerSel.value, 10); if (id) { addPerson(id, true); } });
+		addSel.addEventListener('change', function () { var id = parseInt(addSel.value, 10); addSel.value = ''; if (id) { addPerson(id, false); } });
+		$('#apse-g-add-guest').addEventListener('click', function () { blocks.push({ isNew: true, label: 'Nuovo ospite', type: 'guest', lines: [], key: ++seq }); render(); });
+		$('#apse-g-account').addEventListener('change', refreshTotal);
+		$('#apse-g-tendered').addEventListener('input', refreshTotal);
+		$('form.apse-group').addEventListener('submit', function (e) {
+			var t = total();
+			if (!payerSel.value) { e.preventDefault(); window.alert('Scegli chi paga.'); return; }
+			if (!blocks.length || t <= 0 || blocks.some(function (b) { return b.lines.some(function (l) { return !(money(l.amount) > 0); }); })) { e.preventDefault(); window.alert('Aggiungi almeno una voce e inserisci un importo valido per ognuna.'); return; }
+			if (G.accountTypes[$('#apse-g-account').value] === 'cash') {
+				var got = parseMoney($('#apse-g-tendered').value);
+				if (got != null && got < t) { e.preventDefault(); window.alert('I contanti ricevuti non bastano.'); }
+			}
+		});
+		render();
+	})();
+
 	/* Calcolatrice del resto: dove si incassa in contanti (conto di tipo cassa) si scrive quanto si è ricevuto e dice il resto */
 	$$('[data-apse-change]').forEach(function (wrap) {
 		var types = JSON.parse(wrap.getAttribute('data-types') || '{}');
