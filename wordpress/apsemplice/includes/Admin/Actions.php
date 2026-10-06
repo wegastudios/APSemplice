@@ -444,7 +444,7 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
-		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' . self::membership_warning( $pid ) );
+		return self::after_signup( $pid, Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' );
 	}
 
 	private static function cancel_enrollment( array $p ): array {
@@ -536,6 +536,27 @@ final class Actions {
 	}
 
 	/** Un socio sospeso è inattivo: va riattivato a mano prima di prenotarlo, iscriverlo o incassargli la quota. */
+	/**
+	 * Dopo un'iscrizione o una prenotazione: se c'è qualcosa da incassare (tessera non valida, mensilità dovuta, contributo non versato)
+	 * si apre direttamente l'incasso con quella persona e le voci già compilate; altrimenti si resta dove si era.
+	 */
+	private static function after_signup( int $pid, string $back, string $msg ): array {
+		$due = '' !== self::membership_warning( $pid );
+		if ( ! $due && $pid ) {
+			foreach ( Plugin::activities()->status_for_person( $pid ) as $st ) {
+				if ( $st['summary']['unpaid_months'] ) {
+					$due = true;
+					break;
+				}
+			}
+			$due = $due || (bool) Plugin::activities()->unpaid_bookings_for_person( $pid );
+		}
+		if ( $due ) {
+			return array( Ui::url( 'apse-income', array( 'person_id' => $pid, 'due' => 1 ) ), $msg . ' Ecco l\'incasso già compilato con quanto è dovuto.' );
+		}
+		return array( $back, $msg );
+	}
+
 	/** Avviso quando si iscrive o prenota un socio con la tessera non valida: deve rinnovare (la quota compare tra i pagamenti da incassare). */
 	private static function membership_warning( int $person_id ): string {
 		$person = $person_id ? Plugin::people()->get( $person_id ) : null;
@@ -648,11 +669,11 @@ final class Actions {
 				throw new \InvalidArgumentException( 'Corso non trovato.' );
 			}
 			Plugin::activities()->enroll( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
-			return array( Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.' . self::membership_warning( $pid ) );
+			return self::after_signup( $pid, Ui::url( 'apse' ), $name . ' è iscritto/a a ' . $a['name'] . '.' );
 		}
 		if ( 0 === strpos( $target, 's:' ) ) {
 			Plugin::activities()->book( (int) substr( $target, 2 ), $pid );
-			return array( Ui::url( 'apse' ), $name . ' è prenotato/a.' . self::membership_warning( $pid ) );
+			return self::after_signup( $pid, Ui::url( 'apse' ), $name . ' è prenotato/a.' );
 		}
 		throw new \InvalidArgumentException( 'Scegli a cosa iscriverlo.' );
 	}

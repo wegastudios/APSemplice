@@ -2666,6 +2666,16 @@ $founder_ok = ! $people->is_suspended( $founder );
 apse_ok( $founder_ok, 'sospensione in blocco: i fondatori non si toccano' );
 apse_ok( 0 === $people->suspend_expired( 8 ), 'sospensione in blocco: rilanciarla non cambia nulla' );
 
+// ---------- Dopo l'iscrizione si apre l'incasso già compilato ----------
+$p_inv   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Iscritto', 'last_name' => 'Senzatessera', 'email' => 'iscritto.senzatessera@example.com' ) );
+$res_inv = $qe->invoke( null, array( 'person_id' => (string) $p_inv, 'target' => 'a:' . $qe_c ) );
+apse_ok( false !== strpos( $res_inv[0], 'apse-income' ) && false !== strpos( $res_inv[0], 'person_id=' . $p_inv ) && false !== strpos( $res_inv[0], 'due=1' ), 'iscrizione: con la tessera non valida si apre subito l\'incasso con quella persona' );
+$free_c   = $acts->create( array( 'name' => 'Corso gratuito', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0 ) );
+$res_free = $qe->invoke( null, array( 'person_id' => (string) $p_cov, 'target' => 'a:' . $free_c ) );
+apse_ok( false === strpos( $res_free[0], 'apse-income' ), 'iscrizione: se non c\'è nulla da incassare si resta in bacheca' );
+$res_paid = $qe->invoke( null, array( 'person_id' => (string) $p_cov, 'target' => 'a:' . $qe_c ) );
+apse_ok( false !== strpos( $res_paid[0], 'apse-income' ) && false !== strpos( $res_paid[1], 'incasso' ), 'iscrizione: con la mensilità dovuta si apre l\'incasso (anche con la tessera in regola)' );
+
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[apsemplice_calendario]' );
