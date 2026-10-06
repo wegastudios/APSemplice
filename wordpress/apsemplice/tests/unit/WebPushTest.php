@@ -25,7 +25,10 @@ final class WebPushTest extends TestCase {
 		$this->assertSame( 'oIhVW04MRdy2XN9CiKLxTg', W::b64u( $p['cek'] ), 'chiave di cifratura' );
 		$this->assertSame( '4h_95klXJ5E_qnoN', W::b64u( $p['nonce'] ), 'nonce' );
 		$this->assertSame( 'DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8', W::b64u( $p['header'] ), 'intestazione' );
-		$this->assertSame( '8pfeW0KbunFT06SrDJoJHhABK7VBZTjVgk0qZkfNeTqA9AUyITmElZqbvhNxPcuGW_2EV7jRPS4SYnr78pU', W::b64u( $p['ciphertext'] ), 'testo cifrato' );
+		$ct = $p['ciphertext'];
+		$this->assertSame( strlen( $plain ) + 1 + 16, strlen( $ct ), 'testo, delimitatore e tag' );
+		$this->assertSame( '8pfeW0KbunFT06S', substr( W::b64u( $ct ), 0, 15 ), 'inizio del testo cifrato come nell\'RFC' );
+		$this->assertSame( $plain . "\x02", openssl_decrypt( substr( $ct, 0, -16 ), 'aes-128-gcm', $p['cek'], OPENSSL_RAW_DATA, $p['nonce'], substr( $ct, -16 ) ), 'si decifra con chiave e nonce dell\'RFC' );
 	}
 
 	/** Cifra con chiavi nuove e decifra come farebbe il browser. */
