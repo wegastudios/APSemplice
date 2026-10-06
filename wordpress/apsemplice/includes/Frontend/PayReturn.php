@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class PayReturn {
 
-	const PARAMS = array( 'apse_pay', 'apse_ret', 'token', 'PayerID', 'paymentId' );
+	const PARAMS = array( 'apse_pay', 'apse_ret', 'token', 'PayerID', 'paymentId', 'apsf_ok', 'apsf_err', 'apsf_sig' );
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -31,11 +31,11 @@ final class PayReturn {
 		$clean = remove_query_arg( self::PARAMS, $url );
 		try {
 			$msg = Plugin::payments()->handle_return( $public, $ret, get_current_user_id() );
-			wp_safe_redirect( add_query_arg( 'apsf_ok', $msg, $clean ) );
+			wp_safe_redirect( ApSemplicelash::url( $clean, 'apsf', $msg ) );
 		} catch ( \InvalidArgumentException $e ) {
-			wp_safe_redirect( add_query_arg( 'apsf_err', $e->getMessage(), $clean ) );
+			wp_safe_redirect( ApSemplicelash::url( $clean, 'apsf', '', $e->getmessage() ) );
 		} catch ( \Throwable $e ) {
-			wp_safe_redirect( add_query_arg( 'apsf_err', 'Non è stato possibile verificare il pagamento. Se hai pagato, lo registreremo appena il gateway lo conferma.', $clean ) );
+			wp_safe_redirect( ApSemplicelash::url( $clean, 'apsf', '', 'non è stato possibile verificare il pagamento. se hai pagato, lo registreremo appena il gateway lo conferma.' ) );
 		}
 		exit;
 	}

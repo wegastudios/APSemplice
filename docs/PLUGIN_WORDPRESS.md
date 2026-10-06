@@ -324,3 +324,17 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 
 - **Primo accesso col solo cellulare**: non crea più nessun accesso da solo (prima chi conosceva il cellulare di un socio senza utente poteva farsi mandare il link con una email propria e prendere la sua identità). Ora la richiesta aspetta l'approvazione della segreteria.
 - **Esportazioni CSV**: le celle di testo che iniziano con `=`, `+`, `-`, `@` (o tabulazione) hanno un apice davanti, così Excel e LibreOffice non le eseguono come formule (un nome ospite o una descrizione malevola non può più colpire chi apre il file). Gli importi numerici restano numeri.
+
+## Revisione di sicurezza e bug (ottobre)
+
+Controllo di accessi, permessi, query, pagamenti, allegati, token dei QR, calendario condiviso, importazioni, output delle pagine e logica delle prenotazioni. Corretto:
+
+- **Messaggi di esito firmati** (`Flash`): una pagina mostra solo i messaggi scritti dal sito; un testo messo in un link (`?apsf_err=…`) non compare più come avviso ufficiale (phishing/inganno sul tuo dominio). Vale per area soci e amministrazione.
+- **Ingresso sul posto e incassi del tesoriere**: un socio con la tessera scaduta non si prenota più da qui (come dal sito): deve rinnovare (il tesoriere può farlo nello stesso incasso).
+- **Posti degli eventi**: il controllo della capienza e la prenotazione avvengono sotto blocco; due richieste insieme non superano più i posti né creano doppie prenotazioni.
+- **Cambio di nominativo**: usa la stessa transazione della prima nota (prima, dentro un'operazione unica, poteva confermarla a metà).
+- **Contenuti riservati**: gli shortcode dentro un riquadro riservato non vengono più eseguiti per chi non ha diritto (prima si eseguivano e l'esito veniva scartato).
+- **Pagine di verifica e moduli di ingresso**: non si possono più incorniciare in un altro sito (clickjacking). Le viste con dati personali dichiarano alla cache di pagina di non essere memorizzate.
+- **Importi**: un valore oltre il miliardo di euro (errore di battitura o tentativo di far traboccare il numero) è rifiutato.
+- **Importazione Excel**: rifiutati i file con XML in UTF-16 (potevano nascondere un DOCTYPE al controllo).
+- **Elenco eventi pubblico**: il numero massimo di righe è limitato a 50.

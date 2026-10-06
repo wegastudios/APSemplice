@@ -62,6 +62,7 @@ class ReservedWidget extends Widget_Base {
 		$s    = $this->get_settings_for_display();
 		$rule = Visibility::is_valid( (string) ( $s['rule'] ?? '' ) ) ? (string) $s['rule'] : Visibility::MEMBERS;
 		$ids  = array_values( array_filter( array_map( 'intval', (array) ( $s['activities'] ?? array() ) ) ) );
-		echo Restrict::render_reserved( $rule, $ids, do_shortcode( wp_kses_post( (string) ( $s['body'] ?? '' ) ) ), (string) ( $s['message'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		$body = Restrict::allowed( $rule, $ids ) ? do_shortcode( wp_kses_post( (string) ( $s['body'] ?? '' ) ) ) : ''; // gli shortcode non si eseguono per chi non può vedere
+		echo Restrict::render_reserved( $rule, $ids, $body, (string) ( $s['message'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 }

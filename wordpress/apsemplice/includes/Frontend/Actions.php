@@ -92,8 +92,7 @@ final class Actions {
 	}
 
 	private static function redirect( string $url, string $ok = '', string $err = '' ): void {
-		$url = remove_query_arg( array( 'apsf_ok', 'apsf_err' ), $url );
-		wp_safe_redirect( add_query_arg( '' !== $err ? array( 'apsf_err' => $err ) : array( 'apsf_ok' => $ok ), $url ) );
+		wp_safe_redirect( ApSemplicelash::url( $url, 'apsf', $ok, $err ) );
 		exit;
 	}
 
@@ -190,7 +189,7 @@ final class Actions {
 	public static function do_pay( array $post ): string {
 		$actor = self::actor();
 		self::require_cap( 'apse_view_payments', (int) $actor['id'] );
-		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apse_pay', 'apse_ret', 'token', 'PayerID' ), self::back_url( $post ) );
+		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apsf_sig', 'apse_pay', 'apse_ret', 'token', 'PayerID' ), self::back_url( $post ) );
 		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back );
 	}
 
@@ -286,6 +285,19 @@ final class Actions {
 		$acts = Plugin::activities();
 		$ledger->in_batch(
 			function () use ( $post, $pid, $lines, $acts, $ledger ) {
+				$people   = Plugin::people();
+				$who      = $people->get( $pid );
+				$cat_memb = $ledger->category_id_of_kind( 'membership' );
+				$renewing = false;
+				foreach ( $lines as $l ) {
+					$renewing = $renewing || (int) $l['category_id'] === $cat_memb;
+				}
+				foreach ( $lines as $l ) {
+					// Un socio con la tessera non in regola prenota solo se la rinnova nello stesso incasso
+					if ( ! empty( $l['session_id'] ) && $who && MemberType::is_member( $who['type'] ) && ! $renewing && ! $people->is_active_member( $pid ) ) {
+						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: aggiungi la quota associativa nello stesso incasso.' );
+					}
+				}
 				foreach ( $lines as $l ) {
 					if ( ! empty( $l['session_id'] ) && ! $acts->has_active_booking( (int) $l['session_id'], $pid ) ) {
 						$acts->book( (int) $l['session_id'], $pid ); // chi paga un evento senza prenotazione viene prenotato (se c'e posto)

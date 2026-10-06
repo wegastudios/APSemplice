@@ -23,10 +23,7 @@ final class TicketVerify {
 		if ( ! isset( $_GET['apse_ticket'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;
 		}
-		$flash = array(
-			'ok'  => isset( $_GET['apsf_ok'] ) ? sanitize_text_field( wp_unslash( $_GET['apsf_ok'] ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification
-			'err' => isset( $_GET['apsf_err'] ) ? sanitize_text_field( wp_unslash( $_GET['apsf_err'] ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification
-		);
+		$flash = ApSemplicelash::read( 'apsf' );
 		$html  = self::page( sanitize_text_field( wp_unslash( $_GET['apse_ticket'] ) ), $flash ); // phpcs:ignore WordPress.Security.NonceVerification
 		CardVerify::send_headers();
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()

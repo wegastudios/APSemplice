@@ -2836,6 +2836,9 @@ $acts->book( $kar_s, $q );
 apse_ok( 1 === $acts->seats( $kar_s )['free'], 'posti: una prenotazione lascia un posto libero' );
 wp_set_current_user( $u_tre );
 $lm_id = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Luca', 'last_name' => 'Lastminute', 'email' => 'luca.lastminute@example.com' ) );
+$people->set_membership( $lm_id, Settings::membership_year()->label(), true );
+$edo_id = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Edo', 'last_name' => 'Scaduto', 'email' => 'edo.scaduto@example.com' ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $kar_s, $edo_id ) { $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $edo_id, 'pay' => '1' ) ); } ), 'non è in regola' ) && ! $acts->has_active_booking( $kar_s, $edo_id ), 'ingresso sul posto: un socio con la tessera scaduta non viene prenotato (deve rinnovare)' );
 $dm = $front::do_door( array( 'session_id' => $kar_s, 'person_id' => $lm_id, 'pay' => '1' ) );
 $lm = $people->get( $lm_id );
 $guest_door = $people->create( array( 'type' => 'guest', 'first_name' => 'Gina', 'last_name' => 'Ospite', 'phone' => '333 7770009', 'host_person_id' => $founder ) );
@@ -2872,6 +2875,10 @@ $front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id
 $tc_tot = (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND person_id = $tc_p" );
 apse_ok( 1700 === $tc_tot && $people->has_membership( $tc_p, Settings::membership_year()->label() ), 'tesoriere: incassa quota associativa ed evento in un solo incasso' );
 apse_ok( null !== apse_throws( function () use ( $front, $tc_p, $cash ) { $front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => '', 'amount' => '' ) ) ) ); } ), 'tesoriere: senza voci non incassa' );
+$tc2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Senzatessera', 'email' => 'ugo.senzatessera@example.com' ) );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front, $tc2, $tc_s, $cash ) { $front::do_collect( array( 'person_id' => $tc2, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 's:' . $tc_s, 'amount' => '7' ) ) ) ); } ), 'non è in regola' ) && ! $acts->has_active_booking( $tc_s, $tc2 ), 'tesoriere: un evento a un socio con la tessera scaduta solo insieme al rinnovo' );
+$front::do_collect( array( 'person_id' => $tc2, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '10' ), array( 'what' => 's:' . $tc_s, 'amount' => '7' ) ) ) );
+apse_ok( $acts->has_active_booking( $tc_s, $tc2 ) && $people->has_membership( $tc2, Settings::membership_year()->label() ), 'tesoriere: rinnovo ed evento nello stesso incasso vanno a buon fine' );
 wp_set_current_user( $uq );
 apse_ok( null !== apse_throws( function () use ( $front, $tc_p, $cash ) { $front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '10' ) ) ) ); } ), 'incasso dall\'area soci: un socio qualsiasi viene rifiutato' );
 wp_set_current_user( 1 );
@@ -2907,6 +2914,31 @@ apse_ok( '' === (string) $people->get( $bp[0] )['board_role'] && 9 === count( $p
 apse_render( array( Admin\PeoplePage::class, 'render_list' ), 'Consiglio direttivo' );
 apse_render( array( Admin\SettingsPage::class, 'render' ), 'consiglieri' );
 apse_ok( has_action( 'admin_post_apse_set_board_role' ), 'consiglio: azione di assegnazione registrata' );
+
+// ---------- Revisione di sicurezza: messaggi firmati, shortcode riservati, importi enormi ----------
+wp_set_current_user( 1 );
+$f_url = \ApSemplice\Flash::url( 'https://example.org/area/', 'apsf', 'Spesa registrata.' );
+parse_str( (string) wp_parse_url( $f_url, PHP_URL_QUERY ), $f_q );
+$old_get = $_GET;
+$_GET    = $f_q;
+$f_ok    = \ApSemplice\Flash::read( 'apsf' );
+$_GET    = array( 'apsf_err' => 'Il tuo conto è sospeso: chiama il 333 0000000' );
+$f_fake  = \ApSemplice\Flash::read( 'apsf' );
+$_GET    = array( 'apsf_ok' => 'Altro testo', 'apsf_sig' => (string) ( $f_q['apsf_sig'] ?? '' ) );
+$f_alt   = \ApSemplice\Flash::read( 'apsf' );
+$_GET    = array( 'apsf_err' => 'Spesa registrata.', 'apsf_sig' => (string) ( $f_q['apsf_sig'] ?? '' ) );
+$f_kind  = \ApSemplice\Flash::read( 'apsf' );
+$_GET    = $old_get;
+apse_ok( 'Spesa registrata.' === $f_ok['ok'] && '' === $f_ok['err'] && '' === $f_fake['err'] && '' === $f_fake['ok'] && '' === $f_alt['ok'] && '' === $f_kind['err'], 'messaggi di esito: si mostrano solo quelli firmati dal sito (un testo messo in un link viene ignorato)' );
+$GLOBALS['apse_probe'] = 0;
+add_shortcode( 'apse_probe', function () { $GLOBALS['apse_probe']++; return 'SEGRETO'; } );
+wp_set_current_user( 0 );
+$gate = do_shortcode( '[apsemplice_riservato accesso="soci"][apse_probe][/apsemplice_riservato]' );
+wp_set_current_user( 1 );
+apse_ok( 0 === $GLOBALS['apse_probe'] && false === strpos( $gate, 'SEGRETO' ) && false !== strpos( $gate, 'apsf-gate' ), 'contenuto riservato: gli shortcode dentro non vengono nemmeno eseguiti per chi non ha diritto' );
+apse_ok( 'SEGRETO' === do_shortcode( '[apsemplice_riservato accesso="soci"][apse_probe][/apsemplice_riservato]' ) && 1 === $GLOBALS['apse_probe'], 'contenuto riservato: per chi ha diritto (amministratore) si vede' );
+remove_shortcode( 'apse_probe' );
+apse_ok( null === \ApSemplice\Money::parse( '99999999999999999999' ) && null === \ApSemplice\Money::parse( '-5000000000' ) && 1050 === \ApSemplice\Money::parse( '10,50' ) && 100000000000 === \ApSemplice\Money::parse( '1.000.000.000' ), 'importi: i valori assurdi sono rifiutati, quelli normali no' );
 
 // ---------- Calendario nell'area soci ----------
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );

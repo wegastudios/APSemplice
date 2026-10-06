@@ -46,8 +46,9 @@ final class Views {
 		if ( $printed ) {
 			return '';
 		}
-		$ok  = isset( $_GET['apsf_ok'] ) ? sanitize_text_field( wp_unslash( $_GET['apsf_ok'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		$err = isset( $_GET['apsf_err'] ) ? sanitize_text_field( wp_unslash( $_GET['apsf_err'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$msg = ApSemplicelash::read( 'apsf' ); // solo messaggi scritti dal sito (firmati)
+		$ok  = $msg['ok'];
+		$err = $msg['err'];
 		if ( '' === $ok && '' === $err ) {
 			return '';
 		}
@@ -101,6 +102,9 @@ final class Views {
 	private static function with_person( callable $fn, string $class = '' ): string {
 		if ( ! is_user_logged_in() ) {
 			return self::login_prompt();
+		}
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // dati personali: mai nella cache di pagina (plugin di cache, CDN)
 		}
 		$uid      = get_current_user_id();
 		$is_admin = Access::is_admin_user( $uid );
@@ -507,7 +511,7 @@ final class Views {
 	}
 
 	private static function session_url( int $session_id = 0 ): string {
-		$base = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apse_session' ), Restrict::current_url() );
+		$base = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apsf_sig', 'apse_session' ), Restrict::current_url() );
 		return $session_id ? add_query_arg( 'apse_session', $session_id, $base ) : $base;
 	}
 
@@ -1009,7 +1013,7 @@ final class Views {
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
-		$rows = Plugin::activities()->upcoming_sessions( max( 1, (int) ( $atts['limite'] ?? 5 ) ) );
+		$rows = Plugin::activities()->upcoming_sessions( max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) ) );
 		if ( ! $rows ) {
 			return self::wrap( '<p class="apsf-muted">Nessun evento in programma.</p>' );
 		}

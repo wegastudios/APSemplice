@@ -453,24 +453,35 @@ class ActivityService {
 		if ( ! $a || ! $person ) {
 			throw new \InvalidArgumentException( 'Attività o persona non trovata.' );
 		}
-		$tbl      = Db::t( 'bookings' );
-		$existing = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $person_id ), ARRAY_A );
-		if ( $existing && 'booked' === $existing['status'] ) {
-			throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
-		}
-		if ( null !== $s['capacity'] ) {
-			$taken = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
-			if ( $taken >= (int) $s['capacity'] ) {
-				throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
+		$tbl = Db::t( 'bookings' );
+		// Posti e doppie prenotazioni: controllo e scrittura sotto blocco, così due richieste insieme non superano la capienza.
+		$lock = 'apse_book_' . $session_id;
+		$got  = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT GET_LOCK(%s, 5)', $lock ) );
+		try {
+			$existing = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $person_id ), ARRAY_A );
+			if ( $existing && 'booked' === $existing['status'] ) {
+				throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
 			}
-		}
-		$fee = $this->fee_for( $a, $person['type'] );
-		if ( $existing ) {
-			$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
-			$id = (int) $existing['id'];
-		} else {
-			$this->db()->insert( $tbl, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'fee_due_cents' => $fee, 'created_at' => Db::now() ) );
-			$id = (int) $this->db()->insert_id;
+			if ( null !== $s['capacity'] ) {
+				$taken = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
+				if ( $taken >= (int) $s['capacity'] ) {
+					throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
+				}
+			}
+			$fee = $this->fee_for( $a, $person['type'] );
+			if ( $existing ) {
+				$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
+				$id = (int) $existing['id'];
+			} else {
+				if ( ! $this->db()->insert( $tbl, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'fee_due_cents' => $fee, 'created_at' => Db::now() ) ) ) {
+					throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
+				}
+				$id = (int) $this->db()->insert_id;
+			}
+		} finally {
+			if ( $got ) {
+				$this->db()->get_var( $this->db()->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
+			}
 		}
 		Audit::log( 'booking.created', 'activity', (int) $a['id'], array( 'session' => $session_id, 'person_id' => $person_id, 'fee' => $fee ) );
 		return $id;
@@ -875,16 +886,9 @@ class ActivityService {
 		Audit::log( 'booking.transferred', 'activity', (int) $a['id'], array( 'session' => $session_id, 'from' => $from_id, 'to' => $to_id, 'fee' => $fee ) );
 	}
 
+	/** Una sola transazione per tutto il plugin (quella della prima nota): dentro un'operazione unica ci si unisce, invece di confermarla a metà. */
 	private function in_transaction( callable $fn ) {
-		$this->db()->query( 'START TRANSACTION' );
-		try {
-			$res = $fn();
-			$this->db()->query( 'COMMIT' );
-			return $res;
-		} catch ( \Throwable $e ) {
-			$this->db()->query( 'ROLLBACK' );
-			throw $e;
-		}
+		return Plugin::ledger()->in_batch( $fn );
 	}
 
 	// ---------- Corsi: iscrizioni per mese ----------

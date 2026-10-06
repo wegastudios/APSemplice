@@ -57,6 +57,9 @@ final class DoorSales {
 					if ( ! $who || ! MemberType::is_member( $who['type'] ) ) {
 						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' );
 					}
+					if ( ! $people->is_active_member( $pid ) ) {
+						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: va rinnovata (in segreteria o dal tesoriere) prima di prenotare.' );
+					}
 				}
 				if ( ! $svc->has_active_booking( $sid, $pid ) ) {
 					$svc->book( $sid, $pid ); // se i posti sono finiti lancia "Posti esauriti"

@@ -126,7 +126,7 @@ final class Activation {
 					wp_set_auth_cookie( (int) $res['user_id'], true );
 					$page = (int) Settings::get( 'member_area_page_id' );
 					$url  = $page ? (string) get_permalink( $page ) : home_url( '/' );
-					wp_safe_redirect( add_query_arg( 'apsf_ok', 'Accesso attivato: benvenuto/a!', $url ) );
+					wp_safe_redirect( ApSemplicelash::url( $url, 'apsf', 'accesso attivato: benvenuto/a!' ) );
 					exit;
 				}
 				$error = $res['error'];

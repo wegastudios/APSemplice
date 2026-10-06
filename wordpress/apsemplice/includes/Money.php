@@ -39,6 +39,10 @@ final class Money {
 		if ( ! preg_match( '/^-?\d+(\.\d+)?$/', $s ) ) {
 			return null;
 		}
-		return (int) round( ( (float) $s ) * 100 );
+		$f = (float) $s;
+		if ( abs( $f ) > 1.0E+9 ) { // oltre un miliardo di euro: un errore di battitura (e un valore che un intero non conserva bene)
+			return null;
+		}
+		return (int) round( $f * 100 );
 	}
 }

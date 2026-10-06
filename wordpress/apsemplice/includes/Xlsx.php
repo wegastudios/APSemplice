@@ -95,7 +95,8 @@ final class Xlsx {
 	}
 
 	private static function xml( string $xml ): \SimpleXMLElement {
-		if ( false !== stripos( $xml, '<!DOCTYPE' ) || false !== stripos( $xml, '<!ENTITY' ) ) {
+		// Un XML in UTF-16 (byte nulli) potrebbe nascondere un DOCTYPE al controllo qui sotto: gli .xlsx di Excel sono sempre UTF-8.
+		if ( false !== strpos( $xml, "\0" ) || false !== stripos( $xml, '<!DOCTYPE' ) || false !== stripos( $xml, '<!ENTITY' ) ) {
 			throw new \InvalidArgumentException( 'Il file Excel contiene dati non ammessi.' );
 		}
 		// Si lavora con nomi senza namespace (più semplice e robusto): via la dichiarazione di default e l'eventuale prefisso del namespace principale.

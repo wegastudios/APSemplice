@@ -261,7 +261,11 @@ final class Restrict {
 	public static function shortcode( $atts, $content = '' ): string {
 		$a = shortcode_atts( array( 'accesso' => 'soci', 'attivita' => '', 'messaggio' => '' ), (array) $atts, 'apsemplice_riservato' );
 		$ids = array_values( array_filter( array_map( 'intval', preg_split( '/[\s,;]+/', (string) $a['attivita'] ) ?: array() ) ) );
-		return self::render_reserved( self::rule_from_text( (string) $a['accesso'] ), $ids, do_shortcode( (string) $content ), (string) $a['messaggio'] );
+		$rule = self::rule_from_text( (string) $a['accesso'] );
+		if ( ! self::allowed( $rule, $ids ) ) {
+			return self::gate_html( $rule, $ids, '', (string) $a['messaggio'] ); // gli shortcode dentro non vengono nemmeno eseguiti
+		}
+		return do_shortcode( (string) $content );
 	}
 
 	/** Mostra $content a chi può vederlo, altrimenti il riquadro "riservato". Usato da shortcode, blocco e widget. */

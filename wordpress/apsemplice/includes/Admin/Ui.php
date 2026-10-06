@@ -47,8 +47,9 @@ final class Ui {
 	}
 
 	public static function notices(): void {
-		$ok  = self::get_str( 'apse_ok' );
-		$err = self::get_str( 'apse_err' );
+		$msg = ApSemplicelash::read( 'apse' ); // solo messaggi scritti dal sito (firmati)
+		$ok  = $msg['ok'];
+		$err = $msg['err'];
 		if ( '' !== $ok ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $ok ) . '</p></div>';
 		}
@@ -162,14 +163,7 @@ final class Ui {
 	}
 
 	public static function redirect( string $url, string $ok = '', string $err = '' ): void {
-		$args = array();
-		if ( '' !== $ok ) {
-			$args['apse_ok'] = $ok;
-		}
-		if ( '' !== $err ) {
-			$args['apse_err'] = $err;
-		}
-		wp_safe_redirect( add_query_arg( $args, remove_query_arg( array( 'apse_ok', 'apse_err' ), $url ) ) );
+		wp_safe_redirect( ApSemplicelash::url( $url, 'apse', $ok, $err ) );
 		exit;
 	}
 }

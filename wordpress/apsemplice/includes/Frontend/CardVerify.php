@@ -25,6 +25,8 @@ final class CardVerify {
 		nocache_headers();
 		header( 'X-Robots-Tag: noindex, nofollow' );
 		header( 'Referrer-Policy: no-referrer' );
+		header( 'X-Frame-Options: DENY' ); // niente pagine di verifica o moduli di ingresso dentro un frame di un altro sito (clickjacking)
+		header( "Content-Security-Policy: frame-ancestors 'none'" );
 		header( 'Content-Type: text/html; charset=utf-8' );
 	}
 
