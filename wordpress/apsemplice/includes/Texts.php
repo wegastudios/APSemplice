@@ -73,13 +73,14 @@ final class Texts {
 	private static $exact = array();
 
 	/** Testo intero (con gli spazi attorno) che è una parola breve tradotta. */
-	private static function exact_swap( string $text ): string {
+	private static function exact_swap( string $text, bool $html = false ): string {
 		if ( ! self::$exact ) {
 			return $text;
 		}
 		$t = trim( $text );
 		if ( '' !== $t && isset( self::$exact[ $t ] ) ) {
-			return substr( $text, 0, strpos( $text, $t ) ) . self::$exact[ $t ] . substr( $text, strpos( $text, $t ) + strlen( $t ) );
+			$new = $html ? self::h( self::$exact[ $t ] ) : self::$exact[ $t ]; // in HTML la traduzione è solo testo: mai markup
+			return substr( $text, 0, strpos( $text, $t ) ) . $new . substr( $text, strpos( $text, $t ) + strlen( $t ) );
 		}
 		return $text;
 	}
@@ -179,7 +180,7 @@ final class Texts {
 		}
 		$fix = function ( string $text ) use ( $to, $back, $terms, $own ) {
 			if ( $own ) {
-				$text = self::exact_swap( $text );
+				$text = self::exact_swap( $text, true );
 			}
 			if ( $to ) {
 				$text = strtr( $text, $to );

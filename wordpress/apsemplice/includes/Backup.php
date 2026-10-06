@@ -40,6 +40,12 @@ final class Backup {
 	public static function saved(): array {
 		$out = array();
 		foreach ( glob( self::dir() . '/*.zip' ) ?: array() as $f ) {
+			if ( preg_match( '/^prima-del-ripristino-(\d{8}-\d{6})\.zip$/', basename( $f ), $m ) ) { // copie fatte da versioni precedenti, con il nome prevedibile
+				$new = dirname( $f ) . '/prima-del-ripristino-' . $m[1] . '-' . bin2hex( random_bytes( 8 ) ) . '.zip';
+				if ( @rename( $f, $new ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+					$f = $new;
+				}
+			}
 			$out[] = array( 'name' => basename( $f ), 'size' => (int) filesize( $f ), 'time' => (int) filemtime( $f ) );
 		}
 		usort( $out, function ( $a, $b ) {
@@ -224,7 +230,7 @@ final class Backup {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 		$dir    = self::ensure_dir();
-		$safety = $dir . '/prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '.zip';
+		$safety = $dir . '/prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip'; // nome non indovinabile: la cartella potrebbe essere raggiungibile da web (nginx ignora .htaccess)
 		self::export( true, $safety );
 		$old = self::saved();
 		foreach ( array_slice( $old, self::KEEP ) as $o ) {
@@ -280,12 +286,11 @@ final class Backup {
 		$raw = $zip->getFromName( 'impostazioni.json' );
 		$p   = $raw ? json_decode( $raw, true ) : null;
 		if ( is_array( $p ) ) {
-			$cur = Settings::all();
 			$new = is_array( $p['settings'] ?? null ) ? $p['settings'] : array();
 			foreach ( Settings::SECRET_KEYS as $k ) {
-				$new[ $k ] = $cur[ $k ] ?? '';
+				unset( $new[ $k ] ); // le chiavi segrete restano quelle del sito (e Settings::update le lascia com'è)
 			}
-			update_option( Settings::OPTION, array_merge( $cur, $new ) );
+			Settings::update( $new ); // passa dai controlli delle impostazioni: una copia modificata non può inserire valori fuori regola
 			foreach ( self::OPT_NAMES as $n ) {
 				if ( isset( $p['options'][ $n ] ) && null !== $p['options'][ $n ] ) {
 					update_option( $n, $p['options'][ $n ], false );
@@ -360,7 +365,7 @@ final class Backup {
 		check_admin_referer( 'apse_backup_saved' );
 		$name = isset( $_GET['name'] ) ? basename( sanitize_text_field( wp_unslash( $_GET['name'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		$path = self::dir() . '/' . $name;
-		if ( ! preg_match( '/^prima-del-ripristino-\d{8}-\d{6}\.zip$/', $name ) || ! is_file( $path ) ) {
+		if ( ! preg_match( '/^prima-del-ripristino-\d{8}-\d{6}(-[0-9a-f]{16})?\.zip$/', $name ) || ! is_file( $path ) ) {
 			wp_die( 'Copia non trovata.', 404 );
 		}
 		self::send_zip( $path, $name, false );

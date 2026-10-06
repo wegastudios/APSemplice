@@ -180,7 +180,7 @@ final class Broadcasts {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function create( string $subject, string $body, string $audience, int $ref = 0 ): int {
-		$subject = trim( $subject );
+		$subject = trim( (string) preg_replace( '/\s+/', ' ', $subject ) ); // una sola riga: niente a capo nell'oggetto
 		$body    = trim( str_replace( "\r\n", "\n", $body ) );
 		if ( '' === $subject || '' === $body ) {
 			throw new \InvalidArgumentException( 'Scrivi l\'oggetto e il testo del messaggio.' );
@@ -223,6 +223,10 @@ final class Broadcasts {
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array();
 		$assoc = (string) Settings::get( 'association_name' );
 		foreach ( $rows as $r ) {
+			// si prende in carico la riga: se un altro passaggio (cron e pagina insieme) sta mandando le stesse email, non si manda due volte
+			if ( 1 !== (int) $db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending' ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) {
+				continue;
+			}
 			$ok = Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $b['subject'], self::text_for( $b['body'], $r['name'] ) );
 			$first = (string) strtok( (string) $r['name'], ' ' );
 			Push::notify_email( (string) $r['email'], (string) $b['subject'], strtr( (string) $b['body'], array( '{nome}' => $first, '{associazione}' => $assoc ) ) ); // anche sul telefono, se ha attivato le notifiche

@@ -4230,7 +4230,34 @@ Admin\TechActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );
 
+// ---------- Correzioni dal controllo di sicurezza ----------
+\ApSemplice\Languages::save_pack( 'de', 'Deutsch', array( 'Salva' => '<b onclick="x()">Speichern</b>', 'Quota associativa' => 'Beitrag "<i>"' ) );
+Settings::update( array( 'language' => 'de' ) );
+\ApSemplice\Texts::flush();
+$sx_html = \ApSemplice\Texts::html( '<p>Salva</p><a title="Salva">Quota associativa</a>' );
+apse_ok( false === strpos( $sx_html, '<b' ) && false === strpos( $sx_html, '<i>' ) && false !== strpos( $sx_html, '&lt;b onclick' ) && false !== strpos( $sx_html, 'title="&lt;b onclick' ) && false === strpos( $sx_html, 'title="<' ), 'sicurezza: una traduzione non può inserire markup nelle pagine (né rompere gli attributi)' );
+Settings::update( array( 'language' => 'it' ) );
+\ApSemplice\Languages::delete_pack( 'de' );
+\ApSemplice\Texts::flush();
+$sx_b = \ApSemplice\Broadcasts::create( "Oggetto\r\nBcc: spia@example.com", 'Testo.', 'activity', $at_c );
+apse_ok( 'Oggetto Bcc: spia@example.com' === \ApSemplice\Broadcasts::get( $sx_b )['subject'] && false === strpos( \ApSemplice\Broadcasts::get( $sx_b )['subject'], "\n" ), 'sicurezza: l\'oggetto di una comunicazione è sempre su una riga' );
+$sx_p   = $mkb( 'Ada', 'Daanonimizzare' );
+$sx_uid = (int) $people->get( $sx_p )['wp_user_id'];
+\ApSemplice\Insurance::add( $sx_p, 'Compagnia Segreta', 'POL-999', $in_day( -5 ), $in_day( 100 ), 'nota riservata' );
+$wpdb->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $sx_b, 'person_id' => $sx_p, 'email' => 'ada.daanonimizzare@example.com', 'name' => 'Ada Daanonimizzare', 'status' => 'sent' ) );
+$sx_c = $mkb( 'Carlo', 'Familiare' );
+$people->set_level_and_family( $sx_c, null, $sx_p );
+if ( \ApSemplice\WebPush::supported() && $sx_uid ) {
+	$sx_k = \ApSemplice\WebPush::new_keypair();
+	\ApSemplice\Push::subscribe( $sx_uid, array( 'endpoint' => 'https://fcm.googleapis.com/fcm/send/anon-1', 'keys' => array( 'p256dh' => \ApSemplice\WebPush::b64u( $sx_k['public'] ), 'auth' => \ApSemplice\WebPush::b64u( random_bytes( 16 ) ) ) ) );
+}
+$sx_export = \ApSemplice\Privacy::export( $sx_p );
+apse_ok( 'POL-999' === ( $sx_export['assicurazioni'][0]['numero'] ?? '' ) && array_key_exists( 'presenze', $sx_export ), 'privacy: l\'esportazione dei dati comprende polizze e presenze' );
+\ApSemplice\Privacy::anonymize( $sx_p );
+apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'insurance' ) . ' WHERE person_id = ' . $sx_p ) && '' === (string) $wpdb->get_var( 'SELECT email FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE person_id = ' . $sx_p . ' LIMIT 1' ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id = ' . $sx_uid ) && null === $people->get( $sx_c )['family_head_id'], 'privacy: l\'anonimizzazione toglie polizze, destinatari delle comunicazioni, dispositivi e legami familiari' );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
+
 wp_set_current_user( 1 );
 delete_option( \ApSemplice\Backup::OPT_LAST );
 apse_render( array( Admin\DashboardPage::class, 'render' ), 'Non hai ancora scaricato una copia di sicurezza' );
@@ -4292,6 +4319,11 @@ apse_ok( 'Associazione di prova' === Settings::get( 'association_name' ) && arra
 apse_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_file ) && $res['files'] >= 1 && $res['rows'] > 0 && $res['tables'] === count( $man['tables'] ), 'ripristino: gli allegati tornano al loro posto' );
 $saved = \ApSemplice\Backup::saved();
 apse_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
+apse_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $saved[0]['name'] ), 'sicurezza: il nome della copia salvata non è indovinabile' );
+$bk_legacy = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200101-000000.zip';
+copy( $bk_zip, $bk_legacy );
+$bk_names = array_column( \ApSemplice\Backup::saved(), 'name' );
+apse_ok( ! file_exists( $bk_legacy ) && ! in_array( 'prima-del-ripristino-20200101-000000.zip', $bk_names, true ) && 1 === count( preg_grep( '/^prima-del-ripristino-20200101-000000-[0-9a-f]{16}\.zip$/', $bk_names ) ), 'sicurezza: le copie con il vecchio nome prevedibile vengono rinominate' );
 $zs = new ZipArchive();
 $zs->open( \ApSemplice\Backup::dir() . '/' . $saved[0]['name'] );
 $safety_man = json_decode( (string) $zs->getFromName( 'manifest.json' ), true );
