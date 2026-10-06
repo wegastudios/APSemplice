@@ -12,6 +12,29 @@ defined( 'ABSPATH' ) || exit;
 
 final class SettingsPage {
 
+	/** Interruttori delle funzioni: chiave delle impostazioni => etichetta. */
+	const FEATURES = array(
+		'card_enabled'          => 'Tessera digitale nell\'area soci',
+		'card_qr_enabled'       => 'QR sulla tessera (verifica all\'ingresso)',
+		'ticket_qr_enabled'     => 'Biglietti QR delle prenotazioni',
+		'wallet_enabled'        => 'Pulsanti Apple Wallet e Google Wallet',
+		'ical_enabled'          => 'Calendario pubblicato (Google Calendar e simili)',
+		'rules_enabled'         => 'Regolamento da accettare',
+		'reminders_enabled'     => 'Promemoria automatici per email',
+		'insurance_volunteers'  => 'Assicurazioni dei volontari',
+		'insurance_association' => 'Polizze dell\'associazione (responsabilità civile, infortuni)',
+		'fivepm_enabled'        => '5x1000',
+	);
+
+	/** Caselle delle funzioni, lette e salvate dal modulo «Generale». */
+	private static function feature_boxes( array $s ): string {
+		$html = '<input type="hidden" name="features_present" value="1">';
+		foreach ( self::FEATURES as $k => $label ) {
+			$html .= '<label><input type="checkbox" name="' . esc_attr( $k ) . '" value="1"' . checked( ! empty( $s[ $k ] ), true, false ) . '> ' . esc_html( $label ) . '</label><br>';
+		}
+		return $html;
+	}
+
 	/** Livelli di socio: righe dinamiche (nome, base, quota, attivo), si aggiungono senza limiti. */
 	private static function levels_section(): void {
 		$rows = array();
@@ -37,9 +60,7 @@ final class SettingsPage {
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Quota associativa proposta</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
-		echo '<tr><th>Assicurazioni</th><td><label><input type="checkbox" name="insurance_volunteers" value="1"' . checked( ! empty( $s['insurance_volunteers'] ), true, false ) . '> Registro delle assicurazioni dei volontari</label><br>'
-			. '<label><input type="checkbox" name="insurance_association" value="1"' . checked( ! empty( $s['insurance_association'] ), true, false ) . '> Polizze dell\'associazione (responsabilità civile, infortuni dei soci)</label>'
-			. '<p class="description">Spente di default. Attivandole compare la scheda «Assicurazioni» in Registri, con le scadenze delle polizze e gli avvisi in Bacheca.</p></td></tr>';
+		echo '<tr><th>Funzioni attive</th><td>' . self::feature_boxes( $s ) . '<p class="description">Tutte le funzioni facoltative sono spente di default: accendi solo quelle che ti servono, ciò che è spento resta invisibile a soci e gestori. I dettagli tecnici (credenziali Wallet, WooCommerce, ruoli) sono nella scheda «Tecniche».</p></td></tr>';
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">I familiari di un capofamiglia (si sceglie nella scheda del socio) pagano la quota ridotta di questa percentuale; il capofamiglia paga la quota piena. 0 = nessuno sconto.</p></td></tr>';
 		echo '<tr><th>Durata tessera socio fondatore</th><td><input type="number" min="1" name="founder_years" value="' . (int) $s['founder_years'] . '"> anni<p class="description">Il socio fondatore ha la tessera sempre rinnovata: la scadenza viene fissata a questo numero di anni dall\'ingresso.</p></td></tr>';
 		echo '<tr><th>Ospiti: soglia di segnalazione</th><td><input type="number" min="0" max="20" name="guest_max_events" value="' . (int) $s['guest_max_events'] . '"> partecipazioni<p class="description">Dopo quante partecipazioni a eventi e corsi un non socio viene segnalato come "da invitare a iscriversi" (di solito 1 o 2: oltre, anche per ragioni assicurative, dovrebbe iscriversi). <strong>Non blocca nulla</strong>: evidenzia chi gestisce gli ospiti negli elenchi, nella scheda e all\'ingresso. Le partecipazioni di chi si registra più volte (stesso cellulare, email o nome) si sommano. 0 = nessuna segnalazione.</p></td></tr>';

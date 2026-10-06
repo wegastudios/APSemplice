@@ -16,7 +16,7 @@ final class Labels {
 	}
 
 	public static function methods(): array {
-		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'other' => 'Altro' );
+		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'woocommerce' => 'Negozio online (WooCommerce)', 'other' => 'Altro' );
 	}
 
 	/** kind => [etichetta, è un'entrata, è un'uscita] */

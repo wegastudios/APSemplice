@@ -11,6 +11,9 @@ defined( 'ABSPATH' ) || exit;
 final class ReportsPage {
 
 	public static function render(): void {
+		if ( Admin::reports_off( 'Report' ) ) {
+			return;
+		}
 		$mode = Ui::get_str( 'mode' );
 		$mode = in_array( $mode, array( 'social', 'solar' ), true ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );

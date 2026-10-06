@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '30';
+	const DB_VERSION        = '31';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -193,6 +193,16 @@ final class Install {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY year (year)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}woo_links (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(12) NOT NULL,
+  ref_id bigint(20) unsigned NOT NULL,
+  product_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY kind_ref (kind,ref_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}attendance (

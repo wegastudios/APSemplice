@@ -301,6 +301,9 @@ final class RegistersPage {
 	// ---------- Rendiconto ----------
 
 	public static function render_statement(): void {
+		if ( Admin::reports_off( 'Rendiconto per cassa' ) ) {
+			return;
+		}
 		$years = Statement::years();
 		$year  = Ui::get_int( 'year', $years[0] );
 		$year  = in_array( $year, $years, true ) ? $year : $years[0];
