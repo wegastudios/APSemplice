@@ -53,6 +53,8 @@ final class Texts {
 		}
 		update_option( self::OPT, $clean );
 		self::$map = $clean;
+		self::$eff = null; // le sostituzioni in vigore si ricalcolano
+		self::$tok = array();
 	}
 
 	/** Dopo un salvataggio o un test: rilegge dal database. */

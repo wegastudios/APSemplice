@@ -15,11 +15,11 @@ final class TextsPage {
 		$cur  = \ApSemplice\Languages::current();
 		$all  = \ApSemplice\Languages::available();
 		$up   = \ApSemplice\Languages::uploaded();
-		echo '<h2>Lingua</h2><p class="description">I testi del plugin sono in italiano. Scegli un'altra lingua tra quelle disponibili: pagine, email e PDF vengono tradotti, e le tue personalizzazioni hanno comunque la precedenza. Questa pagina resta in italiano.</p>';
+		echo '<h2>Lingua</h2><p class="description">I testi del plugin sono in italiano. Scegli un\'altra lingua tra quelle disponibili: pagine, email e PDF vengono tradotti, e le tue personalizzazioni hanno comunque la precedenza. Questa pagina resta in italiano.</p>';
 		Ui::form_open( 'apse_save_language', Ui::url( 'apse-texts' ), false, 'apse-inline' );
 		echo '<select name="language">' . Ui::options( $all, $cur ) . '</select> <button class="button button-primary">Usa questa lingua</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
-		echo '<details><summary><strong>Aggiungi una lingua</strong></summary><p class="description">Parti dal file dei testi (esporta da «Esporta tutti i testi» qui sotto), scrivi la traduzione nella colonna «Personalizzato» rinominandola «Traduzione» (oppure lascia il nome com'è) e caricalo con il codice della lingua. Va bene CSV, Excel o JSON.</p>';
+		echo '<details><summary><strong>Aggiungi una lingua</strong></summary><p class="description">Parti dal file dei testi (esporta da «Esporta tutti i testi» qui sotto), scrivi la traduzione nella colonna «Personalizzato» rinominandola «Traduzione» (oppure lascia il nome com\'è) e caricalo con il codice della lingua. Va bene CSV, Excel o JSON.</p>';
 		Ui::form_open( 'apse_import_language', Ui::url( 'apse-texts' ), true );
 		echo '<p>Codice <input type="text" name="code" size="5" placeholder="fr" maxlength="6" required> Nome <input type="text" name="name" placeholder="Français" maxlength="60" required> <input type="file" name="lang_file" accept=".csv,.xlsx,.json" required> <button class="button">Carica</button></p>';
 		Ui::form_close();
