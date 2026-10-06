@@ -1553,7 +1553,7 @@ $save_card = new ReflectionMethod( Admin\Actions::class, 'save_card' );
 $save_card->invoke( null, array( 'card_qr_enabled' => '1', 'ticket_qr_enabled' => '1', 'wallet_enabled' => '1' ) );
 apse_ok( Settings::card_qr_enabled(), 'il gestore attiva il QR della tessera dalle impostazioni' );
 $card_html = $as( $u_f, '[apsemplice_tessera]' );
-apse_ok( false !== strpos( $card_html, '<svg' ) && false !== strpos( $card_html, 'apse_card=' ) && false !== strpos( $card_html, 'Mostra questo codice' ), 'tessera digitale: mostra il QR' );
+apse_ok( false !== strpos( $card_html, '<svg' ) && false !== strpos( $card_html, 'apse_card=' ) && false !== strpos( $card_html, 'Mostra questo codice' ), 'tessera digitale: mostra il QR' . ( false === strpos( $card_html, '<svg' ) ? ' [' . substr( preg_replace( '/\s+/', ' ', $card_html ), 0, 400 ) . ']' : '' ) );
 apse_ok( preg_match( '/apse_card=(\d+\.[a-f0-9]{20})/', $card_html, $qm ) === 1 && (int) explode( '.', $qm[1] )[0] === $founder, 'il QR contiene un codice firmato della tessera del socio, senza dati personali' );
 $res = \ApSemplice\Frontend\CardVerify::result( $qm[1] );
 apse_ok( 'valid' === $res['status'] && (int) $res['person']['id'] === $founder, 'verifica: il socio fondatore ha la tessera valida' );
