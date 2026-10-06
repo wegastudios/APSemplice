@@ -1673,7 +1673,7 @@ apse_ok( null !== apse_throws( function () use ( $acts, $tev_s, $founder ) { $ac
 apse_ok( 'none' === $acts->check_in( $tev_s, $g_id, true )['status'], 'ingresso: annullare chi non è entrato non fa nulla' );
 
 // amministrazione
-$adm = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Gestori dell\'evento', array( 'id' => $tev ) );
+$adm = apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Staff dell\'evento', array( 'id' => $tev ) );
 apse_ok( false !== strpos( $adm, 'Tina' ) && false !== strpos( $adm, '<th>Ingresso</th>' ) && false !== strpos( $adm, 'apse_checkin' ), 'amministrazione: gestori dell\'evento e colonna degli ingressi' );
 $adm_checkin = new ReflectionMethod( Admin\Actions::class, 'checkin' );
 $r1          = $adm_checkin->invoke( null, array( 'activity_id' => $tev, 'session_id' => $tev_s, 'person_id' => $g_id ) );
