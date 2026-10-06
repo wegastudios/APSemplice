@@ -2530,7 +2530,10 @@ $ledger->void( $void_tx, 'prova' );
 apse_ok( array() === $count_mb( $p_void ), 'quota automatica: annullando l\'incasso si annullano anche i due anni' );
 
 // anni solari: creare, chiudere, riaprire
-$fy_far = $cy + 4;
+$fy_far = $cy - 6;
+while ( \ApSemplice\FiscalYears::get( $fy_far ) ) {
+	--$fy_far; // un anno passato che non esiste ancora
+}
 \ApSemplice\FiscalYears::create( $fy_far );
 $threw = false;
 try {
@@ -2582,34 +2585,51 @@ try {
 }
 apse_ok( $threw, 'anni solari: si registra solo negli anni creati' );
 
-// fondi e chiusura dell'anno
+// fondi e chiusura dell'anno: un anno finito con fondi non rimborsati non si chiude
 $fyear_fund = $funds->create( 'Fondo anno', 0 );
-$funds->deposit( $fyear_fund, 4000, $today );
+$funds->deposit( $fyear_fund, 4000, $fy_far . '-06-01' );
 $yr = $funds->yearly();
-apse_ok( 4000 === $yr['per_fund'][ $fyear_fund ][ $cy ]['unsettled'] && $funds->unsettled_until_year( $cy ) >= 4000, 'fondi: per ogni anno solare si vede quanto resta da rimborsare' );
+apse_ok( 4000 === $yr['per_fund'][ $fyear_fund ][ $fy_far ]['unsettled'] && $funds->unsettled_until_year( $fy_far ) >= 4000, 'fondi: per ogni anno solare si vede quanto resta da rimborsare' );
+$threw = false;
+try {
+	\ApSemplice\FiscalYears::close( $fy_far );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = false !== strpos( $e->getMessage(), 'fondi' );
+}
+apse_ok( $threw && \ApSemplice\FiscalYears::is_open( $fy_far ), 'anni solari: con fondi non rimborsati l\'anno non si chiude' );
+$rep_far = Plugin::reports()->period( $fy_far . '-01-01', $fy_far . '-12-31' );
+apse_ok( $rep_far['fund_accrued'] >= 4000 && array() !== array_filter( $rep_far['expenses'], function ( $x ) {
+	return 0 === strpos( $x['name'], 'Accantonamenti' );
+} ), 'anno solare: i fondi accantonati sono uscite dell\'anno anche se non rimborsati' );
+$rep_a = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
+$funds->settle( $fyear_fund, (int) $cash['id'], 'cash', $today );
+$rep_b = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
+apse_ok( $rep_b['total_expense'] === $rep_a['total_expense'], 'anno solare: pagare il rimborso non conta due volte (' . $rep_a['total_expense'] . ' = ' . $rep_b['total_expense'] . ')' );
+\ApSemplice\FiscalYears::close( $fy_far );
+apse_ok( ! \ApSemplice\FiscalYears::is_open( $fy_far ), 'anni solari: rimborsato tutto, l\'anno finito si chiude' );
+\ApSemplice\FiscalYears::reopen( $fy_far );
+// l'anno in corso non si chiude e si apre da solo
 $threw = false;
 try {
 	\ApSemplice\FiscalYears::close( $cy );
 } catch ( \InvalidArgumentException $e ) {
-	$threw = false !== strpos( $e->getMessage(), 'fondi' );
+	$threw = false !== strpos( $e->getMessage(), 'in corso' );
 }
-apse_ok( $threw && \ApSemplice\FiscalYears::is_open( $cy ), 'anni solari: con fondi non rimborsati l\'anno non si chiude' );
-$rep_a = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
-apse_ok( $rep_a['fund_accrued'] >= 4000 && array() !== array_filter( $rep_a['expenses'], function ( $x ) {
-	return 0 === strpos( $x['name'], 'Accantonamenti' );
-} ), 'anno solare: i fondi accantonati sono uscite dell\'anno anche se non rimborsati' );
-$funds->settle( $fyear_fund, (int) $cash['id'], 'cash', $today );
-$rep_b = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
-apse_ok( $rep_b['total_expense'] === $rep_a['total_expense'], 'anno solare: pagare il rimborso non conta due volte (' . $rep_a['total_expense'] . ' = ' . $rep_b['total_expense'] . ')' );
-\ApSemplice\FiscalYears::close( $cy );
+apse_ok( $threw && \ApSemplice\FiscalYears::is_open( $cy ), 'anni solari: l\'anno in corso non si chiude' );
 $threw = false;
 try {
-	$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno chiuso' ) );
+	\ApSemplice\FiscalYears::close( $cy + 1 );
 } catch ( \InvalidArgumentException $e ) {
 	$threw = true;
 }
-apse_ok( $threw, 'anno chiuso: l\'anno in corso chiuso blocca le spese' );
-\ApSemplice\FiscalYears::reopen( $cy );
+apse_ok( $threw, 'anni solari: un anno non ancora iniziato non si chiude' );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => $cy ) ); // simulo un anno in corso rimasto chiuso
+$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno in corso riaperto da solo' ) );
+apse_ok( \ApSemplice\FiscalYears::is_open( $cy ), 'anni solari: se l\'anno in corso non è aperto, si apre da solo al primo movimento' );
+$wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $cy ) );
+delete_option( 'apse_fy_auto' );
+\ApSemplice\FiscalYears::maybe_open_current();
+apse_ok( \ApSemplice\FiscalYears::is_open( $cy ) && (string) $cy === get_option( 'apse_fy_auto' ), 'anni solari: all\'inizio dell\'anno il nuovo anno si apre in automatico' );
 apse_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno solare' );
 $rep_html = apse_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
 apse_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno sociale (attività)' ) && strpos( $rep_html, 'Anno sociale (attività)' ) < strpos( $rep_html, 'Anno solare (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );

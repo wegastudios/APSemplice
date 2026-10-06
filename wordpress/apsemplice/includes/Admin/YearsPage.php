@@ -16,7 +16,7 @@ final class YearsPage {
 		$totals = Plugin::funds()->yearly()['totals'];
 		Ui::header( 'Anni solari' );
 		echo '<p class="description">Si può incassare, spendere e girare denaro solo negli anni solari <strong>aperti</strong>. Un anno chiuso non accetta più movimenti finché non lo riapri. '
-			. 'Un anno non si chiude se ha fondi accantonati non ancora rimborsati. La quota associativa va all\'anno più recente tra quelli creati: se non è quello in corso, l\'anno in corso è in omaggio per chi si iscrive per la prima volta.</p>';
+			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. La quota associativa va all\'anno più recente tra quelli creati: se non è quello in corso, l\'anno in corso è in omaggio per chi si iscrive per la prima volta.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Stato</th><th>Movimenti</th><th>Fondi da rimborsare</th><th></th></tr></thead><tbody>';
 		foreach ( $years as $y ) {
 			$year     = (int) $y['year'];
@@ -24,7 +24,9 @@ final class YearsPage {
 			$unsettled = (int) ( $totals[ $year ]['unsettled'] ?? 0 );
 			echo '<tr><td><strong>' . $year . '</strong></td><td>' . ( $open ? '<span class="apse-ok">aperto</span>' : '<strong>chiuso</strong>' . ( $y['closed_at'] ? ' <span class="description">il ' . esc_html( mysql2date( 'd/m/Y', $y['closed_at'] ) ) . '</span>' : '' ) ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<td>' . (int) FiscalYears::movements( $year ) . '</td><td>' . ( $unsettled > 0 ? '<strong class="apse-warn">' . Ui::money( $unsettled ) . '</strong>' : Ui::money( 0 ) ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
-			if ( $open ) {
+			if ( $open && $year >= FiscalYears::current() ) {
+				echo '<span class="description">' . ( $year === FiscalYears::current() ? 'anno in corso: si chiude dopo la fine dell\'anno' : 'anno non ancora iniziato' ) . '</span>';
+			} elseif ( $open ) {
 				Ui::form_open( 'apse_close_year', $back, false, 'apse-inline' );
 				echo Ui::hidden( 'year', $year ) . '<button class="button" data-confirm="Chiudere l\'anno ' . $year . '? Non accetterà più incassi né spese (si può riaprire).">Chiudi l\'anno</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();

@@ -23,6 +23,33 @@ final class FiscalYears {
 		return $row ?: null;
 	}
 
+	/** L'anno solare in corso. */
+	public static function current(): int {
+		return (int) substr( Db::today(), 0, 4 );
+	}
+
+	/** L'anno in corso si apre da solo (il primo giorno dell'anno, o al primo movimento) e non può restare chiuso. */
+	public static function ensure_current_open(): void {
+		$cur = self::current();
+		$row = self::get( $cur );
+		if ( ! $row ) {
+			self::create( $cur );
+			Audit::log( 'year.opened_auto', 'year', $cur );
+		} elseif ( 'open' !== $row['status'] ) {
+			self::reopen( $cur );
+			Audit::log( 'year.opened_auto', 'year', $cur );
+		}
+	}
+
+	/** Controllo leggero a ogni avvio: quando cambia l'anno, il nuovo anno si apre in automatico. */
+	public static function maybe_open_current(): void {
+		$cur = (string) self::current();
+		if ( (string) get_option( 'apse_fy_auto', '' ) !== $cur ) {
+			self::ensure_current_open();
+			update_option( 'apse_fy_auto', $cur, false );
+		}
+	}
+
 	/** L'anno solare più recente tra quelli creati (aperto o chiuso). */
 	public static function latest(): ?int {
 		$y = self::db()->get_var( 'SELECT MAX(year) FROM ' . Db::t( 'fiscal_years' ) );
@@ -55,7 +82,10 @@ final class FiscalYears {
 	/** Si può registrare un movimento a questa data? Solo se l'anno solare esiste ed è aperto. */
 	public static function assert_open_for_date( string $date ): void {
 		$year = (int) substr( $date, 0, 4 );
-		$row  = self::get( $year );
+		if ( self::current() === $year ) {
+			self::ensure_current_open(); // l'anno in corso c'è sempre ed è aperto
+		}
+		$row = self::get( $year );
 		if ( ! $row ) {
 			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' non è stato creato: crealo da Contabilità › Anni solari prima di registrare movimenti in quella data.' );
 		}
@@ -66,7 +96,10 @@ final class FiscalYears {
 
 	/** Motivi per cui l'anno non si può chiudere (vuoto = si può). @return string[] */
 	public static function blockers( int $year ): array {
-		$out   = array();
+		$out = array();
+		if ( $year >= self::current() ) {
+			$out[] = 'l\'anno ' . ( $year === self::current() ? 'in corso' : 'non è ancora iniziato' ) . ' non si chiude: si chiude dopo la fine dell\'anno';
+		}
 		$funds = Plugin::funds()->unsettled_until_year( $year );
 		if ( $funds > 0 ) {
 			$out[] = 'ci sono fondi accantonati non ancora rimborsati (' . Money::format( $funds ) . '): rimborsali o liberali prima di chiudere l\'anno';

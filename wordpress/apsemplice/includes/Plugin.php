@@ -15,6 +15,7 @@ final class Plugin {
 
 	public static function init(): void {
 		Install::maybe_upgrade();
+		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno solare
 		Access::register();      // capability meta: apse_notify_activity, apse_view_person...
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
