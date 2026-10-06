@@ -12,6 +12,7 @@ final class Push {
 	const OPT_VAPID    = 'apse_vapid';
 	const MAX_PER_USER = 10;
 	const MAX_SEND     = 300;
+	const TIME_BUDGET  = 8.0; // secondi al massimo per ogni invio
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -122,7 +123,11 @@ final class Push {
 		$v       = self::vapid();
 		$subject = 'mailto:' . sanitize_email( (string) get_option( 'admin_email', 'info@example.org' ) );
 		$sent    = 0;
+		$until   = microtime( true ) + self::TIME_BUDGET;
 		foreach ( $subs as $s ) {
+			if ( microtime( true ) > $until ) {
+				break; // le notifiche non devono rallentare l'invio delle email: chi resta indietro le riceve comunque per email
+			}
 			try {
 				$r = WebPush::send( $s, $payload, $v['public'], $v['pem'], $subject );
 			} catch ( \Throwable $e ) {

@@ -73,6 +73,8 @@ final class Privacy {
 			. "WHERE t.voided_at IS NULL AND t.type IN ('income','expense') AND (t.person_id = %d OR t.payer_person_id = %d) ORDER BY t.tx_date",
 			array( $person_id, $person_id )
 		);
+		$policies   = $q( 'SELECT company AS compagnia, policy_no AS numero, valid_from AS dal, valid_to AS al FROM ' . Db::t( 'insurance' ) . ' WHERE person_id = %d ORDER BY valid_from', array( $person_id ) );
+		$attendance = $q( 'SELECT a.name AS attivita, t.lesson_date AS data, t.present AS presente FROM ' . Db::t( 'attendance' ) . ' t JOIN ' . Db::t( 'activities' ) . ' a ON a.id = t.activity_id WHERE t.person_id = %d ORDER BY t.lesson_date', array( $person_id ) );
 		$guests = array();
 		foreach ( Plugin::people()->guests_of( $person_id ) as $g ) {
 			$guests[] = array( 'nome' => trim( $g['first_name'] . ' ' . $g['last_name'] ), 'cellulare' => $g['phone'] );
@@ -82,7 +84,7 @@ final class Privacy {
 			'associazione' => (string) Settings::get( 'association_name' ),
 			'anagrafica'  => array(
 				'tipo' => Levels::label( $p ), 'nome' => $p['first_name'], 'cognome' => $p['last_name'], 'email' => $p['email'], 'cellulare' => $p['phone'],
-				'codice_fiscale' => $p['tax_code'], 'tessera' => $p['card_number'], 'iscritto_dal' => $p['joined_on'], 'carica' => BoardRole::label( $p['board_role'] ?? null ), 'note' => $p['notes'],
+				'codice_fiscale' => $p['tax_code'], 'tessera' => $p['card_number'], 'iscritto_dal' => $p['joined_on'], 'carica' => BoardRole::label( $p['board_role'] ?? null ), 'uscito_il' => $p['left_on'] ?? null, 'motivo_uscita' => $p['left_reason'] ?? null, 'note' => $p['notes'],
 				'regolamento_accettato' => $p['rules_accepted_at'] ?? null, 'regolamento_versione' => $p['rules_accepted_version'] ?? null,
 				'consenso_privacy' => $p['privacy_consent_at'], 'consenso_modalita' => $p['privacy_consent_source'] ? ( self::SOURCES[ $p['privacy_consent_source'] ] ?? $p['privacy_consent_source'] ) : null,
 			),
@@ -91,6 +93,8 @@ final class Privacy {
 			'prenotazioni' => $bookings,
 			'pagamenti'    => $payments,
 			'ospiti_inseriti' => $guests,
+			'assicurazioni' => $policies,
+			'presenze'     => $attendance,
 		);
 	}
 
@@ -182,10 +186,16 @@ final class Privacy {
 			Db::t( 'people' ),
 			array(
 				'first_name' => 'Persona', 'last_name' => 'anonimizzata #' . $person_id, 'email' => null, 'phone' => null, 'tax_code' => null, 'card_number' => null, 'notes' => null,
-				'wp_user_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
+				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
 			),
 			array( 'id' => $person_id )
 		);
+		$db->update( Db::t( 'people' ), array( 'family_head_id' => null ), array( 'family_head_id' => $person_id ) ); // chi faceva parte del suo nucleo
+		$db->delete( Db::t( 'insurance' ), array( 'person_id' => $person_id ) ); // numeri di polizza e note
+		$db->update( Db::t( 'broadcast_rcpt' ), array( 'email' => '', 'name' => 'Persona anonimizzata' ), array( 'person_id' => $person_id ) ); // destinatari delle comunicazioni
+		if ( $uid > 0 ) {
+			$db->delete( Db::t( 'push_subs' ), array( 'user_id' => $uid ) ); // dispositivi con le notifiche
+		}
 		if ( '' !== trim( $name ) ) { // il nome scritto a mano nelle descrizioni dei movimenti
 			$db->query(
 				$db->prepare(
