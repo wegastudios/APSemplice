@@ -865,7 +865,7 @@ $acts->book( $ev_s, $ev_p4 );
 $ev_pay( $ev_p3, 800 );
 $ev_pay( $ev_p4, 700 );
 $acts->add_staff( $ev_a, $ev_p4, false );
-$ledger->record_expense( $vt_base + array( 'category_id' => $vt_exp, 'amount_cents' => 300, 'activity_id' => $ev_a, 'description' => 'Affitto sala' ) );
+$ledger->record_expense( $vt_base + array( 'category_id' => $vt_exp, 'amount_cents' => 300, 'activity_id' => $ev_a, 'description' => 'Noleggio locale' ) );
 $ev_pre = \ApSemplice\ActivityReset::preview( $ev_a );
 apse_ok( 3 === $ev_pre['income']['count'] && 2500 === $ev_pre['income']['cents'] && 2 === $ev_pre['income_open']['count'] && 1500 === $ev_pre['income_open']['cents'] && 1 === $ev_pre['expense']['count'] && 1 === $ev_pre['refund_exp']['count'] && 2 === $ev_pre['bookings'] && 1 === $ev_pre['staff'], 'evento: anteprima di ciò che si elimina e dei soldi collegati (l\'incasso già restituito con una singola iscrizione non si conta due volte)' );
 $ev_del = new ReflectionMethod( Admin\Actions::class, 'delete_activity' );
