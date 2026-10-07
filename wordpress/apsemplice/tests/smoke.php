@@ -637,6 +637,11 @@ apse_ok( 'invite' === Settings::get( 'join_mode' ) && 'unknown_queued' === \ApSe
 \ApSemplice\Wizard::apply( array( 'join_mode' => 'request' ) );
 \ApSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Richiesta', 'sconosciuto.richiesta@example.com', '347 9990022' );
 apse_ok( count( \ApSemplice\AccessRequests::pending() ) === $wz_req + 1, 'iscrizione aperta alle richieste: la richiesta arriva alla segreteria' );
+foreach ( \ApSemplice\AccessRequests::pending() as $wz_r ) { // la coda torna com'era: altri controlli la leggono
+	if ( 'sconosciuto.richiesta@example.com' === ( $wz_r['email'] ?? '' ) ) {
+		\ApSemplice\AccessRequests::remove( (string) $wz_r['id'] );
+	}
+}
 \ApSemplice\Wizard::apply( array( 'extra_levels' => "Ridotto Prova; 15\nSostenitore Prova" ) );
 $wz_lv = array_column( \ApSemplice\Levels::all(), 'fee_cents', 'name' );
 \ApSemplice\Wizard::apply( array( 'extra_levels' => 'Ridotto Prova; 15' ) );
