@@ -26,8 +26,9 @@ final class Admin {
 		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni' ) ),
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco' ) ),
 		'apse-tools'      => array( 'Strumenti', array( 'apse-tools' => 'Panoramica', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import', 'apse-exports' => 'Esporta', 'apse-calendar' => 'Calendari', 'apse-backup' => 'Copia di sicurezza', 'apse-tech' => 'Integrazioni' ) ),
-		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto' ) ),
-		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze', 'apse-fivepm' => '5x1000' ) ),
+		'apse-money'      => array( 'Soldi', array( 'apse-money' => 'Cassa', 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi' ) ),
+		'apse-accounting' => array( 'Contabilità', array( 'apse-accounting' => 'Anno solare', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto', 'apse-fivepm' => 'Adempimenti (5x1000)' ) ),
+		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze' ) ),
 		'apse-settings'   => array( 'Impostazioni', array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-payments' => 'Pagamenti online', 'apse-acct' => 'Opzioni contabili', 'apse-app' => 'App e notifiche', 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ) ),
 	);
 
@@ -67,7 +68,8 @@ final class Admin {
 			array( 'apse', 'Bacheca', array( DashboardPage::class, 'render' ) ),
 			array( 'apse-people', 'Rubrica', array( PeoplePage::class, 'render_list' ) ),
 			array( 'apse-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
-			array( 'apse-ledger', 'Contabilità', array( LedgerPage::class, 'render' ) ),
+			array( 'apse-money', 'Soldi', array( MoneyPage::class, 'render' ) ),
+			array( 'apse-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
 			array( 'apse-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
 			array( 'apse-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
@@ -80,6 +82,7 @@ final class Admin {
 		}
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
+			array( 'apse-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'apse-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
 			array( 'apse-years', 'Anni solari', array( YearsPage::class, 'render' ) ),
 			array( 'apse-group', 'Cassa per più persone', array( GroupCashPage::class, 'render' ) ),

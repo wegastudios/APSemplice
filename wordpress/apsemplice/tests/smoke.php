@@ -620,14 +620,14 @@ apse_ok( false !== strpos( $wz_html, 'docs.stripe.com/keys' ) && false !== strpo
 apse_ok( in_array( 'apse-wizard', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
 // ... a domande: parti del gestionale, iscrizione su presentazione, altri tipi di socio
 apse_ok( ! in_array( 'apse-ledger', Admin\Admin::disabled_pages(), true ) && \ApSemplice\Modules::on( 'accounts' ), 'moduli: prima della configurazione è tutto acceso' );
-\ApSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '0', 'accounts' => '1', 'reports' => '1', 'book' => '0', 'messages' => '1', 'import' => '0' ) ) );
+\ApSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '0', 'accounts' => '1', 'accounting' => '1', 'reports' => '1', 'book' => '0', 'messages' => '1', 'import' => '0' ) ) );
 $wz_off = Admin\Admin::disabled_pages();
 apse_ok( ! \ApSemplice\Modules::on( 'ledger' ) && ! \ApSemplice\Modules::on( 'accounts' ) && ! \ApSemplice\Modules::on( 'reports' ) && \ApSemplice\Modules::on( 'activities' ) && in_array( 'apse-ledger', $wz_off, true ) && in_array( 'apse-accounts', $wz_off, true ) && in_array( 'apse-statement', $wz_off, true ) && in_array( 'apse-book', $wz_off, true ) && ! in_array( 'apse-activities', $wz_off, true ), 'moduli: senza prima nota spariscono anche conti e bilanci; le parti scelte restano' );
 ob_start();
 call_user_func( Admin\Admin::guard( 'apse-ledger', function () { echo 'CONTENUTO'; } ) );
 $wz_g = (string) ob_get_clean();
 apse_ok( false === strpos( $wz_g, 'CONTENUTO' ) && false !== strpos( $wz_g, 'configurazione guidata' ), 'moduli: una pagina spenta non si apre e indica come riaccenderla' );
-\ApSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '1', 'accounts' => '0', 'reports' => '1', 'book' => '1', 'messages' => '1', 'import' => '1' ) ) );
+\ApSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '1', 'accounts' => '0', 'accounting' => '1', 'reports' => '1', 'book' => '1', 'messages' => '1', 'import' => '1' ) ) );
 apse_ok( \ApSemplice\Modules::on( 'ledger' ) && ! \ApSemplice\Modules::on( 'accounts' ) && \ApSemplice\Modules::on( 'reports' ) && 1 === (int) Settings::get( 'reports_enabled' ), 'moduli: riaccendendo la prima nota tornano i bilanci scelti, i conti restano spenti' );
 Settings::update( array( 'modules' => array(), 'reports_enabled' => 1 ) );
 apse_ok( \ApSemplice\Modules::on( 'accounts' ) && ! Admin\Admin::disabled_pages(), 'moduli: ripristino, tutto acceso' );
@@ -720,6 +720,24 @@ $vt_row = Admin\Ui::vat_row( null, 'incl', 'Gli importi', true );
 apse_ok( false !== strpos( $vt_row, 'name="vat_rate"' ) && false !== strpos( $vt_row, 'IVA esclusa' ) && false !== strpos( $vt_row, 'Automatica' ), 'iva: i moduli hanno aliquota e modo (IVA compresa o esclusa)' );
 Settings::update( array( 'has_vat' => 0, 'vat_number' => '', 'vat_membership_rate' => '' ) );
 apse_ok( '' === Admin\Ui::vat_row( null, 'incl' ), 'iva: senza partita IVA i moduli non mostrano nulla di fiscale' );
+// soldi e contabilità separati, con la prima nota unica
+ob_start();
+Admin\MoneyPage::render();
+$mn_html = (string) ob_get_clean();
+ob_start();
+Admin\AccountingPage::render();
+$ac_html = (string) ob_get_clean();
+apse_ok( false !== strpos( $mn_html, 'Disponibilità reale' ) && false !== strpos( $mn_html, 'Nuovo incasso' ) && false !== strpos( $mn_html, 'Ultimi movimenti' ) && false !== strpos( $mn_html, 'Anno sociale' ) && false !== strpos( $mn_html, 'page=apse-ledger' ), 'soldi: cassa, liquidità reale, anno sociale e ultimi movimenti, con la prima nota' );
+apse_ok( false !== strpos( $ac_html, 'Anno solare' ) && false !== strpos( $ac_html, 'Adempimenti' ) && false !== strpos( $ac_html, 'page=apse-years' ) && false !== strpos( $ac_html, 'page=apse-ledger' ), 'contabilità: anno solare, anni, adempimenti e la stessa prima nota' );
+$ac_tabs = Admin\Admin::tabs( 'apse-accounting' );
+apse_ok( false !== strpos( $ac_tabs, 'Anni solari' ) && false !== strpos( $ac_tabs, 'Rendiconto' ) && false !== strpos( $ac_tabs, 'Adempimenti' ) && false === strpos( $ac_tabs, 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'apse-money' ), 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'apse-money' ), 'Prima nota' ) && false === strpos( Admin\Admin::tabs( 'apse-money' ), 'Anni solari' ), 'menu: Soldi ha incassi, spese, conti e prima nota; Contabilità anni, rendiconto e adempimenti' );
+Settings::update( array( 'modules' => array( 'accounting' => 0 ) ) );
+$ac_off = Admin\Admin::disabled_pages();
+apse_ok( in_array( 'apse-accounting', $ac_off, true ) && in_array( 'apse-years', $ac_off, true ) && in_array( 'apse-fivepm', $ac_off, true ) && in_array( 'apse-reports', $ac_off, true ) && in_array( 'apse-statement', $ac_off, true ) && ! in_array( 'apse-ledger', $ac_off, true ) && ! in_array( 'apse-income', $ac_off, true ) && ! in_array( 'apse-accounts', $ac_off, true ), 'senza contabilità resta la prima nota con incassi, spese e conti: il resto non si vede' );
+Settings::update( array( 'modules' => array( 'ledger' => 0 ) ) );
+$ac_off2 = Admin\Admin::disabled_pages();
+apse_ok( in_array( 'apse-money', $ac_off2, true ) && in_array( 'apse-ledger', $ac_off2, true ) && in_array( 'apse-accounting', $ac_off2, true ) && in_array( 'apse-accounts', $ac_off2, true ), 'senza prima nota non si vede né Soldi né la contabilità' );
+Settings::update( array( 'modules' => array() ) );
 // strumenti
 foreach ( array( 'apse-import', 'apse-wpai', 'apse-exports', 'apse-calendar', 'apse-backup', 'apse-tech', 'apse-tools' ) as $tl_p ) {
 	apse_ok( 'apse-tools' === Admin\Admin::menu_item_of( $tl_p ), 'strumenti: ' . $tl_p . ' sta negli Strumenti' );
@@ -2571,14 +2589,14 @@ apse_render( array( Admin\ReportsPage::class, 'render' ), 'Disponibilità reale'
 
 // ---------- Menu a cinque voci, schede, interruttori, cassa rapida ----------
 wp_set_current_user( 1 );
-apse_ok( 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
+apse_ok( 'apse-money' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-money' === Admin\Admin::menu_item_of( 'apse-ledger' ) && 'apse-money' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-accounting' === Admin\Admin::menu_item_of( 'apse-years' ) && 'apse-accounting' === Admin\Admin::menu_item_of( 'apse-fivepm' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
 $tabs = Admin\Admin::tabs( 'apse-income' );
 apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Calendari' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Importa da Excel/CSV' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Esporta' ), 'menu: la Contabilità ha le sue schede, gli Strumenti raccolgono importazioni, esportazioni e calendari, la Bacheca nessuna' );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Soldi' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Sistema' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
-apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo sette voci (' . implode( ', ', $visible ) . ')' );
+apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Soldi', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo otto voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
@@ -3660,11 +3678,11 @@ $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 apse_ok( in_array( Plugin::ROLE_SECRETARY, (array) get_userdata( $sec_u )->roles, true ) && user_can( $sec_u, Plugin::CAP_OPS ) && ! user_can( $sec_u, Plugin::CAP ) && Access::is_admin_user( $sec_u ), 'segreteria: opera sul plugin ma non è amministratore' );
 apse_ok( Plugin::CAP === Admin\Actions::required_cap( 'apse_save_settings' ) && Plugin::CAP === Admin\Actions::required_cap( 'apse_privacy_anonymize' ) && Plugin::CAP === Admin\Actions::required_cap( 'apse_save_texts' ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'apse_save_person' ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'apse_save_income' ), 'segreteria: impostazioni, privacy e testi solo agli amministratori; soci e incassi anche alla segreteria' );
 wp_set_current_user( $sec_u );
-$tabs_sec = Admin\Admin::tabs( 'apse-ledger' );
+$tabs_sec = Admin\Admin::tabs( 'apse-accounting' );
 $set_tabs = Admin\Admin::tabs( 'apse-settings' );
 wp_set_current_user( 1 );
-$tabs_adm = Admin\Admin::tabs( 'apse-ledger' );
-apse_ok( false !== strpos( $tabs_sec, 'page=apse-ledger' ) && false === strpos( $tabs_sec, 'page=apse-years' ) && false !== strpos( $tabs_adm, 'page=apse-years' ) && false === strpos( $set_tabs, 'page=apse-texts' ), 'segreteria: non vede le schede riservate agli amministratori' );
+$tabs_adm = Admin\Admin::tabs( 'apse-accounting' );
+apse_ok( false !== strpos( $tabs_sec, 'page=apse-accounting' ) && false === strpos( $tabs_sec, 'page=apse-years' ) && false !== strpos( $tabs_adm, 'page=apse-years' ) && false === strpos( $set_tabs, 'page=apse-texts' ), 'segreteria: non vede le schede riservate agli amministratori' );
 wp_set_current_user( $sec_u );
 $sec_page = apse_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Privacy', array( 'id' => $sec_p ) );
 wp_set_current_user( 1 );
@@ -4265,7 +4283,7 @@ apse_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Relazione
 // accessi
 $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 wp_set_current_user( $sec_u );
-apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-book' ), 'page=apse-minutes' ) && false !== strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-statement' ) && Admin\Actions::required_cap( 'apse_save_levels' ) === Plugin::CAP && current_user_can( Plugin::CAP_OPS ), 'registri: la segreteria li vede' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-book' ), 'page=apse-minutes' ) && false !== strpos( Admin\Admin::tabs( 'apse-accounting' ), 'page=apse-statement' ) && Admin\Actions::required_cap( 'apse_save_levels' ) === Plugin::CAP && current_user_can( Plugin::CAP_OPS ), 'registri: la segreteria li vede' );
 wp_set_current_user( 1 );
 apse_ok( has_action( 'admin_post_apse_doc' ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
 
@@ -4360,11 +4378,11 @@ Settings::update( array( 'card_enabled' => 1 ) );
 apse_ok( '' !== \ApSemplice\Frontend\Views::section_card( $ft_p ) && isset( Admin\SettingsPage::FEATURES['fivepm_enabled'], Admin\SettingsPage::FEATURES['insurance_volunteers'], Admin\SettingsPage::FEATURES['card_qr_enabled'] ), 'funzioni: e si riaccende; le altre funzioni sono nello stesso elenco' );
 // contabilità: report e rendiconto
 Admin\TechActions::save_acct( array() );
-apse_ok( false === strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-reports' ) && false === strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-statement' ), 'contabilità: spegnendo i report le schede spariscono' );
+apse_ok( false === strpos( Admin\Admin::tabs( 'apse-accounting' ), 'page=apse-reports' ) && false === strpos( Admin\Admin::tabs( 'apse-accounting' ), 'page=apse-statement' ), 'contabilità: spegnendo i report le schede spariscono' );
 apse_render( array( Admin\ReportsPage::class, 'render' ), 'Report e rendiconto sono spenti' );
 apse_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Report e rendiconto sono spenti' );
 Admin\TechActions::save_acct( array( 'reports_enabled' => '1' ) );
-apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-reports' ), 'contabilità: e tornano' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-accounting' ), 'page=apse-reports' ), 'contabilità: e tornano' );
 // WooCommerce
 if ( ! \ApSemplice\WooBridge::active() ) {
 	apse_ok( null !== apse_throws( function () { Admin\TechActions::save_woo( array( 'woo_enabled' => '1' ) ); } ) && ! \ApSemplice\WooBridge::enabled(), 'woocommerce: se il negozio non c\'è l\'integrazione non si accende' );

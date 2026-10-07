@@ -9,7 +9,7 @@ use ApSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Registri → 5x1000: messaggio per i soci, promemoria e contributi ricevuti con il rendiconto sull'utilizzo. */
+/** Contabilità → Adempimenti → 5x1000: messaggio per i soci, promemoria e contributi ricevuti con il rendiconto sull'utilizzo. */
 final class FivePmPage {
 
 	private static function date( ?string $ymd ): string {
