@@ -529,3 +529,15 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 - **Stripe e PayPal insieme**: nuova scelta «Stripe e PayPal insieme». Nell'area soci compare un pulsante per metodo, con la **dicitura** e la **nota** che scegli (ad esempio «Paga a rate con PayPal»); se la configurazione di uno dei due è incompleta resta attivo l'altro. WooCommerce resta alternativo. Anche le diciture del negozio si personalizzano.
 - **Pagamenti online disattivabili**: con «Nessuno» i soci vedono cosa devono e l'invito a pagare in sede, oppure il bonifico.
 - **Bonifico** (spento di default): uno o più IBAN (fino a 5, controllati con la cifra di controllo) mostrati nell'area soci accanto a ciò che si deve pagare, con la causale già pronta («Cognome Nome - voci») e il pulsante «Copia»; il socio se li fa mandare per email (sempre e solo al suo indirizzo, con un limite all'ora); si possono aggiungere ai promemoria di pagamento; lo shortcode `[apsemplice_bonifico]` li mostra anche a chi non è socio (donazioni). Le coordinate si modificano solo da Impostazioni → Pagamenti online (amministratori): ogni cambio finisce nel registro azioni con l'IBAN mascherato e avvisa per email tutti gli amministratori.
+
+## Configurazione guidata
+
+Al primo avvio (e a richiesta da Impostazioni → Generale, «Avvia la configurazione guidata») una pagina unica, riservata agli amministratori, raccoglie le impostazioni principali e le applica insieme:
+
+1. **Ente**: tipo di ente, termine per chi partecipa, denominazione, codice fiscale, mese di inizio dell'anno sociale.
+2. **Quote**: quota associativa proposta e sconto per il nucleo familiare (i livelli restano in Impostazioni → Generale).
+3. **Funzioni facoltative**: tutte spente di default (app e notifiche hanno la loro scheda).
+4. **Pagamenti**: nessun pagamento online, Stripe, PayPal, Stripe e PayPal insieme, checkout di WooCommerce; il bonifico si può affiancare. Accanto a ogni fornitore ci sono i link alle guide ufficiali, che si aprono in una nuova finestra. Se WooCommerce è attivo (e il negozio usa l'euro) l'opzione è proposta e, per ogni quota, si può collegare un prodotto esistente o crearne uno nuovo (virtuale, non in vetrina); lo stesso vale per il prodotto generico delle altre voci.
+5. **Pagine del sito**: Area soci, Area volontari, Attività ed eventi, Calendario, Dona con bonifico, 5x1000, con gli shortcode già inseriti e l'accesso riservato dove serve. Le pagine esistenti non si duplicano.
+
+Le chiavi dei fornitori e gli IBAN non passano dalla procedura: dopo l'applicazione si viene portati in Pagamenti online per inserirli. Il primo avvio apre la procedura una volta sola (alla prima installazione); sui siti già in uso resta disponibile da Impostazioni senza inviti. «Salta per ora» la rimanda senza cambiare nulla.

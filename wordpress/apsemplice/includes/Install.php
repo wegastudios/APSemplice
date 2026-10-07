@@ -12,6 +12,11 @@ final class Install {
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
+		if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
+			Wizard::schedule_first_run();
+		} elseif ( Wizard::pending() ) { // sito già in uso prima di questa funzione: nessun invito, la pagina resta in Impostazioni
+			Wizard::mark( Wizard::SKIPPED );
+		}
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 	}
 

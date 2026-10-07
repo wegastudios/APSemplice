@@ -53,6 +53,29 @@ final class WooBridge {
 		return $out;
 	}
 
+	/**
+	 * Crea un prodotto semplice, virtuale e non in vetrina (serve solo come voce del carrello: il prezzo vero lo calcola il plugin).
+	 *
+	 * @return int id del prodotto
+	 * @throws \InvalidArgumentException
+	 */
+	public static function create_product( string $name, int $price_cents ): int {
+		if ( ! self::active() || ! class_exists( 'WC_Product_Simple' ) ) {
+			throw new \InvalidArgumentException( 'WooCommerce non è attivo su questo sito.' );
+		}
+		$p = new \WC_Product_Simple();
+		$p->set_name( mb_substr( sanitize_text_field( $name ), 0, 120 ) );
+		$p->set_status( 'publish' );
+		$p->set_virtual( true );
+		$p->set_catalog_visibility( 'hidden' );
+		$p->set_regular_price( number_format( max( 0, $price_cents ) / 100, 2, '.', '' ) );
+		$id = (int) $p->save();
+		if ( $id <= 0 ) {
+			throw new \InvalidArgumentException( 'Non è stato possibile creare il prodotto.' );
+		}
+		return $id;
+	}
+
 	/** @throws \InvalidArgumentException */
 	public static function assert_product( int $product_id ): void {
 		if ( ! self::active() ) {
