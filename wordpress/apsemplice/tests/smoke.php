@@ -944,6 +944,12 @@ $dp4 = (string) ob_get_clean();
 apse_ok( false !== strpos( $dp4, 'ANNULLATI' ) && false !== strpos( $dp4, 'Cancella l\'iscrizione' ) && false !== strpos( $dp4, 'Gino Sei' ), 'pagina di cancellazione iscrizione: messaggio chiaro e conferma con nome' );
 $_GET = array();
 apse_ok( 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity-delete' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-booking-delete' ) && in_array( 'apse_delete_activity', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'apse_delete_booking', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'apse-activity-delete', Admin\Admin::ADMIN_ONLY, true ), 'eliminazioni: riservate agli amministratori' );
+$ev_p8 = $ev_mk( 'Lia', 'Otto', '349 5556677' );
+$acts->book( $ev_s4, $ev_p8 );
+ob_start();
+Admin\ActivitiesPage::render_list();
+$ev_list = (string) ob_get_clean();
+apse_ok( false !== strpos( $ev_list, 'Quarta serata' ) && false !== strpos( $ev_list, '<details' ) && false !== strpos( $ev_list, 'Lia Otto' ) && false !== strpos( $ev_list, 'wa.me/' ) && false === strpos( $ev_list, 'page=apse-booking-delete' ), 'elenco attività: partecipanti attesi a scomparsa in ogni evento, con WhatsApp (la cancellazione resta nella scheda)' );
 \ApSemplice\ActivityReset::delete( $ev_a4, 'void' );
 \ApSemplice\ActivityReset::delete( $ev_r, 'refund' );
 // strumenti

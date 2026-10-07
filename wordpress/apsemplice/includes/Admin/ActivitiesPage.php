@@ -119,7 +119,8 @@ final class ActivitiesPage {
 				}
 				echo '<p class="description">' . count( $sessions ) . ( 1 === count( $sessions ) ? ' data' : ' date' ) . ( $next ? ' · prossima: ' . Ui::date( $next['session_date'] ) . ( $next['start_time'] ? ' ore ' . esc_html( $next['start_time'] ) : '' ) : '' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
-			echo '<table class="apse-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
+			echo self::participants_html( $a, 1, false ) // phpcs:ignore WordPress.Security.EscapeOutput -- partecipanti attesi (prossima data) a scomparsa, con WhatsApp
+				. '<table class="apse-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $s['margin'] ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</div>';
@@ -201,28 +202,28 @@ final class ActivitiesPage {
 	}
 
 	/** Riga di un partecipante: nome, collegamento WhatsApp (se ha lasciato un cellulare valido) e, per gli amministratori, la cancellazione dell'iscrizione. */
-	private static function participant_row( array $activity, array $person, int $session_id, string $extra = '' ): string {
+	private static function participant_row( array $activity, array $person, int $session_id, string $extra = '', bool $with_delete = true ): string {
 		$name  = trim( $person['first_name'] . ' ' . $person['last_name'] );
 		$phone = (string) ( $person['phone'] ?? '' );
 		$wa    = '' !== $phone ? \ApSemplice\Phone::whatsapp( $phone ) : '';
 		$text  = rawurlencode( 'Ciao ' . $person['first_name'] . ', ti scrivo per «' . $activity['name'] . '».' );
 		$html  = '<li>' . esc_html( $name ) . ( '' !== $extra ? ' <span class="description">' . esc_html( $extra ) . '</span>' : '' );
 		$html .= '' !== $wa ? ' · <a href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . $text ) . '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : ' · <span class="description">nessun cellulare</span>';
-		if ( current_user_can( Plugin::CAP ) ) {
+		if ( $with_delete && current_user_can( Plugin::CAP ) ) {
 			$html .= ' · <a class="apse-neg" href="' . esc_url( DeleteBookingPage::url( (int) $activity['id'], (int) $person['id'], $session_id ) ) . '">Cancella l\'iscrizione</a>';
 		}
 		return $html . '</li>';
 	}
 
 	/** Partecipanti attesi, a scomparsa: per gli eventi una voce per data (le prossime), per i corsi gli iscritti in corso. */
-	private static function participants_card( array $activity ): void {
+	public static function participants_html( array $activity, int $max_sessions = 8, bool $with_delete = true ): string {
 		$people = Plugin::people();
 		$svc    = Plugin::activities();
 		$html   = '';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			$n = 0;
 			foreach ( $svc->sessions( (int) $activity['id'] ) as $s ) {
-				if ( ! empty( $s['cancelled_at'] ) || $s['session_date'] < current_time( 'Y-m-d' ) || $n >= 8 ) {
+				if ( ! empty( $s['cancelled_at'] ) || $s['session_date'] < current_time( 'Y-m-d' ) || $n >= $max_sessions ) {
 					continue;
 				}
 				$n++;
@@ -235,7 +236,7 @@ final class ActivitiesPage {
 					$person = $people->get( (int) $b['person_id'] );
 					if ( $person ) {
 						$cnt++;
-						$rows .= self::participant_row( $activity, $person, (int) $s['id'], 'paid' === ( $b['state'] ?? '' ) ? 'pagato' : ( ! empty( $b['fee_due_cents'] ) ? 'da pagare' : '' ) );
+						$rows .= self::participant_row( $activity, $person, (int) $s['id'], 'paid' === ( $b['state'] ?? '' ) ? 'pagato' : ( ! empty( $b['fee_due_cents'] ) ? 'da pagare' : '' ), $with_delete );
 					}
 				}
 				$html .= '<details style="margin:6px 0"><summary><strong>' . esc_html( Ui::date( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong> — ' . (int) $cnt . ( 1 === $cnt ? ' partecipante atteso' : ' partecipanti attesi' ) . '</summary>'
@@ -252,12 +253,16 @@ final class ActivitiesPage {
 				$person = $people->get( (int) $pid );
 				if ( $person ) {
 					$cnt++;
-					$rows .= self::participant_row( $activity, $person, 0 );
+					$rows .= self::participant_row( $activity, $person, 0, '', $with_delete );
 				}
 			}
 			$html = '<details open style="margin:6px 0"><summary><strong>' . (int) $cnt . ( 1 === $cnt ? ' iscritto' : ' iscritti' ) . '</strong></summary>' . ( $rows ? '<ul style="list-style:none;margin:6px 0 6px 12px">' . $rows . '</ul>' : '<p class="description">Nessuno ancora.</p>' ) . '</details>';
 		}
-		echo '<div class="apse-card"><h2>Partecipanti attesi</h2>' . $html . '<p class="description">Il collegamento WhatsApp compare solo per chi ha lasciato un cellulare.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		return $html;
+	}
+
+	private static function participants_card( array $activity ): void {
+		echo '<div class="apse-card"><h2>Partecipanti attesi</h2>' . self::participants_html( $activity ) . '<p class="description">Il collegamento WhatsApp compare solo per chi ha lasciato un cellulare.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
 	/** Eliminazione completa dell'evento (solo amministratori). */
