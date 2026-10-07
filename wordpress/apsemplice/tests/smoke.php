@@ -2147,7 +2147,7 @@ apse_ok( 'suspended' === $Act::resolve( $param )['status'], 'licenza non in rego
 delete_option( License::OPT_STATE );
 
 // l'attivazione: controlli
-$ok_post = array( 'email' => 'Nora.Senzamail@Example.com', 'phone' => '334 1234567', 'password' => 'Segreta123!', 'password2' => 'Segreta123!' );
+$ok_post = array( 'email' => 'Nora.Senzamail@Example.com', 'phone' => '334 1234567', 'password' => 'Segreta123!', 'password2' => 'Segreta123!', 'tax_code' => 'RSSMRA80A01H501U', 'address' => 'Via Dante 4', 'zip' => '40100', 'city' => 'Bologna' );
 $bad     = function ( array $over ) use ( $Act, $param, $ok_post ) {
 	$r = $Act::complete( $param, array_merge( $ok_post, $over ) );
 	return $r['ok'] ? '' : $r['error'];
