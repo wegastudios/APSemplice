@@ -201,6 +201,18 @@ final class ActivitiesPage {
 		echo '</div>';
 	}
 
+	/**
+	 * Comando per cancellare un'iscrizione: se non c'è nessun incasso collegato (la prima nota non cambia) è un pulsante con una sola conferma;
+	 * altrimenti è il collegamento alla procedura con la scelta sulle somme e la doppia conferma.
+	 */
+	private static function cancel_control( int $activity_id, array $person, int $session_id, string $label ): string {
+		$name = trim( $person['first_name'] . ' ' . $person['last_name'] );
+		if ( \ApSemplice\ActivityReset::registration_is_free( $activity_id, (int) $person['id'], $session_id ) ) {
+			return Ui::confirm_button( 'apse_delete_booking', Ui::url( 'apse-activity', array( 'id' => $activity_id ) ), array( 'activity' => $activity_id, 'person' => (int) $person['id'], 'session' => $session_id ), $label, 'Cancellare l\'iscrizione di ' . $name . '? Non ci sono incassi collegati: la prima nota non cambia.', 'color:#b32d2e' );
+		}
+		return '<a class="apse-neg" href="' . esc_url( DeleteBookingPage::url( $activity_id, (int) $person['id'], $session_id ) ) . '">' . esc_html( $label ) . '</a>';
+	}
+
 	/** Riga di un partecipante: nome, collegamento WhatsApp (se ha lasciato un cellulare valido) e, per gli amministratori, la cancellazione dell'iscrizione. */
 	private static function participant_row( array $activity, array $person, int $session_id, string $extra = '', bool $with_delete = true ): string {
 		$name  = trim( $person['first_name'] . ' ' . $person['last_name'] );
@@ -210,7 +222,7 @@ final class ActivitiesPage {
 		$html  = '<li>' . esc_html( $name ) . ( '' !== $extra ? ' <span class="description">' . esc_html( $extra ) . '</span>' : '' );
 		$html .= '' !== $wa ? ' · <a href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . $text ) . '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : ' · <span class="description">nessun cellulare</span>';
 		if ( $with_delete && current_user_can( Plugin::CAP ) ) {
-			$html .= ' · <a class="apse-neg" href="' . esc_url( DeleteBookingPage::url( (int) $activity['id'], (int) $person['id'], $session_id ) ) . '">Cancella l\'iscrizione</a>';
+			$html .= ' · ' . self::cancel_control( (int) $activity['id'], $person, $session_id, 'Cancella l\'iscrizione' );
 		}
 		return $html . '</li>';
 	}
@@ -364,7 +376,7 @@ final class ActivitiesPage {
 				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] ) // phpcs:ignore WordPress.Security.EscapeOutput
 				. ( $active ? '' : ' <span class="apse-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' )
 				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
-				. ( current_user_can( Plugin::CAP ) ? ' <a class="button button-small" style="color:#b32d2e" href="' . esc_url( DeleteBookingPage::url( $id, (int) $e['person_id'], 0 ) ) . '">Cancella</a>' : '' )
+				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Cancella' ) : '' )
 				. '</summary>';
 			echo Ui::months_table( $s['summary'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_open( $active ? 'apse_cancel_enrollment' : 'apse_enroll', $back );

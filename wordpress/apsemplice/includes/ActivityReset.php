@@ -322,6 +322,18 @@ final class ActivityReset {
 		return $out;
 	}
 
+	/** La cancellazione dell'iscrizione non tocca la prima nota (nessun incasso collegato): basta una sola conferma. */
+	public static function registration_is_free( int $activity_id, int $person_id, int $session_id = 0 ): bool {
+		$pre = self::registration_preview( $activity_id, $person_id, $session_id );
+		return $pre && 0 === (int) $pre['income']['count'];
+	}
+
+	/** L'eliminazione dell'evento non tocca la prima nota (nessun incasso, spesa o restituzione collegati): basta una sola conferma. */
+	public static function activity_is_free( int $activity_id ): bool {
+		$p = self::preview( $activity_id );
+		return $p && 0 === (int) $p['income']['count'] + (int) $p['expense']['count'] + (int) $p['refund_exp']['count'];
+	}
+
 	/** Iscritti a un corso la cui iscrizione è finita prima del mese in corso (ad esempio chi non ha confermato). @return int[] id delle persone */
 	public static function ended_enrollments( int $activity_id ): array {
 		return array_map( 'intval', self::db()->get_col( self::db()->prepare(

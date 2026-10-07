@@ -33,6 +33,17 @@ final class DeleteBookingPage {
 		echo '<h3>Soldi collegati all\'iscrizione</h3>';
 		echo $inc['count'] ? '<p><strong>' . (int) $inc['count'] . ' incassi</strong> per ' . esc_html( Money::format( (int) $inc['cents'] ) ) . ( $inc['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ' pagati online)' : '' ) . '.</p>' : '<p>Nessun incasso registrato: la prima nota non cambia.</p>';
 
+		if ( 0 === (int) $inc['count'] ) { // nessun incasso collegato: la prima nota non cambia, una sola conferma (il pulsante)
+			Ui::form_open( 'apse_delete_booking', self::url( $aid, $pid, $sid ) );
+			echo Ui::hidden( 'activity', $aid ) . Ui::hidden( 'person', $pid ) . Ui::hidden( 'session', $sid ); // phpcs:ignore WordPress.Security.EscapeOutput
+			if ( is_email( (string) $p['person']['email'] ) ) {
+				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa ' . esc_html( $who ) . ' per email</label></p>';
+			}
+			echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Cancella l\'iscrizione</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
+			Ui::form_close();
+			Ui::footer();
+			return;
+		}
 		if ( 2 !== Ui::get_int( 'step', 1 ) ) {
 			echo '<form method="get"><input type="hidden" name="page" value="apse-booking-delete"><input type="hidden" name="activity" value="' . (int) $aid . '"><input type="hidden" name="person" value="' . (int) $pid . '"><input type="hidden" name="session" value="' . (int) $sid . '"><input type="hidden" name="step" value="2">';
 			if ( $inc['count'] ) {

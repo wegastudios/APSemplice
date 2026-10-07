@@ -53,6 +53,17 @@ final class DeleteActivityPage {
 				. '<li>' . (int) $p['expense']['count'] . ' spese per ' . esc_html( Money::format( (int) $p['expense']['cents'] ) ) . '</li></ul>';
 		}
 
+		if ( ActivityReset::activity_is_free( $id ) ) { // nessun movimento in prima nota: una sola conferma (il pulsante)
+			Ui::form_open( 'apse_delete_activity', $back );
+			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			if ( $p['recipients'] > 0 ) {
+				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
+			}
+			echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina l\'evento</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
+			Ui::form_close();
+			Ui::footer();
+			return;
+		}
 		$step = Ui::get_int( 'step', 1 );
 		if ( 2 === $step ) {
 			self::review( $p, $back );
