@@ -43,10 +43,10 @@ final class Admin {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity' );
+	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
-	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities' );
+	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities', 'apse-activity-delete' => 'apse-activities', 'apse-booking-delete' => 'apse-activities' );
 
 	/** Voce di menu a cui appartiene una pagina ('apse' = Bacheca). */
 	public static function menu_item_of( string $page ): string {
@@ -82,6 +82,8 @@ final class Admin {
 		}
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
+			array( 'apse-activity-delete', 'Elimina l\'evento', array( DeleteActivityPage::class, 'render' ) ),
+			array( 'apse-booking-delete', 'Cancella l\'iscrizione', array( DeleteBookingPage::class, 'render' ) ),
 			array( 'apse-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'apse-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
 			array( 'apse-years', 'Anni solari', array( YearsPage::class, 'render' ) ),

@@ -26,7 +26,7 @@ final class Actions {
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
 		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
-		'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
+		'apse_delete_activity', 'apse_delete_booking', 'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
@@ -41,6 +41,8 @@ final class Actions {
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
 			'apse_set_staff'          => 'set_staff',
+			'apse_delete_activity'    => 'delete_activity',
+			'apse_delete_booking'     => 'delete_booking',
 			'apse_set_secretary'      => 'set_secretary',
 			'apse_save_terms'         => 'save_terms',
 			'apse_save_texts'         => 'save_texts',
@@ -461,6 +463,51 @@ final class Actions {
 		\ApSemplice\Access::set_entity_staff( (int) $person['wp_user_id'], $on );
 		Audit::log( $on ? 'staff.granted' : 'staff.revoked', 'person', (int) $person['id'] );
 		return array( Ui::url( 'apse-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte dello staff: verifica gli accessi a tutti gli eventi.' : 'Non fa più parte dello staff dell\'ente.' );
+	}
+
+	/** Eliminazione completa di un evento, con la sorte delle somme incassate. Conferma scritta obbligatoria. */
+	private static function delete_activity( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		$a  = Plugin::activities()->get( $id );
+		if ( ! $a ) {
+			throw new \InvalidArgumentException( 'Evento non trovato.' );
+		}
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma: l\'eliminazione è definitiva.' );
+		}
+		if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( trim( (string) $a['name'] ), 'UTF-8' ) ) {
+			throw new \InvalidArgumentException( 'Il nome scritto non corrisponde a quello dell\'evento: l\'evento non è stato eliminato.' );
+		}
+		$s    = \ApSemplice\ActivityReset::delete( $id, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ), 'void_costs' => ! empty( $p['void_costs'] ) ) );
+		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . (int) $s['sessions'] . ' date e ' . (int) $s['bookings'] . ' prenotazioni attive cancellate.';
+		$msg .= $s['refunds'] ? ' Registrate ' . (int) $s['refunds'] . ' restituzioni in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
+		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
+		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
+		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
+		return array( Ui::url( 'apse-activities' ), $msg );
+	}
+
+	/** Cancellazione di una singola iscrizione, con la sorte delle somme incassate. Conferma scritta obbligatoria. */
+	private static function delete_booking( array $p ): array {
+		$aid = (int) ( $p['activity'] ?? 0 );
+		$pid = (int) ( $p['person'] ?? 0 );
+		$sid = (int) ( $p['session'] ?? 0 );
+		$pre = \ApSemplice\ActivityReset::registration_preview( $aid, $pid, $sid );
+		if ( ! $pre ) {
+			throw new \InvalidArgumentException( 'Iscrizione non trovata.' );
+		}
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma: la cancellazione è definitiva.' );
+		}
+		$who = Plugin::people()->full_name( $pre['person'] );
+		if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( $who, 'UTF-8' ) ) {
+			throw new \InvalidArgumentException( 'Il nome scritto non corrisponde: l\'iscrizione non è stata cancellata.' );
+		}
+		$s    = \ApSemplice\ActivityReset::delete_registration( $aid, $pid, $sid, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ) ) );
+		$msg  = 'Iscrizione di ' . $s['name'] . ' cancellata.';
+		$msg .= $s['refunds'] ? ' Registrata la restituzione di ' . Money::format( (int) $s['income_cents'] ) . ' in prima nota: il denaro va restituito a chi ha pagato.' : '';
+		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
+		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), $msg );
 	}
 
 	// ---------- Attività ----------
