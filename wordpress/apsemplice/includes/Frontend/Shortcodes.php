@@ -35,6 +35,7 @@ final class Shortcodes {
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
 		'app'             => 'App e notifiche (installazione e notifiche sul telefono)',
 		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
+		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
 		'accesso'         => 'Accesso / login',
 	);
 
@@ -86,6 +87,8 @@ final class Shortcodes {
 				return Views::app();
 			case 'cinquepermille':
 				return Views::five_per_mille();
+			case 'bonifico':
+				return Views::bank_public();
 			case 'accesso':
 				return is_user_logged_in() ? '' : Views::login_prompt();
 		}

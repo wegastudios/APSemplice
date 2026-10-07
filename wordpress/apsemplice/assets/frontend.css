@@ -124,3 +124,14 @@
 .apsf-door select, .apsf-door-group select { width: 100%; max-width: 100%; }
 .apsf-door details, .apsf-door-group { margin-top: 14px; }
 .apsf-door > summary, .apsf-door-group > summary { cursor: pointer; padding: 6px 0; }
+
+/* Pagamento con bonifico */
+.apsf-bank { margin-top: 1rem; padding: .9rem 1rem; border: 1px solid var(--apsf-line); border-radius: 10px; }
+.apsf-bank h4 { margin: 0 0 .5rem; }
+.apsf-bank-acc { margin: .5rem 0 .75rem; }
+.apsf-bank-data { display: flex; flex-wrap: wrap; gap: .5rem 2rem; margin: .35rem 0; }
+.apsf-bank-data dt { font-size: .75em; text-transform: uppercase; letter-spacing: .06em; opacity: .75; }
+.apsf-bank-data dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.apsf-iban { font-size: 1.05em; }
+.apsf-copy { margin-left: .4rem; padding: .1em .6em; font-size: .8em; border: 1px solid var(--apsf-line); border-radius: 999px; background: transparent; cursor: pointer; }
+.apsf-bank-form { margin-top: .5rem; }

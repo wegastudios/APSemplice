@@ -3,6 +3,7 @@ namespace ApSemplice\Frontend;
 
 use ApSemplice\Access;
 use ApSemplice\Attachments;
+use ApSemplice\Bank;
 use ApSemplice\CardToken;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
@@ -37,6 +38,7 @@ final class Actions {
 		'apse_front_group'          => 'do_group_collect',
 		'apse_front_door_group'     => 'do_door_group',
 		'apse_front_notice'         => 'do_notice',
+		'apse_front_bank_email'     => 'do_bank_email',
 	);
 
 	public static function register(): void {
@@ -120,6 +122,7 @@ final class Actions {
 	public static function do_book( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
+		self::assert_profile( $actor );
 		self::require_cap( 'apse_book_for', $person_id );
 		$block = \ApSemplice\Regulation::booking_block( $actor );
 		if ( '' !== $block ) {
@@ -144,6 +147,7 @@ final class Actions {
 	public static function do_waitlist_join( array $post ): string {
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
+		self::assert_profile( $actor );
 		self::require_cap( 'apse_book_for', $person_id );
 		$block = \ApSemplice\Regulation::booking_block( $actor );
 		if ( '' !== $block ) {
@@ -237,11 +241,32 @@ final class Actions {
 	 * Avvia il pagamento online delle voci scelte (dovute da lui o dai suoi ospiti).
 	 * @return string indirizzo della pagina di pagamento del gateway
 	 */
+	/** Chi si è attivato dal sito deve prima completare indirizzo e codice fiscale (vedi Limits «profile_gate»). */
+	private static function assert_profile( array $actor ): void {
+		if ( Plugin::people()->profile_blocks( $actor ) ) {
+			throw new \InvalidArgumentException( 'Prima di prenotare o pagare completa i tuoi dati (indirizzo e codice fiscale) nel riquadro «Il mio profilo».' );
+		}
+	}
+
 	public static function do_pay( array $post ): string {
 		$actor = self::actor();
+		self::assert_profile( $actor );
 		self::require_cap( 'apse_view_payments', (int) $actor['id'] );
 		$back = remove_query_arg( array( 'apsf_ok', 'apsf_err', 'apsf_sig', 'apse_pay', 'apse_ret', 'token', 'PayerID' ), self::back_url( $post ) );
-		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back );
+		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back, sanitize_key( (string) ( $post['provider'] ?? '' ) ) );
+	}
+
+	/** Il socio si fa mandare per email le coordinate del bonifico (con le voci da pagare e la causale): sempre e solo al suo indirizzo. */
+	public static function do_bank_email( array $post ): string {
+		$actor = self::actor();
+		self::require_cap( 'apse_view_payments', (int) $actor['id'] );
+		$dues = Plugin::payments()->dues_for( $actor );
+		$keys = array_map( 'strval', (array) ( $post['items'] ?? array() ) );
+		if ( $keys ) { // solo le voci scelte (se non ne sceglie nessuna, tutte quelle dovute)
+			$dues = array_intersect_key( $dues, array_flip( $keys ) );
+		}
+		Bank::send_to_member( $actor, array_values( $dues ), get_current_user_id() );
+		return 'Ti abbiamo scritto le coordinate per il bonifico: controlla la tua email.';
 	}
 
 	/** Spesa registrata dal tesoriere (con scontrino e fatture allegati). Non vede né modifica altro della prima nota. */
@@ -566,7 +591,7 @@ final class Actions {
 		// Nessun limite automatico: si evita solo il doppione evidente tra i propri ospiti e chi è già socio (il resto lo segnalano gli elenchi a chi gestisce).
 		foreach ( Plugin::people()->find_by_phone( $phone ) as $h ) {
 			if ( MemberType::is_member( $h['type'] ) ) {
-				throw new \InvalidArgumentException( 'Questo cellulare è già di un socio: va prenotato come socio, non come tuo ospite.' );
+				throw new \InvalidArgumentException( 'Non è possibile aggiungere questo numero come tuo ospite: scrivi alla segreteria.' ); // non si dice perché: nessuno può scoprire chi è socio provando dei numeri
 			}
 			if ( (int) $h['host_person_id'] === (int) $actor['id'] ) {
 				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
@@ -593,7 +618,24 @@ final class Actions {
 	public static function do_profile( array $post ): string {
 		$actor = self::actor();
 		self::require_cap( 'apse_edit_own_profile', (int) $actor['id'] );
-		Plugin::people()->update( (int) $actor['id'], array( 'phone' => $post['phone'] ?? '', 'tax_code' => $post['tax_code'] ?? '' ) );
+		$people = Plugin::people();
+		$in     = array(
+			'phone' => $post['phone'] ?? '', 'tax_code' => $post['tax_code'] ?? '', 'address' => $post['address'] ?? '', 'zip' => $post['zip'] ?? '',
+			'city'  => $post['city'] ?? '', 'province' => $post['province'] ?? '',
+		);
+		$in['tax_code'] = \ApSemplice\TaxCode::normalize( (string) $in['tax_code'] );
+		if ( '' !== $in['tax_code'] && ! \ApSemplice\TaxCode::is_valid( $in['tax_code'] ) ) {
+			throw new \InvalidArgumentException( 'Il codice fiscale non è valido: controllalo (16 caratteri).' );
+		}
+		if ( '' !== (string) $in['zip'] && ! preg_match( '/^[0-9A-Za-z\- ]{3,12}$/', (string) $in['zip'] ) ) {
+			throw new \InvalidArgumentException( 'Il CAP non è valido.' );
+		}
+		$people->update( (int) $actor['id'], $in );
+		$fresh = $people->get( (int) $actor['id'] );
+		if ( ! empty( $actor['profile_due'] ) && $fresh && $people->profile_complete( $fresh ) ) {
+			$people->set_profile_due( (int) $actor['id'], false ); // dati completi: nessun blocco
+			return 'Profilo completato: ora puoi prenotare e pagare.';
+		}
 		return 'Profilo aggiornato.';
 	}
 }

@@ -237,6 +237,40 @@ class PeopleService {
 		return $this->db()->get_results( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND family_head_id = %d ORDER BY last_name, first_name', $head_id ), ARRAY_A ) ?: array();
 	}
 
+	// ---------- Profilo completo (indirizzo e codice fiscale) ----------
+
+	/**
+	 * Che cosa manca al profilo di un socio per essere completo: codice fiscale valido, indirizzo, CAP e comune. La provincia è facoltativa.
+	 *
+	 * @return string[] etichette dei dati mancanti (vuoto = completo)
+	 */
+	public function profile_missing( array $p ): array {
+		$out = array();
+		if ( ! TaxCode::is_valid( (string) ( $p['tax_code'] ?? '' ) ) ) {
+			$out[] = 'codice fiscale';
+		}
+		foreach ( array( 'address' => 'indirizzo', 'zip' => 'CAP', 'city' => 'comune' ) as $k => $label ) {
+			if ( '' === trim( (string) ( $p[ $k ] ?? '' ) ) ) {
+				$out[] = $label;
+			}
+		}
+		return $out;
+	}
+
+	public function profile_complete( array $p ): bool {
+		return array() === $this->profile_missing( $p );
+	}
+
+	/** Segna che il socio deve completare il profilo (si è attivato dal sito) oppure che lo ha fatto. */
+	public function set_profile_due( int $person_id, bool $due ): void {
+		$this->db()->update( Db::t( 'people' ), array( 'profile_due' => $due ? 1 : 0 ), array( 'id' => $person_id ) );
+	}
+
+	/** Il socio si è attivato dal sito e non ha ancora completato il profilo: finché è così (e se il blocco è attivo) non può prenotare né pagare online. */
+	public function profile_blocks( array $p ): bool {
+		return ! empty( $p['profile_due'] ) && Limits::flag( 'profile_gate' ) && ! $this->profile_complete( $p );
+	}
+
 	public function is_suspended( int $person_id ): bool {
 		return (bool) $this->db()->get_var( $this->db()->prepare( 'SELECT suspended_at FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $person_id ) );
 	}
@@ -334,6 +368,10 @@ class PeopleService {
 			'email'          => null === $t( 'email' ) ? null : strtolower( $t( 'email' ) ),
 			'phone'          => $t( 'phone' ),
 			'tax_code'       => null === $t( 'tax_code' ) ? null : strtoupper( str_replace( ' ', '', $t( 'tax_code' ) ) ),
+			'address'        => $t( 'address' ),
+			'zip'            => $t( 'zip' ),
+			'city'           => $t( 'city' ),
+			'province'       => null === $t( 'province' ) ? null : strtoupper( $t( 'province' ) ),
 			'host_person_id' => ! empty( $d['host_person_id'] ) ? (int) $d['host_person_id'] : null,
 			'joined_on'      => $t( 'joined_on' ),
 			'notes'          => $t( 'notes' ),
@@ -381,6 +419,10 @@ class PeopleService {
 				'email'          => $d['email'],
 				'phone'          => $d['phone'],
 				'tax_code'       => $d['tax_code'],
+				'address'        => $d['address'],
+				'zip'            => $d['zip'],
+				'city'           => $d['city'],
+				'province'       => $d['province'],
 				'host_person_id' => $d['host_person_id'],
 				'joined_on'      => $d['joined_on'] ?: Db::today(),
 				'notes'          => $d['notes'],
@@ -590,6 +632,10 @@ class PeopleService {
 				'email'          => $d['email'],
 				'phone'          => $d['phone'],
 				'tax_code'       => $d['tax_code'],
+				'address'        => $d['address'],
+				'zip'            => $d['zip'],
+				'city'           => $d['city'],
+				'province'       => $d['province'],
 				'host_person_id' => $d['host_person_id'],
 				'joined_on'      => $d['joined_on'] ?: $current['joined_on'],
 				'notes'          => $d['notes'],

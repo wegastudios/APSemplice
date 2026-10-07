@@ -72,8 +72,8 @@ final class Push {
 			self::db()->update( $tbl, $data, array( 'id' => $id ) );
 			return $id;
 		}
-		if ( (int) self::db()->get_var( self::db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE user_id = %d", $user_id ) ) >= self::MAX_PER_USER ) {
-			throw new \InvalidArgumentException( 'Hai già ' . self::MAX_PER_USER . ' dispositivi con le notifiche attive: disattivane qualcuno.' );
+		if ( (int) self::db()->get_var( self::db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE user_id = %d", $user_id ) ) >= Limits::get( 'push_max_devices' ) ) {
+			throw new \InvalidArgumentException( 'Hai già ' . Limits::get( 'push_max_devices' ) . ' dispositivi con le notifiche attive: disattivane qualcuno.' );
 		}
 		self::db()->insert( $tbl, $data + array( 'endpoint_hash' => $hash, 'created_at' => Db::now() ) );
 		return (int) self::db()->insert_id;
@@ -123,7 +123,7 @@ final class Push {
 		$v       = self::vapid();
 		$subject = 'mailto:' . sanitize_email( (string) get_option( 'admin_email', 'info@example.org' ) );
 		$sent    = 0;
-		$until   = microtime( true ) + self::TIME_BUDGET;
+		$until   = microtime( true ) + (float) Limits::get( 'push_time_budget' );
 		foreach ( $subs as $s ) {
 			if ( microtime( true ) > $until ) {
 				break; // le notifiche non devono rallentare l'invio delle email: chi resta indietro le riceve comunque per email

@@ -126,7 +126,9 @@ final class TicketVerify {
 		if ( ! empty( $flash['err'] ) ) {
 			$body .= '<div class="w" style="color:#b32d2e">' . esc_html( $flash['err'] ) . '</div>';
 		}
-		$body .= '<div class="n">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div><div class="t">' . esc_html( $r['activity']['name'] ) . '</div>'
+		// Per una prenotazione annullata o un evento già svolto il nome non si mostra più: un vecchio QR condiviso o ritrovato non rivela chi era.
+		$who   = in_array( $r['status'], array( 'past', 'cancelled' ), true ) ? '' : '<div class="n">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div>';
+		$body .= $who . '<div class="t">' . esc_html( $r['activity']['name'] ) . '</div>'
 			. '<dl><div><dt>Data</dt><dd>' . esc_html( Views::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</dd></div>'
 			. ( $s['location'] ? '<div><dt>Luogo</dt><dd>' . esc_html( $s['location'] ) . '</dd></div>' : '' ) . $pay
 			. ( 'used' === $r['status'] ? '<div><dt>Ingresso</dt><dd>ore ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</dd></div>' : '' ) . '</dl>';

@@ -74,4 +74,12 @@ final class StripeApi {
 	public static function is_paid( array $session ): bool {
 		return 'paid' === ( $session['payment_status'] ?? '' );
 	}
+
+	/** Importo incassato in centesimi di euro. Con una valuta diversa dall'euro vale 0: il pagamento va controllato a mano. */
+	public static function paid_eur_cents( array $session ): int {
+		if ( isset( $session['currency'] ) && 'eur' !== strtolower( (string) $session['currency'] ) ) {
+			return 0;
+		}
+		return max( 0, (int) ( $session['amount_total'] ?? 0 ) );
+	}
 }

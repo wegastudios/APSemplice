@@ -56,7 +56,7 @@ final class Reminders {
 		if ( ! self::claim( $person_id, $kind, $ref ) ) {
 			return false;
 		}
-		if ( ! self::send( $to, $subject, $body ) ) {
+		if ( ! self::send( $to, $subject, $body, in_array( $kind, array( 'membership_soon', 'membership_expired', 'dues' ), true ) ) ) {
 			self::release( $person_id, $kind, $ref );
 			return false;
 		}
@@ -82,8 +82,11 @@ final class Reminders {
 		return null;
 	}
 
-	private static function send( array $to, string $subject, string $body ): bool {
+	private static function send( array $to, string $subject, string $body, bool $with_bank = false ): bool {
 		$assoc = (string) Settings::get( 'association_name' );
+		if ( $with_bank && Bank::enabled() && ! empty( Settings::get( 'bank_in_reminders' ) ) ) {
+			$body .= "\n\n" . Bank::text_block(); // le coordinate per il bonifico, se l'associazione le ha attivate
+		}
 		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
 		$ok = (bool) \ApSemplice\Texts::mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
 		Push::notify_email( (string) $to['email'], $subject, $body );
@@ -128,7 +131,7 @@ final class Reminders {
 	private static function membership( string $today, bool $send ): int {
 		$days  = (int) Settings::get( 'reminders_membership_days' );
 		$soon  = gmdate( 'Y-m-d', strtotime( $today . ' +' . $days . ' days' ) );
-		$ago   = gmdate( 'Y-m-d', strtotime( $today . ' -' . self::EXPIRED_WINDOW . ' days' ) );
+		$ago   = gmdate( 'Y-m-d', strtotime( $today . ' -' . Limits::get( 'reminders_expired_days' ) . ' days' ) );
 		$n     = 0;
 		foreach ( Plugin::people()->search() as $p ) {
 			if ( ! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) || empty( $p['active_until'] ) ) {

@@ -48,10 +48,11 @@ final class PeoplePage {
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
-		$stale = Plugin::people()->expired_for_months( 8 );
+		$months = \ApSemplice\Limits::get( 'suspend_after_months' );
+		$stale  = Plugin::people()->expired_for_months( $months );
 		if ( $stale ) {
 			Ui::form_open( 'apse_suspend_expired', Ui::url( 'apse-people' ), false, 'apse-inline' );
-			echo '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre 8 mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre 8 mesi (' . count( $stale ) . ')</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre ' . (int) $months . ' mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre ' . (int) $months . ' mesi (' . count( $stale ) . ')</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();
 		}
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
@@ -141,7 +142,10 @@ final class PeoplePage {
 		echo '<tr><th>Email</th><td><input type="email" name="email" id="apse-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
 			. '<p class="description apse-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area riservata. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
 		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
-		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"></td></tr>';
+		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"><p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria. Se lo scrivi, chi attiva da solo il proprio accesso dovrà riscriverlo uguale (un controllo in più sull\'identità).</p></td></tr>';
+		echo '<tr><th>Indirizzo</th><td><input type="text" name="address" value="' . esc_attr( $val( 'address' ) ) . '" class="regular-text" maxlength="190" placeholder="Via e numero"> '
+			. 'CAP <input type="text" name="zip" value="' . esc_attr( $val( 'zip' ) ) . '" size="7" maxlength="12"> Comune <input type="text" name="city" value="' . esc_attr( $val( 'city' ) ) . '" maxlength="100"> Prov. <input type="text" name="province" value="' . esc_attr( $val( 'province' ) ) . '" size="3" maxlength="5">'
+			. '<p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria; chi si attiva dal sito deve inserirlo.</p></td></tr>';
 		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
 		echo '</tbody></table>';
@@ -250,7 +254,7 @@ final class PeoplePage {
 			return;
 		}
 		$url = \ApSemplice\Frontend\Activation::url( (int) $p['id'] );
-		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . (int) \ApSemplice\ActivationToken::VALID_DAYS . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
+		echo '<p><strong class="apse-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . (int) \ApSemplice\Limits::get( 'activation_days' ) . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
 			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
 		$wa = \ApSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {

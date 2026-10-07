@@ -4,6 +4,7 @@ namespace ApSemplice\Frontend;
 use ApSemplice\AccessRequests;
 use ApSemplice\Audit;
 use ApSemplice\License;
+use ApSemplice\Limits;
 use ApSemplice\MemberType;
 use ApSemplice\Phone;
 use ApSemplice\Plugin;
@@ -46,6 +47,13 @@ final class FirstAccess {
 		if ( ! $user ) {
 			return false;
 		}
+		// Non più di qualche email all'ora allo stesso indirizzo: nessuno può inondare di messaggi la casella di un socio (la risposta del sito resta uguale).
+		$mail_key = 'apse_fa_m_' . md5( strtolower( $user->user_email ) );
+		$sent     = (int) get_transient( $mail_key );
+		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
+			return false;
+		}
+		set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		$person = \ApSemplice\Access::person_for_user( (int) $user->ID );
 		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
 			return false; // solo i soci (mai gli amministratori)
@@ -53,6 +61,10 @@ final class FirstAccess {
 		$key = get_password_reset_key( $user );
 		if ( is_wp_error( $key ) ) {
 			return false;
+		}
+		// Chi si attiva dal sito completa indirizzo e codice fiscale dal suo profilo (finché mancano non prenota né paga online).
+		if ( Limits::flag( 'profile_required' ) && ! Plugin::people()->profile_complete( $person ) ) {
+			Plugin::people()->set_profile_due( (int) $person['id'], true );
 		}
 		$assoc = (string) Settings::get( 'association_name' );
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
@@ -149,7 +161,7 @@ final class FirstAccess {
 			$post   = array_map( 'sanitize_text_field', wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification
 			$rl_key = 'apse_fa_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
 			$tries  = (int) get_transient( $rl_key );
-			if ( $tries >= self::MAX_PER_HOUR ) {
+			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
 			} elseif ( ! wp_verify_nonce( (string) ( $post['_apse_nonce'] ?? '' ), 'apse_first_access' ) ) {
 				$error = 'Sessione scaduta: riprova.';

@@ -37,7 +37,7 @@ final class Rules {
 				$errors[] = 'La data di ingresso non è valida.';
 			}
 		}
-		foreach ( array( 'first_name' => array( 'Il nome', 120 ), 'last_name' => array( 'Il cognome', 120 ), 'email' => array( 'L\'email', 190 ), 'phone' => array( 'Il cellulare', 60 ), 'tax_code' => array( 'Il codice fiscale', 32 ) ) as $field => $lim ) {
+		foreach ( array( 'first_name' => array( 'Il nome', 120 ), 'last_name' => array( 'Il cognome', 120 ), 'email' => array( 'L\'email', 190 ), 'phone' => array( 'Il cellulare', 60 ), 'tax_code' => array( 'Il codice fiscale', 32 ), 'address' => array( 'L\'indirizzo', 190 ), 'zip' => array( 'Il CAP', 12 ), 'city' => array( 'Il comune', 100 ), 'province' => array( 'La provincia', 5 ) ) as $field => $lim ) {
 			if ( mb_strlen( trim( (string) ( $d[ $field ] ?? '' ) ), 'UTF-8' ) > $lim[1] ) {
 				$errors[] = $lim[0] . ' è troppo lungo (al massimo ' . $lim[1] . ' caratteri).';
 			}

@@ -24,12 +24,12 @@ final class AttachmentRules {
 	}
 
 	/** @return string|null messaggio d'errore, oppure null se il file va bene */
-	public static function check( string $name, int $size, string $real_mime ): ?string {
+	public static function check( string $name, int $size, string $real_mime, int $max_bytes = self::MAX_BYTES ): ?string {
 		if ( $size <= 0 ) {
 			return 'Il file "' . self::display_name( $name ) . '" è vuoto.';
 		}
-		if ( $size > self::MAX_BYTES ) {
-			return 'Il file "' . self::display_name( $name ) . '" supera i ' . (int) ( self::MAX_BYTES / 1048576 ) . ' MB.';
+		if ( $size > $max_bytes ) {
+			return 'Il file "' . self::display_name( $name ) . '" supera i ' . (int) ( $max_bytes / 1048576 ) . ' MB.';
 		}
 		$ext = self::extension( $name );
 		if ( ! isset( self::TYPES[ $real_mime ] ) || ! in_array( $ext, self::TYPES[ $real_mime ], true ) ) {

@@ -148,7 +148,7 @@ final class PayPalApi {
 		$sum = 0;
 		foreach ( (array) ( $order['purchase_units'] ?? array() ) as $u ) {
 			foreach ( (array) ( $u['payments']['captures'] ?? array() ) as $c ) {
-				if ( 'COMPLETED' === ( $c['status'] ?? '' ) ) {
+				if ( 'COMPLETED' === ( $c['status'] ?? '' ) && 'EUR' === strtoupper( (string) ( $c['amount']['currency_code'] ?? 'EUR' ) ) ) { // altre valute non si contano come euro
 					$sum += (int) round( (float) ( $c['amount']['value'] ?? 0 ) * 100 );
 				}
 			}

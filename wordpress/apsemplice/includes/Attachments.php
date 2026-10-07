@@ -85,7 +85,7 @@ final class Attachments {
 			}
 			$size = (int) filesize( $path );
 			$mime = self::real_mime( $path );
-			$err  = AttachmentRules::check( $f['name'], $size, $mime );
+			$err  = AttachmentRules::check( $f['name'], $size, $mime, Limits::get( 'attach_max_mb' ) * 1048576 );
 			if ( $err ) {
 				throw new \InvalidArgumentException( $err );
 			}
@@ -96,8 +96,8 @@ final class Attachments {
 			$seen[ $hash ] = true;
 			$out[]         = array( 'name' => AttachmentRules::display_name( $f['name'] ), 'tmp_name' => $path, 'size' => $size, 'mime' => $mime, 'sha256' => $hash );
 		}
-		if ( $count + count( $out ) > AttachmentRules::MAX_PER_TX ) {
-			throw new \InvalidArgumentException( 'Al massimo ' . AttachmentRules::MAX_PER_TX . ' allegati per movimento.' );
+		if ( $count + count( $out ) > Limits::get( 'attach_max_per_tx' ) ) {
+			throw new \InvalidArgumentException( 'Al massimo ' . Limits::get( 'attach_max_per_tx' ) . ' allegati per movimento.' );
 		}
 		return $out;
 	}

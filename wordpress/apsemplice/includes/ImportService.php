@@ -52,8 +52,8 @@ final class ImportService {
 				'Non sono stati trovati né soci né movimenti. Per i soci servono le colonne "Nome" e "Cognome"; per la prima nota "Data" e "Importo" (oppure "Entrata" e "Uscita"). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.'
 			);
 		}
-		if ( count( $people_rows ) > self::MAX_ROWS || count( $ledger_rows ) > self::MAX_ROWS ) {
-			throw new \InvalidArgumentException( 'Il file ha più di ' . self::MAX_ROWS . ' righe per tipo: dividilo in più file.' );
+		if ( count( $people_rows ) > Limits::get( 'import_max_rows' ) || count( $ledger_rows ) > Limits::get( 'import_max_rows' ) ) {
+			throw new \InvalidArgumentException( 'Il file ha più di ' . Limits::get( 'import_max_rows' ) . ' righe per tipo: dividilo in più file.' );
 		}
 		$out = array( 'people' => null, 'ledger' => null, 'ignored' => $ignored );
 		if ( $people_rows ) {
@@ -175,8 +175,8 @@ final class ImportService {
 				if ( null !== $r['email'] ) {
 					$data['email'] = $r['email'];
 				}
-				foreach ( array( 'card' => 'card_number', 'phone' => 'phone', 'tax' => 'tax_code' ) as $from => $to ) {
-					if ( null !== $r[ $from ] && ( 0 === $pass || 'card' !== $from ) ) {
+				foreach ( array( 'card' => 'card_number', 'phone' => 'phone', 'tax' => 'tax_code', 'addr' => 'address', 'zip' => 'zip', 'city' => 'city', 'prov' => 'province' ) as $from => $to ) {
+					if ( isset( $r[ $from ] ) && null !== $r[ $from ] && ( 0 === $pass || 'card' !== $from ) ) {
 						$data[ $to ] = $r[ $from ];
 					}
 				}
@@ -207,7 +207,7 @@ final class ImportService {
 						$people->update( $id, $data );
 						$updated++;
 						if ( $before ) {
-							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'card_number', 'type', 'host_person_id' ) ) );
+							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id' ) ) );
 						}
 					}
 					$person = $people->get( $id );

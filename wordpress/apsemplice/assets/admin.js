@@ -95,8 +95,9 @@
 	if (payProvider) {
 		var applyProvider = function () {
 			var p = payProvider.value;
-			$$('.apse-pay-stripe').forEach(function (r) { r.style.display = p === 'stripe' ? '' : 'none'; });
-			$$('.apse-pay-paypal').forEach(function (r) { r.style.display = p === 'paypal' ? '' : 'none'; });
+			$$('.apse-pay-stripe').forEach(function (r) { r.style.display = (p === 'stripe' || p === 'stripe_paypal') ? '' : 'none'; });
+			$$('.apse-pay-paypal').forEach(function (r) { r.style.display = (p === 'paypal' || p === 'stripe_paypal') ? '' : 'none'; });
+			$$('.apse-pay-woocommerce').forEach(function (r) { r.style.display = p === 'woocommerce' ? '' : 'none'; });
 		};
 		payProvider.addEventListener('change', applyProvider);
 		applyProvider();

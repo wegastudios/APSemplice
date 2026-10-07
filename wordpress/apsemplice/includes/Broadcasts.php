@@ -193,8 +193,8 @@ final class Broadcasts {
 		}
 		$db    = self::db();
 		$today = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcasts' ) . ' WHERE created_at >= %s', gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
-		if ( $today >= self::MAX_PER_DAY ) {
-			throw new \InvalidArgumentException( 'Sono già state inviate ' . self::MAX_PER_DAY . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' );
+		if ( $today >= Limits::get( 'broadcast_per_day' ) ) {
+			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' );
 		}
 		$r = self::recipients( $audience, $ref );
 		if ( ! $r['list'] ) {
@@ -212,12 +212,13 @@ final class Broadcasts {
 			$db->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $id, 'person_id' => $x['person_id'], 'email' => mb_substr( $x['email'], 0, 190 ), 'name' => mb_substr( $x['name'], 0, 120 ), 'status' => 'queued' ) );
 		}
 		Audit::log( 'broadcast.created', 'broadcast', $id, array( 'audience' => $audience, 'recipients' => count( $r['list'] ) ) ); // senza il testo
-		self::process( $id, self::BATCH );
+		self::process( $id );
 		return $id;
 	}
 
 	/** Manda il prossimo gruppo di email di una comunicazione. @return int rimaste da mandare */
-	public static function process( int $id, int $batch = self::BATCH ): int {
+	public static function process( int $id, ?int $batch = null ): int {
+		$batch = $batch ?: Limits::get( 'broadcast_batch' );
 		$db = self::db();
 		$b  = self::get( $id );
 		if ( ! $b || 'sending' !== $b['status'] || ! License::allows( 'official_notices' ) ) {
@@ -249,7 +250,7 @@ final class Broadcasts {
 	public static function process_all(): void {
 		$ids = self::db()->get_col( 'SELECT id FROM ' . Db::t( 'broadcasts' ) . " WHERE status = 'sending' ORDER BY id LIMIT 5" ) ?: array();
 		foreach ( $ids as $id ) {
-			self::process( (int) $id, self::BATCH );
+			self::process( (int) $id );
 		}
 	}
 
@@ -282,7 +283,7 @@ final class Broadcasts {
 		$n = (int) self::db()->query( self::db()->prepare( 'UPDATE ' . Db::t( 'broadcast_rcpt' ) . " SET status = 'queued', error = NULL WHERE broadcast_id = %d AND status = 'failed'", $id ) );
 		if ( $n > 0 ) {
 			self::db()->update( Db::t( 'broadcasts' ), array( 'status' => 'sending', 'finished_at' => null ), array( 'id' => $id ) );
-			self::process( $id, self::BATCH );
+			self::process( $id );
 		}
 		return $n;
 	}

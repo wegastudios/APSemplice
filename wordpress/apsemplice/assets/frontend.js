@@ -8,6 +8,22 @@
 		}
 	});
 
+	// Coordinate bancarie: pulsante «Copia» (negli appunti; se il browser non lo consente si seleziona il testo)
+	document.addEventListener('click', function (e) {
+		var b = e.target && e.target.closest ? e.target.closest('[data-apsf-copy]') : null;
+		if (!b) { return; }
+		var text = b.getAttribute('data-apsf-copy') || '';
+		var done = function () { var old = b.textContent; b.textContent = 'Copiato'; setTimeout(function () { b.textContent = old; }, 1500); };
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(text).then(done, function () {});
+			return;
+		}
+		var t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+		document.body.appendChild(t); t.select();
+		try { document.execCommand('copy'); done(); } catch (err) {}
+		document.body.removeChild(t);
+	});
+
 	function euro(cents) {
 		return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 	}
@@ -17,7 +33,7 @@
 			if (c.checked) { total += parseInt(c.getAttribute('data-cents'), 10) || 0; any = true; }
 		});
 		var out = form.querySelector('.apsf-pay-total'); if (out) { out.textContent = euro(total); }
-		var btn = form.querySelector('button[type="submit"]'); if (btn) { btn.disabled = !any; }
+		form.querySelectorAll('button[type="submit"]').forEach(function (btn) { btn.disabled = !any; });
 	}
 	document.addEventListener('change', function (e) {
 		var form = e.target && e.target.closest ? e.target.closest('.apsf-pay form') : null;
