@@ -3,10 +3,13 @@ namespace ApSemplice\Frontend;
 
 use ApSemplice\Access;
 use ApSemplice\ActivityKind;
+use ApSemplice\Bank;
 use ApSemplice\Labels;
 use ApSemplice\License;
+use ApSemplice\Limits;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
+use ApSemplice\PaymentConfig;
 use ApSemplice\Plugin;
 use ApSemplice\Pricing;
 use ApSemplice\Settings;
@@ -73,12 +76,21 @@ final class Views {
 		return $txt;
 	}
 
-	private static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '', bool $multipart = false ): string {
+	/**
+	 * @param array[] $buttons se indicati sostituiscono il pulsante unico: ciascuno con value (inviato come "provider") e label
+	 */
+	private static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '', bool $multipart = false, array $buttons = array() ): string {
 		$html  = '<form class="apsf-form ' . esc_attr( $class ) . '" method="post"' . ( $multipart ? ' enctype="multipart/form-data"' : '' ) . ' action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		$html .= '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">';
 		$html .= '<input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">';
 		$html .= wp_nonce_field( $action, '_wpnonce', false, false );
 		$html .= $fields_html;
+		if ( $buttons ) {
+			foreach ( $buttons as $b ) {
+				$html .= '<button type="submit" name="provider" value="' . esc_attr( (string) $b['value'] ) . '" class="apsf-btn wp-element-button">' . esc_html( (string) $b['label'] ) . '</button> ';
+			}
+			return $html . '</form>';
+		}
 		$html .= '<button type="submit" class="apsf-btn wp-element-button"' . ( $confirm ? ' data-confirm="Confermi?"' : '' ) . '>' . esc_html( $button ) . '</button></form>';
 		return $html;
 	}
@@ -299,6 +311,7 @@ final class Views {
 		$pay  = Plugin::payments();
 		$dues = $pay->dues_for( $p );
 		$html = '<section class="apsf-section apsf-pay"><h3>Pagamenti</h3>';
+		$bank = Bank::enabled();
 		if ( ! $dues ) {
 			$html .= '<p class="apsf-muted">Non hai nulla da pagare al momento.</p>';
 		} elseif ( ! $pay->enabled() ) {
@@ -306,7 +319,7 @@ final class Views {
 			foreach ( $dues as $i ) {
 				$html .= '<li><div><strong>' . esc_html( $i['label'] ) . '</strong><div class="apsf-small">' . esc_html( $i['person_name'] ) . '</div></div><strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
 			}
-			$html .= '</ul><p class="apsf-small apsf-muted">' . esc_html( Settings::payment_hint() ) . '</p>';
+			$html .= '</ul>' . ( $bank ? '' : '<p class="apsf-small apsf-muted">' . esc_html( Settings::payment_hint() ) . '</p>' );
 		} else {
 			$total  = 0;
 			$fields = '<ul class="apsf-list apsf-paylist">';
@@ -317,10 +330,21 @@ final class Views {
 					. '<strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
 			}
 			$fields .= '</ul><p class="apsf-paytotal">Totale: <strong class="apsf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
-			$html   .= self::form( 'apse_front_pay', $fields, 'woocommerce' === $pay->provider() ? 'Paga nel negozio' : ( 'paypal' === $pay->provider() ? 'Paga con PayPal' : 'Paga con carta' ) )
-				. ( 'woocommerce' === $pay->provider()
-					? '<p class="apsf-small apsf-muted">Completi il pagamento nel negozio del sito: appena risulta pagato lo registriamo.</p>'
-					: '<p class="apsf-small apsf-muted">Paghi su una pagina sicura di ' . ( 'paypal' === $pay->provider() ? 'PayPal' : 'Stripe' ) . ': i dati della carta non passano da questo sito.</p>' );
+			$all      = Settings::all();
+			$buttons  = array();
+			$notes    = array();
+			foreach ( $pay->providers() as $g ) { // un pulsante per ogni metodo attivo, con le diciture scelte dall'amministratore
+				$buttons[] = array( 'value' => $g, 'label' => PaymentConfig::label( $g, $all ) );
+				$notes[]   = PaymentConfig::note( $g, $all );
+			}
+			$html .= self::form( 'apse_front_pay', $fields, '', false, '', false, $buttons );
+			foreach ( array_filter( $notes ) as $n ) {
+				$html .= '<p class="apsf-small apsf-muted">' . esc_html( $n ) . '</p>';
+			}
+		}
+		if ( $dues && $bank ) { // coordinate per il bonifico, accanto ai pagamenti online o al loro posto
+			$html .= Bank::html_accounts( $p, array_values( $dues ) )
+				. self::form( 'apse_front_bank_email', '', 'Mandami le coordinate per email', false, 'apsf-bank-form' );
 		}
 		$recent = $pay->list( array( 'payer_person_id' => (int) $p['id'] ), 5 );
 		if ( $recent ) {
@@ -526,10 +550,27 @@ final class Views {
 		return $html . '<details class="apsf-details"><summary>Aggiungi un ospite</summary>' . self::form( 'apse_front_add_guest', $fields, 'Aggiungi ospite' ) . '</details></section>';
 	}
 
+	/** Avviso in cima all'area: il profilo va completato (indirizzo e codice fiscale) prima di prenotare e pagare. Vuoto se non serve. */
+	public static function section_complete( array $p ): string {
+		if ( empty( $p['profile_due'] ) ) {
+			return '';
+		}
+		$missing = Plugin::people()->profile_missing( $p );
+		if ( ! $missing ) {
+			return '';
+		}
+		return '<section class="apsf-section apsf-complete"><h3>Completa i tuoi dati</h3><p>Per usare l\'area riservata mancano ancora: <strong>' . esc_html( implode( ', ', $missing ) ) . '</strong>.'
+			. ( Limits::flag( 'profile_gate' ) ? ' Finché non li inserisci non puoi prenotare né pagare online.' : '' ) . ' Li trovi nel riquadro «Il mio profilo» qui sotto.</p></section>';
+	}
+
 	public static function section_profile( array $p ): string {
 		$fields = '<div class="apsf-fields"><label>Telefono <input type="text" name="phone" value="' . esc_attr( (string) $p['phone'] ) . '"></label>'
-			. '<label>Codice fiscale <input type="text" name="tax_code" value="' . esc_attr( (string) $p['tax_code'] ) . '"></label></div>';
-		return '<section class="apsf-section"><h3>Il mio profilo</h3><dl class="apsf-dl"><div><dt>Nome</dt><dd>' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</dd></div>'
+			. '<label>Codice fiscale <input type="text" name="tax_code" maxlength="16" autocomplete="off" value="' . esc_attr( (string) $p['tax_code'] ) . '"></label>'
+			. '<label>Indirizzo (via e numero) <input type="text" name="address" maxlength="190" autocomplete="street-address" value="' . esc_attr( (string) $p['address'] ) . '"></label>'
+			. '<label>CAP <input type="text" name="zip" maxlength="12" autocomplete="postal-code" value="' . esc_attr( (string) $p['zip'] ) . '"></label>'
+			. '<label>Comune <input type="text" name="city" maxlength="100" autocomplete="address-level2" value="' . esc_attr( (string) $p['city'] ) . '"></label>'
+			. '<label>Provincia <input type="text" name="province" maxlength="5" autocomplete="address-level1" value="' . esc_attr( (string) $p['province'] ) . '"></label></div>';
+		return self::section_complete( $p ) . '<section class="apsf-section"><h3>Il mio profilo</h3><dl class="apsf-dl"><div><dt>Nome</dt><dd>' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</dd></div>'
 			. '<div><dt>Email</dt><dd>' . esc_html( (string) $p['email'] ) . '</dd></div></dl>'
 			. '<p class="apsf-small apsf-muted">Per cambiare nome o email scrivi all\'associazione.</p>'
 			. self::form( 'apse_front_profile', $fields, 'Salva' )
@@ -921,6 +962,9 @@ final class Views {
 					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-area">';
+				if ( ! in_array( 'profilo', $sections, true ) ) {
+					$html .= self::section_complete( $p ); // l'avviso compare comunque in cima, anche se la sezione del profilo non è tra quelle mostrate
+				}
 				foreach ( $sections as $s ) {
 					if ( isset( $map[ $s ] ) ) {
 						$html .= self::{$map[ $s ]}( $p );
@@ -989,6 +1033,15 @@ final class Views {
 		$name = trim( (string) Settings::get( 'association_name' ) );
 		return '<section class="apsf-section apsf-fivepm"><h3>5x1000' . ( '' !== $name ? ' a ' . esc_html( $name ) : '' ) . '</h3><p>' . esc_html( \ApSemplice\FivePerMille::text() ) . '</p>'
 			. '<p class="apsf-small">Codice fiscale: <strong>' . esc_html( (string) Settings::get( 'tax_code' ) ) . '</strong></p></section>';
+	}
+
+	/** Coordinate per il bonifico per chiunque (ad esempio una pagina di donazioni): niente causale personale. Vuoto se il bonifico non è attivo. */
+	public static function bank_public(): string {
+		if ( ! Bank::enabled() ) {
+			return '';
+		}
+		Assets::enqueue();
+		return '<section class="apsf-section apsf-bankpub">' . Bank::html_accounts() . '</section>';
 	}
 
 	/** App installabile e notifiche: si vede solo se l'app è accesa nelle impostazioni. */

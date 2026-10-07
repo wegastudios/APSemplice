@@ -17,6 +17,10 @@ class PaymentService {
 
 	const PENDING_AFTER_MINUTES = 10;
 	const EXPIRE_AFTER_DAYS     = 3;
+	const STUCK_AFTER_MINUTES   = 15;
+
+	/** Stati da cui un pagamento si può ancora registrare: il gateway può confermare i soldi anche dopo che il sito lo aveva chiuso (annullo, scadenza). */
+	const OPEN_STATUSES = array( 'created', 'pending', 'cancelled', 'expired', 'failed' );
 
 	/** @var callable|null rete iniettabile per i test */
 	private $http = null;
@@ -35,20 +39,33 @@ class PaymentService {
 
 	// ---------- Configurazione ----------
 
-	/** Gateway attivo: stripe | paypal, oppure '' se non scelto o con configurazione incompleta. */
-	public function provider(): string {
+	/**
+	 * Gateway utilizzabili ora: stripe e/o paypal (anche insieme), oppure woocommerce. Un gateway con la configurazione incompleta non compare
+	 * (l'altro, se a posto, funziona lo stesso).
+	 *
+	 * @return string[]
+	 */
+	public function providers(): array {
 		$c = Settings::payment_config();
 		if ( PaymentConfig::WOOCOMMERCE === $c['payment_provider'] ) {
-			return WooBridge::active() ? PaymentConfig::WOOCOMMERCE : '';
+			return WooBridge::active() ? array( PaymentConfig::WOOCOMMERCE ) : array();
 		}
-		if ( ! in_array( $c['payment_provider'], array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ), true ) ) {
-			return '';
+		$out = array();
+		foreach ( PaymentConfig::gateways_of( (string) $c['payment_provider'] ) as $g ) {
+			if ( array() === PaymentConfig::validate_gateway( $c, $g )['errors'] ) {
+				$out[] = $g;
+			}
 		}
-		return array() === PaymentConfig::validate( $c )['errors'] ? $c['payment_provider'] : '';
+		return $out;
+	}
+
+	/** Il primo gateway utilizzabile (o '' se non ce n'è): per i controlli che non dipendono dalla scelta. */
+	public function provider(): string {
+		return $this->providers()[0] ?? '';
 	}
 
 	public function enabled(): bool {
-		return '' !== $this->provider() && License::allows( 'online_payments' );
+		return array() !== $this->providers() && License::allows( 'online_payments' );
 	}
 
 	// ---------- Cosa c'è da pagare ----------
@@ -156,10 +173,21 @@ class PaymentService {
 	 * @param string[] $keys      chiavi delle voci scelte (si accettano solo quelle realmente dovute da lui o dai suoi ospiti)
 	 * @param string   $back_url  pagina del sito a cui tornare dopo il pagamento
 	 */
-	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url ): string {
-		$provider = $this->provider();
-		if ( '' === $provider || ! License::allows( 'online_payments' ) ) {
+	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url, string $provider = '' ): string {
+		$available = $this->providers();
+		if ( ! $available || ! License::allows( 'online_payments' ) ) {
 			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi.' );
+		}
+		if ( '' === $provider ) {
+			$provider = $available[0];
+		} elseif ( ! in_array( $provider, $available, true ) ) {
+			throw new \InvalidArgumentException( 'Questo metodo di pagamento non è disponibile.' );
+		}
+		// Un utente (o un programma automatico) non può creare centinaia di pagamenti pendenti sul gateway.
+		$tbl  = Db::t( 'payments' );
+		$open = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE payer_user_id = %d AND created_at >= %s", $user_id, gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - HOUR_IN_SECONDS ) ) );
+		if ( $open >= Limits::get( 'pay_open_per_hour' ) ) {
+			throw new \InvalidArgumentException( 'Hai avviato molti pagamenti in poco tempo: aspetta un po\' prima di riprovare.' );
 		}
 		$dues  = $this->dues_for( $actor );
 		$items = array();
@@ -172,8 +200,9 @@ class PaymentService {
 			throw new \InvalidArgumentException( 'Scegli almeno una voce da pagare.' );
 		}
 		$total = PaymentItems::total( $items );
-		if ( $total < PaymentItems::MIN_TOTAL_CENTS ) {
-			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( PaymentItems::MIN_TOTAL_CENTS ) . '.' );
+		$min = Limits::get( 'pay_min_cents' );
+		if ( $total < $min ) {
+			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( $min ) . '.' );
 		}
 
 		$public = wp_generate_uuid4();
@@ -235,6 +264,9 @@ class PaymentService {
 		}
 		if ( 'cancel' === $ret ) {
 			if ( in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
+				if ( $this->confirm_with_gateway( $p ) ) {
+					return 'Pagamento ricevuto: grazie!'; // il gateway risulta pagato anche se l'indirizzo era quello dell'annullo: non si perde un incasso
+				}
 				$this->update( (int) $p['id'], array( 'status' => 'cancelled' ) );
 			}
 			return 'Pagamento annullato: non è stato addebitato nulla.';
@@ -249,7 +281,7 @@ class PaymentService {
 
 	/** Interroga il gateway e, se il pagamento risulta riuscito, lo registra. @return bool true se è stato registrato ora */
 	private function confirm_with_gateway( array $p ): bool {
-		if ( ! in_array( $p['status'], array( 'created', 'pending' ), true ) || empty( $p['provider_ref'] ) || PaymentConfig::WOOCOMMERCE === $p['provider'] ) {
+		if ( ! in_array( $p['status'], self::OPEN_STATUSES, true ) || empty( $p['provider_ref'] ) || PaymentConfig::WOOCOMMERCE === $p['provider'] ) {
 			return false; // WooCommerce non si interroga: è il negozio a segnalare l'ordine pagato
 		}
 		$cfg = Settings::payment_config();
@@ -257,7 +289,7 @@ class PaymentService {
 			if ( 'stripe' === $p['provider'] ) {
 				$s = StripeApi::retrieve_session( $this->http(), $cfg['stripe_secret_key'], $p['provider_ref'] );
 				if ( StripeApi::is_paid( $s ) ) {
-					return $this->finalize( $p, (int) ( $s['amount_total'] ?? 0 ), (string) ( $s['payment_intent'] ?? '' ) );
+					return $this->finalize( $p, StripeApi::paid_eur_cents( $s ), (string) ( $s['payment_intent'] ?? '' ) );
 				}
 				if ( 'expired' === ( $s['status'] ?? '' ) ) {
 					$this->update( (int) $p['id'], array( 'status' => 'expired' ) );
@@ -291,11 +323,14 @@ class PaymentService {
 		if ( ! $p || 'stripe' !== $p['provider'] ) {
 			return 'pagamento sconosciuto';
 		}
+		if ( isset( $event['livemode'] ) && (bool) $event['livemode'] !== ( 'live' === (string) Settings::get( 'stripe_mode' ) ) ) {
+			return 'modalità diversa'; // un evento di prova non registra incassi veri (e viceversa)
+		}
 		if ( ! empty( $p['provider_ref'] ) && ! empty( $obj['id'] ) && $p['provider_ref'] !== $obj['id'] ) {
 			return 'sessione diversa';
 		}
 		if ( in_array( $type, array( 'checkout.session.completed', 'checkout.session.async_payment_succeeded' ), true ) && StripeApi::is_paid( $obj ) ) {
-			$this->finalize( $p, (int) ( $obj['amount_total'] ?? 0 ), (string) ( $obj['payment_intent'] ?? '' ) );
+			$this->finalize( $p, StripeApi::paid_eur_cents( $obj ), (string) ( $obj['payment_intent'] ?? '' ) );
 			return 'registrato';
 		}
 		if ( in_array( $type, array( 'checkout.session.expired', 'checkout.session.async_payment_failed' ), true ) && in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
@@ -307,7 +342,8 @@ class PaymentService {
 
 	/** Ricontrolla i pagamenti rimasti in sospeso (chiamato ogni ora da WP-Cron e dal pulsante in amministrazione). */
 	public function check_pending( bool $include_recent = false ): array {
-		$limit = gmdate( 'Y-m-d H:i:s', time() - ( $include_recent ? 0 : self::PENDING_AFTER_MINUTES * 60 ) );
+		$this->recover_stuck();
+		$limit = gmdate( 'Y-m-d H:i:s', time() - ( $include_recent ? 0 : Limits::get( 'pay_pending_minutes' ) * 60 ) );
 		$rows  = $this->db()->get_results(
 			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE status = 'pending' AND created_at <= %s ORDER BY id LIMIT 50", get_date_from_gmt( $limit ) ),
 			ARRAY_A
@@ -320,12 +356,25 @@ class PaymentService {
 				continue;
 			}
 			$fresh = $this->get( (int) $p['id'] );
-			if ( 'pending' === $fresh['status'] && strtotime( $p['created_at'] ) < time() - self::EXPIRE_AFTER_DAYS * DAY_IN_SECONDS ) {
+			if ( 'pending' === $fresh['status'] && strtotime( $p['created_at'] ) < time() - Limits::get( 'pay_expire_days' ) * DAY_IN_SECONDS ) {
 				$this->update( (int) $p['id'], array( 'status' => 'expired' ) );
 				$out['expired']++;
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * Un pagamento rimasto "in registrazione" (il server si è fermato a metà): i soldi sono arrivati ma non si sa quanto sia stato scritto in prima nota.
+	 * Non si riprova da soli (si rischierebbe di registrare due volte una parte): lo si segna "da controllare".
+	 */
+	private function recover_stuck(): void {
+		$tbl   = Db::t( 'payments' );
+		$limit = gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - self::STUCK_AFTER_MINUTES * 60 );
+		foreach ( $this->db()->get_results( $this->db()->prepare( "SELECT id FROM $tbl WHERE status = 'processing' AND updated_at <= %s LIMIT 50", $limit ), ARRAY_A ) ?: array() as $r ) {
+			$this->update( (int) $r['id'], array( 'status' => 'paid', 'paid_at' => Db::now(), 'review' => 1, 'error' => 'Registrazione interrotta a metà: controlla la prima nota prima di correggere a mano.' ) );
+			Audit::log( 'payment.stuck', 'payment', (int) $r['id'] );
+		}
 	}
 
 	// ---------- Registrazione in prima nota ----------
@@ -338,7 +387,8 @@ class PaymentService {
 	 */
 	private function finalize( array $p, int $paid_cents, string $provider_payment_id ): bool {
 		$tbl     = Db::t( 'payments' );
-		$claimed = $this->db()->query( $this->db()->prepare( "UPDATE $tbl SET status = 'processing', updated_at = %s WHERE id = %d AND status IN ('created','pending')", Db::now(), (int) $p['id'] ) );
+		$open    = "'" . implode( "','", self::OPEN_STATUSES ) . "'";
+		$claimed = $this->db()->query( $this->db()->prepare( "UPDATE $tbl SET status = 'processing', updated_at = %s WHERE id = %d AND status IN ($open)", Db::now(), (int) $p['id'] ) );
 		if ( 1 !== (int) $claimed ) {
 			return false; // già registrato (o in registrazione) da un altro passaggio
 		}

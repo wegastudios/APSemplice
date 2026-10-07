@@ -84,6 +84,18 @@ final class Settings {
 			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
 			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
 			'wpai_mark_members'       => 0,         // ... segna i soci come iscritti all'anno sociale corrente
+			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
+			'pay_label_stripe'        => '',        // diciture dei pulsanti di pagamento (vuoto = predefinita, vedi PaymentConfig)
+			'pay_note_stripe'         => '',
+			'pay_label_paypal'        => '',
+			'pay_note_paypal'         => '',
+			'pay_label_woocommerce'   => '',
+			'pay_note_woocommerce'    => '',
+			'bank_enabled'            => 0,         // coordinate bancarie (IBAN) mostrate ai soci e inviate per email: spente di default
+			'bank_title'              => '',        // titolo del riquadro (vuoto = «Pagamento con bonifico»)
+			'bank_note'               => '',        // istruzioni sotto le coordinate (vuoto = testo predefinito)
+			'bank_in_reminders'       => 1,         // ... aggiunte anche ai promemoria di pagamento
+			'bank_accounts'           => array(),   // conti: label, holder, iban, bic, bank, note (al massimo 5)
 		);
 	}
 
@@ -175,6 +187,16 @@ final class Settings {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
+		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
+		foreach ( array( 'stripe', 'paypal', 'woocommerce' ) as $g ) {
+			$clean[ 'pay_label_' . $g ] = mb_substr( trim( (string) $clean[ 'pay_label_' . $g ] ), 0, 60 );
+			$clean[ 'pay_note_' . $g ]  = mb_substr( trim( (string) $clean[ 'pay_note_' . $g ] ), 0, 300 );
+		}
+		$clean['bank_enabled']            = empty( $clean['bank_enabled'] ) ? 0 : 1;
+		$clean['bank_in_reminders']       = empty( $clean['bank_in_reminders'] ) ? 0 : 1;
+		$clean['bank_title']              = mb_substr( trim( (string) $clean['bank_title'] ), 0, 80 );
+		$clean['bank_note']               = mb_substr( trim( (string) $clean['bank_note'] ), 0, 400 );
+		$clean['bank_accounts']           = Bank::sanitize_accounts( is_array( $clean['bank_accounts'] ) ? $clean['bank_accounts'] : array() );
 		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
@@ -256,7 +278,7 @@ final class Settings {
 
 	/** Configurazione dei pagamenti con i segreti in chiaro (solo per uso interno: mai da stampare). */
 	public static function payment_config(): array {
-		$c = array( 'payment_provider' => (string) self::get( 'payment_provider' ) );
+		$c = array( 'payment_provider' => (string) self::get( 'payment_provider' ), 'site_https' => 0 === strpos( home_url(), 'https://' ) ? 1 : 0 );
 		foreach ( array( 'stripe_mode', 'stripe_publishable_key', 'paypal_mode', 'paypal_client_id' ) as $k ) {
 			$c[ $k ] = (string) self::get( $k );
 		}

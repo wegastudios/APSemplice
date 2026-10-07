@@ -165,6 +165,10 @@ final class Actions {
 			'email'          => $p['email'] ?? '',
 			'phone'          => $p['phone'] ?? '',
 			'tax_code'       => $p['tax_code'] ?? '',
+			'address'        => $p['address'] ?? '',
+			'zip'            => $p['zip'] ?? '',
+			'city'           => $p['city'] ?? '',
+			'province'       => $p['province'] ?? '',
 			'host_person_id' => $p['host_person_id'] ?? '',
 			'joined_on'      => $p['joined_on'] ?? '',
 			'notes'          => $p['notes'] ?? '',
@@ -809,7 +813,7 @@ final class Actions {
 	// ---------- Conti ----------
 
 	private static function suspend_expired( array $p ): array {
-		$n = Plugin::people()->suspend_expired( 8 );
+		$n = Plugin::people()->suspend_expired( \ApSemplice\Limits::get( 'suspend_after_months' ) );
 		return array( Ui::url( 'apse-people' ), 0 === $n ? 'Nessun socio da sospendere.' : $n . ( 1 === $n ? ' socio sospeso' : ' soci sospesi' ) . ': sono inattivi finché non li riattivi a mano.' );
 	}
 
@@ -1035,6 +1039,12 @@ final class Actions {
 				'paypal_mode'             => $txt( 'paypal_mode' ),
 				'paypal_client_id'        => $txt( 'paypal_client_id' ),
 				'paypal_client_secret'    => $txt( 'paypal_client_secret' ),
+				'pay_label_stripe'        => $txt( 'pay_label_stripe' ),
+				'pay_note_stripe'         => $txt( 'pay_note_stripe' ),
+				'pay_label_paypal'        => $txt( 'pay_label_paypal' ),
+				'pay_note_paypal'         => $txt( 'pay_note_paypal' ),
+				'pay_label_woocommerce'   => $txt( 'pay_label_woocommerce' ),
+				'pay_note_woocommerce'    => $txt( 'pay_note_woocommerce' ),
 			)
 		);
 		foreach ( \ApSemplice\Settings::SECRET_KEYS as $k ) {
@@ -1112,8 +1122,8 @@ final class Actions {
 		if ( empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
 			throw new \InvalidArgumentException( 'Scegli un file Excel o CSV da caricare.' );
 		}
-		if ( (int) $f['size'] > 20 * 1048576 ) {
-			throw new \InvalidArgumentException( 'Il file supera i 20 MB: dividilo in più file.' );
+		if ( (int) $f['size'] > \ApSemplice\Limits::get( 'import_max_mb' ) * 1048576 ) {
+			throw new \InvalidArgumentException( 'Il file supera i ' . \ApSemplice\Limits::get( 'import_max_mb' ) . ' MB: dividilo in più file.' );
 		}
 		$prev  = \ApSemplice\ImportService::preview_file(
 			$f['tmp_name'],

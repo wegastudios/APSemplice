@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\Audit;
 use ApSemplice\PaymentConfig;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -19,6 +20,9 @@ final class TechActions {
 		'apse_save_app'   => 'save_app',
 		'apse_push_test'  => 'push_test',
 		'apse_push_reset' => 'push_reset',
+		'apse_save_bank'  => 'save_bank',
+		'apse_save_limits' => 'save_limits',
+		'apse_reset_limits' => 'reset_limits',
 	);
 
 	public static function register(): void {
@@ -132,6 +136,54 @@ final class TechActions {
 	public static function push_reset( array $p ): array {
 		\ApSemplice\Push::reset_keys();
 		return array( Ui::url( 'apse-app' ), 'Chiavi rigenerate: i dispositivi devono riattivare le notifiche.' );
+	}
+
+	/** Coordinate bancarie: IBAN controllati (cifra di controllo) e, se cambiano, avviso agli amministratori. */
+	public static function save_bank( array $p ): array {
+		$rows = array();
+		foreach ( (array) ( $p['bank'] ?? array() ) as $r ) {
+			if ( is_array( $r ) ) {
+				$rows[] = $r;
+			}
+		}
+		$accounts = \ApSemplice\Bank::sanitize_accounts( $rows, true ); // un IBAN sbagliato è un errore, non si scarta in silenzio
+		$enabled  = ! empty( $p['bank_enabled'] );
+		if ( $enabled && ! $accounts ) {
+			throw new \InvalidArgumentException( 'Per attivare il bonifico indica almeno un IBAN.' );
+		}
+		$old = \ApSemplice\Bank::accounts();
+		Settings::update(
+			array(
+				'bank_enabled'      => $enabled ? 1 : 0,
+				'bank_title'        => sanitize_text_field( (string) ( $p['bank_title'] ?? '' ) ),
+				'bank_note'         => sanitize_textarea_field( (string) ( $p['bank_note'] ?? '' ) ),
+				'bank_in_reminders' => ! empty( $p['bank_in_reminders'] ) ? 1 : 0,
+				'bank_accounts'     => $accounts,
+			)
+		);
+		\ApSemplice\Bank::notify_change( $old, $accounts );
+		return array( Ui::url( 'apse-payments' ), 'Coordinate bancarie salvate.' . ( \ApSemplice\Bank::signature( $old ) !== \ApSemplice\Bank::signature( $accounts ) ? ' Gli amministratori sono stati avvisati per email del cambio.' : '' ) );
+	}
+
+	/** Limiti e soglie: ogni valore resta entro i limiti di sicurezza della sua voce. */
+	public static function save_limits( array $p ): array {
+		$in = array();
+		foreach ( \ApSemplice\Limits::defs() as $key => $d ) {
+			if ( 'flag' === $d['unit'] ) {
+				$in[ $key ] = ! empty( $p['lim'][ $key ] ) ? 1 : 0; // le caselle non spuntate non arrivano nel modulo
+			} elseif ( isset( $p['lim'][ $key ] ) ) {
+				$in[ $key ] = $p['lim'][ $key ];
+			}
+		}
+		Settings::update( array( 'limits' => $in ) );
+		Audit::log( 'limits.saved', 'settings' );
+		return array( Ui::url( 'apse-limits' ), 'Limiti e soglie salvati.' );
+	}
+
+	public static function reset_limits( array $p ): array {
+		Settings::update( array( 'limits' => array() ) );
+		Audit::log( 'limits.reset', 'settings' );
+		return array( Ui::url( 'apse-limits' ), 'Ripristinati i valori predefiniti.' );
 	}
 
 	public static function save_acct( array $p ): array {

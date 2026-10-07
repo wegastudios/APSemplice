@@ -233,7 +233,7 @@ final class Backup {
 		$safety = $dir . '/prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip'; // nome non indovinabile: la cartella potrebbe essere raggiungibile da web (nginx ignora .htaccess)
 		self::export( true, $safety );
 		$old = self::saved();
-		foreach ( array_slice( $old, self::KEEP ) as $o ) {
+		foreach ( array_slice( $old, Limits::get( 'backup_keep' ) ) as $o ) {
 			@unlink( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 		$db  = Db::db();

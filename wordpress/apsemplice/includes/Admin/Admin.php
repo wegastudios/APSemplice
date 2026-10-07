@@ -26,18 +26,18 @@ final class Admin {
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto' ) ),
 		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze', 'apse-fivepm' => '5x1000' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-guide' => 'Guida iniziale', 'apse-tech' => 'Integrazioni', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-app' => 'App e notifiche', 'apse-roles' => 'Ruoli e accessi', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni', 'apse-acct' => 'Opzioni contabili' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-settings' => 'Generale', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi personalizzati', 'apse-guide' => 'Guida iniziale', 'apse-tech' => 'Integrazioni', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-app' => 'App e notifiche', 'apse-roles' => 'Ruoli e accessi', 'apse-limits' => 'Limiti e soglie', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni', 'apse-acct' => 'Opzioni contabili' ) ),
 	);
 
 	/** Le Impostazioni sono in tre sezioni: ente e funzioni, tecniche, contabilità. Titolo => pagine (la prima è quella a cui porta la scheda). */
 	const SETTINGS_SECTIONS = array(
 		'Ente e funzioni' => array( 'apse-settings' => 'Generale', 'apse-comms' => 'Promemoria, privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-guide' => 'Guida iniziale' ),
-		'Tecniche'        => array( 'apse-tech' => 'Integrazioni', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-app' => 'App e notifiche', 'apse-roles' => 'Ruoli e accessi', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni' ),
+		'Tecniche'        => array( 'apse-tech' => 'Integrazioni', 'apse-payments' => 'Pagamenti online', 'apse-card' => 'Tessera, QR e Wallet', 'apse-app' => 'App e notifiche', 'apse-roles' => 'Ruoli e accessi', 'apse-limits' => 'Limiti e soglie', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni' ),
 		'Contabilità'     => array( 'apse-acct' => 'Opzioni contabili' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app' );
+	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities' );
@@ -86,6 +86,7 @@ final class Admin {
 			array( 'apse-tech', 'Integrazioni', array( TechPage::class, 'render_integrations' ) ),
 			array( 'apse-app', 'App e notifiche', array( AppPage::class, 'render' ) ),
 			array( 'apse-roles', 'Ruoli e accessi', array( TechPage::class, 'render_roles' ) ),
+			array( 'apse-limits', 'Limiti e soglie', array( LimitsPage::class, 'render' ) ),
 			array( 'apse-acct', 'Opzioni contabili', array( TechPage::class, 'render_accounting' ) ),
 			array( 'apse-fivepm', '5x1000', array( FivePmPage::class, 'render' ) ),
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),

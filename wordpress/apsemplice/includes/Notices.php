@@ -102,6 +102,10 @@ final class Notices {
 		if ( '' === $subject || '' === $body ) {
 			throw new \InvalidArgumentException( 'Scrivi un titolo e il testo dell\'avviso.' );
 		}
+		// Indirizzi web e IBAN sono il modo più comune per dirottare i pagamenti dei soci: i volontari non li possono inserire (si cambia da Impostazioni → Limiti e soglie).
+		if ( ! current_user_can( Plugin::CAP_OPS ) && ! Limits::flag( 'notice_links' ) && TextGuard::has_payment_hint( $subject . "\n" . $body ) ) {
+			throw new \InvalidArgumentException( 'Negli avvisi dei volontari non si possono inserire indirizzi web né coordinate bancarie. Per i pagamenti rimanda i soci all\'area riservata o alla segreteria.' );
+		}
 		if ( mb_strlen( $subject ) > self::MAX_SUBJECT || mb_strlen( $body ) > self::MAX_BODY ) {
 			throw new \InvalidArgumentException( 'Avviso troppo lungo: titolo fino a ' . self::MAX_SUBJECT . ' caratteri, testo fino a ' . self::MAX_BODY . '.' );
 		}
@@ -114,8 +118,8 @@ final class Notices {
 		}
 		$db  = self::db();
 		$day = $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'notices' ) . ' WHERE activity_id = %d AND created_at >= %s', $activity_id, gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
-		if ( (int) $day >= self::MAX_PER_DAY ) {
-			throw new \InvalidArgumentException( 'Per questa attività sono già stati inviati ' . self::MAX_PER_DAY . ' avvisi nelle ultime 24 ore: aspetta un po\'.' );
+		if ( (int) $day >= Limits::get( 'notice_per_day' ) ) {
+			throw new \InvalidArgumentException( 'Per questa attività sono già stati inviati ' . Limits::get( 'notice_per_day' ) . ' avvisi nelle ultime 24 ore: aspetta un po\'.' );
 		}
 		$rcpt = self::recipients( $activity_id, $session_id );
 		$user = wp_get_current_user();
@@ -175,7 +179,7 @@ final class Notices {
 		}
 		$db  = self::db();
 		$in  = implode( ',', array_map( 'intval', array_keys( $acts ) ) );
-		$min = gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -' . self::BOARD_DAYS . ' days' ) );
+		$min = gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -' . Limits::get( 'notice_board_days' ) . ' days' ) );
 		return $db->get_results(
 			$db->prepare( 'SELECT n.*, a.name AS activity_name FROM ' . Db::t( 'notices' ) . ' n JOIN ' . Db::t( 'activities' ) . " a ON a.id = n.activity_id WHERE n.activity_id IN ($in) AND n.created_at >= %s ORDER BY n.id DESC LIMIT %d", $min, max( 1, $limit ) ),
 			ARRAY_A

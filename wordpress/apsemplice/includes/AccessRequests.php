@@ -38,7 +38,7 @@ final class AccessRequests {
 		uasort( $all, function ( $a, $b ) {
 			return $b['at'] <=> $a['at'];
 		} );
-		update_option( self::OPTION, array_slice( $all, 0, self::MAX, true ), false );
+		update_option( self::OPTION, array_slice( $all, 0, Limits::get( 'access_requests_max' ), true ), false );
 		return $id;
 	}
 

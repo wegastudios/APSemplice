@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '32';
+	const DB_VERSION        = '33';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -111,6 +111,11 @@ final class Install {
   email varchar(190) DEFAULT NULL,
   phone varchar(60) DEFAULT NULL,
   tax_code varchar(32) DEFAULT NULL,
+  address varchar(190) DEFAULT NULL,
+  zip varchar(12) DEFAULT NULL,
+  city varchar(100) DEFAULT NULL,
+  province varchar(5) DEFAULT NULL,
+  profile_due tinyint(1) NOT NULL DEFAULT 0,
   host_person_id bigint(20) unsigned DEFAULT NULL,
   joined_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,

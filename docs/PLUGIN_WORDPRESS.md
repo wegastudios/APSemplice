@@ -484,3 +484,48 @@ Corretto:
 Verificato senza trovare problemi: esportazioni CSV (le celle che iniziano con `=`, `+`, `-`, `@` vengono neutralizzate), importazione di prima nota e soci, firma e contenuto delle tessere Apple e Google, caricamento dell'icona dell'app, caricamento delle credenziali del wallet, script del sito e dell'amministrazione (nessun HTML costruito con dati dell'utente), controllo dei biglietti QR.
 
 Limiti noti: i nomi scritti a mano nei verbali (elenco dei presenti) non vengono anonimizzati; l'invio degli avvisi ai partecipanti di un'attività avviene in un solo passaggio (le comunicazioni a gruppi invece a gruppi di 25).
+
+## Verifica da attaccante: pagamenti e dati personali (ottobre, quinto giro)
+
+Controllato il codice cercando di intercettare i pagamenti e di rubare dati personali. Corretto:
+
+**Pagamenti**
+- **Incasso non perso**: un pagamento annullato sul sito (o scaduto) ma poi riuscito al gateway veniva ignorato dal webhook e dal controllo periodico, quindi i soldi arrivavano senza comparire in prima nota. Ora un pagamento si registra anche da «annullato», «scaduto» o «non riuscito» se il gateway conferma l'incasso; l'indirizzo di annullo, prima di chiudere un pagamento, interroga il gateway.
+- **Valuta**: si contano solo gli euro (Stripe, PayPal e ordini del negozio). Una valuta diversa non entra come euro: il pagamento va «da controllare».
+- **Modalità**: un evento di Stripe di prova non registra incassi su un sito in modalità reale, e viceversa. La modalità reale di Stripe e di PayPal non si accetta su un sito http.
+- **WooCommerce**: un ordine pagato in contrassegno nasce «in lavorazione» senza che sia entrato denaro e veniva registrato come incasso (quota assegnata gratis a chi sceglieva quel metodo). Ora si registra solo a ordine completato. Il negozio deve usare l'euro.
+- **Registrazione interrotta**: un pagamento rimasto «in registrazione» (server fermato a metà) viene segnalato «da controllare» dopo 15 minuti; non si riprova da soli per non registrare due volte una parte.
+- **Abusi**: al massimo qualche pagamento avviato all'ora per utente; negli avvisi dei volontari non si possono scrivere indirizzi web né IBAN (il modo più comune per dirottare i pagamenti dei soci); ogni cambio di IBAN avvisa gli amministratori.
+
+**Dati personali**
+- **Scoperta dei soci**: aggiungere un ospite con un cellulare già di un socio ora dà un messaggio che non rivela nulla (prima diceva che il numero era di un socio, e si potevano provare numeri a tappeto).
+- **QR e tessera**: un socio sospeso o uscito non risulta valido (prima il QR diceva «valida» finché non scadeva).
+- **Primo accesso**: non più di qualche email all'ora allo stesso socio (nessuno può inondare la casella di un socio); l'attivazione dal link chiede anche il codice fiscale, che deve coincidere con quello registrato dalla segreteria (un link ricevuto per errore non basta più per attivare l'accesso di un altro).
+- **Privacy**: l'anonimizzazione toglie anche indirizzo, CAP e comune.
+
+Verificato senza trovare problemi: firma e tolleranza del webhook di Stripe, conferma diretta col gateway al ritorno del socio, chi può vedere un pagamento (solo chi lo ha avviato), prezzi sempre calcolati dal server, ricevute e allegati (permessi e codici), copie di sicurezza (nessuna chiave segreta, tabelle e file riconosciuti), tipi di contenuto di appoggio di WP All Import (non pubblici), pagine con dati personali fuori dalla cache.
+
+Resta un rischio accettato: la risposta del «Primo accesso» è sempre la stessa, ma l'invio dell'email richiede un po' più di tempo di un rifiuto; con il limite per connessione e per indirizzo è impraticabile da sfruttare in massa.
+
+## Limiti, gruppi e comportamenti configurabili (Impostazioni → Tecniche → Limiti e soglie)
+
+Tutti i limiti operativi mantengono il valore predefinito di sempre ma si possono cambiare dal pannello (solo amministratori), ognuno con minimo e massimo di sicurezza e con una spiegazione di cosa succede se lo si alza o lo si abbassa. Sono raccolti in `Limits.php` (una voce per limite: gruppo, valore predefinito, intervallo, descrizione e rischi) e salvati nelle impostazioni; un ripristino riporta tutto ai valori predefiniti.
+
+- **Comunicazioni**: comunicazioni a gruppi nelle 24 ore (20), email per gruppo di invio (25), avvisi per attività nelle 24 ore (5), durata degli avvisi in bacheca (45 giorni), link e IBAN negli avvisi dei volontari (non consentiti), tempo massimo per le notifiche push (8 s), dispositivi per utente (10).
+- **Accessi**: richieste di primo accesso per connessione (10/ora) e per email (3/ora), tentativi di attivazione (15/ora), validità del link (30 giorni), coda delle richieste (200), indirizzo e codice fiscale obbligatori all'attivazione (sì), blocco di prenotazioni e pagamenti con profilo incompleto (sì).
+- **Pagamenti**: importo minimo (0,50 €), attesa prima di ricontrollare (10 minuti), scadenza dei pagamenti non confermati (3 giorni), pagamenti avviati per utente all'ora (10), invii delle coordinate per email all'ora (3).
+- **Dati**: righe e dimensione dei file di importazione (5000 righe, 20 MB), allegati per movimento e peso (10, 10 MB), copie di sicurezza conservate (3).
+- **Soci**: mesi di tessera scaduta prima di proporre la sospensione (8), giorni di promemoria dopo la scadenza (7).
+
+## Dati obbligatori per chi attiva l'accesso dal sito
+
+- Chi attiva il proprio accesso dal link ricevuto deve indicare **codice fiscale** (controllato: forma e carattere di controllo, anche con l'omocodia), **indirizzo, CAP e comune** (la provincia è facoltativa). Se la segreteria aveva già registrato il codice fiscale, quello scritto deve coincidere: è un secondo controllo oltre al link.
+- Chi si attiva dal «Primo accesso» (link per la password via email) trova nell'area un riquadro «Completa i tuoi dati»; finché mancano non può prenotare né pagare online (si può spegnere).
+- L'iscrizione fatta dalla segreteria resta snella: indirizzo e codice fiscale sono facoltativi. Gli stessi dati si leggono dall'importazione (colonne Indirizzo, CAP, Comune, Provincia), si esportano in CSV, compaiono nell'esportazione dei dati della persona e si tolgono con l'anonimizzazione.
+- Tutto questo si può disattivare da Limiti e soglie.
+
+## Pagamenti: più metodi insieme e bonifico
+
+- **Stripe e PayPal insieme**: nuova scelta «Stripe e PayPal insieme». Nell'area soci compare un pulsante per metodo, con la **dicitura** e la **nota** che scegli (ad esempio «Paga a rate con PayPal»); se la configurazione di uno dei due è incompleta resta attivo l'altro. WooCommerce resta alternativo. Anche le diciture del negozio si personalizzano.
+- **Pagamenti online disattivabili**: con «Nessuno» i soci vedono cosa devono e l'invito a pagare in sede, oppure il bonifico.
+- **Bonifico** (spento di default): uno o più IBAN (fino a 5, controllati con la cifra di controllo) mostrati nell'area soci accanto a ciò che si deve pagare, con la causale già pronta («Cognome Nome - voci») e il pulsante «Copia»; il socio se li fa mandare per email (sempre e solo al suo indirizzo, con un limite all'ora); si possono aggiungere ai promemoria di pagamento; lo shortcode `[apsemplice_bonifico]` li mostra anche a chi non è socio (donazioni). Le coordinate si modificano solo da Impostazioni → Pagamenti online (amministratori): ogni cambio finisce nel registro azioni con l'IBAN mascherato e avvisa per email tutti gli amministratori.

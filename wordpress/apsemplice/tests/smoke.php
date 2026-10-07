@@ -938,7 +938,7 @@ $latest = function () use ( $ps ) {
 	return $ps->list( array(), 1 )[0];
 };
 
-Settings::update( array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Smoke1', 'stripe_secret_key' => 'sk_test_51Smoke1', 'stripe_webhook_secret' => 'whsec_smoke123' ) );
+Settings::update( array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Smoke1', 'stripe_secret_key' => 'sk_test_51Smoke1', 'stripe_webhook_secret' => 'whsec_smoke123', 'limits' => array( 'pay_open_per_hour' => 100 ) ) );
 apse_ok( 'stripe' === $ps->provider() && $ps->enabled(), 'pagamenti online: Stripe attivo con la configurazione completa' );
 
 // dati dedicati: un socio senza tessera valida con un ospite, un corso e un evento
@@ -1076,6 +1076,49 @@ $wpdb->update( Db::t( 'payments' ), array( 'created_at' => gmdate( 'Y-m-d H:i:s'
 $res = $ps->check_pending( true );
 apse_ok( $res['checked'] >= 1 && $res['expired'] >= 1 && 'expired' === $ps->get_by_public( $open['public_id'] )['status'], 'controllo periodico: i pagamenti mai confermati scadono dopo qualche giorno' );
 
+// attacchi ai pagamenti: i soldi arrivati non si perdono e gli eventi non attendibili non registrano nulla
+$mk_pending = function ( string $first ) use ( $people, $ps, $latest ) {
+	$id  = $people->create( array( 'type' => 'ordinary', 'first_name' => $first, 'last_name' => 'Attaccata', 'email' => strtolower( $first ) . '.attaccata@example.com' ) );
+	$uid = (int) $people->get( $id )['wp_user_id'];
+	wp_set_current_user( $uid );
+	$ps->create_checkout( $people->get( $id ), $uid, array_keys( $ps->dues_for( $people->get( $id ) ) ), home_url( '/area/' ) );
+	return array( $id, $uid, $latest() );
+};
+// 1. annullato sul sito ma pagato al gateway: il webhook lo registra comunque
+list( $lt, $u_lt, $late ) = $mk_pending( 'Tarda' );
+$ps->handle_return( $late['public_id'], 'cancel', $u_lt );
+apse_ok( 'cancelled' === $ps->get_by_public( $late['public_id'] )['status'], 'pagamento: l\'annullo sul sito chiude un pagamento non pagato' );
+$stripe_sessions[ $late['provider_ref'] ]['paid'] = true;
+apse_ok( 'registrato' === $webhook( $mk_event( $late, (int) $late['amount_cents'] ) )->get_data()['result'] && 'paid' === $ps->get_by_public( $late['public_id'] )['status'] && $people->is_active_member( $lt ), 'pagamento annullato sul sito ma pagato al gateway: il webhook lo registra, i soldi non si perdono' );
+// 2. indirizzo di annullo aperto dopo aver pagato: si controlla il gateway prima di annullare
+list( $lt2, $u_lt2, $late2 ) = $mk_pending( 'Doppia' );
+$stripe_sessions[ $late2['provider_ref'] ]['paid'] = true;
+apse_ok( false !== strpos( $ps->handle_return( $late2['public_id'], 'cancel', $u_lt2 ), 'ricevuto' ) && 'paid' === $ps->get_by_public( $late2['public_id'] )['status'] && $people->is_active_member( $lt2 ), 'ritorno "annulla" con pagamento già riuscito: registrato, non annullato' );
+// 3. evento di prova su un sito in modalità reale (e viceversa): non registra incassi
+list( $lt3, $u_lt3, $late3 ) = $mk_pending( 'Prova' );
+$stripe_sessions[ $late3['provider_ref'] ]['paid'] = true;
+$ev3 = $mk_event( $late3, (int) $late3['amount_cents'] );
+$ev3['livemode'] = true; // il sito è in modalità di prova
+apse_ok( 'modalità diversa' === $webhook( $ev3 )->get_data()['result'] && 'pending' === $ps->get_by_public( $late3['public_id'] )['status'], 'webhook: un evento reale su un sito in modalità di prova non registra nulla' );
+$ev3['livemode'] = false;
+apse_ok( 'registrato' === $webhook( $ev3 )->get_data()['result'], 'webhook: con la modalità giusta si registra' );
+// 4. valuta diversa dall'euro: i soldi non si contano come euro, il pagamento va controllato
+list( $lt4, $u_lt4, $late4 ) = $mk_pending( 'Dollari' );
+$stripe_sessions[ $late4['provider_ref'] ]['paid'] = true;
+$ev4 = $mk_event( $late4, (int) $late4['amount_cents'] );
+$ev4['data']['object']['currency'] = 'usd';
+$webhook( $ev4 );
+$p4 = $ps->get_by_public( $late4['public_id'] );
+apse_ok( 'paid' === $p4['status'] && 1 === (int) $p4['review'] && 0 === (int) $p4['allocated_cents'] && ! $people->is_active_member( $lt4 ), 'pagamento in un\'altra valuta: segnato "da controllare", nessuna quota registrata' );
+apse_ok( 0 === \ApSemplice\StripeApi::paid_eur_cents( array( 'currency' => 'USD', 'amount_total' => 1000 ) ) && 1000 === \ApSemplice\StripeApi::paid_eur_cents( array( 'currency' => 'EUR', 'amount_total' => 1000 ) ) && 0 === \ApSemplice\PayPalApi::captured_cents( array( 'purchase_units' => array( array( 'payments' => array( 'captures' => array( array( 'status' => 'COMPLETED', 'amount' => array( 'currency_code' => 'USD', 'value' => '10.00' ) ) ) ) ) ) ) ), 'valuta: solo gli euro si contano (Stripe e PayPal)' );
+// 5. registrazione interrotta a metà: si segnala, non si riprova
+list( $lt5, $u_lt5, $late5 ) = $mk_pending( 'Interrotta' );
+$wpdb->update( Db::t( 'payments' ), array( 'status' => 'processing', 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-2 hours' ) ) ), array( 'id' => (int) $late5['id'] ) );
+$ps->check_pending();
+$p5 = $ps->get_by_public( $late5['public_id'] );
+apse_ok( 'paid' === $p5['status'] && 1 === (int) $p5['review'] && false !== strpos( (string) $p5['error'], 'interrotta' ), 'pagamento rimasto "in registrazione": segnato da controllare, non registrato due volte' );
+wp_set_current_user( 1 );
+
 // PayPal: ordine, approvazione, cattura
 Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
 apse_ok( 'paypal' === $ps->provider(), 'pagamenti online: PayPal attivo' );
@@ -1104,6 +1147,73 @@ $paypal_orders[ $row['provider_ref'] ]['status'] = 'APPROVED';
 $res = $ps->check_pending( true );
 apse_ok( $res['registered'] >= 1 && 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 1300 === $balance_of( 'PayPal' ), 'PayPal: l\'utente non è tornato, il controllo periodico cattura e registra' );
 apse_ok( false === strpos( $as( $uq, '[apsemplice_pagamenti]' ), 'Paga con carta' ), 'area soci: con PayPal non compare "Paga con carta"' );
+
+// Stripe e PayPal insieme, con diciture personalizzabili
+Settings::update( array( 'payment_provider' => 'stripe_paypal' ) );
+apse_ok( array( 'stripe', 'paypal' ) === $ps->providers() && $ps->enabled(), 'pagamenti: Stripe e PayPal si possono usare insieme' );
+$both_html = $as( $uq, '[apsemplice_pagamenti]' );
+apse_ok( false !== strpos( $both_html, 'Paga con carta' ) && false !== strpos( $both_html, 'Paga con PayPal' ) && false !== strpos( $both_html, 'name="provider" value="stripe"' ) && false !== strpos( $both_html, 'name="provider" value="paypal"' ), 'area soci: due pulsanti, uno per metodo' );
+Settings::update( array( 'pay_label_paypal' => 'Paga a rate con PayPal', 'pay_note_paypal' => 'Puoi dividere il pagamento in tre rate senza interessi.' ) );
+$both_html = $as( $uq, '[apsemplice_pagamenti]' );
+apse_ok( false !== strpos( $both_html, 'Paga a rate con PayPal' ) && false !== strpos( $both_html, 'Puoi dividere il pagamento in tre rate' ) && false !== strpos( $both_html, 'Paga con carta' ) && false === strpos( $both_html, '>Paga con PayPal<' ), 'area soci: le diciture di PayPal sono quelle scelte, quelle di Stripe restano' );
+$bp   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Bea', 'last_name' => 'Bipagante', 'email' => 'bea.bipagante@example.com' ) );
+$u_bp = (int) $people->get( $bp )['wp_user_id'];
+wp_set_current_user( $u_bp );
+$bp_keys = array_keys( $ps->dues_for( $people->get( $bp ) ) );
+$url_s   = $ps->create_checkout( $people->get( $bp ), $u_bp, $bp_keys, home_url( '/area/' ), 'stripe' );
+$row_s   = $latest();
+$url_p   = $ps->create_checkout( $people->get( $bp ), $u_bp, $bp_keys, home_url( '/area/' ), 'paypal' );
+$row_p   = $latest();
+apse_ok( 0 === strpos( $url_s, 'https://checkout.stripe.com/' ) && 'stripe' === $row_s['provider'] && false !== strpos( $url_p, 'paypal.com' ) && 'paypal' === $row_p['provider'], 'checkout: ogni pulsante porta al suo gateway' );
+apse_ok( null !== apse_throws( function () use ( $ps, $people, $bp, $u_bp, $bp_keys ) { $ps->create_checkout( $people->get( $bp ), $u_bp, $bp_keys, home_url( '/area/' ), 'woocommerce' ); } ), 'checkout: un metodo non attivo è rifiutato' );
+wp_set_current_user( 1 );
+Settings::clear_secret( 'paypal_client_secret' );
+apse_ok( array( 'stripe' ) === $ps->providers() && $ps->enabled(), 'pagamenti: se PayPal ha la configurazione incompleta resta attivo solo Stripe' );
+Settings::update( array( 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
+apse_ok( array( 'stripe', 'paypal' ) === $ps->providers(), 'pagamenti: rimessa la chiave, tornano entrambi' );
+$cfg_both = array( 'payment_provider' => 'stripe_paypal', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Abc123', 'stripe_secret_key' => 'sk_test_51Abc123', 'stripe_webhook_secret' => 'whsec_abc123', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) );
+apse_ok( array() === \ApSemplice\PaymentConfig::validate( $cfg_both )['errors'] && ! empty( \ApSemplice\PaymentConfig::validate( array_merge( $cfg_both, array( 'paypal_client_id' => '' ) ) )['errors'] ), 'configurazione: con entrambi i gateway si controllano entrambi' );
+apse_ok( ! empty( \ApSemplice\PaymentConfig::validate( array_merge( $cfg_both, array( 'stripe_mode' => 'live', 'stripe_publishable_key' => 'pk_live_51Abc123', 'stripe_secret_key' => 'sk_live_51Abc123', 'site_https' => 0 ) ) )['errors'] ), 'configurazione: la modalità reale non si accetta su un sito http' );
+Settings::update( array( 'payment_provider' => 'none' ) );
+apse_ok( ! $ps->enabled() && array() === $ps->providers() && false === strpos( $as( $uq, '[apsemplice_pagamenti]' ), 'name="provider"' ) && false !== strpos( $as( $uq, '[apsemplice_pagamenti]' ), Settings::payment_hint() ), 'pagamenti online disattivati: i soci vedono cosa devono e l\'invito a pagare in sede' );
+Settings::update( array( 'pay_label_paypal' => '', 'pay_note_paypal' => '' ) );
+
+// bonifico: IBAN mostrati ai soci e inviati per email
+$iban_ok = 'IT60X0542811101000000123456';
+apse_ok( ! \ApSemplice\Bank::enabled() && '' === \ApSemplice\Frontend\Views::bank_public() && false === strpos( $as( $uq, '[apsemplice_pagamenti]' ), 'IT60' ), 'bonifico: spento di default, nessun IBAN esposto' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $iban_ok ) { Admin\TechActions::save_bank( array( 'bank_enabled' => '1', 'bank' => array( array( 'label' => 'Principale', 'holder' => 'APS Prova', 'iban' => 'IT60X0542811101000000123457' ) ) ) ); } ), 'IBAN' ) && false !== strpos( (string) apse_throws( function () { Admin\TechActions::save_bank( array( 'bank_enabled' => '1', 'bank' => array() ) ); } ), 'almeno un IBAN' ), 'bonifico: un IBAN sbagliato (cifra di controllo) è rifiutato e non si attiva senza conti' );
+$mails = array();
+Admin\TechActions::save_bank( array( 'bank_enabled' => '1', 'bank_title' => 'Paga con bonifico', 'bank_in_reminders' => '1', 'bank' => array( array( 'label' => 'Conto principale', 'holder' => 'APS Prova', 'iban' => 'it60 x054 2811 1010 0000 0123 456', 'bic' => 'BCITITMM', 'bank' => 'Banca di Prova' ), array( 'label' => '', 'iban' => '' ) ) ) );
+apse_ok( \ApSemplice\Bank::enabled() && $iban_ok === \ApSemplice\Bank::accounts()[0]['iban'] && 1 === count( \ApSemplice\Bank::accounts() ), 'bonifico: salvato (IBAN normalizzato, righe vuote scartate)' );
+$bank_mail = '';
+foreach ( $mails as $m ) {
+	if ( false !== strpos( (string) $m['subject'], 'Modificate le coordinate bancarie' ) ) {
+		$bank_mail = (string) $m['message'];
+	}
+}
+apse_ok( '' !== $bank_mail && false === strpos( $bank_mail, '0542811101000000123456' ) && false !== strpos( $bank_mail, 'IT** **** 3456' ), 'bonifico: ogni cambio di IBAN avvisa gli amministratori per email (con l\'IBAN mascherato)' );
+apse_ok( false === strpos( wp_json_encode( Audit::recent( 400 ) ), '0542811101000000123456' ) && in_array( 'bank.changed', array_column( Audit::recent( 400 ), 'action' ), true ), 'bonifico: il registro azioni segna il cambio senza scrivere l\'IBAN' );
+$bank_html = $as( $uq, '[apsemplice_pagamenti]' );
+apse_ok( false !== strpos( $bank_html, 'IT60 X054 2811 1010 0000 0123 456' ) && false !== strpos( $bank_html, 'Paga con bonifico' ) && false !== strpos( $bank_html, 'data-apsf-copy="' . $iban_ok . '"' ) && false !== strpos( $bank_html, 'Causale suggerita' ) && false !== strpos( $bank_html, 'Quotato Quinto' ) && false !== strpos( $bank_html, 'apse_front_bank_email' ), 'bonifico: l\'area soci mostra IBAN, pulsante «Copia», causale con il nome e il modulo per riceverlo per email' );
+apse_ok( false !== strpos( \ApSemplice\Frontend\Views::bank_public(), 'IT60 X054' ) && false === strpos( \ApSemplice\Frontend\Views::bank_public(), 'Causale suggerita' ) && shortcode_exists( 'apsemplice_bonifico' ), 'bonifico: lo shortcode pubblico mostra gli IBAN senza causale personale' );
+apse_ok( false !== strpos( \ApSemplice\Bank::text_block( array( 'first_name' => 'Quinto', 'last_name' => 'Quotato' ), array( array( 'label' => 'Quota associativa 2026' ) ) ), 'Causale: Quotato Quinto - Quota associativa 2026' ), 'bonifico: causale nel testo delle email' );
+// invio per email: solo all'indirizzo del socio, con un limite orario
+$mails = array();
+wp_set_current_user( $uq );
+Settings::update( array( 'limits' => array( 'bank_email_per_hour' => 1 ) ) );
+delete_transient( 'apse_bank_mail_' . $uq );
+$msg_b = \ApSemplice\Frontend\Actions::do_bank_email( array( 'items' => array( 'chiave-estranea' ) ) );
+$to_b  = ! empty( $mails ) ? (string) ( (array) $mails[0]['to'] )[0] : '';
+apse_ok( false !== strpos( $msg_b, 'controlla la tua email' ) && $to_b === (string) $people->get( $q )['email'] && false !== strpos( (string) $mails[0]['message'], 'IT60 X054 2811' ), 'bonifico: l\'email con le coordinate va solo all\'indirizzo del socio' );
+apse_ok( false !== strpos( (string) apse_throws( function () { \ApSemplice\Frontend\Actions::do_bank_email( array() ); } ), 'più volte' ) && 1 === count( $mails ), 'bonifico: oltre il limite orario non partono altre email' );
+delete_transient( 'apse_bank_mail_' . $uq );
+Settings::update( array( 'limits' => array() ) );
+wp_set_current_user( 1 );
+Admin\TechActions::save_bank( array( 'bank_enabled' => '0', 'bank' => array() ) );
+apse_ok( ! \ApSemplice\Bank::enabled() && '' === \ApSemplice\Frontend\Views::bank_public() && null !== apse_throws( function () use ( $uq ) { wp_set_current_user( $uq ); \ApSemplice\Frontend\Actions::do_bank_email( array() ); } ), 'bonifico: tolti i conti, nulla è esposto e l\'invio per email non funziona' );
+wp_set_current_user( 1 );
+apse_render( array( Admin\PaymentsPage::class, 'render' ), 'Bonifico bancario' );
+apse_ok( Admin\Admin::ADMIN_ONLY && in_array( 'apse-limits', Admin\Admin::ADMIN_ONLY, true ), 'limiti: la pagina è riservata agli amministratori' );
 
 // pagina di amministrazione e impostazioni
 wp_set_current_user( 1 );
@@ -1906,7 +2016,7 @@ apse_ok( false !== strpos( $no_phone, 'cellulare' ), 'nuovo ospite dall\'area so
 apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Altro', 'last_name' => 'Nome', 'phone' => '333 5555552' ) ); } ), 'Hai già questo ospite' ), 'nuovo ospite: lo stesso cellulare tra i propri ospiti (scritto in modo diverso) è il doppione evidente' );
 apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'pino', 'last_name' => 'PROVINO', 'phone' => '333 0001111' ) ); } ), 'Hai già questo ospite' ), 'nuovo ospite: lo stesso nome tra i propri ospiti è rifiutato' );
 $member_phone = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'email' => 'mara.telefonata@example.com', 'phone' => '348 1234567' ) );
-apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'phone' => '+39 348 123 4567' ) ); } ), 'già di un socio' ), 'nuovo ospite: un cellulare già di un socio rimanda alla prenotazione come socio' );
+apse_ok( false !== strpos( (string) apse_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'phone' => '+39 348 123 4567' ) ); } ), 'Non è possibile aggiungere questo numero' ), 'nuovo ospite: un cellulare già di un socio è rifiutato senza dire che è di un socio' );
 $front::do_add_guest( array( 'first_name' => 'Giovanni', 'last_name' => 'Altrui', 'phone' => '+39 333 5555554' ) ); // stesso cellulare di un ospite di un altro socio: consentito, ma lo si vedrà
 $twins_now = $people->guest_overview();
 $gianni_id = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Giovanni' AND last_name = 'Altrui' AND host_person_id = $founder" );
@@ -2143,6 +2253,28 @@ License::set_state( 'unpaid', $today );
 apse_ok( 'none' === $FA::submit( 'Quinto', $q_mail, '338 5550101' ) && count( $fa_ml ) === $n_ml, 'primo accesso: sospeso con la licenza non in regola' );
 delete_option( License::OPT_STATE );
 
+// primo accesso: chi si attiva dal sito deve completare il profilo; finché manca non prenota né paga online
+apse_ok( 1 === (int) $people->get( $q )['profile_due'] && $people->profile_blocks( $people->get( $q ) ), 'primo accesso: il socio senza indirizzo e codice fiscale risulta da completare e bloccato' );
+wp_set_current_user( $uq );
+apse_ok( false !== strpos( (string) apse_throws( function () { \ApSemplice\Frontend\Actions::do_pay( array( 'items' => array() ) ); } ), 'completa i tuoi dati' ) && false !== strpos( (string) apse_throws( function () { \ApSemplice\Frontend\Actions::do_book( array( 'session_id' => 1 ) ); } ), 'completa i tuoi dati' ), 'profilo incompleto: prenotare e pagare online sono bloccati con un messaggio chiaro' );
+apse_ok( false !== strpos( $as( $uq, '[apsemplice_profilo]' ), 'Completa i tuoi dati' ) && false !== strpos( $as( $uq, '[apsemplice_profilo]' ), 'name="address"' ), 'profilo incompleto: l\'area mostra cosa manca e il modulo con l\'indirizzo' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Frontend\Actions::do_profile( array( 'tax_code' => 'ABC', 'address' => 'Via Verdi 5', 'zip' => '00100', 'city' => 'Roma' ) ); } ), 'profilo: un codice fiscale non valido è rifiutato' );
+Settings::update( array( 'limits' => array( 'profile_gate' => 0 ) ) );
+apse_ok( ! $people->profile_blocks( $people->get( $q ) ), 'profilo incompleto: il blocco si può spegnere dalle impostazioni' );
+Settings::update( array( 'limits' => array() ) );
+$msg_p = \ApSemplice\Frontend\Actions::do_profile( array( 'phone' => '338 5550101', 'tax_code' => 'rssmra80a01h501u', 'address' => 'Via Verdi 5', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm' ) );
+apse_ok( false !== strpos( $msg_p, 'completato' ) && 0 === (int) $people->get( $q )['profile_due'] && ! $people->profile_blocks( $people->get( $q ) ) && 'RSSMRA80A01H501U' === $people->get( $q )['tax_code'], 'profilo completato dal socio: il blocco cade e i dati sono salvati' );
+wp_set_current_user( 1 );
+// limite per email: nessuno può inondare la casella di un socio
+delete_transient( 'apse_fa_m_' . md5( strtolower( $q_mail ) ) );
+Settings::update( array( 'limits' => array( 'first_access_per_email' => 2 ) ) );
+$n_lim = count( $fa_ml );
+$FA::request( $q_mail );
+$FA::request( $q_mail );
+$FA::request( $q_mail );
+apse_ok( count( $fa_ml ) === $n_lim + 2, 'primo accesso: oltre il limite orario per email non partono altri messaggi' );
+delete_transient( 'apse_fa_m_' . md5( strtolower( $q_mail ) ) );
+Settings::update( array( 'limits' => array() ) );
 $dash = apse_render( array( Admin\DashboardPage::class, 'render' ), 'Richieste di accesso' );
 apse_ok( false !== strpos( $dash, 'Mario Sconosciuto' ) && false !== strpos( $dash, 'wa.me/393398887766' ) && false !== strpos( $dash, 'quinto.nuova@example.com' ) && false !== strpos( $dash, 'apse_access_approve' ), 'riepilogo: richieste con WhatsApp (sconosciuti), approvazione (cambio email) e controllo (da cellulare)' );
 $act = new ReflectionMethod( Admin\Actions::class, 'access_approve' );
@@ -3140,12 +3272,45 @@ $wpdb->delete( Db::t( 'enrollments' ), array( 'person_id' => $pv2 ) );
 Settings::update( array( 'privacy_url' => 'https://example.org/privacy' ) );
 $ada = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ada', 'last_name' => 'Attiva' ) );
 parse_str( (string) wp_parse_url( \ApSemplice\Frontend\Activation::url( $ada ), PHP_URL_QUERY ), $act_q );
-$ada_post = array( 'email' => 'ada.attiva@example.com', 'phone' => '333 4440004', 'password' => 'password-sicura-1', 'password2' => 'password-sicura-1' );
+$ada_post = array( 'email' => 'ada.attiva@example.com', 'phone' => '333 4440004', 'password' => 'password-sicura-1', 'password2' => 'password-sicura-1', 'tax_code' => 'rssmra80a01h501u', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm' );
 $ada_no   = \ApSemplice\Frontend\Activation::complete( (string) $act_q['apse_activate'], $ada_post );
 apse_ok( ! $ada_no['ok'] && false !== strpos( $ada_no['error'], 'informativa' ) && empty( $people->get( $ada )['wp_user_id'] ), 'attivazione: con l\'informativa configurata serve accettarla' );
 $ada_yes = \ApSemplice\Frontend\Activation::complete( (string) $act_q['apse_activate'], array_merge( $ada_post, array( 'privacy_ok' => '1' ) ) );
 apse_ok( $ada_yes['ok'] && 'web' === $people->get( $ada )['privacy_consent_source'], 'attivazione: il consenso viene registrato' );
+$ada_row = $people->get( $ada );
+apse_ok( 'RSSMRA80A01H501U' === $ada_row['tax_code'] && 'Via Roma 1' === $ada_row['address'] && '00100' === $ada_row['zip'] && 'Roma' === $ada_row['city'] && 'RM' === $ada_row['province'] && $people->profile_complete( $ada_row ), 'attivazione: indirizzo e codice fiscale scritti dal socio vengono salvati (codice fiscale in maiuscolo, provincia in sigla)' );
 Settings::update( array( 'privacy_url' => '' ) );
+// attivazione: i dati sono obbligatori e il codice fiscale deve coincidere con quello della segreteria
+$ac3 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Cleo', 'last_name' => 'Controllata', 'tax_code' => 'VRDGPP75B10F205B' ) );
+parse_str( (string) wp_parse_url( \ApSemplice\Frontend\Activation::url( $ac3 ), PHP_URL_QUERY ), $ac3_q );
+$ac3_post = array( 'email' => 'cleo.controllata@example.com', 'phone' => '333 4440088', 'password' => 'password-sicura-3', 'password2' => 'password-sicura-3', 'tax_code' => 'VRDGPP75B10F205B', 'address' => 'Via Torino 3', 'zip' => '10100', 'city' => 'Torino' );
+$ac3_try  = function ( array $over ) use ( $ac3_q, $ac3_post ) {
+	$post = array_merge( $ac3_post, $over );
+	foreach ( $over as $k => $v ) {
+		if ( null === $v ) {
+			unset( $post[ $k ] );
+		}
+	}
+	return \ApSemplice\Frontend\Activation::complete( (string) $ac3_q['apse_activate'], $post );
+};
+$ac3_page = \ApSemplice\Frontend\Activation::page( (string) $ac3_q['apse_activate'] );
+apse_ok( false !== strpos( $ac3_page, 'name="tax_code"' ) && false !== strpos( $ac3_page, 'name="address"' ) && false !== strpos( $ac3_page, 'name="zip"' ) && false !== strpos( $ac3_page, 'name="city"' ) && false === strpos( $ac3_page, 'VRDGPP75B10F205B' ), 'attivazione: il modulo chiede codice fiscale e indirizzo e non mostra il codice fiscale già registrato' );
+$r1 = $ac3_try( array( 'tax_code' => null ) );
+$r2 = $ac3_try( array( 'tax_code' => 'ABCDEF12G34H567I' ) );
+$r3 = $ac3_try( array( 'tax_code' => 'RSSMRA80A01H501U' ) );
+$r4 = $ac3_try( array( 'address' => '' ) );
+$r5 = $ac3_try( array( 'city' => null ) );
+apse_ok( ! $r1['ok'] && false !== strpos( $r1['error'], 'obbligatorio' ) && ! $r2['ok'] && false !== strpos( $r2['error'], 'non è valido' ) && ! $r4['ok'] && ! $r5['ok'] && empty( $people->get( $ac3 )['wp_user_id'] ), 'attivazione: senza codice fiscale valido, indirizzo e comune l\'accesso non si attiva' );
+apse_ok( ! $r3['ok'] && false !== strpos( $r3['error'], 'non corrisponde' ) && empty( $people->get( $ac3 )['wp_user_id'] ), 'attivazione: il codice fiscale scritto deve coincidere con quello registrato dalla segreteria (un link ricevuto per errore non basta)' );
+$r6 = $ac3_try( array() );
+apse_ok( $r6['ok'] && ! empty( $people->get( $ac3 )['wp_user_id'] ) && '10100' === $people->get( $ac3 )['zip'], 'attivazione: con i dati giusti l\'accesso si attiva e l\'indirizzo è salvato' );
+apse_ok( false === strpos( \ApSemplice\Frontend\Activation::page( 'link-non-valido' ), 'name="tax_code"' ), 'attivazione: la pagina con un link non valido non mostra il modulo' );
+Settings::update( array( 'limits' => array( 'profile_required' => 0 ) ) );
+$ac4 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dino', 'last_name' => 'Dispensato' ) );
+parse_str( (string) wp_parse_url( \ApSemplice\Frontend\Activation::url( $ac4 ), PHP_URL_QUERY ), $ac4_q );
+$r7 = \ApSemplice\Frontend\Activation::complete( (string) $ac4_q['apse_activate'], array( 'email' => 'dino.dispensato@example.com', 'phone' => '333 4440099', 'password' => 'password-sicura-4', 'password2' => 'password-sicura-4' ) );
+apse_ok( $r7['ok'], 'attivazione: con l\'obbligo disattivato dalle impostazioni ci si attiva anche senza i dati' );
+Settings::update( array( 'limits' => array() ) );
 
 // --- ricevute
 $rc_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rosa', 'last_name' => 'Ricevuta', 'email' => 'rosa.ricevuta@example.com', 'tax_code' => 'RCVRSO80A41H501X' ) );
@@ -3400,7 +3565,7 @@ apse_ok( ! \ApSemplice\Regulation::accepted( $people->get( $rg_p ) ), 'regolamen
 // accettazione all'attivazione dell'accesso
 $ad2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Attivato' ) );
 parse_str( (string) wp_parse_url( \ApSemplice\Frontend\Activation::url( $ad2 ), PHP_URL_QUERY ), $ad2_q );
-$ad2_post = array( 'email' => 'ugo.attivato@example.com', 'phone' => '333 4440077', 'password' => 'password-sicura-2', 'password2' => 'password-sicura-2' );
+$ad2_post = array( 'email' => 'ugo.attivato@example.com', 'phone' => '333 4440077', 'password' => 'password-sicura-2', 'password2' => 'password-sicura-2', 'tax_code' => 'VRDGPP75B10F205B', 'address' => 'Via Milano 2', 'zip' => '20100', 'city' => 'Milano' );
 $ad2_no   = \ApSemplice\Frontend\Activation::complete( (string) $ad2_q['apse_activate'], $ad2_post );
 apse_ok( ! $ad2_no['ok'] && false !== strpos( $ad2_no['error'], 'regolamento' ) && false !== strpos( \ApSemplice\Frontend\Activation::page( (string) $ad2_q['apse_activate'] ), 'rules_ok' ), 'regolamento: l\'attivazione richiede di accettarlo' );
 $ad2_yes = \ApSemplice\Frontend\Activation::complete( (string) $ad2_q['apse_activate'], array_merge( $ad2_post, array( 'rules_ok' => '1' ) ) );
@@ -4056,6 +4221,10 @@ apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-ledger' ), 'page=apse-report
 if ( ! \ApSemplice\WooBridge::active() ) {
 	apse_ok( null !== apse_throws( function () { Admin\TechActions::save_woo( array( 'woo_enabled' => '1' ) ); } ) && ! \ApSemplice\WooBridge::enabled(), 'woocommerce: se il negozio non c\'è l\'integrazione non si accende' );
 } else {
+	update_option( 'woocommerce_currency', 'USD' );
+	apse_ok( ! \ApSemplice\WooBridge::currency_is_euro() && false !== strpos( (string) apse_throws( function () { \ApSemplice\WooBridge::checkout_url( array( array( 'type' => 'membership', 'person_id' => 1, 'amount_cents' => 1000, 'key' => 'q:1:2026', 'label' => 'Prova', 'person_name' => 'X' ) ), 'valuta' ); } ), 'euro' ), 'woocommerce: con un negozio che non usa l\'euro i pagamenti delle quote sono rifiutati' );
+	update_option( 'woocommerce_currency', 'EUR' );
+	apse_ok( \ApSemplice\WooBridge::currency_is_euro(), 'woocommerce: il negozio in euro è accettato' );
 	$wc_mk = function ( string $name, string $price, string $type = 'simple' ) {
 		$p = 'variable' === $type ? new WC_Product_Variable() : new WC_Product_Simple();
 		$p->set_name( $name );
@@ -4147,6 +4316,21 @@ if ( ! \ApSemplice\WooBridge::active() ) {
 	$wc_o3->set_status( 'cancelled' );
 	$wc_o3->save();
 	apse_ok( 'cancelled' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay3['id'] ), 'woocommerce: ordine annullato => il pagamento in attesa si chiude' );
+	// contrassegno: l'ordine nasce "in lavorazione" senza incasso; si registra solo a ordine completato
+	$wc_p4   = $mkb( 'Cora', 'Contrassegno' );
+	$wc_uid4 = (int) $people->get( $wc_p4 )['wp_user_id'];
+	wp_set_current_user( $wc_uid4 );
+	$wc_d4 = Plugin::payments()->dues_for( $people->get( $wc_p4 ) );
+	Plugin::payments()->create_checkout( $people->get( $wc_p4 ), $wc_uid4, array_keys( $wc_d4 ), home_url( '/' ) );
+	$wc_pay4 = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+	$wc_o4   = $wc_order( $wc_pay4['public_id'], $wc_q, $wc_fee / 100 );
+	$wc_o4->set_payment_method( 'cod' );
+	$wc_o4->set_status( 'processing' );
+	$wc_o4->save();
+	apse_ok( 'pending' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay4['id'] ) && ! $people->has_membership( $wc_p4, $wc_sy ), 'woocommerce: un ordine in contrassegno "in lavorazione" non è un incasso: nessuna quota registrata' );
+	$wc_o4->set_status( 'completed' );
+	$wc_o4->save();
+	apse_ok( 'paid' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay4['id'] ) && $people->has_membership( $wc_p4, $wc_sy ), 'woocommerce: a ordine completato (denaro incassato alla consegna) la quota si registra' );
 	wp_set_current_user( 1 );
 	apse_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
 	// un ordine senza voci APSemplice non cambia nulla

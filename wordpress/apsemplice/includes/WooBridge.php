@@ -18,6 +18,11 @@ final class WooBridge {
 		return class_exists( 'WooCommerce' ) && function_exists( 'wc_get_product' ) && function_exists( 'WC' );
 	}
 
+	/** Le quote sono in euro: se il negozio usa un'altra valuta gli importi non sarebbero quelli giusti. */
+	public static function currency_is_euro(): bool {
+		return function_exists( 'get_woocommerce_currency' ) && 'EUR' === strtoupper( (string) get_woocommerce_currency() );
+	}
+
 	/** La compatibilità è attiva se WooCommerce c'è e il gateway scelto nelle impostazioni è WooCommerce. */
 	public static function enabled(): bool {
 		return self::active() && PaymentConfig::WOOCOMMERCE === (string) Settings::get( 'payment_provider' );
@@ -73,6 +78,9 @@ final class WooBridge {
 	public static function checkout_url( array $items, string $public_id ): string {
 		if ( ! self::active() ) {
 			throw new \InvalidArgumentException( 'Il negozio non è disponibile al momento.' );
+		}
+		if ( ! self::currency_is_euro() ) {
+			throw new \InvalidArgumentException( 'Il negozio non usa l\'euro: i pagamenti delle quote non si possono fare da qui. Contatta la segreteria.' );
 		}
 		$lines   = array();
 		$missing = array();
@@ -158,8 +166,13 @@ final class WooBridge {
 		if ( ! $order ) {
 			return;
 		}
+		// Contrassegno: l'ordine nasce "in lavorazione" senza che sia arrivato un euro. Si registra solo quando viene completato (dopo l'incasso alla consegna).
+		if ( 'cod' === (string) $order->get_payment_method() && ! $order->has_status( 'completed' ) ) {
+			return;
+		}
+		$euro = 'EUR' === strtoupper( (string) $order->get_currency() );
 		foreach ( self::paid_by_payment( $order ) as $public => $cents ) {
-			Plugin::payments()->finalize_external( (string) $public, $cents, 'woo-' . (int) $order_id );
+			Plugin::payments()->finalize_external( (string) $public, $euro ? $cents : 0, 'woo-' . (int) $order_id ); // altra valuta: da controllare, non si conta come euro
 		}
 	}
 

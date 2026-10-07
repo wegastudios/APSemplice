@@ -71,7 +71,7 @@ final class WpAllImport {
 	public static function staged( string $type, bool $errors_only = false ): array {
 		$q = new \WP_Query(
 			array(
-				'post_type' => $type, 'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ), 'posts_per_page' => ImportService::MAX_ROWS,
+				'post_type' => $type, 'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ), 'posts_per_page' => Limits::get( 'import_max_rows' ),
 				'orderby' => 'ID', 'order' => 'ASC', 'no_found_rows' => true, 'update_post_term_cache' => false,
 				'meta_query' => $errors_only
 					? array( array( 'key' => self::META_RESULT, 'value' => 'error' ) )

@@ -30,6 +30,10 @@ final class PeopleCsv {
 		'mail'  => array( 'email', 'mail', 'emailaddress', 'indirizzoemail', 'postaelettronica' ),
 		'phone' => array( 'telefono', 'tel', 'cellulare', 'cell', 'mobile', 'phone', 'telefonocellulare' ),
 		'tax'   => array( 'codicefiscale', 'cf', 'codfisc', 'codicefisc', 'fiscalcode' ),
+		'addr'  => array( 'indirizzo', 'via', 'residenza', 'address' ),
+		'zip'   => array( 'cap', 'codicepostale', 'zip', 'postalcode' ),
+		'city'  => array( 'comune', 'citta', 'localita', 'city' ),
+		'prov'  => array( 'provincia', 'prov', 'province' ),
 		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
 	);
 
@@ -89,6 +93,10 @@ final class PeopleCsv {
 				'email'     => $cell( $cells, $col['mail'] ),
 				'phone'     => $cell( $cells, $col['phone'] ),
 				'tax'       => null === $tax ? null : strtoupper( str_replace( ' ', '', $tax ) ),
+				'addr'      => $cell( $cells, $col['addr'] ),
+				'zip'       => $cell( $cells, $col['zip'] ),
+				'city'      => $cell( $cells, $col['city'] ),
+				'prov'      => $cell( $cells, $col['prov'] ),
 				'host'      => $cell( $cells, $col['host'] ),
 			);
 		}
