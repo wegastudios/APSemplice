@@ -10,7 +10,7 @@ final class GuidePage {
 
 	const FAQ = array(
 		'Come iscrivo un nuovo socio?'           => 'Rubrica → Soci e ospiti → «Nuovo socio». Con l\'email il socio ha subito l\'accesso all\'area riservata; senza email si attiva dopo, con un link da mandargli su WhatsApp. Per molti soci insieme usa «Importa da Excel/CSV».',
-		'Come incasso una quota o un contributo?' => 'Contabilità → Nuovo incasso (o la cassa rapida in Bacheca). Scegli la persona: il plugin propone la quota associativa, le mensilità dei corsi dovute e gli eventi. Per più persone insieme usa «Cassa per più persone».',
+		'Come incasso una quota o un contributo?' => 'Soldi → Nuovo incasso (o la cassa rapida in Bacheca). Scegli la persona: il plugin propone la quota associativa, le mensilità dei corsi dovute e gli eventi. Per più persone insieme usa «Cassa per più persone».',
 		'Come creo un corso o un evento?'        => 'Corsi ed eventi → «Nuova attività». Il programma si compone a righe: date uniche o giorni che si ripetono ogni settimana. I corsi si rinnovano ogni mese; gli eventi si prenotano a una data.',
 		'Come registro le presenze?'             => 'Registri → Presenze: scegli il corso, il mese e la lezione, spunta chi era presente e salva. Il riepilogo si scarica in PDF o CSV.',
 		'Come invio un messaggio ai soci?'       => 'Rubrica → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.',
