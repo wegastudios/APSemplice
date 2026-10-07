@@ -59,6 +59,7 @@ class ActivityService {
 		if ( ActivityKind::EVENT === $d['kind'] ) {
 			$session = $this->normalize_session( (array) ( $in['session'] ?? array() ) );
 			$this->validate_session( $session );
+			self::assert_in_social_year( $d['social_year'], (string) $session['session_date'], 'La data dell\'evento' ); // prima di scrivere: niente attività a metà
 		}
 		$this->db()->insert(
 			Db::t( 'activities' ),
@@ -283,6 +284,16 @@ class ActivityService {
 		if ( $d['starts_on'] && $d['ends_on'] && $d['ends_on'] < $d['starts_on'] ) {
 			$errors[] = 'La data di fine del corso è prima di quella di inizio.';
 		}
+		foreach ( array( 'starts_on' => 'La data di inizio del corso', 'ends_on' => 'La data di fine del corso' ) as $k => $label ) { // un corso inizia e finisce nello stesso anno sociale
+			if ( ! empty( $d[ $k ] ) ) {
+				try {
+					self::assert_in_social_year( (string) $d['social_year'], (string) $d[ $k ], $label );
+				} catch ( \InvalidArgumentException $e ) {
+					$errors[] = $e->getMessage();
+					break;
+				}
+			}
+		}
 		if ( '' === $d['social_year'] ) {
 			$errors[] = 'Anno sociale mancante.';
 		}
@@ -316,7 +327,28 @@ class ActivityService {
 		}
 	}
 
+	/**
+	 * Un corso o un evento inizia e finisce nello stesso anno sociale: ogni data deve cadere nell'anno sociale dell'attività.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function assert_in_social_year( string $social_year_label, string $date, string $what = 'La data' ): void {
+		if ( '' === $date || '' === $social_year_label ) {
+			return;
+		}
+		$sy   = SocialYear::from_label( $social_year_label, Settings::start_month() );
+		$from = $sy->start()->format( 'Y-m-d' );
+		$to   = $sy->end()->format( 'Y-m-d' );
+		if ( $date < $from || $date > $to ) {
+			throw new \InvalidArgumentException( $what . ' (' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ') deve cadere nell\'anno sociale ' . $social_year_label . ', dal ' . ( new \DateTimeImmutable( $from ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $to ) )->format( 'd/m/Y' ) . ': un corso o un evento inizia e finisce nello stesso anno sociale.' );
+		}
+	}
+
 	private function insert_session( int $activity_id, array $s ): int {
+		$act = $this->get( $activity_id );
+		if ( $act ) {
+			self::assert_in_social_year( (string) $act['social_year'], (string) ( $s['session_date'] ?? '' ), 'La data dell\'evento' );
+		}
 		$this->db()->insert( Db::t( 'sessions' ), array_merge( $s, array( 'activity_id' => $activity_id, 'created_at' => Db::now() ) ) );
 		$id = (int) $this->db()->insert_id;
 		Audit::log( 'session.created', 'activity', $activity_id, array( 'session' => $id, 'date' => $s['session_date'] ) );
@@ -367,6 +399,10 @@ class ActivityService {
 		}
 		$n = $this->normalize_session( array_merge( $cur, $s ) );
 		$this->validate_session( $n );
+		$act = $this->get( (int) $cur['activity_id'] );
+		if ( $act && $n['session_date'] !== (string) $cur['session_date'] ) { // si controlla solo se la data cambia: le date già presenti non bloccano altre modifiche
+			self::assert_in_social_year( (string) $act['social_year'], (string) $n['session_date'], 'La data dell\'evento' );
+		}
 		$this->db()->update( Db::t( 'sessions' ), $n, array( 'id' => $session_id ) );
 		Audit::log( 'session.updated', 'activity', (int) $cur['activity_id'], array( 'session' => $session_id ) );
 		Waitlist::promote( $session_id ); // più posti: entrano quelli in lista d'attesa
@@ -386,6 +422,9 @@ class ActivityService {
 		}
 		if ( ActivityKind::EVENT === $a['kind'] && ( count( $dates ) > 1 || $this->sessions( $activity_id ) ) ) {
 			throw new \InvalidArgumentException( 'Un evento una tantum ha una sola data: per più date scegli "Evento ricorrente".' );
+		}
+		foreach ( $dates as $d ) { // tutte le date prima di scriverne una: o entrano tutte o nessuna
+			self::assert_in_social_year( (string) $a['social_year'], (string) $d['date'], 'La data dell\'evento' );
 		}
 		$have = array();
 		foreach ( $this->sessions( $activity_id ) as $s ) {
@@ -407,6 +446,8 @@ class ActivityService {
 	/** Crea una data ogni 7 giorni da $from a $to compresi (max 120). @return int date create */
 	public function generate_weekly( int $activity_id, string $from, string $to, ?string $time = null, ?string $location = null, ?int $capacity = null ): int {
 		$a = $this->assert_uses_sessions( $this->get( $activity_id ) );
+		self::assert_in_social_year( (string) $a['social_year'], $from, 'La prima data' );
+		self::assert_in_social_year( (string) $a['social_year'], $to, 'L\'ultima data' );
 		if ( ActivityKind::RECURRING !== $a['kind'] ) {
 			throw new \InvalidArgumentException( 'La ricorrenza vale solo per gli eventi ricorrenti.' );
 		}

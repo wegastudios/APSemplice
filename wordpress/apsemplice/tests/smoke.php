@@ -800,6 +800,144 @@ Settings::update( array( 'modules' => array( 'ledger' => 0 ) ) );
 $ac_off2 = Admin\Admin::disabled_pages();
 apse_ok( in_array( 'apse-money', $ac_off2, true ) && in_array( 'apse-ledger', $ac_off2, true ) && in_array( 'apse-accounting', $ac_off2, true ) && in_array( 'apse-accounts', $ac_off2, true ), 'senza prima nota non si vede né Soldi né la contabilità' );
 Settings::update( array( 'modules' => array() ) );
+// eventi: stesso anno sociale, partecipanti con WhatsApp, eliminazione di eventi e iscrizioni con restituzione o annullamento
+$ev_sy  = $sy->label();
+$ev_far = gmdate( 'Y-m-d', strtotime( $today . ' +3 years' ) );
+$ev_n0  = count( $acts->for_year( $ev_sy ) );
+apse_ok( null !== apse_throws( function () use ( $acts, $ev_sy, $ev_far ) { $acts->create( array( 'name' => 'Evento fuori anno', 'social_year' => $ev_sy, 'kind' => 'event', 'session' => array( 'session_date' => $ev_far ) ) ); } ) && count( $acts->for_year( $ev_sy ) ) === $ev_n0, 'anno sociale: un evento con la data fuori dall\'anno non si crea (niente attività a metà)' );
+$ev_a = $acts->create( array( 'name' => 'Serata di prova', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 1000, 'session' => array( 'session_date' => $today, 'capacity' => 20 ) ) );
+$ev_s = (int) $acts->sessions( $ev_a )[0]['id'];
+apse_ok( $ev_s > 0 && null !== apse_throws( function () use ( $acts, $ev_s, $ev_far ) { $acts->update_session( $ev_s, array( 'session_date' => $ev_far ) ); } ), 'anno sociale: la data di un evento non si sposta fuori dall\'anno sociale' );
+$ev_r = $acts->create( array( 'name' => 'Ricorrente di prova', 'social_year' => $ev_sy, 'kind' => 'recurring', 'fee_cents' => 500 ) );
+apse_ok( null !== apse_throws( function () use ( $acts, $ev_r, $today, $ev_far ) { $acts->generate_weekly( $ev_r, $today, $ev_far ); } ) && null !== apse_throws( function () use ( $acts, $ev_r, $ev_far ) { $acts->add_session( $ev_r, array( 'session_date' => $ev_far ) ); } ), 'anno sociale: le date di un evento ricorrente restano nell\'anno sociale' );
+apse_ok( null !== apse_throws( function () use ( $acts, $ev_sy, $ev_far ) { $acts->create( array( 'name' => 'Corso lungo', 'social_year' => $ev_sy, 'kind' => 'course', 'fee_cents' => 100, 'starts_on' => gmdate( 'Y-m-d' ), 'ends_on' => $ev_far ) ); } ), 'anno sociale: un corso inizia e finisce nello stesso anno sociale' );
+// partecipanti attesi con WhatsApp
+$ev_mk = function ( string $first, string $last, string $phone = '' ) use ( $people, $ev_a ) {
+	$id = $people->create( array( 'type' => 'ordinary', 'first_name' => $first, 'last_name' => $last, 'email' => strtolower( $first . '.' . $last ) . '@example.com', 'phone' => $phone ) );
+	$people->set_membership( $id, Settings::membership_year()->label(), true );
+	return $id;
+};
+$ev_p1 = $ev_mk( 'Paola', 'Prenotata', '347 1112233' );
+$ev_p2 = $ev_mk( 'Mario', 'Senzatel' );
+$acts->book( $ev_s, $ev_p1 );
+$acts->book( $ev_s, $ev_p2 );
+$_GET['id'] = (string) $ev_a;
+ob_start();
+Admin\ActivitiesPage::render_detail();
+$ev_html = (string) ob_get_clean();
+apse_ok( false !== strpos( $ev_html, 'Partecipanti attesi' ) && false !== strpos( $ev_html, '<details' ) && false !== strpos( $ev_html, 'wa.me/' ) && false !== strpos( $ev_html, 'Paola Prenotata' ) && false !== strpos( $ev_html, 'nessun cellulare' ), 'evento: elenco a scomparsa dei partecipanti con il collegamento WhatsApp solo per chi ha lasciato il numero' );
+apse_ok( false !== strpos( $ev_html, 'page=apse-activity-delete' ) && false !== strpos( $ev_html, 'page=apse-booking-delete' ), 'evento: eliminazione dell\'evento e cancellazione delle iscrizioni per gli amministratori' );
+// incassi
+$ev_bal = function () use ( $ledger, $cash ) {
+	foreach ( $ledger->balances() as $b ) {
+		if ( $b['name'] === $cash['name'] ) {
+			return (int) $b['balance'];
+		}
+	}
+	return 0;
+};
+$ev_b0 = $ev_bal();
+$ev_pay = function ( int $person, int $cents ) use ( $ledger, $vt_base, $cat, $ev_a, $ev_s ) {
+	$ledger->record_receipt( $vt_base + array( 'person_id' => $person, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => $cents, 'activity_id' => $ev_a, 'session_id' => $ev_s ) ) ) );
+};
+$ev_pay( $ev_p1, 1000 );
+$ev_pay( $ev_p2, 1500 );
+apse_ok( $ev_bal() === $ev_b0 + 2500, 'evento: incassi registrati' );
+// cancellazione di una singola iscrizione: restituzione
+$pre = \ApSemplice\ActivityReset::registration_preview( $ev_a, $ev_p1, $ev_s );
+apse_ok( $pre && 1 === $pre['income']['count'] && 1000 === $pre['income']['cents'] && array() === \ApSemplice\ActivityReset::registration_blockers( $ev_a, $ev_p1, $ev_s, 'refund' ), 'iscrizione: anteprima con gli incassi collegati' );
+$ev_del_b = new ReflectionMethod( Admin\Actions::class, 'delete_booking' );
+$ev_del_b->setAccessible( true );
+apse_ok( null !== apse_throws( function () use ( $ev_del_b, $ev_a, $ev_p1, $ev_s ) { $ev_del_b->invoke( null, array( 'activity' => $ev_a, 'person' => $ev_p1, 'session' => $ev_s, 'mode' => 'refund' ) ); } ) && null !== apse_throws( function () use ( $ev_del_b, $ev_a, $ev_p1, $ev_s ) { $ev_del_b->invoke( null, array( 'activity' => $ev_a, 'person' => $ev_p1, 'session' => $ev_s, 'mode' => 'refund', 'confirm' => '1', 'typed' => 'Altro Nome' ) ); } ), 'iscrizione: senza la doppia conferma (spunta e nome scritto) non si cancella nulla' );
+apse_ok( $acts->has_active_booking( $ev_s, $ev_p1 ), 'iscrizione: dopo i rifiuti la prenotazione c\'è ancora' );
+$ev_del_b->invoke( null, array( 'activity' => $ev_a, 'person' => $ev_p1, 'session' => $ev_s, 'mode' => 'refund', 'confirm' => '1', 'typed' => 'paola prenotata' ) );
+$ev_t = $vt_last();
+apse_ok( ! $acts->has_active_booking( $ev_s, $ev_p1 ) && $ev_bal() === $ev_b0 + 1500 && 'expense' === $ev_t['type'] && 1000 === (int) $ev_t['amount_cents'] && false !== strpos( $ev_t['description'], 'Restituzione' ), 'iscrizione: con la restituzione resta l\'incasso e si registra l\'uscita (saldo netto a zero)' );
+// cancellazione di una singola iscrizione: annullamento degli incassi
+$ev_del_b->invoke( null, array( 'activity' => $ev_a, 'person' => $ev_p2, 'session' => $ev_s, 'mode' => 'void', 'confirm' => '1', 'typed' => 'Mario Senzatel' ) );
+apse_ok( ! $acts->has_active_booking( $ev_s, $ev_p2 ) && $ev_bal() === $ev_b0, 'iscrizione: con l\'annullamento l\'incasso sparisce dal saldo' );
+apse_ok( null !== $acts->get( $ev_a ), 'iscrizione: l\'evento resta' );
+// eliminazione completa dell'evento
+$ev_p3 = $ev_mk( 'Tina', 'Tre' );
+$ev_p4 = $ev_mk( 'Ugo', 'Quattro' );
+$acts->book( $ev_s, $ev_p3 );
+$acts->book( $ev_s, $ev_p4 );
+$ev_pay( $ev_p3, 800 );
+$ev_pay( $ev_p4, 700 );
+$acts->add_staff( $ev_a, $ev_p4, false );
+$ledger->record_expense( $vt_base + array( 'category_id' => $vt_exp, 'amount_cents' => 300, 'activity_id' => $ev_a, 'description' => 'Affitto sala' ) );
+$ev_pre = \ApSemplice\ActivityReset::preview( $ev_a );
+apse_ok( 2 === $ev_pre['income']['count'] && 1500 === $ev_pre['income']['cents'] && 1 === $ev_pre['expense']['count'] && 2 === $ev_pre['bookings'] && 1 === $ev_pre['staff'], 'evento: anteprima di ciò che si elimina e dei soldi collegati' );
+$ev_del = new ReflectionMethod( Admin\Actions::class, 'delete_activity' );
+$ev_del->setAccessible( true );
+apse_ok( null !== apse_throws( function () use ( $ev_del, $ev_a ) { $ev_del->invoke( null, array( 'id' => $ev_a, 'mode' => 'refund', 'confirm' => '1', 'typed' => 'Un altro evento' ) ); } ) && null !== apse_throws( function () use ( $ev_del, $ev_a ) { $ev_del->invoke( null, array( 'id' => $ev_a, 'mode' => 'refund', 'typed' => 'Serata di prova' ) ); } ) && null !== apse_throws( function () use ( $ev_del, $ev_a ) { $ev_del->invoke( null, array( 'id' => $ev_a, 'mode' => 'boh', 'confirm' => '1', 'typed' => 'Serata di prova' ) ); } ) && null !== $acts->get( $ev_a ), 'evento: senza conferma, con il nome sbagliato o senza la scelta sui soldi non si elimina' );
+$ev_b1 = $ev_bal();
+$ev_res = $ev_del->invoke( null, array( 'id' => $ev_a, 'mode' => 'refund', 'confirm' => '1', 'typed' => ' serata di PROVA ', 'notify' => '1' ) );
+$ev_left = Db::db()->get_results( 'SELECT * FROM ' . Db::t( 'transactions' ) . " WHERE description LIKE '[Evento eliminato: Serata di prova]%' ORDER BY id", ARRAY_A );
+apse_ok( null === $acts->get( $ev_a ) && 0 === count( $acts->sessions( $ev_a ) ) && 0 === (int) Db::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = ' . (int) $ev_s ) && 0 === (int) Db::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activity_staff' ) . ' WHERE activity_id = ' . (int) $ev_a ), 'evento eliminato: date, prenotazioni e staff cancellati' );
+apse_ok( $ev_bal() === $ev_b1 - 1500 && 8 === count( $ev_left ) && 3 === count( array_filter( $ev_left, function ( $r ) { return 'expense' === $r['type'] && false !== strpos( $r['description'], 'Restituzione' ); } ) ) && ! array_filter( $ev_left, function ( $r ) { return null !== $r['activity_id']; } ), 'evento eliminato con restituzione: incassi e restituzioni restano in prima nota, senza più il collegamento all\'evento (la spesa dell\'affitto resta)' );
+apse_ok( false !== strpos( implode( ' ', array_column( Audit::recent( 80 ), 'action' ) ), 'activity.deleted' ) && false !== strpos( $ev_res[1], 'restituzioni' ) && false !== strpos( $ev_res[1], 'il denaro va restituito', 0 ), 'evento eliminato: registrato nel registro azioni e messaggio sulle restituzioni' );
+$vt_catrows = Db::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'categories' ) . " WHERE name = 'Restituzione quote'" );
+apse_ok( 1 === (int) $vt_catrows, 'evento eliminato: la voce «Restituzione quote» si crea una sola volta' );
+// eliminazione con annullamento degli incassi (e delle spese)
+$ev_a2 = $acts->create( array( 'name' => 'Seconda serata', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 1000, 'session' => array( 'session_date' => $today ) ) );
+$ev_s2 = (int) $acts->sessions( $ev_a2 )[0]['id'];
+$ev_p5 = $ev_mk( 'Vera', 'Cinque' );
+$acts->book( $ev_s2, $ev_p5 );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $ev_p5, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 900, 'activity_id' => $ev_a2, 'session_id' => $ev_s2 ) ) ) );
+$ledger->record_expense( $vt_base + array( 'category_id' => $vt_exp, 'amount_cents' => 200, 'activity_id' => $ev_a2, 'description' => 'Materiale' ) );
+$ev_b2 = $ev_bal();
+$ev_res2 = \ApSemplice\ActivityReset::delete( $ev_a2, 'void', array( 'void_costs' => true ) );
+apse_ok( null === $acts->get( $ev_a2 ) && 1 === $ev_res2['voided'] && 1 === $ev_res2['expenses_voided'] && $ev_bal() === $ev_b2 - 900 + 200, 'evento eliminato con annullamento: incasso e spesa annullati, il saldo torna come prima' );
+// anno chiuso: non si procede
+$ev_a3 = $acts->create( array( 'name' => 'Terza serata', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 100, 'session' => array( 'session_date' => $today ) ) );
+if ( ! \ApSemplice\FiscalYears::get( 2019 ) ) {
+	$ev_made2019 = true;
+	\ApSemplice\FiscalYears::create( 2019 );
+}
+Db::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => 2019 ) );
+Db::db()->insert( Db::t( 'transactions' ), array( 'tx_date' => '2019-05-05', 'type' => 'income', 'amount_cents' => 500, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['activity_fee'], 'activity_id' => $ev_a3, 'description' => 'Storico', 'created_at' => Db::now() ) );
+$ev_tx3 = (int) Db::db()->insert_id;
+$ev_bl = \ApSemplice\ActivityReset::blockers( $ev_a3, 'void' );
+apse_ok( $ev_bl && false !== strpos( $ev_bl[0], '2019' ) && null !== apse_throws( function () use ( $ev_a3 ) { \ApSemplice\ActivityReset::delete( $ev_a3, 'void' ); } ) && null !== $acts->get( $ev_a3 ), 'evento: con movimenti in un anno solare chiuso non si elimina (e non cambia nulla)' );
+Db::db()->delete( Db::t( 'transactions' ), array( 'id' => $ev_tx3 ) );
+\ApSemplice\ActivityReset::delete( $ev_a3, 'refund' );
+apse_ok( null === $acts->get( $ev_a3 ), 'evento senza incassi: si elimina senza toccare la prima nota' );
+if ( ! empty( $ev_made2019 ) ) {
+	Db::db()->delete( Db::t( 'fiscal_years' ), array( 'year' => 2019 ) );
+} else {
+	Db::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'open' ), array( 'year' => 2019 ) );
+}
+// pagine a due passaggi
+$ev_a4 = $acts->create( array( 'name' => 'Quarta serata', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 100, 'session' => array( 'session_date' => $today ) ) );
+$ev_s4 = (int) $acts->sessions( $ev_a4 )[0]['id'];
+$ev_p6 = $ev_mk( 'Gino', 'Sei' );
+$acts->book( $ev_s4, $ev_p6 );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $ev_p6, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 600, 'activity_id' => $ev_a4, 'session_id' => $ev_s4 ) ) ) );
+$_GET = array( 'id' => (string) $ev_a4 );
+ob_start();
+Admin\DeleteActivityPage::render();
+$dp1 = (string) ob_get_clean();
+$_GET = array( 'id' => (string) $ev_a4, 'step' => '2', 'mode' => 'void' );
+ob_start();
+Admin\DeleteActivityPage::render();
+$dp2 = (string) ob_get_clean();
+$_GET = array( 'id' => (string) $ev_a4, 'step' => '2', 'mode' => 'refund' );
+ob_start();
+Admin\DeleteActivityPage::render();
+$dp3 = (string) ob_get_clean();
+apse_ok( false !== strpos( $dp1, 'Restituisci le somme' ) && false !== strpos( $dp1, 'Annulla gli incassi' ) && false === strpos( $dp1, 'Elimina definitivamente' ), 'pagina di eliminazione: primo passaggio, scelta sulle somme e nessun pulsante finale' );
+apse_ok( false !== strpos( $dp2, 'ANNULLATI' ) && false !== strpos( $dp2, 'spariscono da saldi, report, rendiconto' ) && false !== strpos( $dp2, 'Elimina definitivamente' ) && false !== strpos( $dp2, 'name="typed"' ) && false !== strpos( $dp2, 'name="confirm"' ), 'pagina di eliminazione: secondo passaggio con il messaggio chiaro sulla prima nota e la doppia conferma' );
+apse_ok( false !== strpos( $dp3, 'restano in prima nota' ) && false !== strpos( $dp3, 'Restituzione quote' ) && false !== strpos( $dp3, 'non viene restituito dal sistema' ), 'pagina di eliminazione: con la restituzione dice che il denaro va restituito a mano' );
+$_GET = array( 'activity' => (string) $ev_a4, 'person' => (string) $ev_p6, 'session' => (string) $ev_s4, 'step' => '2', 'mode' => 'void' );
+ob_start();
+Admin\DeleteBookingPage::render();
+$dp4 = (string) ob_get_clean();
+apse_ok( false !== strpos( $dp4, 'ANNULLATI' ) && false !== strpos( $dp4, 'Cancella l\'iscrizione' ) && false !== strpos( $dp4, 'Gino Sei' ), 'pagina di cancellazione iscrizione: messaggio chiaro e conferma con nome' );
+$_GET = array();
+apse_ok( 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity-delete' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-booking-delete' ) && in_array( 'apse_delete_activity', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'apse_delete_booking', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'apse-activity-delete', Admin\Admin::ADMIN_ONLY, true ), 'eliminazioni: riservate agli amministratori' );
+\ApSemplice\ActivityReset::delete( $ev_a4, 'void' );
+\ApSemplice\ActivityReset::delete( $ev_r, 'refund' );
 // strumenti
 foreach ( array( 'apse-import', 'apse-wpai', 'apse-exports', 'apse-calendar', 'apse-backup', 'apse-tech', 'apse-tools' ) as $tl_p ) {
 	apse_ok( 'apse-tools' === Admin\Admin::menu_item_of( $tl_p ), 'strumenti: ' . $tl_p . ' sta negli Strumenti' );

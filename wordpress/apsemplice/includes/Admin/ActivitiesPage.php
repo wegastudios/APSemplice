@@ -174,6 +174,8 @@ final class ActivitiesPage {
 		self::edit_card( $activity, $back );
 		self::calendar_card( $activity );
 		self::notices_card( $activity, $back );
+		self::participants_card( $activity );
+		self::delete_card( $activity );
 		echo '</div></div>';
 
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
@@ -196,6 +198,75 @@ final class ActivitiesPage {
 			. '<p><strong>Tutte le attività</strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \ApSemplice\Calendar::google_add_url( $all ) ) . '">Aggiungi a Google Calendar</a> '
 			. '<a class="button" href="' . esc_url( \ApSemplice\Calendar::webcal_url( $all ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $all ) . '" onclick="this.select()"></p>';
 		echo '</div>';
+	}
+
+	/** Riga di un partecipante: nome, collegamento WhatsApp (se ha lasciato un cellulare valido) e, per gli amministratori, la cancellazione dell'iscrizione. */
+	private static function participant_row( array $activity, array $person, int $session_id, string $extra = '' ): string {
+		$name  = trim( $person['first_name'] . ' ' . $person['last_name'] );
+		$phone = (string) ( $person['phone'] ?? '' );
+		$wa    = '' !== $phone ? \ApSemplice\Phone::whatsapp( $phone ) : '';
+		$text  = rawurlencode( 'Ciao ' . $person['first_name'] . ', ti scrivo per «' . $activity['name'] . '».' );
+		$html  = '<li>' . esc_html( $name ) . ( '' !== $extra ? ' <span class="description">' . esc_html( $extra ) . '</span>' : '' );
+		$html .= '' !== $wa ? ' · <a href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . $text ) . '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : ' · <span class="description">nessun cellulare</span>';
+		if ( current_user_can( Plugin::CAP ) ) {
+			$html .= ' · <a class="apse-neg" href="' . esc_url( DeleteBookingPage::url( (int) $activity['id'], (int) $person['id'], $session_id ) ) . '">Cancella l\'iscrizione</a>';
+		}
+		return $html . '</li>';
+	}
+
+	/** Partecipanti attesi, a scomparsa: per gli eventi una voce per data (le prossime), per i corsi gli iscritti in corso. */
+	private static function participants_card( array $activity ): void {
+		$people = Plugin::people();
+		$svc    = Plugin::activities();
+		$html   = '';
+		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
+			$n = 0;
+			foreach ( $svc->sessions( (int) $activity['id'] ) as $s ) {
+				if ( ! empty( $s['cancelled_at'] ) || $s['session_date'] < current_time( 'Y-m-d' ) || $n >= 8 ) {
+					continue;
+				}
+				$n++;
+				$rows = '';
+				$cnt  = 0;
+				foreach ( $svc->bookings_for_session( (int) $s['id'] ) as $b ) {
+					if ( 'booked' !== $b['status'] ) {
+						continue;
+					}
+					$person = $people->get( (int) $b['person_id'] );
+					if ( $person ) {
+						$cnt++;
+						$rows .= self::participant_row( $activity, $person, (int) $s['id'], 'paid' === ( $b['state'] ?? '' ) ? 'pagato' : ( ! empty( $b['fee_due_cents'] ) ? 'da pagare' : '' ) );
+					}
+				}
+				$html .= '<details style="margin:6px 0"><summary><strong>' . esc_html( Ui::date( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong> — ' . (int) $cnt . ( 1 === $cnt ? ' partecipante atteso' : ' partecipanti attesi' ) . '</summary>'
+					. ( $rows ? '<ul style="list-style:none;margin:6px 0 6px 12px">' . $rows . '</ul>' : '<p class="description">Nessuno ancora.</p>' ) . '</details>';
+			}
+			if ( '' === $html ) {
+				$html = '<p class="description">Nessuna data futura.</p>';
+			}
+		} else {
+			$ym   = current_time( 'Y-m' );
+			$rows = '';
+			$cnt  = 0;
+			foreach ( \ApSemplice\Db::db()->get_col( \ApSemplice\Db::db()->prepare( 'SELECT person_id FROM ' . \ApSemplice\Db::t( 'enrollments' ) .' WHERE activity_id = %d AND (end_month IS NULL OR end_month >= %s)', (int) $activity['id'], $ym ) ) as $pid ) {
+				$person = $people->get( (int) $pid );
+				if ( $person ) {
+					$cnt++;
+					$rows .= self::participant_row( $activity, $person, 0 );
+				}
+			}
+			$html = '<details open style="margin:6px 0"><summary><strong>' . (int) $cnt . ( 1 === $cnt ? ' iscritto' : ' iscritti' ) . '</strong></summary>' . ( $rows ? '<ul style="list-style:none;margin:6px 0 6px 12px">' . $rows . '</ul>' : '<p class="description">Nessuno ancora.</p>' ) . '</details>';
+		}
+		echo '<div class="apse-card"><h2>Partecipanti attesi</h2>' . $html . '<p class="description">Il collegamento WhatsApp compare solo per chi ha lasciato un cellulare.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
+	/** Eliminazione completa dell'evento (solo amministratori). */
+	private static function delete_card( array $activity ): void {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			return;
+		}
+		echo '<div class="apse-card"><h2>Elimina l\'evento</h2><p class="description">Cancella l\'evento con tutte le sue date, prenotazioni e iscrizioni, e decide cosa fare delle somme incassate (restituirle o annullarle). Con doppia conferma.</p>'
+			. '<p><a class="button" style="color:#b32d2e;border-color:#b32d2e" href="' . esc_url( Ui::url( 'apse-activity-delete', array( 'id' => (int) $activity['id'] ) ) ) . '">Elimina l\'evento…</a></p></div>';
 	}
 
 	private static function edit_card( array $activity, string $back ): void {
