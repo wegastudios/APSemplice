@@ -210,6 +210,12 @@ final class TechActions {
 			$next = Ui::url( 'apse-payments' );
 			$more = ' Ora aggiungi almeno un IBAN per il bonifico.';
 		}
+		if ( ! empty( $p['go_import'] ) && \ApSemplice\Modules::on( 'import' ) && Ui::url( 'apse' ) === $next ) { // l'elenco si carica subito dopo (se non serve prima inserire chiavi o IBAN)
+			$next  = Ui::url( 'apse-import' );
+			$more .= ' Ora carica l\'elenco dei soci e degli ospiti.';
+		} elseif ( ! empty( $p['go_import'] ) && \ApSemplice\Modules::on( 'import' ) ) {
+			$more .= ' Poi importa l\'elenco da Strumenti → Importa da Excel/CSV.';
+		}
 		return array( $next, 'Configurazione completata. ' . implode( ' ', $done ) . $more );
 	}
 

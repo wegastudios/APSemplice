@@ -26,6 +26,9 @@ final class ToolsPage {
 			'Calendari' => array(
 				array( 'apse-calendar', 'Calendario di corsi ed eventi', 'Calendario interno di tutte le attività e indirizzo del calendario pubblicato (Google Calendar e simili).', false, 'activities' ),
 			),
+			'Configurazione' => array(
+				array( 'apse-wizard', 'Configurazione guidata', 'Le domande iniziali per scegliere cosa usare e configurare solo quello. Si rifà quando vuoi, ad esempio per accendere o spegnere una parte.', true, '' ),
+			),
 			'Copie e collegamenti' => array(
 				array( 'apse-backup', 'Copia di sicurezza', 'Scarica una copia dei dati e ripristinala.', true, '' ),
 				array( 'apse-tech', 'Integrazioni', 'WooCommerce, Stripe, PayPal, Wallet, WP All Import, Elementor e Gutenberg.', true, '' ),

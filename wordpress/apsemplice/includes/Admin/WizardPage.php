@@ -80,7 +80,7 @@ final class WizardPage {
 		$woo  = WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
-		echo '<p>Poche domande per tenere solo ciò che ti serve: prima scegli quali parti del gestionale usare, poi configuri solo quelle. Nulla viene cancellato: una parte spenta si riaccende riaprendo questa procedura da Impostazioni → Dati e fiscalità. Le funzioni facoltative restano spente se non le scegli.</p>';
+		echo '<p>Poche domande per tenere solo ciò che ti serve: prima scegli quali parti del gestionale usare, poi configuri solo quelle. Nulla viene cancellato: una parte spenta si riaccende riaprendo questa procedura da Strumenti. Le funzioni facoltative restano spente se non le scegli.</p>';
 		Ui::form_open( 'apse_wizard_save', Ui::url( 'apse-wizard' ), false, 'apse-wizard' );
 
 		// 1. Ente
@@ -220,6 +220,10 @@ final class WizardPage {
 		}
 		echo '</div>';
 		}
+		self::end_step();
+
+		self::step( 'Elenco dei soci', 'Se hai già un elenco di soci e ospiti (Excel o CSV, anche in un unico file) puoi caricarlo subito dopo: si vede un\'anteprima e si conferma prima di salvare.', 'mod[import]=1' );
+		echo self::yes_no( 'go_import', 'Vuoi importare ora l\'elenco dei soci e degli ospiti?', false ); // phpcs:ignore WordPress.Security.EscapeOutput
 		self::end_step();
 
 		echo '<p class="apse-wiz-nav"><span class="apse-wiz-count"></span> <button type="button" class="button" data-wiz="back">← Indietro</button> <button type="button" class="button button-primary" data-wiz="next">Avanti →</button> '
