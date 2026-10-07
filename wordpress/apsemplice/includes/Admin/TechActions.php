@@ -191,36 +191,9 @@ final class TechActions {
 
 	/** Dati dell'ente e fiscali. Con la partita IVA attiva il numero deve essere valido. */
 	public static function save_entity( array $p ): array {
-		$txt  = function ( string $k ) use ( $p ) {
-			return sanitize_text_field( (string) ( $p[ $k ] ?? '' ) );
-		};
-		$ent  = mb_strtolower( trim( $txt( 'entity_type' ) ), 'UTF-8' );
-		$mem  = mb_strtolower( trim( $txt( 'member_term' ) ), 'UTF-8' );
-		if ( ! isset( \ApSemplice\Terms::entity_types( (string) Settings::get( 'entity_types_custom' ) )[ $ent ] ) || ! isset( \ApSemplice\Terms::member_terms( (string) Settings::get( 'member_terms_custom' ) )[ $mem ] ) ) {
-			throw new \InvalidArgumentException( 'Scegli il tipo di ente e il termine dall\'elenco.' );
-		}
-		$cf = \ApSemplice\TaxCode::normalize( $txt( 'tax_code' ) );
-		if ( '' !== $cf && ! \ApSemplice\Fiscal::is_valid_entity_tax_code( $cf ) ) {
-			throw new \InvalidArgumentException( 'Il codice fiscale dell\'ente non è valido: controllalo (11 cifre, oppure 16 caratteri se è una persona fisica).' );
-		}
-		$has = ! empty( $p['has_vat'] );
-		$vat = \ApSemplice\Fiscal::normalize_vat( $txt( 'vat_number' ) );
-		if ( $has && ! \ApSemplice\Fiscal::is_valid_vat( $vat ) ) {
-			throw new \InvalidArgumentException( 'La partita IVA non è valida: sono 11 cifre, l\'ultima è di controllo.' );
-		}
-		$pec = trim( $txt( 'pec' ) );
-		if ( '' !== $pec && ! is_email( $pec ) ) {
-			throw new \InvalidArgumentException( 'La PEC non è un indirizzo email valido.' );
-		}
-		$vals = array(
-			'entity_type' => $ent, 'member_term' => $mem, 'association_name' => $txt( 'association_name' ), 'tax_code' => $cf, 'runts_number' => $txt( 'runts_number' ),
-			'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
-			'legal_address' => $txt( 'legal_address' ), 'legal_zip' => $txt( 'legal_zip' ), 'legal_city' => $txt( 'legal_city' ), 'legal_province' => $txt( 'legal_province' ), 'pec' => $pec,
-			'has_vat' => $has ? 1 : 0, 'vat_number' => $has ? $vat : '', 'fiscal_regime' => $txt( 'fiscal_regime' ),
-			'vat_default_rate' => (int) ( $p['vat_default_rate'] ?? 22 ), 'vat_membership_rate' => $has ? ( $p['vat_membership_rate'] ?? '' ) : '', 'vat_prices_mode' => $txt( 'vat_prices_mode' ), 'sdi_code' => $txt( 'sdi_code' ),
-		);
+		$vals = \ApSemplice\EntityData::values( $p, true );
 		Settings::update( $vals );
-		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $has ? 1 : 0 ) );
+		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $vals['has_vat'] ) );
 		return array( Ui::url( 'apse-entity' ), 'Dati dell\'ente salvati.' );
 	}
 

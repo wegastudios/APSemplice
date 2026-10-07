@@ -12,6 +12,9 @@ final class Wizard {
 	const OPTION    = 'apse_wizard_status';
 	const TRANSIENT = 'apse_wizard_redirect';
 
+	/** Funzioni che non stanno nell'elenco delle funzioni facoltative: app e notifiche hanno la loro scheda, il 5x1000 il suo passo (con la contabilità). */
+	const OWN_STEP = array( 'pwa_enabled', 'push_enabled', 'fivepm_enabled' );
+
 	const DONE    = 'done';
 	const SKIPPED = 'skipped';
 
@@ -97,28 +100,7 @@ final class Wizard {
 		$vals = array();
 
 		// 1. Ente
-		$ent = mb_strtolower( trim( (string) ( $p['entity_type'] ?? '' ) ), 'UTF-8' );
-		$mem = mb_strtolower( trim( (string) ( $p['member_term'] ?? '' ) ), 'UTF-8' );
-		if ( '' !== $ent || '' !== $mem ) {
-			if ( ! isset( Terms::entity_types( (string) Settings::get( 'entity_types_custom' ) )[ $ent ] ) ) {
-				throw new \InvalidArgumentException( 'Scegli un tipo di ente dall\'elenco.' );
-			}
-			if ( ! isset( Terms::member_terms( (string) Settings::get( 'member_terms_custom' ) )[ $mem ] ) ) {
-				throw new \InvalidArgumentException( 'Scegli un termine per chi partecipa dall\'elenco.' );
-			}
-			$vals['entity_type'] = $ent;
-			$vals['member_term'] = $mem;
-		}
-		if ( array_key_exists( 'association_name', $p ) ) {
-			$vals['association_name'] = mb_substr( sanitize_text_field( (string) $p['association_name'] ), 0, 120 );
-		}
-		if ( array_key_exists( 'tax_code', $p ) ) {
-			$cf = TaxCode::normalize( (string) $p['tax_code'] );
-			if ( '' !== $cf && ! Fiscal::is_valid_entity_tax_code( $cf ) ) {
-				throw new \InvalidArgumentException( 'Il codice fiscale dell\'ente non è valido: controllalo (11 cifre, oppure 16 caratteri se è una persona fisica).' );
-			}
-			$vals['tax_code'] = $cf;
-		}
+		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 
 		if ( isset( $p['join_mode'] ) ) {
 			$vals['join_mode'] = 'invite' === (string) $p['join_mode'] ? 'invite' : 'request';
@@ -132,6 +114,11 @@ final class Wizard {
 			}
 			$vals['modules']         = $mods;
 			$vals['reports_enabled'] = ! empty( $mods['reports'] ) ? 1 : 0;
+		}
+
+		// Adempimenti (solo con la contabilità): 5x1000
+		if ( ! empty( $p['adempimenti_present'] ) ) {
+			$vals['fivepm_enabled'] = ! empty( $p['fivepm_enabled'] ) ? 1 : 0;
 		}
 
 		// Privacy e ricevute
@@ -167,7 +154,7 @@ final class Wizard {
 		// 3. Funzioni facoltative (le app e le notifiche hanno la loro scheda)
 		if ( ! empty( $p['features_present'] ) ) {
 			foreach ( array_keys( \ApSemplice\Admin\SettingsPage::FEATURES ) as $k ) {
-				if ( in_array( $k, array( 'pwa_enabled', 'push_enabled' ), true ) ) {
+				if ( in_array( $k, self::OWN_STEP, true ) ) {
 					continue;
 				}
 				$vals[ $k ] = ! empty( $p[ $k ] ) ? 1 : 0;
