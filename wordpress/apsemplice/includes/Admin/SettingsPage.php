@@ -55,13 +55,10 @@ final class SettingsPage {
 
 	public static function render(): void {
 		$s = Settings::all();
-		Ui::header( 'Impostazioni' );
-		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a> <span class="description">Ente, quote, funzioni, pagamenti e pagine del sito in un\'unica pagina.</span></p>';
+		Ui::header( 'Soci e quote' );
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a> <span class="description">Ente, parti da usare, quote, pagamenti e pagine del sito in poche domande. Denominazione, codice fiscale e partita IVA sono in «Dati e fiscalità».</span></p>';
 		Ui::form_open( 'apse_save_settings', Ui::url( 'apse-settings' ) );
 		echo '<table class="form-table"><tbody>';
-		echo '<tr><th>Denominazione</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
-		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
-		echo '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Quota associativa proposta</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
 		echo '<tr><th>Funzioni attive</th><td>' . self::feature_boxes( $s ) . '<p class="description">Tutte le funzioni facoltative sono spente di default: accendi solo quelle che ti servono, ciò che è spento resta invisibile a soci e gestori. I dettagli tecnici (credenziali Wallet, WooCommerce, ruoli) sono nella scheda «Tecniche».</p></td></tr>';
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">I familiari di un capofamiglia (si sceglie nella scheda del socio) pagano la quota ridotta di questa percentuale; il capofamiglia paga la quota piena. 0 = nessuno sconto.</p></td></tr>';

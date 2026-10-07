@@ -603,10 +603,10 @@ $wz_old = array( 'association_name' => Settings::get( 'association_name' ), 'tax
 apse_ok( null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'entity_type' => 'astronave', 'member_term' => 'socio' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'tax_code' => '123' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'payment_choice' => 'bitcoin' ) ); } ), 'configurazione guidata: ente, codice fiscale e pagamento non validi si rifiutano' );
 apse_ok( null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce' ) ); } ) || \ApSemplice\WooBridge::active(), 'configurazione guidata: WooCommerce si sceglie solo se è attivo' );
 $wz_done = \ApSemplice\Wizard::apply( array(
-	'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'association_name' => 'Circolo Prova', 'tax_code' => '12345678901', 'social_year_start_month' => '9',
+	'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'association_name' => 'Circolo Prova', 'tax_code' => '12345678903', 'social_year_start_month' => '9',
 	'payment_choice' => 'stripe_paypal', 'bank_enabled' => '1', 'pages_present' => '1', 'pages' => array( 'calendario', 'inesistente' ),
 ) );
-apse_ok( 'Circolo Prova' === Settings::get( 'association_name' ) && '12345678901' === Settings::get( 'tax_code' ) && 'stripe_paypal' === Settings::get( 'payment_provider' ) && 1 === (int) Settings::get( 'bank_enabled' ) && $wz_ent === Settings::get( 'entity_type' ), 'configurazione guidata: ente e pagamenti applicati' );
+apse_ok( 'Circolo Prova' === Settings::get( 'association_name' ) && '12345678903' === Settings::get( 'tax_code' ) && 'stripe_paypal' === Settings::get( 'payment_provider' ) && 1 === (int) Settings::get( 'bank_enabled' ) && $wz_ent === Settings::get( 'entity_type' ), 'configurazione guidata: ente e pagamenti applicati' );
 $wz_pages = \ApSemplice\Pages::existing();
 apse_ok( isset( $wz_pages['calendario'] ) && ! isset( $wz_pages['inesistente'] ) && 'members' === get_post_meta( $wz_pages['calendario'], '_aps_access', true ) && false !== strpos( implode( ' ', $wz_done ), 'Calendario' ), 'configurazione guidata: crea solo le pagine note, con l\'accesso giusto' );
 \ApSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
@@ -652,6 +652,21 @@ apse_ok( 'https://example.com/privacy' === Settings::get( 'privacy_url' ) && 7 =
 Settings::update( array( 'privacy_url' => '', 'privacy_retention_years' => 5, 'receipt_footer' => '' ) );
 $wz_html2 = $wz_html;
 apse_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo su presentazione' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
+// dati dell'ente e partita IVA
+$en_base = array( 'association_name' => 'Ente Fiscale', 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'tax_code' => '12345678903', 'social_year_start_month' => '9', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'pec' => 'ente@pec.example.com', 'vat_default_rate' => '22', 'vat_prices_mode' => 'incl', 'fiscal_regime' => 'ordinario' );
+apse_ok( ! \ApSemplice\Fiscal::vat_applies(), 'iva: senza partita IVA non si applica' );
+apse_ok( null !== apse_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ) ); } ) && null !== apse_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'tax_code' => '12345678901' ) ) ); } ) && null !== apse_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'pec' => 'non-email' ) ) ); } ), 'dati ente: partita IVA, codice fiscale e PEC non validi si rifiutano' );
+Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'sdi_code' => 'abcdefg' ) ) );
+apse_ok( \ApSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ) && 10 === \ApSemplice\Fiscal::default_rate() && 'escl' === \ApSemplice\Fiscal::default_mode() && 'ABCDEFG' === Settings::get( 'sdi_code' ) && 'Milano' === Settings::get( 'legal_city' ), 'dati ente: partita IVA, aliquota e modalità salvate' );
+Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678903', 'fiscal_regime' => 'forfettario' ) ) );
+apse_ok( ! \ApSemplice\Fiscal::vat_applies(), 'iva: in regime forfettario non si applica' );
+Admin\TechActions::save_entity( $en_base );
+apse_ok( ! \ApSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ), 'dati ente: tolta la partita IVA, il numero si azzera' );
+ob_start();
+Admin\EntityPage::render();
+$en_html = (string) ob_get_clean();
+apse_ok( false !== strpos( $en_html, 'name="vat_number"' ) && false !== strpos( $en_html, 'Partita IVA' ) && false !== strpos( $en_html, 'name="legal_address"' ) && in_array( 'apse-entity', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_save_entity'] ), 'dati ente: pagina riservata agli amministratori con sede e partita IVA' );
+Settings::update( array( 'vat_default_rate' => 22, 'vat_prices_mode' => 'incl', 'sdi_code' => '', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'pec' => '', 'fiscal_regime' => 'ordinario' ) );
 Settings::update( $wz_old );
 
 // Elementor (installato nel test): i widget si registrano e i controlli si costruiscono
@@ -2484,7 +2499,7 @@ wp_set_current_user( 1 );
 apse_ok( 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
 $tabs = Admin\Admin::tabs( 'apse-income' );
 apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-activities' ), 'Calendario' ), 'menu: la Contabilità ha le sue schede, i corsi elenco e calendario, la Bacheca nessuna' );
-apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Pagamenti online' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Tecniche' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Soldi' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Sistema' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
@@ -4246,7 +4261,7 @@ apse_ok( ! isset( \ApSemplice\Languages::available()['fr'] ) && 'it' === \ApSemp
 wp_set_current_user( 1 );
 $st_tabs = Admin\Admin::tabs( 'apse-settings' );
 $tc_tabs = Admin\Admin::tabs( 'apse-tech' );
-apse_ok( false !== strpos( $st_tabs, 'Ente e funzioni' ) && false !== strpos( $st_tabs, 'Tecniche' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $tc_tabs, 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: tre sezioni (ente e funzioni, tecniche, contabilità) con le loro schede' );
+apse_ok( false !== strpos( $st_tabs, 'Ente e fiscalità' ) && false !== strpos( $st_tabs, 'Soci e identità' ) && false !== strpos( $st_tabs, 'Soldi' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $st_tabs, 'Sistema' ) && false !== strpos( Admin\Admin::tabs( 'apse-roles' ), 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: sezioni per ambito (ente e fiscalità, soci e identità, soldi, contabilità, comunicazioni, sistema) con le loro schede' );
 foreach ( array( 'apse-tech', 'apse-roles', 'apse-acct' ) as $pg ) {
 	apse_ok( in_array( $pg, Admin\Admin::ADMIN_ONLY, true ), 'impostazioni: ' . $pg . ' è riservata agli amministratori' );
 }
@@ -4508,7 +4523,7 @@ if ( ! \ApSemplice\WebPush::supported() ) {
 Admin\TechActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
 apse_ok( 'Mia App' === \ApSemplice\Pwa::app_name() && 'MiaApp' === \ApSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
 apse_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
-apse_ok( in_array( 'apse-app', Admin\Admin::ADMIN_ONLY, true ) && false !== strpos( Admin\Admin::tabs( 'apse-tech' ), 'App e notifiche' ) && isset( Admin\SettingsPage::FEATURES['pwa_enabled'], Admin\SettingsPage::FEATURES['push_enabled'] ) && isset( \ApSemplice\Frontend\Shortcodes::VIEWS['app'] ) && shortcode_exists( 'apsemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
+apse_ok( in_array( 'apse-app', Admin\Admin::ADMIN_ONLY, true ) && false !== strpos( Admin\Admin::tabs( 'apse-tech' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::FEATURES['pwa_enabled'], Admin\SettingsPage::FEATURES['push_enabled'] ) && isset( \ApSemplice\Frontend\Shortcodes::VIEWS['app'] ) && shortcode_exists( 'apsemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
 Admin\TechActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );

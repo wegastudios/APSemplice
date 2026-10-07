@@ -21,7 +21,7 @@ final class Guide {
 			}
 		}
 		return array(
-			array( 'key' => 'identity', 'title' => 'Denominazione e codice fiscale', 'done' => '' !== trim( (string) Settings::get( 'association_name' ) ) && '' !== trim( (string) Settings::get( 'tax_code' ) ), 'page' => 'apse-settings', 'hint' => 'Compaiono su ricevute, tessere e documenti.' ),
+			array( 'key' => 'identity', 'title' => 'Denominazione e codice fiscale', 'done' => '' !== trim( (string) Settings::get( 'association_name' ) ) && '' !== trim( (string) Settings::get( 'tax_code' ) ), 'page' => 'apse-entity', 'hint' => 'Compaiono su ricevute, tessere e documenti.' ),
 			array( 'key' => 'fee', 'title' => 'Quota associativa e anno sociale', 'done' => (int) Settings::get( 'membership_fee_cents' ) > 0, 'page' => 'apse-settings', 'hint' => 'La quota proposta negli incassi e il mese in cui inizia l\'anno sociale. Puoi definire livelli con quote diverse.' ),
 			array( 'key' => 'members', 'title' => 'Inserisci i soci', 'done' => self::count( 'people', "deleted_at IS NULL AND type <> 'guest'" ) >= 2, 'page' => 'apse-import', 'hint' => 'Uno alla volta dalla Rubrica o tutti insieme importando un file Excel/CSV.' ),
 			array( 'key' => 'president', 'title' => 'Assegna il presidente', 'done' => $president, 'page' => 'apse-people', 'hint' => 'Dalla scheda di un socio, nel riquadro «Consiglio direttivo»: compare sulle ricevute.' ),

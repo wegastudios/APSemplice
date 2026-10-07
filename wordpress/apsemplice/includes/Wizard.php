@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Configurazione guidata: in un'unica pagina raccoglie le impostazioni principali (ente, quote, funzioni, pagamenti, pagine del sito)
- * e le applica insieme. Si propone al primo avvio e si riapre quando serve da Impostazioni → Generale.
+ * e le applica insieme. Si propone al primo avvio e si riapre quando serve da Impostazioni.
  */
 final class Wizard {
 
@@ -113,9 +113,9 @@ final class Wizard {
 			$vals['association_name'] = mb_substr( sanitize_text_field( (string) $p['association_name'] ), 0, 120 );
 		}
 		if ( array_key_exists( 'tax_code', $p ) ) {
-			$cf = strtoupper( preg_replace( '/\s+/', '', (string) $p['tax_code'] ) );
-			if ( '' !== $cf && ! preg_match( '/^(\d{11}|[A-Z0-9]{16})$/', $cf ) ) {
-				throw new \InvalidArgumentException( 'Il codice fiscale dell\'ente non è valido: servono 11 cifre (oppure 16 caratteri).' );
+			$cf = TaxCode::normalize( (string) $p['tax_code'] );
+			if ( '' !== $cf && ! Fiscal::is_valid_entity_tax_code( $cf ) ) {
+				throw new \InvalidArgumentException( 'Il codice fiscale dell\'ente non è valido: controllalo (11 cifre, oppure 16 caratteri se è una persona fisica).' );
 			}
 			$vals['tax_code'] = $cf;
 		}

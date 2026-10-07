@@ -544,3 +544,13 @@ Al primo avvio (e a richiesta da Impostazioni → Generale, «Avvia la configura
 8. **Pagine del sito** proposte in base alle risposte (calendario solo con i corsi, bonifico solo con le coordinate, 5x1000 solo se attivo): Area soci, Area volontari, Attività, Calendario, Dona con bonifico, 5x1000. Le pagine esistenti non si duplicano.
 
 Le chiavi dei fornitori e gli IBAN non passano dalla procedura: dopo l'applicazione si viene portati in Pagamenti online. Il primo avvio apre la procedura una sola volta (alla prima installazione); sui siti già in uso resta disponibile da Impostazioni senza inviti. «Salta per ora» la rimanda senza cambiare nulla.
+
+## Impostazioni per ambito e dati fiscali dell'ente
+
+Le Impostazioni sono raggruppate per ambito: **Ente e fiscalità** (dati e fiscalità, privacy/regolamento/ricevute, testi e lingua), **Soci e identità** (soci e quote, tessera/QR/Wallet, ruoli e accessi), **Soldi** (pagamenti online), **Contabilità**, **Comunicazioni** (app e notifiche), **Sistema** (limiti, integrazioni, copia, registro azioni, guida).
+
+La scheda **Dati e fiscalità** raccoglie denominazione, tipo di ente, codice fiscale (11 cifre con cifra di controllo, oppure 16 caratteri), iscrizione (RUNTS o altro), mese di inizio dell'anno sociale, sede, PEC e la **partita IVA**. L'IVA è un livello minimo, pensato per chi ha un commercialista che completa i quadri:
+- senza partita IVA non compare nulla di fiscale (niente aliquote né importi IVA);
+- con la partita IVA (controllata: 11 cifre e cifra di controllo, anche con il prefisso IT) si sceglie il regime, l'aliquota proposta (22, 10, 5, 4, 0 %) e se gli importi si inseriscono IVA compresa o esclusa; il codice destinatario SDI è facoltativo;
+- in regime forfettario l'IVA non si applica;
+- lo scorporo (`Fiscal::split`) calcola imponibile, IVA e totale in centesimi, mantenendo sempre la somma esatta.

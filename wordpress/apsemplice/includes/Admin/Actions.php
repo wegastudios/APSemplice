@@ -997,11 +997,17 @@ final class Actions {
 		$txt = function ( string $k ) use ( $p ) {
 			return sanitize_text_field( $p[ $k ] ?? '' );
 		};
+		$ente = array(); // denominazione, codice fiscale e anno sociale hanno la loro pagina («Dati e fiscalità»): qui si salvano solo se il modulo li contiene
+		foreach ( array( 'association_name', 'tax_code' ) as $k ) {
+			if ( array_key_exists( $k, $p ) ) {
+				$ente[ $k ] = $txt( $k );
+			}
+		}
+		if ( array_key_exists( 'social_year_start_month', $p ) ) {
+			$ente['social_year_start_month'] = (int) $p['social_year_start_month'];
+		}
 		Settings::update(
-			array(
-				'association_name'        => $txt( 'association_name' ),
-				'tax_code'                => $txt( 'tax_code' ),
-				'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
+			$ente + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'family_discount_pct'     => (int) ( $p['family_discount_pct'] ?? 0 ),
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),

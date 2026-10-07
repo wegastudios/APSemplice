@@ -84,6 +84,18 @@ final class Settings {
 			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
 			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
 			'wpai_mark_members'       => 0,         // ... segna i soci come iscritti all'anno sociale corrente
+			'has_vat'                 => 0,         // l'ente ha la partita IVA: spento di default, senza non compaiono aliquote e importi IVA
+			'vat_number'              => '',        // partita IVA (11 cifre)
+			'fiscal_regime'           => 'ordinario', // regime fiscale (vedi Fiscal)
+			'vat_default_rate'        => 22,        // aliquota IVA proposta (%)
+			'vat_prices_mode'         => 'incl',    // importi inseriti IVA compresa ('incl') o esclusa ('escl')
+			'legal_address'           => '',        // sede legale
+			'legal_zip'               => '',
+			'legal_city'              => '',
+			'legal_province'          => '',
+			'runts_number'            => '',        // iscrizione al RUNTS / registro (testo libero)
+			'pec'                     => '',        // PEC dell'ente
+			'sdi_code'                => '',        // codice destinatario per la fatturazione elettronica
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
 			'join_mode'               => 'request', // chi non è in elenco: 'request' = può chiedere l'accesso alla segreteria; 'invite' = solo su presentazione
 			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
@@ -189,6 +201,15 @@ final class Settings {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
+		$clean['has_vat']                 = empty( $clean['has_vat'] ) ? 0 : 1;
+		$clean['vat_number']              = mb_substr( Fiscal::normalize_vat( (string) $clean['vat_number'] ), 0, 11 );
+		$clean['fiscal_regime']           = isset( Fiscal::regimes()[ (string) $clean['fiscal_regime'] ] ) ? (string) $clean['fiscal_regime'] : Fiscal::ORDINARY;
+		$clean['vat_default_rate']        = max( 0, min( 30, (int) $clean['vat_default_rate'] ) );
+		$clean['vat_prices_mode']         = Fiscal::EXCLUDED === (string) $clean['vat_prices_mode'] ? Fiscal::EXCLUDED : Fiscal::INCLUDED;
+		foreach ( array( 'legal_address' => 160, 'legal_zip' => 10, 'legal_city' => 80, 'legal_province' => 40, 'runts_number' => 80, 'pec' => 120 ) as $k => $max ) {
+			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, $max );
+		}
+		$clean['sdi_code']                = strtoupper( substr( preg_replace( '/[^A-Za-z0-9]/', '', (string) $clean['sdi_code'] ), 0, 7 ) );
 		$clean['modules']                 = Modules::sanitize( is_array( $clean['modules'] ) ? $clean['modules'] : array() );
 		$clean['join_mode']               = 'invite' === $clean['join_mode'] ? 'invite' : 'request';
 		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
