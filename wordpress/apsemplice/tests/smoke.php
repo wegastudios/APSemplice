@@ -666,6 +666,27 @@ ob_start();
 Admin\EntityPage::render();
 $en_html = (string) ob_get_clean();
 apse_ok( false !== strpos( $en_html, 'name="vat_number"' ) && false !== strpos( $en_html, 'Partita IVA' ) && false !== strpos( $en_html, 'name="legal_address"' ) && in_array( 'apse-entity', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_save_entity'] ), 'dati ente: pagina riservata agli amministratori con sede e partita IVA' );
+// strumenti
+foreach ( array( 'apse-import', 'apse-wpai', 'apse-exports', 'apse-calendar', 'apse-backup', 'apse-tech', 'apse-tools' ) as $tl_p ) {
+	apse_ok( 'apse-tools' === Admin\Admin::menu_item_of( $tl_p ), 'strumenti: ' . $tl_p . ' sta negli Strumenti' );
+}
+ob_start();
+Admin\ToolsPage::render();
+$tl_html = (string) ob_get_clean();
+ob_start();
+Admin\ToolsPage::render_exports();
+$tl_exp = (string) ob_get_clean();
+apse_ok( false !== strpos( $tl_html, 'Importa da Excel o CSV' ) && false !== strpos( $tl_html, 'Copia di sicurezza' ) && false !== strpos( $tl_html, 'Calendario di corsi ed eventi' ) && false !== strpos( $tl_html, 'Esportazioni CSV' ), 'strumenti: la panoramica elenca importazioni, esportazioni, calendari, copie e integrazioni' );
+apse_ok( false !== strpos( $tl_exp, 'Soci e ospiti' ) && false !== strpos( $tl_exp, 'Prima nota' ) && false !== strpos( $tl_exp, 'apse_export' ), 'strumenti: le esportazioni hanno il loro elenco' );
+Settings::update( array( 'modules' => array( 'ledger' => 0, 'activities' => 0, 'import' => 0 ) ) );
+ob_start();
+Admin\ToolsPage::render_exports();
+$tl_exp2 = (string) ob_get_clean();
+ob_start();
+Admin\ToolsPage::render();
+$tl_html2 = (string) ob_get_clean();
+apse_ok( false === strpos( $tl_exp2, 'Prima nota' ) && false !== strpos( $tl_exp2, 'Soci e ospiti' ) && false === strpos( $tl_html2, 'Importa da Excel o CSV' ) && false === strpos( $tl_html2, 'Calendario di corsi ed eventi' ), 'strumenti: senza prima nota, corsi e importazioni quelle voci non compaiono' );
+Settings::update( array( 'modules' => array() ) );
 Settings::update( array( 'vat_default_rate' => 22, 'vat_prices_mode' => 'incl', 'sdi_code' => '', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'pec' => '', 'fiscal_regime' => 'ordinario' ) );
 Settings::update( $wz_old );
 
@@ -2498,12 +2519,12 @@ apse_render( array( Admin\ReportsPage::class, 'render' ), 'Disponibilità reale'
 wp_set_current_user( 1 );
 apse_ok( 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-ledger' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
 $tabs = Admin\Admin::tabs( 'apse-income' );
-apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-activities' ), 'Calendario' ), 'menu: la Contabilità ha le sue schede, i corsi elenco e calendario, la Bacheca nessuna' );
+apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Calendari' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Importa da Excel/CSV' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Esporta' ), 'menu: la Contabilità ha le sue schede, gli Strumenti raccolgono importazioni, esportazioni e calendari, la Bacheca nessuna' );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Soldi' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Sistema' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
-apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Contabilità', 'Registri', 'Impostazioni' ) === $visible, 'menu: solo sei voci (' . implode( ', ', $visible ) . ')' );
+apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo sette voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
@@ -4523,7 +4544,7 @@ if ( ! \ApSemplice\WebPush::supported() ) {
 Admin\TechActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
 apse_ok( 'Mia App' === \ApSemplice\Pwa::app_name() && 'MiaApp' === \ApSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
 apse_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
-apse_ok( in_array( 'apse-app', Admin\Admin::ADMIN_ONLY, true ) && false !== strpos( Admin\Admin::tabs( 'apse-tech' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::FEATURES['pwa_enabled'], Admin\SettingsPage::FEATURES['push_enabled'] ) && isset( \ApSemplice\Frontend\Shortcodes::VIEWS['app'] ) && shortcode_exists( 'apsemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
+apse_ok( in_array( 'apse-app', Admin\Admin::ADMIN_ONLY, true ) && false !== strpos( Admin\Admin::tabs( 'apse-roles' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::FEATURES['pwa_enabled'], Admin\SettingsPage::FEATURES['push_enabled'] ) && isset( \ApSemplice\Frontend\Shortcodes::VIEWS['app'] ) && shortcode_exists( 'apsemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
 Admin\TechActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );

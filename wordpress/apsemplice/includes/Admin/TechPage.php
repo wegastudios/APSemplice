@@ -131,10 +131,10 @@ final class TechPage {
 		echo '<p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		echo '<h2>Dove sono le altre impostazioni contabili</h2><ul>'
-			. '<li><a href="' . esc_url( Ui::url( 'apse-settings' ) ) . '">Generale</a> — quota associativa, anno sociale, livelli di socio, sconto del nucleo familiare.</li>'
+			. '<li><a href="' . esc_url( Ui::url( 'apse-settings' ) ) . '">Soci e quote</a> — quota associativa, livelli di socio, sconto del nucleo familiare.</li>'
 			. '<li><a href="' . esc_url( Ui::url( 'apse-years' ) ) . '">Anni solari</a> — apertura e chiusura degli anni contabili.</li>'
 			. '<li><a href="' . esc_url( Ui::url( 'apse-accounts' ) ) . '">Conti e fondi</a> — cassa, banca, POS e fondi per i rimborsi ai volontari.</li>'
-			. '<li><a href="' . esc_url( Ui::url( 'apse-comms' ) ) . '">Promemoria, privacy, regolamento e ricevute</a> — riga in fondo alla ricevuta, promemoria dei pagamenti.</li></ul>';
+			. '<li><a href="' . esc_url( Ui::url( 'apse-comms' ) ) . '">Privacy, regolamento e ricevute</a> — riga in fondo alla ricevuta, promemoria dei pagamenti.</li></ul>';
 		Ui::footer();
 	}
 }

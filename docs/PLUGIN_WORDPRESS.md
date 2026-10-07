@@ -554,3 +554,12 @@ La scheda **Dati e fiscalità** raccoglie denominazione, tipo di ente, codice fi
 - con la partita IVA (controllata: 11 cifre e cifra di controllo, anche con il prefisso IT) si sceglie il regime, l'aliquota proposta (22, 10, 5, 4, 0 %) e se gli importi si inseriscono IVA compresa o esclusa; il codice destinatario SDI è facoltativo;
 - in regime forfettario l'IVA non si applica;
 - lo scorporo (`Fiscal::split`) calcola imponibile, IVA e totale in centesimi, mantenendo sempre la somma esatta.
+
+## Strumenti
+
+La voce di menu **Strumenti** raccoglie in un unico posto ciò che riguarda importare, esportare, copiare e collegare, ognuno con la sua funzione (l'organizzazione interna si potrà riordinare in seguito):
+- **Panoramica**: i riquadri Importare, Esportare, Calendari, Copie e collegamenti, con solo ciò che serve (le parti spente nella configurazione guidata non compaiono; le voci riservate agli amministratori sono nascoste alla segreteria).
+- **Importa da Excel/CSV** e **WP All Import**.
+- **Esporta**: soci e ospiti, prima nota e rendiconto per cassa (anno solare), report delle attività (anno sociale), in CSV con punto e virgola e virgola decimale.
+- **Calendari**: calendario interno di tutte le attività e indirizzo del calendario pubblicato; il calendario della singola attività resta nella sua scheda. Il calendario è raggiungibile anche dalla Bacheca.
+- **Copia di sicurezza** e **Integrazioni** (prima nelle Impostazioni).

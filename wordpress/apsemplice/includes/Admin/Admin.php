@@ -23,11 +23,12 @@ final class Admin {
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */
 	const GROUPS = array(
-		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import' ) ),
-		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco', 'apse-calendar' => 'Calendario' ) ),
+		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni' ) ),
+		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco' ) ),
+		'apse-tools'      => array( 'Strumenti', array( 'apse-tools' => 'Panoramica', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import', 'apse-exports' => 'Esporta', 'apse-calendar' => 'Calendari', 'apse-backup' => 'Copia di sicurezza', 'apse-tech' => 'Integrazioni' ) ),
 		'apse-ledger'     => array( 'Contabilità', array( 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto' ) ),
 		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze', 'apse-fivepm' => '5x1000' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-payments' => 'Pagamenti online', 'apse-acct' => 'Opzioni contabili', 'apse-app' => 'App e notifiche', 'apse-limits' => 'Limiti e soglie', 'apse-tech' => 'Integrazioni', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-payments' => 'Pagamenti online', 'apse-acct' => 'Opzioni contabili', 'apse-app' => 'App e notifiche', 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ) ),
 	);
 
 	/** Le Impostazioni sono in tre sezioni: ente e funzioni, tecniche, contabilità. Titolo => pagine (la prima è quella a cui porta la scheda). */
@@ -37,7 +38,7 @@ final class Admin {
 		'Soldi'            => array( 'apse-payments' => 'Pagamenti online' ),
 		'Contabilità'      => array( 'apse-acct' => 'Opzioni contabili' ),
 		'Comunicazioni'    => array( 'apse-app' => 'App e notifiche' ),
-		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-tech' => 'Integrazioni', 'apse-backup' => 'Copia di sicurezza', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ),
+		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
@@ -68,6 +69,7 @@ final class Admin {
 			array( 'apse-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
 			array( 'apse-ledger', 'Contabilità', array( LedgerPage::class, 'render' ) ),
 			array( 'apse-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
+			array( 'apse-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
 		foreach ( $visible as $s ) {
@@ -96,6 +98,7 @@ final class Admin {
 			array( 'apse-limits', 'Limiti e soglie', array( LimitsPage::class, 'render' ) ),
 			array( 'apse-wizard', 'Configurazione guidata', array( WizardPage::class, 'render' ) ),
 			array( 'apse-entity', 'Dati dell\'ente e fiscalità', array( EntityPage::class, 'render' ) ),
+			array( 'apse-exports', 'Esportazioni', array( ToolsPage::class, 'render_exports' ) ),
 			array( 'apse-acct', 'Opzioni contabili', array( TechPage::class, 'render_accounting' ) ),
 			array( 'apse-fivepm', '5x1000', array( FivePmPage::class, 'render' ) ),
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
