@@ -532,7 +532,7 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 
 ## Configurazione guidata
 
-Al primo avvio (e a richiesta da Impostazioni → Soci e quote, «Avvia la configurazione guidata») una procedura a domande, riservata agli amministratori, porta un passo alla volta alla configurazione. Prima si decide **cosa serve**, poi si configurano **solo le parti scelte**; i passi e i campi non pertinenti si saltano. Senza JavaScript i passi compaiono tutti insieme. Le regole di controllo dei dati dell'ente sono le stesse della scheda «Dati e fiscalità».
+Al primo avvio (e a richiesta da Strumenti → Configurazione guidata) una procedura a domande, riservata agli amministratori, porta un passo alla volta alla configurazione. Prima si decide **cosa serve**, poi si configurano **solo le parti scelte**; i passi e i campi non pertinenti si saltano. Senza JavaScript i passi compaiono tutti insieme. Le regole di controllo dei dati dell'ente sono le stesse della scheda «Dati e fiscalità».
 
 1. **Ente**: nome, tipo, termine per chi partecipa, codice fiscale, inizio dell'anno sociale, sede.
 2. **Partita IVA** (sì/no): solo se sì compaiono numero, regime, aliquota proposta, importi IVA compresa o esclusa, IVA sulle quote associative e codice SDI. Senza partita IVA non si vede nulla di fiscale.
@@ -607,3 +607,5 @@ Le viste (shortcode, blocco Gutenberg «APSemplice», widget Elementor «APSempl
 - **Pubblico**: elenco attività, prossimi eventi, coordinate per il bonifico, 5x1000, accesso.
 
 La configurazione guidata propone e crea le pagine per area, solo quelle che servono (tesoriere con la prima nota, ingressi con i corsi e gli eventi, bonifico con le coordinate, 5x1000 se attivo); le pagine già create non si duplicano. Le pagine che mostrano contenuti riservati controllano i permessi di chi le apre.
+
+L'ultimo passo della procedura chiede se si vuole importare subito l'**elenco di soci e ospiti** (un unico file Excel o CSV: i soci prima, poi gli ospiti con il socio ospitante); alla conferma, a fine configurazione, si apre l'importazione con anteprima e conferma prima di salvare. La procedura si riapre da Strumenti → Configurazione guidata; la Bacheca la propone solo finché non è stata fatta o rimandata.
