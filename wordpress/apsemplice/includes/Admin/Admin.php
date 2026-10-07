@@ -68,7 +68,10 @@ final class Admin {
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
 		foreach ( $visible as $s ) {
-			add_submenu_page( 'apse', $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], $s[2] );
+			if ( self::group_off( $s[0] ) ) {
+				$s[1] = null; // la pagina resta raggiungibile (con l'avviso), ma non compare nel menu
+			}
+			add_submenu_page( null === $s[1] ? null : 'apse', (string) $s[1], (string) $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
 		}
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
@@ -105,7 +108,7 @@ final class Admin {
 			array( 'apse-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
 		);
 		foreach ( $hidden as $s ) {
-			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], $s[2] );
+			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
 		}
 	}
 
@@ -176,7 +179,34 @@ final class Admin {
 
 	/** Schede spente dalle impostazioni (report e rendiconto). @return string[] */
 	public static function disabled_pages(): array {
-		return \ApSemplice\Settings::get( 'reports_enabled' ) ? array() : array( 'apse-reports', 'apse-statement' );
+		return \ApSemplice\Modules::off_pages();
+	}
+
+	/** Voce di menu da nascondere: tutte le sue pagine sono spente. */
+	private static function group_off( string $slug ): bool {
+		$off = self::disabled_pages();
+		if ( ! in_array( $slug, $off, true ) ) {
+			return false;
+		}
+		foreach ( array_keys( self::GROUPS[ $slug ][1] ?? array() ) as $tab ) {
+			if ( ! in_array( $tab, $off, true ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Una pagina di una parte spenta non mostra i suoi contenuti: dice come riaccenderla. */
+	public static function guard( string $slug, callable $render ): callable {
+		return function () use ( $slug, $render ) {
+			if ( in_array( $slug, self::disabled_pages(), true ) ) {
+				Ui::header( 'Parte non in uso' );
+				echo '<p>Questa parte del gestionale è spenta. I dati non sono stati toccati: si riaccende dalla <a href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">configurazione guidata</a>.</p>';
+				Ui::footer();
+				return;
+			}
+			$render();
+		};
 	}
 
 	/** Se le schede dei report sono spente scrive l'avviso e dice di fermarsi. */

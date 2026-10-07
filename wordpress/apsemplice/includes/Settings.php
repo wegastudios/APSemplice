@@ -84,6 +84,8 @@ final class Settings {
 			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
 			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
 			'wpai_mark_members'       => 0,         // ... segna i soci come iscritti all'anno sociale corrente
+			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
+			'join_mode'               => 'request', // chi non è in elenco: 'request' = può chiedere l'accesso alla segreteria; 'invite' = solo su presentazione
 			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
 			'pay_label_stripe'        => '',        // diciture dei pulsanti di pagamento (vuoto = predefinita, vedi PaymentConfig)
 			'pay_note_stripe'         => '',
@@ -187,6 +189,8 @@ final class Settings {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
+		$clean['modules']                 = Modules::sanitize( is_array( $clean['modules'] ) ? $clean['modules'] : array() );
+		$clean['join_mode']               = 'invite' === $clean['join_mode'] ? 'invite' : 'request';
 		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
 		foreach ( array( 'stripe', 'paypal', 'woocommerce' ) as $g ) {
 			$clean[ 'pay_label_' . $g ] = mb_substr( trim( (string) $clean[ 'pay_label_' . $g ] ), 0, 60 );
