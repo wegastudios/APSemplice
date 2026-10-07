@@ -676,6 +676,31 @@ apse_ok( 'https://example.com/privacy' === Settings::get( 'privacy_url' ) && 7 =
 Settings::update( array( 'privacy_url' => '', 'privacy_retention_years' => 5, 'receipt_footer' => '' ) );
 $wz_html2 = $wz_html;
 apse_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo su presentazione' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
+// procedura guidata: partita IVA, sede e adempimenti
+apse_ok( null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'pec' => 'non-una-pec' ) ); } ), 'procedura: partita IVA o PEC non valide si rifiutano' );
+\ApSemplice\Wizard::apply( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_regime' => 'ordinario', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'vat_membership_rate' => '22', 'legal_address' => 'Via Verdi 3', 'legal_zip' => '10100', 'legal_city' => 'Torino', 'legal_province' => 'TO', 'pec' => 'ente@pec.example.com' ) );
+apse_ok( \ApSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ) && 10 === \ApSemplice\Fiscal::default_rate() && 'escl' === \ApSemplice\Fiscal::default_mode() && 22 === \ApSemplice\Fiscal::membership_rate() && 'Torino' === Settings::get( 'legal_city' ), 'procedura: partita IVA, aliquote e sede applicate' );
+\ApSemplice\Wizard::apply( array( 'association_name' => 'Solo nome cambiato' ) );
+apse_ok( \ApSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ), 'procedura: se il passo non c\'è, la partita IVA già impostata non si tocca' );
+\ApSemplice\Wizard::apply( array( 'has_vat' => '0', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
+apse_ok( ! \ApSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ) && null === \ApSemplice\Fiscal::membership_rate(), 'procedura: senza partita IVA il numero e l\'aliquota delle quote si azzerano' );
+$wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::FEATURES ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
+Settings::update( array( 'fivepm_enabled' => 1 ) );
+\ApSemplice\Wizard::apply( array( 'features_present' => '1' ) );
+apse_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: l\'elenco delle funzioni non tocca il 5x1000, che ha il suo passo' );
+Settings::update( $wz_feat );
+Settings::update( array( 'fivepm_enabled' => 1 ) );
+\ApSemplice\Wizard::apply( array( 'adempimenti_present' => '1' ) );
+apse_ok( 0 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: nel passo adempimenti, senza risposta sì il 5x1000 si spegne' );
+\ApSemplice\Wizard::apply( array( 'adempimenti_present' => '1', 'fivepm_enabled' => '1' ) );
+apse_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: il 5x1000 si accende dal passo adempimenti' );
+ob_start();
+Admin\WizardPage::render();
+$wz_html3 = (string) ob_get_clean();
+apse_ok( false !== strpos( $wz_html3, 'Partita IVA' ) && false !== strpos( $wz_html3, 'data-if="has_vat=1"' ) && false !== strpos( $wz_html3, 'name="vat_number"' ) && false !== strpos( $wz_html3, 'data-if="mod[accounting]=1"' ) && false !== strpos( $wz_html3, 'Adempimenti' ) && false !== strpos( $wz_html3, 'name="legal_address"' ), 'procedura: passo partita IVA con i campi che compaiono solo se c\'è, e passo adempimenti legato alla contabilità' );
+$wz_pos_pay = strpos( $wz_html3, 'Pagamenti dei soci' );
+apse_ok( false !== $wz_pos_pay && false !== strpos( substr( $wz_html3, max( 0, $wz_pos_pay - 200 ), 260 ), 'mod[ledger]=1' ), 'procedura: i pagamenti si chiedono solo se c\'è la prima nota' );
+Settings::update( array( 'fivepm_enabled' => 0, 'has_vat' => 0, 'vat_number' => '', 'vat_membership_rate' => '', 'vat_default_rate' => 22, 'vat_prices_mode' => 'incl', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'pec' => '', 'association_name' => $wz_old['association_name'] ) );
 // dati dell'ente e partita IVA
 $en_base = array( 'association_name' => 'Ente Fiscale', 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'tax_code' => '12345678903', 'social_year_start_month' => '9', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'pec' => 'ente@pec.example.com', 'vat_default_rate' => '22', 'vat_prices_mode' => 'incl', 'fiscal_regime' => 'ordinario' );
 apse_ok( ! \ApSemplice\Fiscal::vat_applies(), 'iva: senza partita IVA non si applica' );

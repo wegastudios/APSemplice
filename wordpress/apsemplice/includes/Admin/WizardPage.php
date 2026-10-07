@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\Fiscal;
 use ApSemplice\Levels;
 use ApSemplice\Modules;
 use ApSemplice\Money;
@@ -66,7 +67,7 @@ final class WizardPage {
 		$conditional = array( 'card_qr_enabled' => 'card_enabled=1', 'wallet_enabled' => 'card_enabled=1' );
 		$html        = '<input type="hidden" name="features_present" value="1">';
 		foreach ( SettingsPage::FEATURES as $k => $label ) {
-			if ( in_array( $k, array( 'pwa_enabled', 'push_enabled' ), true ) ) {
+			if ( in_array( $k, \ApSemplice\Wizard::OWN_STEP, true ) ) {
 				continue;
 			}
 			$html .= '<div' . ( isset( $conditional[ $k ] ) ? ' data-if="' . esc_attr( $conditional[ $k ] ) . '" style="margin-left:24px"' : '' ) . '><label><input type="checkbox" name="' . esc_attr( $k ) . '" value="1"' . checked( ! empty( $s[ $k ] ), true, false ) . '> ' . esc_html( $label ) . '</label></div>';
@@ -92,7 +93,26 @@ final class WizardPage {
 		echo '<tr><th>Chi partecipa si chiama</th><td><select name="member_term">' . Ui::options( array_combine( $mems, $mems ), (string) $s['member_term'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Codice fiscale dell\'ente</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Sede (facoltativa)</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
 		echo '</tbody></table>';
+		self::end_step();
+
+		// 1b. Partita IVA
+		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale (niente aliquote né importi IVA). Con la partita IVA la gestione resta essenziale: il commercialista completa i quadri.' );
+		echo self::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		$rates = array();
+		foreach ( Fiscal::RATES as $r ) {
+			$rates[ $r ] = $r . '%';
+		}
+		echo '<div data-if="has_vat=1"><table class="form-table"><tbody>';
+		echo '<tr><th>Partita IVA</th><td><input type="text" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="11 cifre"></td></tr>';
+		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( Fiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Aliquota proposta</th><td><select name="vat_default_rate">' . Ui::options( $rates, (int) $s['vat_default_rate'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( Fiscal::INCLUDED => 'IVA compresa', Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Scelta iniziale: su ogni attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		$mr = Fiscal::membership_rate();
+		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( Fiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"> <span class="description">facoltativo</span></td></tr>';
+		echo '</tbody></table></div>';
 		self::end_step();
 
 		// 2. Chi può iscriversi
@@ -111,7 +131,7 @@ final class WizardPage {
 			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
 		}
 		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
-		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="4" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Altri livelli, basi e quote si gestiscono in Impostazioni → Generale.</p></td></tr>';
+		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="4" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli, basi e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
 		echo '</tbody></table>';
 		self::end_step();
@@ -129,6 +149,12 @@ final class WizardPage {
 		echo '<p><input type="text" name="receipt_footer" value="' . esc_attr( (string) $s['receipt_footer'] ) . '" class="large-text" maxlength="300"></p>';
 		self::end_step();
 
+		// 5b. Adempimenti (solo se la contabilità si tiene qui)
+		self::step( 'Adempimenti', 'Scadenze e documenti della contabilità tenuta qui.', 'mod[accounting]=1' );
+		echo '<input type="hidden" name="adempimenti_present" value="1">';
+		echo self::yes_no( 'fivepm_enabled', 'Raccogli il 5x1000? Si attiva il messaggio per i soci, il promemoria e il registro dei contributi ricevuti.', ! empty( $s['fivepm_enabled'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		self::end_step();
+
 		// 6. Privacy
 		self::step( 'Privacy', 'L\'informativa privacy va accettata da chi attiva l\'accesso; dopo il tempo di inattività che indichi il plugin propone di anonimizzare i dati.' );
 		echo '<table class="form-table"><tbody>';
@@ -143,7 +169,7 @@ final class WizardPage {
 		self::end_step();
 
 		// 8. Pagamenti
-		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.' );
+		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1' );
 		$current = (string) $s['payment_provider'];
 		foreach ( Wizard::payment_choices() as $val => $c ) {
 			$off  = PaymentConfig::WOOCOMMERCE === $val && ! $euro;
