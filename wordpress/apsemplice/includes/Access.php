@@ -29,6 +29,7 @@ final class Access {
 		'apse_door_cash',          // id attivita': incassare il biglietto sul posto a chi non ha prenotato (referente e gestori con l'incasso abilitato)
 		'apse_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area riservata
 		'apse_collect',            // (nessun oggetto) tesoriere: incassare dall'area riservata
+		'apse_register_member',    // (nessun oggetto) tesoriere: iscrivere un nuovo socio dall'area riservata
 	);
 
 	/**
@@ -55,10 +56,11 @@ final class Access {
 			case 'apse_book_for':
 				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
 			case 'apse_manage_event':
-				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) );
-			case 'apse_door_cash':
-				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['can_cash'] ) );
+				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) || ! empty( $ctx['is_entity_staff'] ) ); // referente, staff dell'evento o staff dell'ente (su tutti gli eventi)
+			case 'apse_door_cash': // referente, staff dell'evento con l'incasso abilitato, tesoriere (vendita degli eventi)
+				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['can_cash'] ) || ! empty( $ctx['is_treasurer'] ) );
 			case 'apse_collect':
+			case 'apse_register_member':
 			case 'apse_add_expense':
 				return ! empty( $ctx['is_treasurer'] ) && MemberType::is_member( (string) $actor['type'] );
 			case 'apse_view_activity':
@@ -78,6 +80,39 @@ final class Access {
 
 	public static function register(): void {
 		add_filter( 'map_meta_cap', array( __CLASS__, 'map_meta_cap' ), 10, 4 );
+		add_filter( 'user_has_cap', array( __CLASS__, 'board_as_secretary' ), 10, 4 );
+	}
+
+	/** Presidente e vicepresidente (in regola con la tessera) agiscono come la segreteria su tutto. */
+	public static function board_as_secretary( $allcaps, $caps, $args, $user ) {
+		if ( empty( $allcaps[ Plugin::CAP_OPS ] ) && in_array( Plugin::CAP_OPS, (array) $caps, true ) && $user instanceof \WP_User && self::is_board_operator( (int) $user->ID ) ) {
+			$allcaps[ Plugin::CAP_OPS ] = true;
+		}
+		return $allcaps;
+	}
+
+	/** @return bool l'utente è collegato a un socio in regola con la carica di presidente o vicepresidente */
+	public static function is_board_operator( int $user_id ): bool {
+		if ( $user_id <= 0 || ! License::allows( 'member_area' ) ) {
+			return false;
+		}
+		$p = self::person_for_user( $user_id );
+		return $p && in_array( (string) $p['board_role'], array( BoardRole::PRESIDENT, BoardRole::VICE_PRESIDENT ), true ) && Plugin::people()->is_active_member( (int) $p['id'] );
+	}
+
+	const STAFF_META = 'apse_staff';
+
+	/** Staff dell'ente: verifica gli accessi a tutti gli eventi (l'incasso resta una scelta per singolo evento). */
+	public static function is_entity_staff( int $user_id ): bool {
+		return $user_id > 0 && '1' === (string) get_user_meta( $user_id, self::STAFF_META, true );
+	}
+
+	public static function set_entity_staff( int $user_id, bool $on ): void {
+		if ( $on ) {
+			update_user_meta( $user_id, self::STAFF_META, '1' );
+		} else {
+			delete_user_meta( $user_id, self::STAFF_META );
+		}
 	}
 
 	public static function map_meta_cap( $caps, $cap, $user_id, $args ) {
@@ -136,7 +171,7 @@ final class Access {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
-		if ( 'apse_add_expense' === $ability || 'apse_collect' === $ability ) {
+		if ( in_array( $ability, array( 'apse_add_expense', 'apse_collect', 'apse_register_member' ), true ) ) {
 			$ctx['is_treasurer'] = self::is_treasurer( $user_id );
 		}
 		if ( 'apse_book_for' === $ability ) {
@@ -156,6 +191,8 @@ final class Access {
 				'is_enrolled'          => in_array( $object_id, Plugin::activities()->active_activity_ids( (int) $actor['id'] ), true ),
 				'is_staff'             => 'apse_manage_event' === $ability && Plugin::activities()->is_staff( $object_id, (int) $actor['id'] ),
 				'can_cash'             => 'apse_door_cash' === $ability && Plugin::activities()->staff_can_cash( $object_id, (int) $actor['id'] ),
+				'is_entity_staff'      => 'apse_manage_event' === $ability && self::is_entity_staff( $user_id ),
+				'is_treasurer'         => 'apse_door_cash' === $ability && self::is_treasurer( $user_id ),
 			);
 		}
 		return self::decide( $ability, false, $actor, $ctx );

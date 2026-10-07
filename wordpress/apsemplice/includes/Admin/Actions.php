@@ -40,6 +40,7 @@ final class Actions {
 			'apse_delete_person'      => 'delete_person',
 			'apse_set_membership'     => 'set_membership',
 			'apse_set_treasurer'      => 'set_treasurer',
+			'apse_set_staff'          => 'set_staff',
 			'apse_set_secretary'      => 'set_secretary',
 			'apse_save_terms'         => 'save_terms',
 			'apse_save_texts'         => 'save_texts',
@@ -447,7 +448,19 @@ final class Actions {
 		$on = ! empty( $p['enabled'] );
 		\ApSemplice\Access::set_treasurer( (int) $person['wp_user_id'], $on );
 		Audit::log( $on ? 'treasurer.granted' : 'treasurer.revoked', 'person', (int) $person['id'] );
-		return array( Ui::url( 'apse-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora può registrare spese dall\'area riservata.' : 'Non può più registrare spese.' );
+		return array( Ui::url( 'apse-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora è tesoriere: può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata.' : 'Non è più tesoriere.' );
+	}
+
+	/** Staff dell'ente: può verificare gli accessi a tutti gli eventi (l'incasso resta una scelta per singolo evento). */
+	private static function set_staff( array $p ): array {
+		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
+		if ( ! $person || empty( $person['wp_user_id'] ) || ! MemberType::is_member( $person['type'] ) ) {
+			throw new \InvalidArgumentException( 'Solo un socio o volontario con accesso al sito può far parte dello staff.' );
+		}
+		$on = ! empty( $p['enabled'] );
+		\ApSemplice\Access::set_entity_staff( (int) $person['wp_user_id'], $on );
+		Audit::log( $on ? 'staff.granted' : 'staff.revoked', 'person', (int) $person['id'] );
+		return array( Ui::url( 'apse-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte dello staff: verifica gli accessi a tutti gli eventi.' : 'Non fa più parte dello staff dell\'ente.' );
 	}
 
 	// ---------- Attività ----------
