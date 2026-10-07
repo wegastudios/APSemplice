@@ -684,9 +684,12 @@ apse_ok( \ApSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( '
 apse_ok( \ApSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ), 'procedura: se il passo non c\'è, la partita IVA già impostata non si tocca' );
 \ApSemplice\Wizard::apply( array( 'has_vat' => '0', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
 apse_ok( ! \ApSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ) && null === \ApSemplice\Fiscal::membership_rate(), 'procedura: senza partita IVA il numero e l\'aliquota delle quote si azzerano' );
+$wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::FEATURES ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
 Settings::update( array( 'fivepm_enabled' => 1 ) );
 \ApSemplice\Wizard::apply( array( 'features_present' => '1' ) );
 apse_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: l\'elenco delle funzioni non tocca il 5x1000, che ha il suo passo' );
+Settings::update( $wz_feat );
+Settings::update( array( 'fivepm_enabled' => 1 ) );
 \ApSemplice\Wizard::apply( array( 'adempimenti_present' => '1' ) );
 apse_ok( 0 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: nel passo adempimenti, senza risposta sì il 5x1000 si spegne' );
 \ApSemplice\Wizard::apply( array( 'adempimenti_present' => '1', 'fivepm_enabled' => '1' ) );
