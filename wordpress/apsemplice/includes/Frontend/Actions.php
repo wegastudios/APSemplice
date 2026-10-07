@@ -35,6 +35,7 @@ final class Actions {
 		'apse_front_checkin_scan'   => 'do_checkin_scan',
 		'apse_front_door'           => 'do_door',
 		'apse_front_collect'        => 'do_collect',
+		'apse_front_new_member'     => 'do_new_member',
 		'apse_front_group'          => 'do_group_collect',
 		'apse_front_door_group'     => 'do_door_group',
 		'apse_front_notice'         => 'do_notice',
@@ -329,6 +330,33 @@ final class Actions {
 				return 'Registrazione annullata: ' . $name . '.';
 		}
 		return 'Nessun ingresso da annullare per ' . $name . '.';
+	}
+
+	/** Iscrizione di un nuovo socio ordinario dall'area riservata (tesoriere): bastano nome e cognome, il resto si completa dopo. */
+	public static function do_new_member( array $post ): string {
+		self::require_cap( 'apse_register_member', 0 );
+		$first = trim( sanitize_text_field( (string) ( $post['first_name'] ?? '' ) ) );
+		$last  = trim( sanitize_text_field( (string) ( $post['last_name'] ?? '' ) ) );
+		if ( '' === $first || '' === $last ) {
+			throw new \InvalidArgumentException( 'Indica nome e cognome.' );
+		}
+		$email = trim( (string) ( $post['email'] ?? '' ) );
+		if ( '' !== $email && ! is_email( $email ) ) {
+			throw new \InvalidArgumentException( 'L\'email non è valida.' );
+		}
+		$level = \ApSemplice\Levels::get( (int) ( $post['level_id'] ?? 0 ) );
+		if ( ! $level || empty( $level['active'] ) || MemberType::ORDINARY !== $level['base_type'] ) {
+			throw new \InvalidArgumentException( 'Scegli il tipo di socio.' );
+		}
+		$id = Plugin::people()->create(
+			array(
+				'type' => MemberType::ORDINARY, 'level_id' => (int) $level['id'], 'first_name' => $first, 'last_name' => $last,
+				'email' => $email, 'phone' => trim( (string) ( $post['phone'] ?? '' ) ),
+			)
+		);
+		\ApSemplice\Audit::log( 'person.registered_front', 'person', (int) $id );
+		$p = Plugin::people()->get( (int) $id );
+		return 'Socio registrato: ' . Plugin::people()->full_name( $p ) . ( ! empty( $p['card_number'] ) ? ' (tessera n. ' . $p['card_number'] . ')' : '' ) . '. Ora puoi incassare la quota associativa.';
 	}
 
 	/** Incasso del tesoriere dall'area riservata. */

@@ -362,6 +362,27 @@ final class Views {
 	}
 
 	/** Spese del tesoriere: modulo con scatto dello scontrino + le ultime spese registrate da lui (nessun saldo, nessun altro movimento). */
+	/** Nuova iscrizione (tesoriere): nome, cognome e tipo di socio; email e cellulare facoltativi. */
+	private static function section_new_member(): string {
+		if ( ! current_user_can( 'apse_register_member', 0 ) ) {
+			return '';
+		}
+		$opts = '';
+		foreach ( \ApSemplice\Levels::all( true ) as $lv ) {
+			if ( MemberType::ORDINARY === $lv['base_type'] ) {
+				$opts .= '<option value="' . (int) $lv['id'] . '">' . esc_html( $lv['name'] ) . '</option>';
+			}
+		}
+		if ( '' === $opts ) {
+			return '';
+		}
+		$fields = '<div class="apsf-fields"><label>Nome <input type="text" name="first_name" required autocomplete="off"></label><label>Cognome <input type="text" name="last_name" required autocomplete="off"></label></div>'
+			. '<div class="apsf-fields"><label>Email (facoltativa) <input type="email" name="email" autocomplete="off"></label><label>Cellulare (facoltativo) <input type="tel" name="phone" autocomplete="off"></label>'
+			. '<label>Tipo di socio <select name="level_id">' . $opts . '</select></label></div>';
+		return '<section class="apsf-section apsf-new-member"><h3>Nuova iscrizione</h3><p class="apsf-small apsf-muted">Registra un nuovo socio: bastano nome e cognome, i dati restanti si completano dopo. La quota si incassa qui sotto.</p>'
+			. self::form( 'apse_front_new_member', $fields, 'Iscrivi' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
 	/** Incassi del tesoriere: una persona, un conto e fino a tre voci (quota associativa, eventi, altre entrate). Il resto lo calcola la contabilità. */
 	private static function section_collect(): string {
 		if ( ! current_user_can( 'apse_collect', 0 ) ) {
@@ -500,7 +521,7 @@ final class Views {
 			}
 			$html .= '</ul>';
 		}
-		return self::section_collect() . self::section_group() . $html . '</section>';
+		return self::section_new_member() . self::section_collect() . self::section_group() . $html . '</section>';
 	}
 
 	/** Scelta dei documenti: file dal telefono o dal computer, oppure scatto con la fotocamera. */

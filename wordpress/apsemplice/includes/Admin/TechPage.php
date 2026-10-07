@@ -118,7 +118,88 @@ final class TechPage {
 		echo '</tbody></table><p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		echo '<p class="description">Per dare l\'accesso a una sola persona, crea o assegna il ruolo «Segreteria APS» dalla sua scheda in Rubrica.</p>';
+		self::roles_matrix();
+		self::roles_people();
 		Ui::footer();
+	}
+
+	/** Chi può fare cosa: i ruoli dell'ente. */
+	public static function matrix(): array {
+		$yes = '✓';
+		$no  = '—';
+		return array(
+			'columns' => array( 'Amministratore', 'Segreteria', 'Presidente e vice', 'Tesoriere', 'Volontario', 'Staff dell\'ente', 'Staff dell\'evento', 'Socio' ),
+			'rows'    => array(
+				'Impostazioni, pagamenti online, copia di sicurezza' => array( $yes, $no, $no, $no, $no, $no, $no, $no ),
+				'Soci e iscrizioni'                                   => array( $yes, $yes, $yes, 'iscrive', $no, $no, $no, $no ),
+				'Incassi e spese'                                     => array( $yes, $yes, $yes, $yes, $no, $no, $no, $no ),
+				'Contabilità, registri e adempimenti'                 => array( $yes, $yes, $yes, $no, $no, $no, $no, $no ),
+				'Comunicazioni agli iscritti'                         => array( $yes, $yes, $yes, $no, 'ai propri eventi', $no, $no, $no ),
+				'Eventi e attività'                                   => array( $yes, $yes, $yes, 'vende', 'propri', $no, $no, $no ),
+				'Verifica degli ingressi'                             => array( $yes, $yes, $yes, $no, 'propri eventi', 'tutti gli eventi', 'suo evento', $no ),
+				'Incasso del biglietto sul posto'                     => array( $yes, $yes, $yes, $yes, 'propri eventi', $no, 'se abilitato', $no ),
+				'Propri dati, tessera e pagamenti'                    => array( $yes, $yes, $yes, $yes, $yes, $yes, $yes, $yes ),
+			),
+		);
+	}
+
+	private static function roles_matrix(): void {
+		$m = self::matrix();
+		echo '<h2>Chi può fare cosa</h2><p class="description">Il presidente e il vicepresidente (in regola con la tessera) agiscono come la segreteria su tutto. Il tesoriere lavora dall\'area riservata: incassa, registra spese, iscrive soci e vende gli eventi, ma non vede comunicazioni né impostazioni. Il volontario non gestisce soldi: gestisce comunicazioni e staff dei propri eventi. Lo staff verifica gli ingressi: di tutti gli eventi se è staff dell\'ente, solo di quello indicato se è staff dell\'evento (e lì, se abilitato, può anche incassare).</p>';
+		echo '<div style="overflow-x:auto"><table class="widefat striped"><thead><tr><th></th>';
+		foreach ( $m['columns'] as $c ) {
+			echo '<th>' . esc_html( $c ) . '</th>';
+		}
+		echo '</tr></thead><tbody>';
+		foreach ( $m['rows'] as $label => $cells ) {
+			echo '<tr><td><strong>' . esc_html( $label ) . '</strong></td>';
+			foreach ( $cells as $c ) {
+				echo '<td>' . esc_html( $c ) . '</td>';
+			}
+			echo '</tr>';
+		}
+		echo '</tbody></table></div>';
+	}
+
+	/** Chi ha oggi un ruolo che dà permessi: cariche, segreteria, tesorieri e staff. */
+	public static function role_holders(): array {
+		$out = array();
+		foreach ( Plugin::people()->search() as $p ) {
+			$roles = array();
+			if ( in_array( (string) $p['board_role'], array( \ApSemplice\BoardRole::PRESIDENT, \ApSemplice\BoardRole::VICE_PRESIDENT ), true ) ) {
+				$roles[] = \ApSemplice\BoardRole::label( $p['board_role'] ) . ' (come la segreteria)';
+			}
+			if ( ! empty( $p['wp_user_id'] ) ) {
+				$u = (int) $p['wp_user_id'];
+				if ( user_can( $u, Plugin::CAP_OPS ) && ! user_can( $u, Plugin::CAP ) && $roles === array() ) {
+					$roles[] = 'Segreteria';
+				}
+				if ( \ApSemplice\Access::is_treasurer( $u ) ) {
+					$roles[] = 'Tesoriere';
+				}
+				if ( \ApSemplice\Access::is_entity_staff( $u ) ) {
+					$roles[] = 'Staff dell\'ente';
+				}
+			}
+			if ( $roles ) {
+				$out[] = array( 'person' => $p, 'roles' => $roles );
+			}
+		}
+		return $out;
+	}
+
+	private static function roles_people(): void {
+		$rows = self::role_holders();
+		echo '<h2>Chi ha un ruolo</h2>';
+		if ( ! $rows ) {
+			echo '<p class="description">Nessuno ha ancora un ruolo con permessi particolari. Si assegnano dalla scheda della persona in Rubrica.</p>';
+			return;
+		}
+		echo '<table class="widefat striped" style="max-width:700px"><thead><tr><th>Persona</th><th>Ruolo</th></tr></thead><tbody>';
+		foreach ( $rows as $r ) {
+			echo '<tr><td><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => (int) $r['person']['id'] ) ) ) . '">' . esc_html( trim( $r['person']['first_name'] . ' ' . $r['person']['last_name'] ) ) . '</a></td><td>' . esc_html( implode( ', ', $r['roles'] ) ) . '</td></tr>';
+		}
+		echo '</tbody></table>';
 	}
 
 	// ---------- Contabilità ----------

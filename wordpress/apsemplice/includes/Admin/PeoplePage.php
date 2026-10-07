@@ -176,6 +176,7 @@ final class PeoplePage {
 			self::panel_receipts( $p );
 			if ( current_user_can( \ApSemplice\Plugin::CAP ) ) {
 				self::panel_treasurer( $p );
+				self::panel_staff( $p );
 				self::panel_secretary( $p );
 			}
 			self::panel_guests( $p );
@@ -451,12 +452,27 @@ final class PeoplePage {
 		}
 		$on = \ApSemplice\Access::is_treasurer( (int) $p['wp_user_id'] );
 		echo '<div class="apse-card"><h2>Tesoriere</h2>';
-		echo '<p>' . ( $on ? '<strong class="apse-ok">Può registrare spese e incassare dall\'area riservata</strong>' : 'Non può registrare spese né incassare.' ) . '</p>';
+		echo '<p>' . ( $on ? '<strong class="apse-ok">Può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata</strong>' : 'Non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
 		Ui::form_open( 'apse_set_treasurer', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
 		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>';
 		Ui::form_close();
 		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina "Spese" (shortcode <code>[apsemplice_spese]</code>): scatta lo scontrino e registra la spesa. Vede solo le spese che ha registrato lui e non i saldi dei conti.</p></div>';
+	}
+
+	/** Staff dell'ente: verifica gli accessi a tutti gli eventi. Per l'incasso sul posto serve inoltre l'abilitazione sul singolo evento. */
+	private static function panel_staff( array $p ): void {
+		if ( ! MemberType::is_member( $p['type'] ) || empty( $p['wp_user_id'] ) ) {
+			return;
+		}
+		$on = \ApSemplice\Access::is_entity_staff( (int) $p['wp_user_id'] );
+		echo '<div class="apse-card"><h2>Staff dell\'ente</h2>';
+		echo '<p>' . ( $on ? '<strong class="apse-ok">Verifica gli accessi a tutti gli eventi</strong>' : 'Non fa parte dello staff dell\'ente.' ) . '</p>';
+		Ui::form_open( 'apse_set_staff', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ) );
+		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<button class="button">' . ( $on ? 'Togli dallo staff' : 'Aggiungi allo staff' ) . '</button>';
+		Ui::form_close();
+		echo '<p class="description">Lo staff dell\'ente può registrare gli ingressi di tutti gli eventi. Può anche essere staff di un singolo evento (scheda dell\'attività): solo lì si può abilitare l\'incasso del biglietto sul posto. Non gestisce soldi né comunicazioni.</p></div>';
 	}
 
 	private static function panel_guests( array $p ): void {

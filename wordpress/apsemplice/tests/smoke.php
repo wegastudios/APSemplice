@@ -3211,7 +3211,49 @@ Settings::update( array( 'board_councillors' => 8 ) );
 $people->set_board_role( $bp[9], 'councillor' );
 apse_ok( 10 === count( $people->board() ) && 'president' === $people->board()[0]['board_role'] && 'vice_president' === $people->board()[1]['board_role'], 'consiglio: il numero dei consiglieri si cambia nelle impostazioni; elenco ordinato per carica' );
 Settings::update( array( 'board_councillors' => 7 ) );
-$vol_b = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Vera', 'last_name' => 'Volontaria', 'email' => 'vera.volontaria@example.com' ) );
+// ruoli: presidente e vice come la segreteria; staff dell'ente; tesoriere (iscrizioni e vendita eventi)
+$bp0_u = (int) $people->get( $bp[0] )['wp_user_id'];
+$bp1_u = (int) $people->get( $bp[1] )['wp_user_id'];
+$bp5_u = (int) $people->get( $bp[5] )['wp_user_id'];
+apse_ok( user_can( $bp0_u, Plugin::CAP_OPS ) && user_can( $bp1_u, Plugin::CAP_OPS ) && ! user_can( $bp5_u, Plugin::CAP_OPS ) && ! user_can( $bp0_u, Plugin::CAP ), 'ruoli: presidente e vicepresidente agiscono come la segreteria, un consigliere no, nessuno diventa amministratore del sito' );
+apse_ok( Access::user_can( $bp0_u, 'apse_manage_event', $yoga ) && Access::user_can( $bp1_u, 'apse_collect', 0 ) && ! Access::user_can( $bp5_u, 'apse_collect', 0 ), 'ruoli: il presidente ha i permessi della segreteria, il consigliere nessuno' );
+apse_ok( 'https://x.example/' === Gatekeeper::filter_login_redirect( 'https://x.example/', '', get_userdata( $bp0_u ) ) && Gatekeeper::filter_login_redirect( 'https://x.example/', '', get_userdata( $bp5_u ) ) !== 'https://x.example/', 'ruoli: il presidente entra nell\'amministrazione, il consigliere resta nell\'area soci' );
+$people->set_board_role( $bp[0], null );
+apse_ok( ! user_can( $bp0_u, Plugin::CAP_OPS ), 'ruoli: tolta la carica, i permessi della segreteria finiscono' );
+$people->set_board_role( $bp[0], 'president' );
+$stf_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sara', 'last_name' => 'Staffer', 'email' => 'sara.staffer@example.com' ) );
+$people->set_membership( $stf_p, Settings::membership_year()->label(), true );
+$stf_u = (int) $people->get( $stf_p )['wp_user_id'];
+apse_ok( ! Access::user_can( $stf_u, 'apse_manage_event', $yoga ), 'staff: un socio qualunque non verifica gli ingressi' );
+Access::set_entity_staff( $stf_u, true );
+apse_ok( Access::user_can( $stf_u, 'apse_manage_event', $yoga ) && ! Access::user_can( $stf_u, 'apse_door_cash', $yoga ) && ! Access::user_can( $stf_u, 'apse_collect', 0 ) && ! Access::user_can( $stf_u, 'apse_add_expense', 0 ) && ! Access::user_can( $stf_u, 'apse_register_member', 0 ), 'staff dell\'ente: verifica gli ingressi di tutti gli eventi, non incassa né registra spese né iscrive' );
+Access::set_entity_staff( $stf_u, false );
+apse_ok( ! Access::user_can( $stf_u, 'apse_manage_event', $yoga ), 'staff: tolto il ruolo, niente più accessi' );
+Access::set_treasurer( $u_tre, true );
+apse_ok( Access::user_can( $u_tre, 'apse_door_cash', $yoga ) && Access::user_can( $u_tre, 'apse_register_member', 0 ) && Access::user_can( $u_tre, 'apse_collect', 0 ) && ! Access::user_can( $u_tre, 'apse_manage_event', $yoga ) && ! Access::user_can( $stf_u, 'apse_door_cash', $yoga ), 'tesoriere: incassa, registra spese, iscrive e vende gli eventi; non verifica gli ingressi' );
+$nm_lv = 0;
+$nm_fl = 0;
+foreach ( \ApSemplice\Levels::all( true ) as $nm_l ) {
+	if ( 'ordinary' === $nm_l['base_type'] && ! $nm_lv ) {
+		$nm_lv = (int) $nm_l['id'];
+	}
+	if ( 'founder' === $nm_l['base_type'] && ! $nm_fl ) {
+		$nm_fl = (int) $nm_l['id'];
+	}
+}
+wp_set_current_user( $u_tre );
+$nm_msg = \ApSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Nino', 'last_name' => 'Nuovoiscritto', 'level_id' => (string) $nm_lv ) );
+$nm_found = $people->search( array( 'q' => 'Nuovoiscritto' ) );
+apse_ok( false !== strpos( $nm_msg, 'Socio registrato' ) && 1 === count( $nm_found ) && 'ordinary' === $nm_found[0]['type'], 'tesoriere: iscrive un nuovo socio dall\'area riservata con solo nome e cognome' );
+apse_ok( null !== apse_throws( function () use ( $nm_fl ) { \ApSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Fausto', 'last_name' => 'Fondatore', 'level_id' => (string) $nm_fl ) ); } ) && null !== apse_throws( function () use ( $nm_lv ) { \ApSemplice\Frontend\Actions::do_new_member( array( 'first_name' => '', 'last_name' => 'Senza', 'level_id' => (string) $nm_lv ) ); } ), 'tesoriere: non crea fondatori né persone senza nome' );
+wp_set_current_user( $stf_u );
+apse_ok( null !== apse_throws( function () use ( $nm_lv ) { \ApSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Abusivo', 'last_name' => 'Test', 'level_id' => (string) $nm_lv ) ); } ), 'iscrizione dall\'area riservata: chi non è tesoriere non può' );
+wp_set_current_user( 1 );
+Access::set_treasurer( $u_tre, false );
+$rm = Admin\TechPage::matrix();
+$rh = array_map( function ( $h ) { return $h['roles']; }, Admin\TechPage::role_holders() );
+apse_ok( 8 === count( $rm['columns'] ) && 'Presidente e vice' === $rm['columns'][2] && count( $rh ) >= 2, 'ruoli: la pagina elenca la matrice dei permessi e chi ha un ruolo' );
+$vol_b =$people->create( array( 'type' => 'volunteer', 'first_name' => 'Vera', 'last_name' => 'Volontaria', 'email' => 'vera.volontaria@example.com' ) );
 $exp_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Scaduto', 'email' => 'ugo.scaduto@example.com' ) );
 apse_ok( null !== apse_throws( function () use ( $people, $vol_b ) { $people->set_board_role( $vol_b, 'councillor' ); } ) && null !== apse_throws( function () use ( $people, $guest_door ) { $people->set_board_role( $guest_door, 'councillor' ); } ), 'consiglio: solo soci fondatori e ordinari (non volontari né ospiti)' );
 apse_ok( false !== strpos( (string) apse_throws( function () use ( $people, $exp_b ) { $people->set_board_role( $exp_b, 'president' ); } ), 'in regola' ), 'consiglio: serve la tessera in regola' );

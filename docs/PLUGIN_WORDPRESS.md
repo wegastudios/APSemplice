@@ -581,3 +581,17 @@ Due voci di menu separate sulla **stessa prima nota** (che è unica e si usa in 
 - **Contabilità** — per anno solare e per gli adempimenti: *Anno solare* (stato dell'anno, prima nota dell'anno, rendiconto e report), *Anni solari* (apertura e chiusura), *Report*, *Rendiconto*, *Adempimenti* (5x1000; con la partita IVA anche l'indicazione per esportare la prima nota con aliquota e IVA per il commercialista).
 
 Nella configurazione guidata le parti sono indipendenti: «Soldi e prima nota», «Conti e fondi», «Contabilità» (dipende dalla prima nota) e «Bilanci e rendiconto» (dipende dalla contabilità). Se la contabilità la tiene un altro, si risponde no e resta solo la prima nota con incassi, spese e conti: il resto non si vede e non si configura. Spegnere una parte non cancella nulla.
+
+## Ruoli e permessi
+
+I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Ruoli dell'ente:
+- **Amministratore** del sito: tutto, comprese impostazioni, pagamenti online e copia di sicurezza.
+- **Segreteria** (ruolo «Segreteria APS», si assegna dalla scheda del socio): gestisce soci, attività, incassi, contabilità, registri e comunicazioni dall'amministrazione, senza essere amministratore del sito e senza impostazioni.
+- **Presidente e vicepresidente** (cariche del consiglio, in regola con la tessera): agiscono come la segreteria su tutto; se la carica o la tessera finiscono, i permessi finiscono con esse. Entrano nell'amministrazione come la segreteria.
+- **Tesoriere** (scheda del socio, solo amministratori): dall'area riservata incassa, registra le spese, **iscrive nuovi soci** (solo ordinari, bastano nome e cognome) e **vende gli eventi** (incasso sul posto); non vede comunicazioni né impostazioni.
+- **Volontario**: non gestisce soldi; per le attività di cui è referente gestisce comunicazioni agli iscritti, staff e ingressi.
+- **Staff dell'ente** (scheda del socio, assegnabile anche dalla segreteria): verifica gli ingressi di tutti gli eventi; non incassa e non gestisce soldi né comunicazioni.
+- **Staff dell'evento** (scheda dell'attività): verifica gli ingressi di quell'evento e, se l'incasso è abilitato per lui, incassa il biglietto sul posto.
+- **Socio**: i propri dati, tessera, prenotazioni e pagamenti.
+
+La pagina Impostazioni → Ruoli e accessi riporta la matrice «chi può fare cosa» e l'elenco di chi ha un ruolo.

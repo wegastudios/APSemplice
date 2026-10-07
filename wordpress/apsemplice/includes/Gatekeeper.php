@@ -23,7 +23,7 @@ final class Gatekeeper {
 
 	private static function current_is_member_only(): bool {
 		$user = wp_get_current_user();
-		return $user && $user->exists() && self::is_member_only( (array) $user->roles );
+		return $user && $user->exists() && self::is_member_only( (array) $user->roles ) && ! user_can( $user, Plugin::CAP_OPS ); // presidente e vicepresidente lavorano come la segreteria
 	}
 
 	/** Pagina dell'area riservata scelta nelle impostazioni, altrimenti la home. */
@@ -43,7 +43,7 @@ final class Gatekeeper {
 	}
 
 	public static function filter_login_redirect( $redirect_to, $requested, $user ) {
-		if ( $user instanceof \WP_User && self::is_member_only( (array) $user->roles ) ) {
+		if ( $user instanceof \WP_User && self::is_member_only( (array) $user->roles ) && ! user_can( $user, Plugin::CAP_OPS ) ) {
 			return self::area_url();
 		}
 		return $redirect_to;
