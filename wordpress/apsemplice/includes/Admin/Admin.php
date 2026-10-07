@@ -17,6 +17,7 @@ final class Admin {
 		LicenseNotice::register();
 		RegistersActions::register();
 		TechActions::register();
+		\ApSemplice\Wizard::register();
 		\ApSemplice\Docs::register();
 	}
 
@@ -37,7 +38,7 @@ final class Admin {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits' );
+	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities' );
@@ -87,6 +88,7 @@ final class Admin {
 			array( 'apse-app', 'App e notifiche', array( AppPage::class, 'render' ) ),
 			array( 'apse-roles', 'Ruoli e accessi', array( TechPage::class, 'render_roles' ) ),
 			array( 'apse-limits', 'Limiti e soglie', array( LimitsPage::class, 'render' ) ),
+			array( 'apse-wizard', 'Configurazione guidata', array( WizardPage::class, 'render' ) ),
 			array( 'apse-acct', 'Opzioni contabili', array( TechPage::class, 'render_accounting' ) ),
 			array( 'apse-fivepm', '5x1000', array( FivePmPage::class, 'render' ) ),
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),

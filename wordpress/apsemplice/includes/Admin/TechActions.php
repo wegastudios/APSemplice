@@ -23,6 +23,8 @@ final class TechActions {
 		'apse_save_bank'  => 'save_bank',
 		'apse_save_limits' => 'save_limits',
 		'apse_reset_limits' => 'reset_limits',
+		'apse_wizard_save' => 'wizard_save',
+		'apse_wizard_skip' => 'wizard_skip',
 	);
 
 	public static function register(): void {
@@ -184,6 +186,27 @@ final class TechActions {
 		Settings::update( array( 'limits' => array() ) );
 		Audit::log( 'limits.reset', 'settings' );
 		return array( Ui::url( 'apse-limits' ), 'Ripristinati i valori predefiniti.' );
+	}
+
+	/** Configurazione guidata: applica le scelte e porta dove serve ancora qualcosa (chiavi dei pagamenti, IBAN). */
+	public static function wizard_save( array $p ): array {
+		$done = \ApSemplice\Wizard::apply( $p );
+		$next = Ui::url( 'apse' );
+		$more = '';
+		$prov = (string) Settings::get( 'payment_provider' );
+		if ( in_array( $prov, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::BOTH ), true ) ) {
+			$next = Ui::url( 'apse-payments' );
+			$more = ' Ora inserisci le chiavi del fornitore scelto.';
+		} elseif ( Settings::get( 'bank_enabled' ) && ! \ApSemplice\Bank::enabled() ) {
+			$next = Ui::url( 'apse-payments' );
+			$more = ' Ora aggiungi almeno un IBAN per il bonifico.';
+		}
+		return array( $next, 'Configurazione completata. ' . implode( ' ', $done ) . $more );
+	}
+
+	public static function wizard_skip( array $p ): array {
+		\ApSemplice\Wizard::mark( \ApSemplice\Wizard::SKIPPED );
+		return array( Ui::url( 'apse' ), 'Configurazione guidata rimandata: la riapri quando vuoi da Impostazioni → Generale.' );
 	}
 
 	public static function save_acct( array $p ): array {

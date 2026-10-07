@@ -57,6 +57,9 @@ final class DashboardPage {
 				echo '<div class="notice notice-warning inline"><p>Assicurazione: ' . esc_html( $msg[ $rc ] ) . '. <a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri le assicurazioni</a>.</p></div>';
 			}
 		}
+		if ( current_user_can( \ApSemplice\Plugin::CAP ) && \ApSemplice\Wizard::pending() ) {
+			echo '<div class="notice notice-info inline"><p><strong>Benvenuto.</strong> Configura il plugin in pochi minuti: ente, quote, pagamenti e pagine del sito. <a class="button button-primary" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a></p></div>';
+		}
 		if ( \ApSemplice\Guide::show_banner( get_current_user_id() ) ) {
 			$gp = \ApSemplice\Guide::progress();
 			echo '<div class="notice notice-info inline"><p>Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'apse-guide' ) ) . '">Apri la guida</a>.</p></div>';

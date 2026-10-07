@@ -596,6 +596,30 @@ apse_ok( (int) $saved_pages['area'] === (int) Settings::get( 'member_area_page_i
 apse_ok( false !== strpos( $pages->invoke( null, array() )[1], 'esistono già' ), 'pagine standard: non si duplicano' );
 apse_ok( false !== strpos( do_shortcode( get_post( $saved_pages['attivita'] )->post_content ), 'Yoga' ), 'la pagina Attività mostra le attività' );
 
+// Configurazione guidata
+$wz_ent = (string) Settings::get( 'entity_type' );
+$wz_mem = (string) Settings::get( 'member_term' );
+$wz_old = array( 'association_name' => Settings::get( 'association_name' ), 'tax_code' => Settings::get( 'tax_code' ), 'payment_provider' => Settings::get( 'payment_provider' ), 'bank_enabled' => Settings::get( 'bank_enabled' ) );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'entity_type' => 'astronave', 'member_term' => 'socio' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'tax_code' => '123' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'payment_choice' => 'bitcoin' ) ); } ), 'configurazione guidata: ente, codice fiscale e pagamento non validi si rifiutano' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce' ) ); } ) || \ApSemplice\WooBridge::active(), 'configurazione guidata: WooCommerce si sceglie solo se è attivo' );
+$wz_done = \ApSemplice\Wizard::apply( array(
+	'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'association_name' => 'Circolo Prova', 'tax_code' => '12345678901', 'social_year_start_month' => '9',
+	'payment_choice' => 'stripe_paypal', 'bank_enabled' => '1', 'pages_present' => '1', 'pages' => array( 'calendario', 'inesistente' ),
+) );
+apse_ok( 'Circolo Prova' === Settings::get( 'association_name' ) && '12345678901' === Settings::get( 'tax_code' ) && 'stripe_paypal' === Settings::get( 'payment_provider' ) && 1 === (int) Settings::get( 'bank_enabled' ) && $wz_ent === Settings::get( 'entity_type' ), 'configurazione guidata: ente e pagamenti applicati' );
+$wz_pages = \ApSemplice\Pages::existing();
+apse_ok( isset( $wz_pages['calendario'] ) && ! isset( $wz_pages['inesistente'] ) && 'members' === get_post_meta( $wz_pages['calendario'], '_aps_access', true ) && false !== strpos( implode( ' ', $wz_done ), 'Calendario' ), 'configurazione guidata: crea solo le pagine note, con l\'accesso giusto' );
+\ApSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
+apse_ok( count( \ApSemplice\Pages::existing() ) === count( $wz_pages ), 'configurazione guidata: le pagine esistenti non si duplicano' );
+apse_ok( \ApSemplice\Wizard::DONE === \ApSemplice\Wizard::status() && ! \ApSemplice\Wizard::pending(), 'configurazione guidata: risulta completata' );
+\ApSemplice\Wizard::mark( \ApSemplice\Wizard::SKIPPED );
+ob_start();
+Admin\WizardPage::render();
+$wz_html = (string) ob_get_clean();
+apse_ok( false !== strpos( $wz_html, 'docs.stripe.com/keys' ) && false !== strpos( $wz_html, 'target="_blank"' ) && false !== strpos( $wz_html, 'rel="noopener noreferrer"' ) && false !== strpos( $wz_html, 'Applica la configurazione' ), 'configurazione guidata: pagina con i tutorial in una nuova finestra' );
+apse_ok( in_array( 'apse-wizard', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
+Settings::update( $wz_old );
+
 // Elementor (installato nel test): i widget si registrano e i controlli si costruiscono
 apse_ok( class_exists( '\Elementor\Plugin' ), 'Elementor è presente nell\'ambiente di test' );
 $el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types();
@@ -4252,6 +4276,14 @@ if ( ! \ApSemplice\WooBridge::active() ) {
 	apse_ok( ! \ApSemplice\WooBridge::enabled() && '' === Plugin::payments()->provider(), 'woocommerce: spento finché non lo attivi dalle impostazioni' );
 	Admin\TechActions::save_woo( array( 'woo_enabled' => '1', 'woo_default_product' => (string) $wc_def ) );
 	apse_ok( \ApSemplice\WooBridge::enabled() && 'woocommerce' === Plugin::payments()->provider() && $wc_def === (int) Settings::get( 'woo_default_product' ), 'woocommerce: attivato dalle impostazioni, al posto di Stripe e PayPal' );
+	// configurazione guidata con WooCommerce: crea e collega i prodotti
+	$wz_r = \ApSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce', 'product_level' => array( $lv_ordn => 'new' ), 'product_default' => 'new' ) );
+	$wz_new = \ApSemplice\WooLinks::product_id( 'level', $lv_ordn );
+	$wz_prod = wc_get_product( $wz_new );
+	apse_ok( $wz_new > 0 && $wz_new !== $wc_q && $wz_prod && $wz_prod->is_type( 'simple' ) && $wz_prod->is_virtual() && 'publish' === $wz_prod->get_status() && (int) Settings::get( 'woo_default_product' ) !== $wc_def && 'woocommerce' === Settings::get( 'payment_provider' ), 'configurazione guidata: crea i prodotti WooCommerce e li collega a quota e voce generica' );
+	apse_ok( $wz_new > 0 && count( $wz_r ) >= 3, 'configurazione guidata: riepilogo di ciò che è stato fatto' );
+	\ApSemplice\WooLinks::set( 'level', $lv_ordn, $wc_q );
+	Settings::update( array( 'woo_default_product' => $wc_def ) );
 	// una voce: la quota del socio
 	$wc_p   = $mkb( 'Walter', 'Negozio' );
 	$wc_uid = (int) $people->get( $wc_p )['wp_user_id'];

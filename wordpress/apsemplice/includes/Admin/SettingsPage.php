@@ -56,6 +56,7 @@ final class SettingsPage {
 	public static function render(): void {
 		$s = Settings::all();
 		Ui::header( 'Impostazioni' );
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a> <span class="description">Ente, quote, funzioni, pagamenti e pagine del sito in un\'unica pagina.</span></p>';
 		Ui::form_open( 'apse_save_settings', Ui::url( 'apse-settings' ) );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Denominazione</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';

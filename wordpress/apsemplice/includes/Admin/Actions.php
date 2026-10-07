@@ -1088,30 +1088,7 @@ final class Actions {
 
 	/** Crea le pagine standard (area soci, area volontari, attività) se non esistono già. */
 	private static function create_pages( array $p ): array {
-		$defs  = array(
-			'area'      => array( 'Area soci', '[apsemplice_area_soci]' ),
-			'volontari' => array( 'Area volontari', '[apsemplice_area_volontari]' ),
-			'attivita'  => array( 'Attività ed eventi', '[apsemplice_attivita]' ),
-		);
-		$saved = (array) get_option( 'apse_pages', array() );
-		$made  = array();
-		foreach ( $defs as $key => $d ) {
-			if ( ! empty( $saved[ $key ] ) && get_post_status( (int) $saved[ $key ] ) ) {
-				continue;
-			}
-			$id = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $d[0], 'post_content' => $d[1] ) );
-			if ( $id && ! is_wp_error( $id ) ) {
-				$saved[ $key ] = (int) $id;
-				$made[]        = $d[0];
-				if ( 'volontari' === $key ) {
-					update_post_meta( $id, '_aps_access', 'volunteers' ); // la pagina dei volontari è visibile solo a loro
-				}
-			}
-		}
-		update_option( 'apse_pages', $saved );
-		if ( ! empty( $saved['area'] ) && 0 === (int) Settings::get( 'member_area_page_id' ) ) {
-			Settings::update( array( 'member_area_page_id' => (int) $saved['area'] ) );
-		}
+		$made = \ApSemplice\Pages::create( array( 'area', 'volontari', 'attivita' ) );
 		return array( Ui::url( 'apse-settings' ), $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' );
 	}
 
