@@ -792,7 +792,7 @@ $el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types()
 apse_ok( isset( $el_widgets['apsemplice_view'] ) && isset( $el_widgets['apsemplice_reserved'] ), 'Elementor: widget APSemplice registrati' );
 apse_ok( array_key_exists( 'view', $el_widgets['apsemplice_view']->get_controls() ) && array_key_exists( 'rule', $el_widgets['apsemplice_reserved']->get_controls() ), 'Elementor: i controlli dei widget si costruiscono' );
 $el_opts = $el_widgets['apsemplice_view']->get_controls()['view']['options'] ?? array();
-apse_ok( isset( $el_opts['segreteria'], $el_opts['tesoriere'], $el_opts['ingressi'] ) && 0 === strpos( $el_opts['tessera'], 'Soci · ' ) && 0 === strpos( $el_opts['bonifico'], 'Pubblico · ' ), 'Elementor: il widget propone le viste per area' );
+apse_ok( isset( $el_opts['segreteria'], $el_opts['tesoriere'], $el_opts['ingressi'] ) && 0 === strpos( $el_opts['tessera'], 'Soci · ' ) && 0 === strpos( $el_opts['bonifico'], 'Pubblico · ' ), 'Elementor: il widget propone le viste per area ' . substr( wp_json_encode( array_slice( (array) $el_opts, 0, 3 ) ) . ' ' . wp_json_encode( array_keys( $el_widgets['apsemplice_view']->get_controls()['view'] ?? array() ) ), 0, 300 ) );
 wp_set_current_user( 1 );
 
 // ---------- Cancellazioni, cambio di nominativo, pagamenti online (configurazione) ----------
