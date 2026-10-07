@@ -77,7 +77,7 @@ final class WizardPage {
 		$woo  = WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
-		echo '<p>Poche domande per tenere solo ciò che ti serve: prima scegli quali parti del gestionale usare, poi configuri solo quelle. Nulla viene cancellato: una parte spenta si riaccende riaprendo questa procedura da Impostazioni → Generale. Le funzioni facoltative restano spente se non le scegli.</p>';
+		echo '<p>Poche domande per tenere solo ciò che ti serve: prima scegli quali parti del gestionale usare, poi configuri solo quelle. Nulla viene cancellato: una parte spenta si riaccende riaprendo questa procedura da Impostazioni → Soci e quote. Le funzioni facoltative restano spente se non le scegli.</p>';
 		Ui::form_open( 'apse_wizard_save', Ui::url( 'apse-wizard' ), false, 'apse-wizard' );
 
 		// 1. Ente
