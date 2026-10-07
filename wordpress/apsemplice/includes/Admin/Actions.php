@@ -473,11 +473,16 @@ final class Actions {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Evento non trovato.' );
 		}
-		if ( empty( $p['confirm'] ) ) {
-			throw new \InvalidArgumentException( 'Spunta la conferma: l\'eliminazione è definitiva.' );
-		}
-		if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( trim( (string) $a['name'] ), 'UTF-8' ) ) {
-			throw new \InvalidArgumentException( 'Il nome scritto non corrisponde a quello dell\'evento: l\'evento non è stato eliminato.' );
+		$free = \ApSemplice\ActivityReset::activity_is_free( $id ); // nessun movimento in prima nota: basta una sola conferma (il pulsante della pagina)
+		if ( ! $free ) {
+			if ( empty( $p['confirm'] ) ) {
+				throw new \InvalidArgumentException( 'Spunta la conferma: l\'eliminazione è definitiva.' );
+			}
+			if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( trim( (string) $a['name'] ), 'UTF-8' ) ) {
+				throw new \InvalidArgumentException( 'Il nome scritto non corrisponde a quello dell\'evento: l\'evento non è stato eliminato.' );
+			}
+		} elseif ( empty( $p['mode'] ) ) {
+			$p['mode'] = \ApSemplice\ActivityReset::REFUND;
 		}
 		$s    = \ApSemplice\ActivityReset::delete( $id, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ), 'void_costs' => ! empty( $p['void_costs'] ) ) );
 		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . (int) $s['sessions'] . ' date e ' . (int) $s['bookings'] . ' prenotazioni attive cancellate.';
@@ -514,12 +519,17 @@ final class Actions {
 		if ( ! $pre ) {
 			throw new \InvalidArgumentException( 'Iscrizione non trovata.' );
 		}
-		if ( empty( $p['confirm'] ) ) {
-			throw new \InvalidArgumentException( 'Spunta la conferma: la cancellazione è definitiva.' );
-		}
-		$who = Plugin::people()->full_name( $pre['person'] );
-		if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( $who, 'UTF-8' ) ) {
-			throw new \InvalidArgumentException( 'Il nome scritto non corrisponde: l\'iscrizione non è stata cancellata.' );
+		$free = 0 === (int) $pre['income']['count']; // nessun incasso collegato: la prima nota non cambia, basta una sola conferma
+		$who  = Plugin::people()->full_name( $pre['person'] );
+		if ( ! $free ) {
+			if ( empty( $p['confirm'] ) ) {
+				throw new \InvalidArgumentException( 'Spunta la conferma: la cancellazione è definitiva.' );
+			}
+			if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( $who, 'UTF-8' ) ) {
+				throw new \InvalidArgumentException( 'Il nome scritto non corrisponde: l\'iscrizione non è stata cancellata.' );
+			}
+		} elseif ( empty( $p['mode'] ) ) {
+			$p['mode'] = \ApSemplice\ActivityReset::REFUND;
 		}
 		$s    = \ApSemplice\ActivityReset::delete_registration( $aid, $pid, $sid, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ) ) );
 		$msg  = 'Iscrizione di ' . $s['name'] . ' cancellata.';

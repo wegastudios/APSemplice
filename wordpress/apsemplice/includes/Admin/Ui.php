@@ -67,6 +67,21 @@ final class Ui {
 		wp_nonce_field( $action );
 	}
 
+	/**
+	 * Pulsante che invia subito un'azione dopo una sola conferma del browser (per le operazioni che non toccano la prima nota).
+	 *
+	 * @param array<string,scalar> $fields campi nascosti
+	 */
+	public static function confirm_button( string $action, string $back_url, array $fields, string $label, string $confirm_text, string $style = '' ): string {
+		$html = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline" onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm_text ) ) . ');">'
+			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( $back_url ) . '">'
+			. wp_nonce_field( $action, '_wpnonce', true, false );
+		foreach ( $fields as $k => $v ) {
+			$html .= '<input type="hidden" name="' . esc_attr( (string) $k ) . '" value="' . esc_attr( (string) $v ) . '">';
+		}
+		return $html . '<button class="button button-small"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>' . esc_html( $label ) . '</button></form>';
+	}
+
 	public static function form_close(): void {
 		echo '</form>';
 	}
