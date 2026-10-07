@@ -141,6 +141,10 @@ final class IncomePage {
 		echo '<div id="apse-cash" class="apse-card"><h3>Contanti</h3>'
 			. '<p><label>Contanti ricevuti <input type="text" id="apse-tendered" inputmode="decimal" placeholder="importo esatto"> €</label></p>'
 			. '<p id="apse-quick"></p><p id="apse-change" class="apse-change"></p></div>';
+		$vat = Ui::vat_row( null, \ApSemplice\Fiscal::default_mode(), 'Gli importi', true );
+		if ( '' !== $vat ) {
+			echo '<table class="form-table"><tbody>' . $vat . '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
 		echo '<p><label>N. ricevuta (facoltativo) <input type="text" name="document_ref" maxlength="80"></label></p>';
 		submit_button( 'Registra incasso' );
 		Ui::form_close();

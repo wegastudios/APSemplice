@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'apse_db_version';
-	const DB_VERSION        = '33';
+	const DB_VERSION        = '34';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -332,6 +332,7 @@ final class Install {
   kind varchar(20) NOT NULL DEFAULT 'course',
   fee_cents bigint(20) NOT NULL DEFAULT 0,
   guest_fee_cents bigint(20) DEFAULT NULL,
+  vat_rate tinyint(3) DEFAULT NULL,
   cancellable tinyint(1) NOT NULL DEFAULT 0,
   cancel_policy varchar(4) DEFAULT NULL,
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
@@ -380,6 +381,8 @@ final class Install {
   social_year varchar(12) DEFAULT NULL,
   document_ref varchar(80) DEFAULT NULL,
   discount_cents bigint(20) NOT NULL DEFAULT 0,
+  vat_rate tinyint(3) DEFAULT NULL,
+  vat_cents bigint(20) NOT NULL DEFAULT 0,
   payer_person_id bigint(20) unsigned DEFAULT NULL,
   receipt_id varchar(40) DEFAULT NULL,
   import_batch bigint(20) unsigned DEFAULT NULL,

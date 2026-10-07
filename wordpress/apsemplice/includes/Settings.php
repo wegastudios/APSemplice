@@ -89,7 +89,8 @@ final class Settings {
 			'fiscal_regime'           => 'ordinario', // regime fiscale (vedi Fiscal)
 			'vat_default_rate'        => 22,        // aliquota IVA proposta (%)
 			'vat_prices_mode'         => 'incl',    // importi inseriti IVA compresa ('incl') o esclusa ('escl')
-			'legal_address'           => '',        // sede legale
+			'vat_membership_rate'     => '',        // aliquota IVA delle quote associative: vuoto = fuori campo IVA
+			'legal_address'           => '',       // sede legale
 			'legal_zip'               => '',
 			'legal_city'              => '',
 			'legal_province'          => '',
@@ -205,7 +206,8 @@ final class Settings {
 		$clean['vat_number']              = mb_substr( Fiscal::normalize_vat( (string) $clean['vat_number'] ), 0, 11 );
 		$clean['fiscal_regime']           = isset( Fiscal::regimes()[ (string) $clean['fiscal_regime'] ] ) ? (string) $clean['fiscal_regime'] : Fiscal::ORDINARY;
 		$clean['vat_default_rate']        = max( 0, min( 30, (int) $clean['vat_default_rate'] ) );
-		$clean['vat_prices_mode']         = Fiscal::EXCLUDED === (string) $clean['vat_prices_mode'] ? Fiscal::EXCLUDED : Fiscal::INCLUDED;
+		$clean['vat_membership_rate']     = null === Fiscal::clean_rate( $clean['vat_membership_rate'] ) ? '' : Fiscal::clean_rate( $clean['vat_membership_rate'] );
+		$clean['vat_prices_mode']       = Fiscal::EXCLUDED === (string) $clean['vat_prices_mode'] ? Fiscal::EXCLUDED : Fiscal::INCLUDED;
 		foreach ( array( 'legal_address' => 160, 'legal_zip' => 10, 'legal_city' => 80, 'legal_province' => 40, 'runts_number' => 80, 'pec' => 120 ) as $k => $max ) {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, $max );
 		}

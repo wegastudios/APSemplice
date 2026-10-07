@@ -75,7 +75,7 @@ final class LedgerPage {
 			echo '<tr><td>' . Ui::date( $r['tx_date'] ) . '</td><td><strong>' . esc_html( $title ) . '</strong><br><span class="description">' . esc_html( implode( ' · ', $extra ) ) . '</span></td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<td>' . esc_html( trim( ( $r['person_card'] ? 'n.' . $r['person_card'] . ' ' : '' ) . $r['person_name'] ) ) . ( ! empty( $r['payer_name'] ) ? ' <span class="description">(pagato da ' . esc_html( $r['payer_name'] ) . ')</span>' : '' ) . '</td>';
 			echo '<td>' . esc_html( $r['account_name'] . ' · ' . ( Labels::methods()[ $r['method'] ] ?? $r['method'] ) ) . '</td>';
-			echo '<td class="' . esc_attr( $cls ) . '">' . esc_html( $sign . ' ' . Money::format( (int) $r['amount_cents'] ) ) . '</td><td>';
+			echo '<td class="' . esc_attr( $cls ) . '">' . esc_html( $sign . ' ' . Money::format( (int) $r['amount_cents'] ) ) . ( (int) $r['vat_cents'] > 0 ? '<br><span class="description">di cui IVA ' . (int) $r['vat_rate'] . '%: ' . esc_html( Money::format( (int) $r['vat_cents'] ) ) . '</span>' : '' ) . '</td><td>';
 			if ( ! Labels::is_transfer( $r['type'] ) ) {
 				self::attachments_cell( (int) $r['id'], $att[ (int) $r['id'] ] ?? array(), $here );
 			}

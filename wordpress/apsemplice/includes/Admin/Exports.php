@@ -83,17 +83,21 @@ final class Exports {
 	}
 
 	public static function ledger( string $from, string $to ): array {
-		$csv = self::line( array( 'Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita' ) );
+		$vat = \ApSemplice\Fiscal::vat_applies();
+		$csv = self::line( array_merge( array( 'Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita' ), $vat ? array( 'Aliquota IVA', 'Imponibile', 'IVA' ) : array() ) );
 		foreach ( Plugin::ledger()->rows( $from, $to, null, true ) as $r ) {
 			$plus = Labels::sign( $r['type'] ) > 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
 			$minus = Labels::sign( $r['type'] ) < 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
-			$csv  .= self::line(
-				array(
-					self::d( $r['tx_date'] ), Labels::tx_types()[ $r['type'] ], $r['account_name'], Labels::methods()[ $r['method'] ] ?? $r['method'],
-					Labels::is_transfer( $r['type'] ) ? 'Giroconto' : $r['category_name'], $r['activity_name'], $r['person_card'], $r['person_name'],
-					$r['description'], $r['competence_month'], $r['document_ref'], $plus, $minus,
-				)
+			$cells = array(
+				self::d( $r['tx_date'] ), Labels::tx_types()[ $r['type'] ], $r['account_name'], Labels::methods()[ $r['method'] ] ?? $r['method'],
+				Labels::is_transfer( $r['type'] ) ? 'Giroconto' : $r['category_name'], $r['activity_name'], $r['person_card'], $r['person_name'],
+				$r['description'], $r['competence_month'], $r['document_ref'], $plus, $minus,
 			);
+			if ( $vat ) { // aliquota, imponibile e IVA contenuta (l'importo della riga è sempre quello lordo)
+				$has_rate = null !== $r['vat_rate'] && '' !== $r['vat_rate'];
+				$cells    = array_merge( $cells, Labels::is_transfer( $r['type'] ) ? array( '', '', '' ) : array( $has_rate ? (string) (int) $r['vat_rate'] . '%' : 'fuori campo', $has_rate ? Money::plain( (int) $r['amount_cents'] - (int) $r['vat_cents'] ) : '', $has_rate ? Money::plain( (int) $r['vat_cents'] ) : '' ) );
+			}
+			$csv .= self::line( $cells );
 		}
 		return array( "prima-nota-$from-$to.csv", $csv );
 	}

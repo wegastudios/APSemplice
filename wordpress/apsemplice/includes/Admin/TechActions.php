@@ -217,7 +217,7 @@ final class TechActions {
 			'social_year_start_month' => (int) ( $p['social_year_start_month'] ?? 9 ),
 			'legal_address' => $txt( 'legal_address' ), 'legal_zip' => $txt( 'legal_zip' ), 'legal_city' => $txt( 'legal_city' ), 'legal_province' => $txt( 'legal_province' ), 'pec' => $pec,
 			'has_vat' => $has ? 1 : 0, 'vat_number' => $has ? $vat : '', 'fiscal_regime' => $txt( 'fiscal_regime' ),
-			'vat_default_rate' => (int) ( $p['vat_default_rate'] ?? 22 ), 'vat_prices_mode' => $txt( 'vat_prices_mode' ), 'sdi_code' => $txt( 'sdi_code' ),
+			'vat_default_rate' => (int) ( $p['vat_default_rate'] ?? 22 ), 'vat_membership_rate' => $has ? ( $p['vat_membership_rate'] ?? '' ) : '', 'vat_prices_mode' => $txt( 'vat_prices_mode' ), 'sdi_code' => $txt( 'sdi_code' ),
 		);
 		Settings::update( $vals );
 		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $has ? 1 : 0 ) );

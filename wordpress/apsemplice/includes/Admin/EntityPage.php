@@ -42,6 +42,8 @@ final class EntityPage {
 			$rates[ $r ] = $r . '%';
 		}
 		echo '<tr><th>Aliquota proposta</th><td><select name="vat_default_rate">' . Ui::options( $rates, (int) $s['vat_default_rate'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		$mr = Fiscal::membership_rate();
+		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( Fiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA. Se nel tuo caso sono soggette, scegli l\'aliquota: sulle quote incassate verrà indicata l\'IVA contenuta. Le attività hanno la propria aliquota nella loro scheda.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( Fiscal::INCLUDED => 'IVA compresa', Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Vale come scelta iniziale: su ogni quota, attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"><p class="description">Facoltativo: serve se emetti fatture elettroniche.</p></td></tr>';
 		echo '</tbody></table></div>';
