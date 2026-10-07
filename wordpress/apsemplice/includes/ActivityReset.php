@@ -52,29 +52,40 @@ final class ActivityReset {
 			'staff'       => (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . $t( 'activity_staff' ) . ' WHERE activity_id = %d', $activity_id ) ),
 			'notices'     => (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . $t( 'notices' ) . ' WHERE activity_id = %d', $activity_id ) ),
 			'income'      => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0, 'ids' => array(), 'receipts' => array() ),
+			'income_open' => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0 ),
 			'expense'     => array( 'count' => 0, 'cents' => 0, 'ids' => array() ),
+			'refund_exp'  => array( 'count' => 0, 'cents' => 0, 'ids' => array() ),
 			'fund_cents'  => 0,
 			'years'       => array(),
-			'years_income'  => array(),
+			'years_income' => array(),
+			'years_income_open' => array(),
 			'years_expense' => array(),
+			'years_refund_exp' => array(),
 			'recipients'  => count( self::recipients( $activity_id, $sessions ) ),
 		);
 		foreach ( self::movements( $activity_id ) as $m ) {
-			$k = 'income' === $m['type'] ? 'income' : 'expense';
+			$is_inc  = 'income' === $m['type'];
+			$k       = $is_inc ? 'income' : ( self::is_refund_expense( $m ) ? 'refund_exp' : 'expense' );
+			$settled = $is_inc && self::is_settled( $m ); // incasso già restituito con la cancellazione di una singola iscrizione
+			$y       = (int) substr( (string) $m['tx_date'], 0, 4 );
 			$out[ $k ]['count']++;
 			$out[ $k ]['cents'] += (int) $m['amount_cents'];
 			$out[ $k ]['ids'][]  = (int) $m['id'];
-			if ( 'income' === $k ) {
-				if ( in_array( (string) $m['method'], self::ONLINE_METHODS, true ) ) {
-					$out['income']['online_cents'] += (int) $m['amount_cents'];
-				}
+			$out['years'][ $y ]  = true;
+			$out[ 'years_' . $k ][ $y ] = true;
+			if ( $is_inc ) {
+				$online = in_array( (string) $m['method'], self::ONLINE_METHODS, true ) ? (int) $m['amount_cents'] : 0;
+				$out['income']['online_cents'] += $online;
 				if ( ! empty( $m['receipt_id'] ) ) {
 					$out['income']['receipts'][ (string) $m['receipt_id'] ] = true;
 				}
+				if ( ! $settled ) {
+					$out['income_open']['count']++;
+					$out['income_open']['cents']        += (int) $m['amount_cents'];
+					$out['income_open']['online_cents'] += $online;
+					$out['years_income_open'][ $y ]      = true;
+				}
 			}
-			$y = (int) substr( (string) $m['tx_date'], 0, 4 );
-			$out['years'][ $y ] = true;
-			$out[ 'years_' . $k ][ $y ] = true;
 		}
 		$out['income']['receipts'] = array_keys( $out['income']['receipts'] );
 		$fund = $db->get_var( $db->prepare( 'SELECT id FROM ' . $t( 'funds' ) . ' WHERE activity_id = %d', $activity_id ) );
@@ -82,10 +93,20 @@ final class ActivityReset {
 			$out['fund_cents'] = (int) $db->get_var( $db->prepare( 'SELECT COALESCE(SUM(cents),0) FROM ' . $t( 'fund_entries' ) . " WHERE fund_id = %d AND kind = 'share'", (int) $fund ) );
 		}
 		ksort( $out['years'] );
-		$out['years']         = array_keys( $out['years'] );
-		$out['years_income']  = array_keys( $out['years_income'] );
-		$out['years_expense'] = array_keys( $out['years_expense'] );
+		foreach ( array( 'years', 'years_income', 'years_income_open', 'years_expense', 'years_refund_exp' ) as $yk ) {
+			$out[ $yk ] = array_keys( $out[ $yk ] );
+		}
 		return $out;
+	}
+
+	/** Incasso già restituito (o annullato) con la cancellazione di una singola iscrizione. */
+	private static function is_settled( array $m ): bool {
+		return 0 === strpos( (string) $m['description'], '[Iscrizione cancellata]' );
+	}
+
+	/** Uscita di restituzione registrata dalla cancellazione di una singola iscrizione. */
+	private static function is_refund_expense( array $m ): bool {
+		return 'expense' === $m['type'] && false !== strpos( (string) $m['description'], 'Restituzione di un incasso' );
 	}
 
 	/** Motivi per cui non si può procedere (anni chiusi, pagamenti online in corso). @return string[] */
@@ -95,12 +116,16 @@ final class ActivityReset {
 			return array( 'L\'attività non esiste.' );
 		}
 		$out   = array();
-		$years = $p['years_income']; // gli incassi si annullano o si restituiscono; le spese solo se si sceglie di annullarle
-		if ( self::VOID === $mode && $void_costs ) {
-			$years = array_merge( $years, $p['years_expense'] );
-		}
-		if ( self::REFUND === $mode ) {
-			$years[] = (int) current_time( 'Y' ); // le restituzioni si registrano oggi
+		if ( self::REFUND === $mode ) { // si restituiscono solo gli incassi non ancora restituiti; le restituzioni si registrano oggi
+			$years = $p['years_income_open'];
+			if ( $p['income_open']['count'] ) {
+				$years[] = (int) current_time( 'Y' );
+			}
+		} else { // si annullano gli incassi e le restituzioni che li compensano; le altre spese solo se si sceglie di annullarle
+			$years = array_merge( $p['years_income'], $p['years_refund_exp'] );
+			if ( $void_costs ) {
+				$years = array_merge( $years, $p['years_expense'] );
+			}
 		}
 		if ( $years ) {
 			foreach ( array_unique( $years ) as $y ) {
@@ -173,7 +198,7 @@ final class ActivityReset {
 		$ledger = Plugin::ledger();
 		$sessions = array_map( 'intval', $db->get_col( $db->prepare( 'SELECT id FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d', $activity_id ) ) );
 		$mail_to  = ! empty( $opts['notify'] ) ? self::recipients( $activity_id, $sessions ) : array();
-		$sum      = array( 'sessions' => count( $sessions ), 'bookings' => $p['bookings'], 'income_count' => $p['income']['count'], 'income_cents' => $p['income']['cents'], 'refunds' => 0, 'voided' => 0, 'expenses_voided' => 0, 'notified' => 0, 'name' => $name );
+		$sum      = array( 'sessions' => count( $sessions ), 'bookings' => $p['bookings'], 'income_count' => self::REFUND === $mode ? $p['income_open']['count'] : $p['income']['count'], 'income_cents' => self::REFUND === $mode ? $p['income_open']['cents'] : $p['income']['cents'], 'refunds' => 0, 'voided' => 0, 'expenses_voided' => 0, 'notified' => 0, 'name' => $name );
 
 		$ledger->in_batch(
 			function () use ( $activity_id, $mode, $opts, $name, $sessions, $ledger, $db, &$sum ) {
@@ -182,6 +207,9 @@ final class ActivityReset {
 				foreach ( self::movements( $activity_id ) as $m ) {
 					if ( 'income' === $m['type'] ) {
 						if ( self::REFUND === $mode ) {
+							if ( self::is_settled( $m ) ) {
+								continue; // già restituito con la cancellazione della singola iscrizione: non si restituisce due volte
+							}
 							$d = array(
 								'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
 								'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
@@ -195,6 +223,8 @@ final class ActivityReset {
 							$ledger->void( (int) $m['id'], 'Evento eliminato: ' . $name . ' (incasso annullato)' );
 							$sum['voided']++;
 						}
+					} elseif ( self::VOID === $mode && self::is_refund_expense( $m ) ) {
+						$ledger->void( (int) $m['id'], 'Evento eliminato: ' . $name . ' (restituzione annullata insieme all\'incasso)' ); // compensava un incasso che ora si annulla
 					} elseif ( self::VOID === $mode && ! empty( $opts['void_costs'] ) ) {
 						$ledger->void( (int) $m['id'], 'Evento eliminato: ' . $name . ' (spesa annullata)' );
 						$sum['expenses_voided']++;

@@ -81,7 +81,7 @@ final class DeleteActivityPage {
 		$id                       = (int) $p['activity']['id'];
 		list( $mode, $notify, $void_costs ) = self::choices();
 		$blockers                 = ActivityReset::blockers( $id, $mode, $void_costs );
-		$inc                      = $p['income'];
+		$inc                      = ActivityReset::REFUND === $mode ? array_merge( $p['income'], $p['income_open'] ) : $p['income']; // si restituisce solo ciò che non è già stato restituito
 
 		echo '<div class="notice notice-warning inline" style="padding:12px 16px"><h3 style="margin-top:0">Cosa succede alla prima nota</h3>';
 		if ( ! $inc['count'] && ! ( $void_costs && $p['expense']['count'] ) ) {
@@ -91,6 +91,9 @@ final class DeleteActivityPage {
 			echo '<p><strong>Il denaro non viene restituito dal sistema:</strong> va riconsegnato a chi ha pagato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online (' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ') il rimborso va fatto a mano dal pannello del fornitore (Stripe, PayPal, negozio)' : '' ) . '.</p>';
 		} else {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') vengono ANNULLATI</strong>: <strong>spariscono da saldi, report, rendiconto e ricevute</strong>, come se non fossero mai avvenuti. Restano consultabili solo tra gli annullamenti e nel registro azioni.</p>';
+			if ( $p['refund_exp']['count'] ) {
+				echo '<p>Vengono annullate anche le <strong>' . (int) $p['refund_exp']['count'] . ' restituzioni</strong> già registrate per singole iscrizioni (' . esc_html( Money::format( (int) $p['refund_exp']['cents'] ) ) . '), perché compensavano incassi che ora si annullano.</p>';
+			}
 			if ( $void_costs && $p['expense']['count'] ) {
 				echo '<p>Vengono annullate anche le <strong>' . (int) $p['expense']['count'] . ' spese</strong> (' . esc_html( Money::format( (int) $p['expense']['cents'] ) ) . ').</p>';
 			}
