@@ -23,7 +23,7 @@ final class DashboardPage {
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Nuovo incasso</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-group' ) ) . '">Cassa per più persone</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Nuova spesa</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a></p>';
+			. '<a class="button" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \ApSemplice\Modules::on( 'activities' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'apse-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
 
 		echo '<div class="apse-grid"><div class="apse-card"><h2>Disponibilità reale</h2>';
 		echo '<p class="apse-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="apse-kv">'; // phpcs:ignore WordPress.Security.EscapeOutput
