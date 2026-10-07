@@ -120,6 +120,35 @@ final class Wizard {
 			$vals['tax_code'] = $cf;
 		}
 
+		if ( isset( $p['join_mode'] ) ) {
+			$vals['join_mode'] = 'invite' === (string) $p['join_mode'] ? 'invite' : 'request';
+		}
+
+		// Parti del gestionale usate
+		if ( ! empty( $p['mod_present'] ) ) {
+			$mods = array();
+			foreach ( array_keys( Modules::defs() ) as $k ) {
+				$mods[ $k ] = ! empty( $p['mod'][ $k ] ) ? 1 : 0;
+			}
+			$vals['modules']         = $mods;
+			$vals['reports_enabled'] = ! empty( $mods['reports'] ) ? 1 : 0;
+		}
+
+		// Privacy e ricevute
+		if ( isset( $p['privacy_url'] ) ) {
+			$url = trim( (string) $p['privacy_url'] );
+			if ( '' !== $url && ! preg_match( '#^https?://#i', $url ) ) {
+				throw new \InvalidArgumentException( 'L\'indirizzo dell\'informativa privacy deve iniziare con http:// o https://.' );
+			}
+			$vals['privacy_url'] = $url;
+		}
+		if ( isset( $p['privacy_retention_years'] ) && '' !== trim( (string) $p['privacy_retention_years'] ) ) {
+			$vals['privacy_retention_years'] = max( 1, min( 30, (int) $p['privacy_retention_years'] ) );
+		}
+		if ( isset( $p['receipt_footer'] ) ) {
+			$vals['receipt_footer'] = (string) $p['receipt_footer'];
+		}
+
 		// 2. Anno sociale e quote
 		if ( isset( $p['social_year_start_month'] ) ) {
 			$vals['social_year_start_month'] = max( 1, min( 12, (int) $p['social_year_start_month'] ) );
@@ -166,6 +195,29 @@ final class Wizard {
 			$woo_products             = PaymentConfig::WOOCOMMERCE === $choice ? $p : array();
 		}
 
+		// Altri tipi di socio: righe «Nome; quota». I livelli esistenti restano come sono.
+		$new_levels = self::parse_levels( (string) ( $p['extra_levels'] ?? '' ) );
+		if ( $new_levels ) {
+			$rows  = array();
+			$known = array();
+			foreach ( Levels::all() as $lv ) {
+				$rows[]                                  = array( 'id' => (int) $lv['id'], 'name' => $lv['name'], 'base_type' => $lv['base_type'], 'fee' => null === $lv['fee_cents'] ? '' : Money::plain( (int) $lv['fee_cents'] ), 'active' => (int) $lv['active'] );
+				$known[ mb_strtolower( $lv['name'], 'UTF-8' ) ] = true;
+			}
+			$added = 0;
+			foreach ( $new_levels as $nl ) {
+				if ( isset( $known[ mb_strtolower( $nl[0], 'UTF-8' ) ] ) ) {
+					continue;
+				}
+				$rows[] = array( 'id' => 0, 'name' => $nl[0], 'base_type' => MemberType::ORDINARY, 'fee' => $nl[1], 'active' => 1 );
+				$added++;
+			}
+			if ( $added ) {
+				Levels::save( $rows );
+				$done[] = $added . ( 1 === $added ? ' tipo di socio aggiunto.' : ' tipi di socio aggiunti.' );
+			}
+		}
+
 		if ( $vals ) {
 			Settings::update( $vals );
 			$done[] = 'Impostazioni salvate.';
@@ -186,6 +238,24 @@ final class Wizard {
 		self::mark( self::DONE );
 		Audit::log( 'wizard.completed', 'settings', 0, array( 'steps' => count( $done ) ) );
 		return $done;
+	}
+
+	/** Righe «Nome; quota» (la quota è facoltativa) => [[nome, quota], …]. */
+	public static function parse_levels( string $text ): array {
+		$out = array();
+		foreach ( preg_split( '/\r\n|\r|\n/', $text ) ?: array() as $line ) {
+			$parts = array_map( 'trim', explode( ';', $line, 2 ) );
+			$name  = mb_substr( sanitize_text_field( $parts[0] ), 0, 80 );
+			if ( '' === $name ) {
+				continue;
+			}
+			$fee = $parts[1] ?? '';
+			if ( '' !== $fee && null === Money::parse( $fee ) ) {
+				throw new \InvalidArgumentException( 'La quota di «' . $name . '» non è un importo valido.' );
+			}
+			$out[] = array( $name, $fee );
+		}
+		return array_slice( $out, 0, 20 );
 	}
 
 	/** Per ogni livello e per la voce generica: lascia com'è, crea un prodotto nuovo o collega uno esistente. @return string[] */

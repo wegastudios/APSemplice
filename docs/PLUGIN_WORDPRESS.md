@@ -532,12 +532,15 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 
 ## Configurazione guidata
 
-Al primo avvio (e a richiesta da Impostazioni → Generale, «Avvia la configurazione guidata») una pagina unica, riservata agli amministratori, raccoglie le impostazioni principali e le applica insieme:
+Al primo avvio (e a richiesta da Impostazioni → Generale, «Avvia la configurazione guidata») una procedura a domande, riservata agli amministratori, porta un passo alla volta alla configurazione. Prima si decide **cosa serve**, poi si configurano **solo le parti scelte**; i passi non pertinenti si saltano. Senza JavaScript i passi compaiono tutti insieme.
 
-1. **Ente**: tipo di ente, termine per chi partecipa, denominazione, codice fiscale, mese di inizio dell'anno sociale.
-2. **Quote**: quota associativa proposta e sconto per il nucleo familiare (i livelli restano in Impostazioni → Generale).
-3. **Funzioni facoltative**: tutte spente di default (app e notifiche hanno la loro scheda).
-4. **Pagamenti**: nessun pagamento online, Stripe, PayPal, Stripe e PayPal insieme, checkout di WooCommerce; il bonifico si può affiancare. Accanto a ogni fornitore ci sono i link alle guide ufficiali, che si aprono in una nuova finestra. Se WooCommerce è attivo (e il negozio usa l'euro) l'opzione è proposta e, per ogni quota, si può collegare un prodotto esistente o crearne uno nuovo (virtuale, non in vetrina); lo stesso vale per il prodotto generico delle altre voci.
-5. **Pagine del sito**: Area soci, Area volontari, Attività ed eventi, Calendario, Dona con bonifico, 5x1000, con gli shortcode già inseriti e l'accesso riservato dove serve. Le pagine esistenti non si duplicano.
+1. **Ente**: nome, tipo, termine per chi partecipa, codice fiscale, inizio dell'anno sociale.
+2. **Chi può iscriversi**: chiunque può chiedere l'accesso (la richiesta va alla segreteria) oppure solo su presentazione (chi non è in elenco non registra alcuna richiesta; la risposta resta identica, quindi non rivela chi è iscritto).
+3. **Tipi di socio e quote**: quota proposta, altri tipi («Nome; quota», aggiunti ai livelli esistenti), sconto per il nucleo familiare.
+4. **Cosa ti serve** (sì/no): corsi ed eventi, prima nota, conti e fondi oltre alla cassa, bilanci e rendiconto, libro soci e verbali, comunicazioni, importazioni. Una parte spenta sparisce dal menu e dalle schede e la sua pagina, se aperta, indica come riaccenderla; **i dati non vengono toccati**. Conti e bilanci dipendono dalla prima nota. Finché la procedura non è stata fatta tutto è acceso.
+5. **Ricevute** (solo con la prima nota) e **privacy** (informativa, tempo di inattività prima di proporre l'anonimizzazione).
+6. **Altre funzioni** facoltative (tessera, QR, Wallet, calendario pubblicato, regolamento, assicurazioni, 5x1000, promemoria…): tutte spente di default; le opzioni di QR e Wallet compaiono solo con la tessera.
+7. **Pagamenti**: nessun pagamento online, Stripe, PayPal, Stripe e PayPal insieme, checkout di WooCommerce; il bonifico si può affiancare. Link alle guide ufficiali in una nuova finestra. Se WooCommerce è attivo (e usa l'euro) è proposto e, per ogni quota, si collega un prodotto esistente o se ne crea uno (virtuale, non in vetrina).
+8. **Pagine del sito** proposte in base alle risposte (calendario solo con i corsi, bonifico solo con le coordinate, 5x1000 solo se attivo): Area soci, Area volontari, Attività, Calendario, Dona con bonifico, 5x1000. Le pagine esistenti non si duplicano.
 
-Le chiavi dei fornitori e gli IBAN non passano dalla procedura: dopo l'applicazione si viene portati in Pagamenti online per inserirli. Il primo avvio apre la procedura una volta sola (alla prima installazione); sui siti già in uso resta disponibile da Impostazioni senza inviti. «Salta per ora» la rimanda senza cambiare nulla.
+Le chiavi dei fornitori e gli IBAN non passano dalla procedura: dopo l'applicazione si viene portati in Pagamenti online. Il primo avvio apre la procedura una sola volta (alla prima installazione); sui siti già in uso resta disponibile da Impostazioni senza inviti. «Salta per ora» la rimanda senza cambiare nulla.

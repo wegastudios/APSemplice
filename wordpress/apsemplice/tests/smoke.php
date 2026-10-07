@@ -618,6 +618,35 @@ Admin\WizardPage::render();
 $wz_html = (string) ob_get_clean();
 apse_ok( false !== strpos( $wz_html, 'docs.stripe.com/keys' ) && false !== strpos( $wz_html, 'target="_blank"' ) && false !== strpos( $wz_html, 'rel="noopener noreferrer"' ) && false !== strpos( $wz_html, 'Applica la configurazione' ), 'configurazione guidata: pagina con i tutorial in una nuova finestra' );
 apse_ok( in_array( 'apse-wizard', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
+// ... a domande: parti del gestionale, iscrizione su presentazione, altri tipi di socio
+apse_ok( ! in_array( 'apse-ledger', Admin\Admin::disabled_pages(), true ) && Modules::on( 'accounts' ), 'moduli: prima della configurazione è tutto acceso' );
+\ApSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '0', 'accounts' => '1', 'reports' => '1', 'book' => '0', 'messages' => '1', 'import' => '0' ) ) );
+$wz_off = Admin\Admin::disabled_pages();
+apse_ok( ! Modules::on( 'ledger' ) && ! Modules::on( 'accounts' ) && ! Modules::on( 'reports' ) && Modules::on( 'activities' ) && in_array( 'apse-ledger', $wz_off, true ) && in_array( 'apse-accounts', $wz_off, true ) && in_array( 'apse-statement', $wz_off, true ) && in_array( 'apse-book', $wz_off, true ) && ! in_array( 'apse-activities', $wz_off, true ), 'moduli: senza prima nota spariscono anche conti e bilanci; le parti scelte restano' );
+ob_start();
+call_user_func( Admin\Admin::guard( 'apse-ledger', function () { echo 'CONTENUTO'; } ) );
+$wz_g = (string) ob_get_clean();
+apse_ok( false === strpos( $wz_g, 'CONTENUTO' ) && false !== strpos( $wz_g, 'configurazione guidata' ), 'moduli: una pagina spenta non si apre e indica come riaccenderla' );
+\ApSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '1', 'accounts' => '0', 'reports' => '1', 'book' => '1', 'messages' => '1', 'import' => '1' ) ) );
+apse_ok( Modules::on( 'ledger' ) && ! Modules::on( 'accounts' ) && Modules::on( 'reports' ) && 1 === (int) Settings::get( 'reports_enabled' ), 'moduli: riaccendendo la prima nota tornano i bilanci scelti, i conti restano spenti' );
+Settings::update( array( 'modules' => array(), 'reports_enabled' => 1 ) );
+apse_ok( Modules::on( 'accounts' ) && ! Admin\Admin::disabled_pages(), 'moduli: ripristino, tutto acceso' );
+$wz_req = count( \ApSemplice\AccessRequests::pending() );
+\ApSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) );
+apse_ok( 'invite' === Settings::get( 'join_mode' ) && 'unknown_queued' === \ApSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Presentato', 'sconosciuto.presentato@example.com', '347 9990011' ) && count( \ApSemplice\AccessRequests::pending() ) === $wz_req, 'iscrizione su presentazione: lo sconosciuto riceve la stessa risposta ma nessuna richiesta viene registrata' );
+\ApSemplice\Wizard::apply( array( 'join_mode' => 'request' ) );
+\ApSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Richiesta', 'sconosciuto.richiesta@example.com', '347 9990022' );
+apse_ok( count( \ApSemplice\AccessRequests::pending() ) === $wz_req + 1, 'iscrizione aperta alle richieste: la richiesta arriva alla segreteria' );
+\ApSemplice\Wizard::apply( array( 'extra_levels' => "Ridotto Prova; 15\nSostenitore Prova" ) );
+$wz_lv = array_column( \ApSemplice\Levels::all(), 'fee_cents', 'name' );
+\ApSemplice\Wizard::apply( array( 'extra_levels' => 'Ridotto Prova; 15' ) );
+apse_ok( 1500 === (int) ( $wz_lv['Ridotto Prova'] ?? 0 ) && array_key_exists( 'Sostenitore Prova', $wz_lv ) && null === $wz_lv['Sostenitore Prova'] && count( \ApSemplice\Levels::all() ) === count( $wz_lv ), 'tipi di socio: aggiunti dalla procedura con la loro quota, senza duplicati' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'extra_levels' => 'Strano; abc' ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'privacy_url' => 'javascript:alert(1)' ) ); } ), 'configurazione guidata: quota e indirizzo privacy non validi si rifiutano' );
+\ApSemplice\Wizard::apply( array( 'privacy_url' => 'https://example.com/privacy', 'privacy_retention_years' => '7', 'receipt_footer' => 'Esente IVA' ) );
+apse_ok( 'https://example.com/privacy' === Settings::get( 'privacy_url' ) && 7 === (int) Settings::get( 'privacy_retention_years' ), 'configurazione guidata: privacy e ricevute' );
+Settings::update( array( 'privacy_url' => '', 'privacy_retention_years' => 5, 'receipt_footer' => '' ) );
+$wz_html2 = $wz_html;
+apse_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo su presentazione' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
 Settings::update( $wz_old );
 
 // Elementor (installato nel test): i widget si registrano e i controlli si costruiscono
