@@ -13,6 +13,7 @@ final class EntityPage {
 	public static function render(): void {
 		$s = Settings::all();
 		Ui::header( 'Dati dell\'ente e fiscalità' );
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a> <span class="description">Poche domande per scegliere cosa usare e configurare solo quello: ente, partita IVA, quote, parti del gestionale, pagamenti e pagine del sito. Si può rifare in qualsiasi momento.</span></p>';
 		Ui::form_open( 'apse_save_entity', Ui::url( 'apse-entity' ) );
 		$ents = array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) );
 		$mems = array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) );

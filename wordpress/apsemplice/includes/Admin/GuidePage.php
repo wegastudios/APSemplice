@@ -21,6 +21,7 @@ final class GuidePage {
 
 	public static function render(): void {
 		Ui::header( 'Guida iniziale' );
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a> <span class="description">Per fare in pochi passi ciò che qui sotto è elencato.</span></p>';
 		$p = Guide::progress();
 		echo '<p>Per mettere in funzione APSemplice ci sono pochi passi: ' . (int) $p['done'] . ' su ' . (int) $p['total'] . ' già fatti.</p>';
 		echo '<table class="widefat striped"><tbody>';

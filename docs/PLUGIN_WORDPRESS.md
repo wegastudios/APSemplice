@@ -532,7 +532,7 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 
 ## Configurazione guidata
 
-Al primo avvio (e a richiesta da Impostazioni → Soci e quote, «Avvia la configurazione guidata») una procedura a domande, riservata agli amministratori, porta un passo alla volta alla configurazione. Prima si decide **cosa serve**, poi si configurano **solo le parti scelte**; i passi e i campi non pertinenti si saltano. Senza JavaScript i passi compaiono tutti insieme. Le regole di controllo dei dati dell'ente sono le stesse della scheda «Dati e fiscalità».
+Al primo avvio (e a richiesta da Impostazioni → Dati e fiscalità e dalla Guida iniziale, «Avvia la configurazione guidata») una procedura a domande, riservata agli amministratori, porta un passo alla volta alla configurazione. Prima si decide **cosa serve**, poi si configurano **solo le parti scelte**; i passi e i campi non pertinenti si saltano. Senza JavaScript i passi compaiono tutti insieme. Le regole di controllo dei dati dell'ente sono le stesse della scheda «Dati e fiscalità».
 
 1. **Ente**: nome, tipo, termine per chi partecipa, codice fiscale, inizio dell'anno sociale, sede.
 2. **Partita IVA** (sì/no): solo se sì compaiono numero, regime, aliquota proposta, importi IVA compresa o esclusa, IVA sulle quote associative e codice SDI. Senza partita IVA non si vede nulla di fiscale.

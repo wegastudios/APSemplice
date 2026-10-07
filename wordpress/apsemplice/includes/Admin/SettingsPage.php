@@ -56,7 +56,6 @@ final class SettingsPage {
 	public static function render(): void {
 		$s = Settings::all();
 		Ui::header( 'Soci e quote' );
-		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a> <span class="description">Ente, parti da usare, quote, pagamenti e pagine del sito in poche domande. Denominazione, codice fiscale e partita IVA sono in «Dati e fiscalità».</span></p>';
 		Ui::form_open( 'apse_save_settings', Ui::url( 'apse-settings' ) );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Quota associativa proposta</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
