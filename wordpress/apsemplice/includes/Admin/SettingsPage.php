@@ -95,9 +95,13 @@ final class SettingsPage {
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già inseriti. Puoi poi personalizzarne l\'impaginazione.</span></p>';
 		Ui::form_close();
 		echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Shortcode</th><th>Cosa mostra</th></tr></thead><tbody>';
-		foreach ( \ApSemplice\Frontend\Shortcodes::VIEWS as $slug => $label ) {
-			echo '<tr><td><code>[apsemplice_' . esc_html( $slug ) . ']</code></td><td>' . esc_html( $label ) . '</td></tr>';
+		foreach ( \ApSemplice\Areas::GROUPS as $g ) { // per area: soci, segreteria, tesoriere, eventi, pubblico
+			echo '<tr><td colspan="2"><strong>' . esc_html( $g[0] ) . '</strong></td></tr>';
+			foreach ( $g[1] as $slug ) {
+				echo '<tr><td><code>[apsemplice_' . esc_html( $slug ) . ']</code></td><td>' . esc_html( \ApSemplice\Frontend\Shortcodes::VIEWS[ $slug ] ?? '' ) . '</td></tr>';
+			}
 		}
+		echo '<tr><td><code>[apsemplice_spese]</code></td><td>Nome precedente di «Area tesoriere»: continua a funzionare</td></tr>';
 		echo '<tr><td><code>[apsemplice_attivita tipo="evento" anno="2025/2026" date="5"]</code></td><td>Filtri: tipo = corso / evento / ricorrente, anno sociale, date da mostrare</td></tr>';
 		echo '<tr><td><code>[apsemplice_riservato accesso="soci"]…[/apsemplice_riservato]</code></td><td>Parte di pagina visibile solo ai soci (accesso = soci / volontari / attivita, con attivita="12,13")</td></tr>';
 		echo '</tbody></table><p class="description">Per riservare una <strong>pagina o un articolo intero</strong> usa il riquadro «Accesso (APSemplice)» nell\'editor: puoi renderlo visibile ai soli soci, ai volontari o agli iscritti a una o più attività (es. il programma della prima lezione).</p>';

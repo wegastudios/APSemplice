@@ -438,6 +438,20 @@ foreach ( array_keys( \ApSemplice\Frontend\Shortcodes::VIEWS ) as $slug ) {
 	apse_ok( shortcode_exists( 'apsemplice_' . $slug ), "shortcode apsemplice_$slug registrato" );
 }
 apse_ok( shortcode_exists( 'apsemplice_riservato' ), 'shortcode apsemplice_riservato registrato' );
+// aree del sito: ogni vista ha la sua area, blocchi e widget si scelgono in ordine
+$ar_opt = \ApSemplice\Areas::options();
+apse_ok( array() === \ApSemplice\Areas::unassigned(), 'aree: ogni vista appartiene a un\'area' );
+apse_ok( 'tesoriere' === \ApSemplice\Areas::area_of( 'spese' ) && 'segreteria' === \ApSemplice\Areas::area_of( 'segreteria' ) && 'eventi' === \ApSemplice\Areas::area_of( 'ingressi' ) && 'pubblico' === \ApSemplice\Areas::area_of( 'bonifico' ) && 'soci' === \ApSemplice\Areas::area_of( 'tessera' ), 'aree: soci, segreteria, tesoriere, eventi e pubblico' );
+$ar_keys = array_keys( $ar_opt );
+apse_ok( 0 === strpos( $ar_opt['tessera'], 'Soci · ' ) && 0 === strpos( $ar_opt['tesoriere'], 'Tesoriere · ' ) && array_search( 'segreteria', $ar_keys, true ) > array_search( 'area_soci', $ar_keys, true ) && array_search( 'attivita', $ar_keys, true ) > array_search( 'ingressi', $ar_keys, true ), 'aree: le viste per blocchi e widget sono nominate e ordinate per area' );
+$ar_views = array();
+foreach ( \ApSemplice\Areas::GROUPS as $ar_g ) {
+	$ar_views = array_merge( $ar_views, $ar_g[1] );
+}
+apse_ok( count( $ar_views ) === count( array_unique( $ar_views ) ) && ! array_diff( array_keys( \ApSemplice\Frontend\Shortcodes::VIEWS ), array_merge( $ar_views, array_keys( \ApSemplice\Areas::ALIASES ) ) ), 'aree: nessuna vista in due aree e nessuna dimenticata' );
+apse_ok( shortcode_exists( 'apsemplice_segreteria' ) && shortcode_exists( 'apsemplice_tesoriere' ), 'aree: shortcode della segreteria e del tesoriere registrati' );
+$ar_bl = \ApSemplice\Frontend\Blocks::class;
+apse_ok( class_exists( $ar_bl ), 'aree: blocchi presenti' );
 $as = function ( int $user, string $shortcode ) {
 	wp_set_current_user( $user );
 	return do_shortcode( $shortcode );
@@ -611,6 +625,16 @@ $wz_pages = \ApSemplice\Pages::existing();
 apse_ok( isset( $wz_pages['calendario'] ) && ! isset( $wz_pages['inesistente'] ) && 'members' === get_post_meta( $wz_pages['calendario'], '_aps_access', true ) && false !== strpos( implode( ' ', $wz_done ), 'Calendario' ), 'configurazione guidata: crea solo le pagine note, con l\'accesso giusto' );
 \ApSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
 apse_ok( count( \ApSemplice\Pages::existing() ) === count( $wz_pages ), 'configurazione guidata: le pagine esistenti non si duplicano' );
+\ApSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'segreteria', 'tesoriere', 'ingressi' ) ) );
+$wz_p2 = \ApSemplice\Pages::existing();
+apse_ok( isset( $wz_p2['segreteria'], $wz_p2['tesoriere'], $wz_p2['ingressi'] ) && false !== strpos( get_post( $wz_p2['segreteria'] )->post_content, '[apsemplice_segreteria]' ) && false !== strpos( get_post( $wz_p2['tesoriere'] )->post_content, '[apsemplice_tesoriere]' ) && false !== strpos( get_post( $wz_p2['ingressi'] )->post_content, '[apsemplice_ingressi]' ), 'pagine: la procedura crea le pagine delle aree segreteria, tesoriere e ingressi' );
+$wz_by = \ApSemplice\Pages::by_area();
+apse_ok( array( 'soci', 'segreteria', 'tesoriere', 'eventi', 'pubblico' ) === array_keys( $wz_by ) && isset( $wz_by['eventi']['ingressi'], $wz_by['soci']['area'], $wz_by['pubblico']['bonifico'] ), 'pagine: raggruppate per area (soci, segreteria, tesoriere, eventi, pubblico)' );
+$sg_adm  = $as( 1, '[apsemplice_segreteria]' );
+$sg_anon = $as( 0, '[apsemplice_segreteria]' );
+$sg_mem  = $as( $u_f, '[apsemplice_segreteria]' );
+apse_ok( false !== strpos( $sg_adm, 'Segreteria' ) && false !== strpos( $sg_adm, 'page=apse-people' ) && false === strpos( $sg_anon, 'page=apse-people' ) && false !== strpos( $sg_mem, 'riservata alla segreteria' ) && false === strpos( $sg_mem, 'page=apse-people' ), 'area segreteria: i collegamenti compaiono solo a chi ha i permessi della segreteria' );
+wp_set_current_user( 1 );
 apse_ok( \ApSemplice\Wizard::DONE === \ApSemplice\Wizard::status() && ! \ApSemplice\Wizard::pending(), 'configurazione guidata: risulta completata' );
 \ApSemplice\Wizard::mark( \ApSemplice\Wizard::SKIPPED );
 ob_start();
@@ -767,6 +791,7 @@ apse_ok( class_exists( '\Elementor\Plugin' ), 'Elementor è presente nell\'ambie
 $el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types();
 apse_ok( isset( $el_widgets['apsemplice_view'] ) && isset( $el_widgets['apsemplice_reserved'] ), 'Elementor: widget APSemplice registrati' );
 apse_ok( array_key_exists( 'view', $el_widgets['apsemplice_view']->get_controls() ) && array_key_exists( 'rule', $el_widgets['apsemplice_reserved']->get_controls() ), 'Elementor: i controlli dei widget si costruiscono' );
+apse_ok( false !== strpos( (string) file_get_contents( APSE_DIR . 'includes/Frontend/Elementor/ViewWidget.php' ), 'Areas::options()' ) && false !== strpos( (string) file_get_contents( APSE_DIR . 'includes/Frontend/Blocks.php' ), 'Areas::options()' ), 'blocco e widget: propongono le viste per area' );
 wp_set_current_user( 1 );
 
 // ---------- Cancellazioni, cambio di nominativo, pagamenti online (configurazione) ----------

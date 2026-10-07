@@ -34,7 +34,7 @@ final class Blocks {
 		}
 		wp_add_inline_script(
 			'apse-blocks',
-			'window.APSE_BLOCKS = ' . wp_json_encode( array( 'views' => Shortcodes::VIEWS, 'rules' => Visibility::labels(), 'activities' => $activities ), JSON_HEX_TAG | JSON_HEX_AMP ) . ';',
+			'window.APSE_BLOCKS = ' . wp_json_encode( array( 'views' => \ApSemplice\Areas::options(), 'rules' => Visibility::labels(), 'activities' => $activities ), JSON_HEX_TAG | JSON_HEX_AMP ) . ';',
 			'before'
 		);
 

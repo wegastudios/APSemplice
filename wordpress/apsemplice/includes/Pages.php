@@ -8,6 +8,25 @@ final class Pages {
 
 	const OPTION = 'apse_pages';
 
+	/** Area di ogni pagina (vedi Areas). */
+	const AREA = array(
+		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico',
+		'bonifico' => 'pubblico', 'cinquemille' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
+	);
+
+	/** @return array<string,array> area => [chiave pagina => definizione], nell'ordine delle aree */
+	public static function by_area(): array {
+		$out = array();
+		foreach ( array_keys( Areas::GROUPS ) as $area ) {
+			foreach ( self::defs() as $key => $d ) {
+				if ( ( self::AREA[ $key ] ?? '' ) === $area ) {
+					$out[ $area ][ $key ] = $d;
+				}
+			}
+		}
+		return $out;
+	}
+
 	/** Chiave => titolo, shortcode, accesso riservato (meta della pagina), descrizione, predefinita. */
 	public static function defs(): array {
 		return array(
@@ -16,6 +35,9 @@ final class Pages {
 			'attivita'  => array( 'title' => 'Attività ed eventi', 'content' => '[apsemplice_attivita]', 'access' => '', 'hint' => 'L\'elenco pubblico di corsi ed eventi, con la prenotazione.', 'default' => true ),
 			'calendario' => array( 'title' => 'Calendario', 'content' => '[apsemplice_calendario]', 'access' => 'members', 'hint' => 'Il calendario di corsi ed eventi per i soli soci.', 'default' => false ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[apsemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
+			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[apsemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e collegamenti alla gestione.', 'default' => false ),
+			'tesoriere' => array( 'title' => 'Area tesoriere', 'content' => '[apsemplice_tesoriere]', 'access' => '', 'hint' => 'Per il tesoriere: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.', 'default' => false ),
+			'ingressi'  => array( 'title' => 'Ingressi agli eventi', 'content' => '[apsemplice_ingressi]', 'access' => '', 'hint' => 'Per responsabili e staff: prenotati, QR e registrazione degli ingressi.', 'default' => false ),
 			'cinquemille' => array( 'title' => '5x1000', 'content' => '[apsemplice_cinquepermille]', 'access' => '', 'hint' => 'Il messaggio con il codice fiscale per il 5x1000 (serve la funzione attiva).', 'default' => false ),
 		);
 	}

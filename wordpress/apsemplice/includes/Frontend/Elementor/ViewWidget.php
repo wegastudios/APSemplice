@@ -33,7 +33,7 @@ class ViewWidget extends Widget_Base {
 
 	protected function register_controls() {
 		$this->start_controls_section( 'content_section', array( 'label' => 'Vista', 'tab' => Controls_Manager::TAB_CONTENT ) );
-		$this->add_control( 'view', array( 'label' => 'Cosa mostrare', 'type' => Controls_Manager::SELECT, 'options' => Shortcodes::VIEWS, 'default' => 'area_soci' ) );
+		$this->add_control( 'view', array( 'label' => 'Cosa mostrare', 'type' => Controls_Manager::SELECT, 'options' => \ApSemplice\Areas::options(), 'default' => 'area_soci' ) );
 		$this->add_control( 'anno', array( 'label' => 'Anno sociale (es. 2025/2026; vuoto = in corso)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'attivita' ) ) );
 		$this->add_control(
 			'tipo',
