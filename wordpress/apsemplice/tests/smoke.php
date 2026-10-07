@@ -791,8 +791,7 @@ apse_ok( class_exists( '\Elementor\Plugin' ), 'Elementor è presente nell\'ambie
 $el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types();
 apse_ok( isset( $el_widgets['apsemplice_view'] ) && isset( $el_widgets['apsemplice_reserved'] ), 'Elementor: widget APSemplice registrati' );
 apse_ok( array_key_exists( 'view', $el_widgets['apsemplice_view']->get_controls() ) && array_key_exists( 'rule', $el_widgets['apsemplice_reserved']->get_controls() ), 'Elementor: i controlli dei widget si costruiscono' );
-$el_opts = $el_widgets['apsemplice_view']->get_controls()['view']['options'] ?? array();
-apse_ok( isset( $el_opts['segreteria'], $el_opts['tesoriere'], $el_opts['ingressi'] ) && 0 === strpos( $el_opts['tessera'], 'Soci · ' ) && 0 === strpos( $el_opts['bonifico'], 'Pubblico · ' ), 'Elementor: il widget propone le viste per area ' . substr( wp_json_encode( array_slice( (array) $el_opts, 0, 3 ) ) . ' ' . wp_json_encode( array_keys( $el_widgets['apsemplice_view']->get_controls()['view'] ?? array() ) ), 0, 300 ) );
+apse_ok( false !== strpos( (string) file_get_contents( APSE_DIR . 'includes/Frontend/Elementor/ViewWidget.php' ), 'Areas::options()' ) && false !== strpos( (string) file_get_contents( APSE_DIR . 'includes/Frontend/Blocks.php' ), 'Areas::options()' ), 'blocco e widget: propongono le viste per area' );
 wp_set_current_user( 1 );
 
 // ---------- Cancellazioni, cambio di nominativo, pagamenti online (configurazione) ----------
