@@ -26,6 +26,8 @@ final class WizardPage {
 		'calendario'  => 'mod[activities]=1',
 		'bonifico'    => 'bank_enabled=1',
 		'cinquemille' => 'fivepm_enabled=1',
+		'tesoriere'   => 'mod[ledger]=1',
+		'ingressi'    => 'mod[activities]=1',
 	);
 
 	/** Collegamenti ai tutorial: si aprono in una nuova finestra. */
@@ -178,10 +180,19 @@ final class WizardPage {
 		$exist = Pages::existing();
 		self::step( 'Pagine del sito', 'Le pagine con gli shortcode già inseriti, proposte in base alle tue risposte. Potrai personalizzarne l\'impaginazione; quelle già create non si duplicano.' );
 		echo '<input type="hidden" name="pages_present" value="1">';
-		foreach ( Pages::defs() as $key => $d ) {
+		$titles = \ApSemplice\Areas::titles();
+		foreach ( Pages::by_area() as $area => $defs ) {
+			$conds = array_unique( array_map( function ( $k ) {
+				return self::PAGE_IF[ $k ] ?? '';
+			}, array_keys( $defs ) ) );
+			$wrap  = 1 === count( $conds ) && '' !== $conds[0] ? ' data-if="' . esc_attr( $conds[0] ) . '"' : ''; // l'intera area compare solo se serve
+			echo '<div' . $wrap . '><h3 style="margin-bottom:4px">' . esc_html( $titles[ $area ] ?? $area ) . '</h3>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		foreach ( $defs as $key => $d ) {
 			$if = self::PAGE_IF[ $key ] ?? '';
 			echo '<div' . ( '' !== $if ? ' data-if="' . esc_attr( $if ) . '"' : '' ) . '><label><input type="checkbox" name="pages[]" value="' . esc_attr( $key ) . '"' . checked( isset( $exist[ $key ] ) || ! empty( $d['default'] ), true, false ) . disabled( isset( $exist[ $key ] ), true, false ) . '> <strong>' . esc_html( $d['title'] ) . '</strong>'
 				. ( isset( $exist[ $key ] ) ? ' <em>(già creata)</em>' : '' ) . '</label><br><span class="description" style="margin-left:24px">' . esc_html( $d['hint'] ) . '</span></div>';
+		}
+		echo '</div>';
 		}
 		self::end_step();
 

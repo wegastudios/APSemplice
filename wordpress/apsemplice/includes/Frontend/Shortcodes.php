@@ -24,8 +24,10 @@ final class Shortcodes {
 		'pagamenti'       => 'Pagamenti da fare (paga online)',
 		'ricevute'        => 'Le mie ricevute e attestazioni (PDF)',
 		'regolamento'     => 'Regolamento da accettare',
-		'spese'           => 'Spese del tesoriere (con foto dello scontrino)',
-		'ingressi'        => 'Ingressi agli eventi (prenotati e QR, per chi gestisce)',
+		'segreteria'      => 'Area segreteria (richieste, soci, comunicazioni)',
+		'tesoriere'       => 'Area tesoriere (incassi, spese, iscrizioni, vendita eventi)',
+		'spese'           => 'Spese del tesoriere (nome precedente di «Area tesoriere»)',
+		'ingressi'        => 'Ingressi agli eventi (prenotati e QR, per responsabile e staff)',
 		'avvisi'          => 'Avvisi dei volontari agli iscritti (bacheca)',
 		'ospiti'          => 'I miei ospiti',
 		'profilo'         => 'Il mio profilo',
@@ -64,7 +66,10 @@ final class Shortcodes {
 			case 'ingressi':
 				return Views::checkin();
 			case 'spese':
+			case 'tesoriere':
 				return Views::expenses();
+			case 'segreteria':
+				return Views::secretary();
 			case 'regolamento':
 				return Views::rules();
 			case 'ricevute':

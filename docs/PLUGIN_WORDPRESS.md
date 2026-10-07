@@ -595,3 +595,14 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Ruo
 - **Socio**: i propri dati, tessera, prenotazioni e pagamenti.
 
 La pagina Impostazioni → Ruoli e accessi riporta la matrice «chi può fare cosa» e l'elenco di chi ha un ruolo.
+
+## Aree del sito, blocchi e widget
+
+Le viste (shortcode, blocco Gutenberg «APSemplice», widget Elementor «APSemplice») sono raggruppate per area e nei selettori compaiono nominate e ordinate così («Soci · Tessera digitale»):
+- **Soci**: area soci, tessera, le mie attività, pagamenti, ricevute, regolamento, ospiti, profilo, avvisi, calendario, app.
+- **Segreteria**: `[apsemplice_segreteria]` — richieste di accesso da evadere e collegamenti alla gestione (visibile a segreteria, presidente e vicepresidente; agli altri compare un avviso).
+- **Tesoriere**: `[apsemplice_tesoriere]` — incassi, cassa per più persone, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi (il vecchio `[apsemplice_spese]` continua a funzionare).
+- **Eventi**: area volontari (le attività che tengo, avvisi, iscritti) e ingressi agli eventi (prenotati, QR, registrazione per responsabili e staff).
+- **Pubblico**: elenco attività, prossimi eventi, coordinate per il bonifico, 5x1000, accesso.
+
+La configurazione guidata propone e crea le pagine per area, solo quelle che servono (tesoriere con la prima nota, ingressi con i corsi e gli eventi, bonifico con le coordinate, 5x1000 se attivo); le pagine già create non si duplicano. Le pagine che mostrano contenuti riservati controllano i permessi di chi le apre.

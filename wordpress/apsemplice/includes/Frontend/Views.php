@@ -362,6 +362,29 @@ final class Views {
 	}
 
 	/** Spese del tesoriere: modulo con scatto dello scontrino + le ultime spese registrate da lui (nessun saldo, nessun altro movimento). */
+	/** Area segreteria: il punto d'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente). Il lavoro vero resta nell'amministrazione. */
+	public static function secretary(): string {
+		if ( ! is_user_logged_in() ) {
+			return self::login_prompt();
+		}
+		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+			return self::notice( 'Questa pagina è riservata alla segreteria.' );
+		}
+		$url   = function ( string $page ) {
+			return esc_url( admin_url( 'admin.php?page=' . $page ) );
+		};
+		$pend  = count( \ApSemplice\AccessRequests::pending() );
+		$links = array( array( 'apse-people', 'Soci e ospiti', true ), array( 'apse-person', 'Nuovo socio', true ), array( 'apse-messages', 'Comunicazioni', \ApSemplice\Modules::on( 'messages' ) ), array( 'apse-activities', 'Corsi ed eventi', \ApSemplice\Modules::on( 'activities' ) ), array( 'apse-money', 'Soldi', \ApSemplice\Modules::on( 'ledger' ) ), array( 'apse-book', 'Libro soci e registri', \ApSemplice\Modules::on( 'book' ) ), array( 'apse', 'Bacheca', true ) );
+		$html  = '<section class="apsf-section apsf-secretary"><h3>Segreteria</h3>';
+		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da evadere: si evadono dalla <a href="' . $url( 'apse' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da evadere.' ) . '</p><p class="apsf-small apsf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="apsf-actions">';
+		foreach ( $links as $l ) {
+			if ( $l[2] ) {
+				$html .= '<a class="apsf-btn" href="' . $url( $l[0] ) . '">' . esc_html( $l[1] ) . '</a> ';
+			}
+		}
+		return $html . '</p></section>';
+	}
+
 	/** Nuova iscrizione (tesoriere): nome, cognome e tipo di socio; email e cellulare facoltativi. */
 	private static function section_new_member(): string {
 		if ( ! current_user_can( 'apse_register_member', 0 ) ) {
