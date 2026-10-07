@@ -3,6 +3,7 @@ namespace ApSemplice\Admin;
 
 use ApSemplice\Attachments;
 use ApSemplice\Audit;
+use ApSemplice\Fiscal;
 use ApSemplice\Gateways;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
@@ -542,13 +543,16 @@ final class Actions {
 	}
 
 	private static function save_activity( array $p ): array {
-		$data = array(
+		list( $vat_rate, $vat_mode ) = Ui::vat_input( $p ); // gli importi si memorizzano sempre IVA compresa (quanto paga chi partecipa)
+		$fee   = self::fee_field( $p, 'fee' );
+		$guest = self::fee_field( $p, 'guest_fee' );
+		$data  = array(
 			'name'                 => $p['name'] ?? '',
 			'social_year'          => $p['social_year'] ?? '',
 			'kind'                 => $p['kind'] ?? 'course',
 			'instructor_person_id' => $p['instructor_person_id'] ?? '',
-			'fee_cents'            => self::fee_field( $p, 'fee' ) ?? 0,
-			'guest_fee_cents'      => self::fee_field( $p, 'guest_fee' ),
+			'fee_cents'            => null === $fee ? 0 : Fiscal::gross_from_input( $fee, $vat_rate, $vat_mode ),
+			'guest_fee_cents'      => null === $guest ? null : Fiscal::gross_from_input( $guest, $vat_rate, $vat_mode ),
 			'cancellable'          => ! empty( $p['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => $p['cancel_policy'] ?? '',
 			'booking_qr'           => ! empty( $p['booking_qr'] ) ? 1 : 0,
@@ -562,6 +566,9 @@ final class Actions {
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
+		if ( array_key_exists( 'vat_rate', $p ) ) { // senza il campo (ente senza IVA) l'aliquota già memorizzata non si tocca
+			$data['vat_rate'] = $vat_rate;
+		}
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
 			Plugin::activities()->update( $id, $data );
@@ -728,8 +735,10 @@ final class Actions {
 
 	private static function save_income( array $p ): array {
 		$lines = array();
+		list( $vat_rate, $vat_mode ) = Ui::vat_input( $p );
+		$vat_auto = Ui::vat_is_auto( $p );
 		foreach ( (array) ( $p['lines'] ?? array() ) as $l ) {
-			$lines[] = array(
+			$lines[] = ( array_key_exists( 'vat_rate', $p ) && ! $vat_auto ? array( 'vat_rate' => $vat_rate ) : array() ) + array( 'vat_mode' => $vat_mode ) + array(
 				'category_id'      => (int) ( $l['category_id'] ?? 0 ),
 				'amount_cents'     => Money::parse( $l['amount'] ?? '' ) ?? 0,
 				'activity_id'      => (int) ( $l['activity_id'] ?? 0 ),
@@ -791,7 +800,7 @@ final class Actions {
 				'person_id'    => (int) ( $p['person_id'] ?? 0 ),
 				'description'  => $p['description'] ?? '',
 				'document_ref' => $p['document_ref'] ?? '',
-			)
+			) + ( array_key_exists( 'vat_rate', $p ) ? array( 'vat_rate' => Ui::vat_input( $p )[0], 'vat_mode' => Ui::vat_input( $p )[1] ) : array() )
 		);
 		$ids = Attachments::add( $tx, $docs );
 		return array( Ui::url( 'apse-ledger' ), 'Spesa registrata' . ( $ids ? ' con ' . count( $ids ) . ( 1 === count( $ids ) ? ' allegato.' : ' allegati.' ) : '.' ) );

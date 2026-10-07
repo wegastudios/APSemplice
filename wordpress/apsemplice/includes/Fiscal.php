@@ -82,6 +82,52 @@ final class Fiscal {
 		return self::EXCLUDED === (string) Settings::get( 'vat_prices_mode' ) ? self::EXCLUDED : self::INCLUDED;
 	}
 
+	/** Aliquota scelta in un modulo: vuota o «none» = fuori campo IVA (null), altrimenti un numero da 0 a 30. */
+	public static function clean_rate( $raw ): ?int {
+		if ( null === $raw || '' === trim( (string) $raw ) || 'none' === $raw ) {
+			return null;
+		}
+		return self::is_rate( $raw ) ? (int) $raw : null;
+	}
+
+	/** Aliquota delle quote associative (null = fuori campo IVA, come di norma per le quote dei soci). */
+	public static function membership_rate(): ?int {
+		return self::clean_rate( Settings::get( 'vat_membership_rate' ) );
+	}
+
+	/** Aliquota di un'attività (null = fuori campo IVA). */
+	public static function activity_rate( ?array $activity ): ?int {
+		return $activity ? self::clean_rate( $activity['vat_rate'] ?? null ) : null;
+	}
+
+	/** IVA contenuta in un importo lordo: 0 se l'ente non applica l'IVA o la voce è fuori campo. */
+	public static function vat_of( int $gross_cents, ?int $rate ): int {
+		if ( null === $rate || ! self::vat_applies() ) {
+			return 0;
+		}
+		return self::split( $gross_cents, $rate, true )['vat'];
+	}
+
+	/** Opzioni per la scelta dell'aliquota: fuori campo + le aliquote proponibili. */
+	public static function rate_options(): array {
+		$out = array( 'none' => 'Fuori campo IVA' );
+		foreach ( self::RATES as $r ) {
+			$out[ (string) $r ] = $r . '%';
+		}
+		return $out;
+	}
+
+	/**
+	 * Importo inserito in un modulo => importo lordo (quello che si incassa o si paga).
+	 * Se l'importo è indicato IVA esclusa si aggiunge l'IVA dell'aliquota scelta; senza aliquota o senza IVA resta com'è.
+	 */
+	public static function gross_from_input( int $cents, ?int $rate, string $mode ): int {
+		if ( self::EXCLUDED !== $mode || null === $rate || ! self::vat_applies() ) {
+			return $cents;
+		}
+		return self::split( $cents, $rate, false )['gross'];
+	}
+
 	/**
 	 * Scompone un importo.
 	 *

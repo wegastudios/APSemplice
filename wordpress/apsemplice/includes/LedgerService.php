@@ -329,7 +329,21 @@ class LedgerService {
 				}
 				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}
-			$prepared[] = array( 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
+			// IVA: esplicita se indicata, altrimenti quella della quota associativa o dell'attività (solo se l'ente applica l'IVA)
+				$vat_rate = null;
+				if ( Fiscal::vat_applies() ) {
+					if ( array_key_exists( 'vat_rate', $l ) ) {
+						$vat_rate = Fiscal::clean_rate( $l['vat_rate'] );
+					} elseif ( 'membership' === $cat['kind'] ) {
+						$vat_rate = Fiscal::membership_rate();
+					} elseif ( $activity ) {
+						$vat_rate = Fiscal::activity_rate( $activity );
+					}
+				}
+				if ( null !== $vat_rate && Fiscal::EXCLUDED === (string) ( $l['vat_mode'] ?? '' ) ) {
+					$cents = Fiscal::gross_from_input( $cents, $vat_rate, Fiscal::EXCLUDED ); // importo scritto IVA esclusa: si incassa con l'IVA
+				}
+				$prepared[] = array( 'vat_rate' => $vat_rate, 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
@@ -350,6 +364,8 @@ class LedgerService {
 							'payer_person_id'  => $payer && $p['person'] && (int) $payer['id'] !== (int) $p['person']['id'] ? (int) $payer['id'] : null,
 							'description'      => mb_substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),
 							'discount_cents'   => $p['discount'],
+							'vat_rate'         => $p['vat_rate'],
+							'vat_cents'        => Fiscal::vat_of( (int) $p['cents'], $p['vat_rate'] ),
 							'competence_month' => ! empty( $p['line']['competence_month'] ) ? $p['line']['competence_month'] : null,
 							'social_year'      => $p['social_year'],
 							'document_ref'     => ! empty( $d['document_ref'] ) ? mb_substr( trim( $d['document_ref'] ), 0, 80 ) : null,
@@ -390,8 +406,12 @@ class LedgerService {
 		if ( ! empty( $d['activity_id'] ) && ! Plugin::activities()->get( (int) $d['activity_id'] ) ) {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
 		}
+		$vat_rate = Fiscal::vat_applies() && array_key_exists( 'vat_rate', $d ) ? Fiscal::clean_rate( $d['vat_rate'] ) : null;
+		$d['amount_cents'] = Fiscal::gross_from_input( (int) $d['amount_cents'], $vat_rate, (string) ( $d['vat_mode'] ?? '' ) ); // se l'importo è scritto IVA esclusa si paga con l'IVA
 		return $this->insert_tx(
 			array(
+				'vat_rate'     => $vat_rate,
+				'vat_cents'    => Fiscal::vat_of( (int) $d['amount_cents'], $vat_rate ),
 				'tx_date'      => $date,
 				'type'         => 'expense',
 				'amount_cents' => (int) $d['amount_cents'],

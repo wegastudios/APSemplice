@@ -666,6 +666,60 @@ ob_start();
 Admin\EntityPage::render();
 $en_html = (string) ob_get_clean();
 apse_ok( false !== strpos( $en_html, 'name="vat_number"' ) && false !== strpos( $en_html, 'Partita IVA' ) && false !== strpos( $en_html, 'name="legal_address"' ) && in_array( 'apse-entity', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_save_entity'] ), 'dati ente: pagina riservata agli amministratori con sede e partita IVA' );
+// IVA su incassi, quote, attività e spese
+$vt_last = function () {
+	return Db::db()->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' ORDER BY id DESC LIMIT 1', ARRAY_A );
+};
+$vt_m    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Iva', 'last_name' => 'Provata' ) );
+$vt_act  = $acts->create( array( 'name' => 'Corso con IVA', 'social_year' => $sy->label(), 'monthly_fee_cents' => 12200, 'vat_rate' => 22 ) );
+$vt_free = $acts->create( array( 'name' => 'Corso fuori campo', 'social_year' => $sy->label(), 'monthly_fee_cents' => 5000 ) );
+apse_ok( 22 === (int) $acts->get( $vt_act )['vat_rate'] && null === $acts->get( $vt_free )['vat_rate'], 'iva: l\'aliquota si memorizza sull\'attività (vuota = fuori campo)' );
+$vt_exp = 0;
+foreach ( $ledger->categories() as $vt_c ) {
+	if ( 'general_cost' === $vt_c['kind'] && ! $vt_exp ) {
+		$vt_exp = (int) $vt_c['id'];
+	}
+}
+$vt_base = array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash' );
+// senza partita IVA nessuna IVA viene registrata
+$ledger->record_receipt( $vt_base + array( 'person_id' => $vt_m, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 12200, 'activity_id' => $vt_act, 'competence_month' => $month ) ) ) );
+$vt_t = $vt_last();
+apse_ok( null === $vt_t['vat_rate'] && 0 === (int) $vt_t['vat_cents'], 'iva: senza partita IVA l\'incasso non ha IVA' );
+Settings::update( array( 'has_vat' => 1, 'vat_number' => '12345678903', 'fiscal_regime' => 'ordinario', 'vat_default_rate' => 22, 'vat_membership_rate' => '' ) );
+$vt_m2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Iva', 'last_name' => 'Seconda' ) );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $vt_m2, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 12200, 'activity_id' => $vt_act, 'competence_month' => $month ) ) ) );
+$vt_t = $vt_last();
+apse_ok( 22 === (int) $vt_t['vat_rate'] && 2200 === (int) $vt_t['vat_cents'] && 12200 === (int) $vt_t['amount_cents'], 'iva: l\'incasso di un\'attività con aliquota contiene l\'IVA (22% su 122,00 = 22,00)' );
+$vt_m3 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Iva', 'last_name' => 'Terza' ) );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $vt_m3, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 5000, 'activity_id' => $vt_free, 'competence_month' => $month ) ) ) );
+$vt_t = $vt_last();
+apse_ok( null === $vt_t['vat_rate'] && 0 === (int) $vt_t['vat_cents'], 'iva: un\'attività fuori campo non ha IVA' );
+$ledger->record_receipt( $vt_base + array( 'lines' => array( array( 'category_id' => $cat['donation'], 'amount_cents' => 10000, 'vat_rate' => 22, 'vat_mode' => 'escl' ) ) ) );
+$vt_t = $vt_last();
+apse_ok( 12200 === (int) $vt_t['amount_cents'] && 2200 === (int) $vt_t['vat_cents'] && 22 === (int) $vt_t['vat_rate'], 'iva: importo scritto IVA esclusa, si incassa con l\'IVA (100,00 + 22% = 122,00)' );
+$ledger->record_receipt( $vt_base + array( 'lines' => array( array( 'category_id' => $cat['donation'], 'amount_cents' => 12200, 'vat_rate' => 10 ) ) ) );
+$vt_t = $vt_last();
+apse_ok( 12200 === (int) $vt_t['amount_cents'] && 1109 === (int) $vt_t['vat_cents'], 'iva: importo scritto IVA compresa, si scorpora (122,00 al 10% = 11,09 di IVA)' );
+Settings::update( array( 'vat_membership_rate' => 10 ) );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $vt_m, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1100, 'social_year' => $sy->label() ) ) ) );
+$vt_t = $vt_last();
+apse_ok( 10 === (int) $vt_t['vat_rate'] && 100 === (int) $vt_t['vat_cents'], 'iva: la quota associativa segue l\'aliquota delle quote (10% su 11,00 = 1,00)' );
+Settings::update( array( 'vat_membership_rate' => '' ) );
+$ledger->record_expense( $vt_base + array( 'category_id' => $vt_exp, 'amount_cents' => 10000, 'vat_rate' => 22, 'vat_mode' => 'escl', 'description' => 'Spesa con IVA' ) );
+$vt_t = $vt_last();
+apse_ok( 12200 === (int) $vt_t['amount_cents'] && 2200 === (int) $vt_t['vat_cents'], 'iva: spesa con importo IVA esclusa, si paga con l\'IVA' );
+$ledger->record_expense( $vt_base + array( 'category_id' => $vt_exp, 'amount_cents' => 5000 ) );
+$vt_t = $vt_last();
+apse_ok( null === $vt_t['vat_rate'] && 5000 === (int) $vt_t['amount_cents'], 'iva: spesa senza aliquota resta fuori campo' );
+$vt_csv = Admin\Exports::ledger( '2000-01-01', '2100-12-31' )[1];
+apse_ok( false !== strpos( $vt_csv, 'Aliquota IVA;Imponibile;IVA' ) && false !== strpos( $vt_csv, '22%;100,00;22,00' ), 'iva: l\'esportazione della prima nota ha aliquota, imponibile e IVA' );
+$vt_rows = \ApSemplice\Receipts::rows( 'tx' . (int) $vt_last()['id'] );
+$vt_bd = \ApSemplice\Receipts::vat_breakdown( array( array( 'vat_rate' => 22, 'vat_cents' => 2200, 'amount_cents' => 12200 ), array( 'vat_rate' => 22, 'vat_cents' => 220, 'amount_cents' => 1220 ), array( 'vat_rate' => null, 'vat_cents' => 0, 'amount_cents' => 500 ) ) );
+apse_ok( array( 22 => array( 'net' => 10000 + 1000, 'vat' => 2420 ) ) === $vt_bd, 'iva: la ricevuta raggruppa imponibile e IVA per aliquota' );
+$vt_row = Admin\Ui::vat_row( null, 'incl', 'Gli importi', true );
+apse_ok( false !== strpos( $vt_row, 'name="vat_rate"' ) && false !== strpos( $vt_row, 'IVA esclusa' ) && false !== strpos( $vt_row, 'Automatica' ), 'iva: i moduli hanno aliquota e modo (IVA compresa o esclusa)' );
+Settings::update( array( 'has_vat' => 0, 'vat_number' => '', 'vat_membership_rate' => '' ) );
+apse_ok( '' === Admin\Ui::vat_row( null, 'incl' ), 'iva: senza partita IVA i moduli non mostrano nulla di fiscale' );
 // strumenti
 foreach ( array( 'apse-import', 'apse-wpai', 'apse-exports', 'apse-calendar', 'apse-backup', 'apse-tech', 'apse-tools' ) as $tl_p ) {
 	apse_ok( 'apse-tools' === Admin\Admin::menu_item_of( $tl_p ), 'strumenti: ' . $tl_p . ' sta negli Strumenti' );

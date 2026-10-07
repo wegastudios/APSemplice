@@ -49,6 +49,22 @@ final class FiscalTest extends TestCase {
 		}
 	}
 
+	public function test_clean_rate(): void {
+		$this->assertNull( Fiscal::clean_rate( null ) );
+		$this->assertNull( Fiscal::clean_rate( '' ) );
+		$this->assertNull( Fiscal::clean_rate( 'none' ) );
+		$this->assertNull( Fiscal::clean_rate( 'abc' ) );
+		$this->assertNull( Fiscal::clean_rate( '99' ) );
+		$this->assertSame( 22, Fiscal::clean_rate( '22' ) );
+		$this->assertSame( 0, Fiscal::clean_rate( '0' ), 'lo 0% è un\'aliquota (esente), diversa da «fuori campo»' );
+	}
+
+	public function test_rate_options_start_with_out_of_scope(): void {
+		$o = Fiscal::rate_options();
+		$this->assertSame( 'none', array_key_first( $o ) );
+		$this->assertSame( '22%', $o['22'] );
+	}
+
 	public function test_regimes_and_rates(): void {
 		$this->assertArrayHasKey( Fiscal::FLAT, Fiscal::regimes() );
 		$this->assertContains( 22, Fiscal::RATES );

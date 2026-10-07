@@ -213,12 +213,29 @@ final class Receipts {
 		return '';
 	}
 
+	/** Imponibile e IVA delle righe di una ricevuta, per aliquota (solo le righe con IVA). @return array<int,array{net:int,vat:int}> */
+	public static function vat_breakdown( array $rows ): array {
+		$out = array();
+		foreach ( $rows as $r ) {
+			if ( null === ( $r['vat_rate'] ?? null ) || '' === $r['vat_rate'] || (int) ( $r['vat_cents'] ?? 0 ) <= 0 ) {
+				continue;
+			}
+			$rate = (int) $r['vat_rate'];
+			$out[ $rate ] = $out[ $rate ] ?? array( 'net' => 0, 'vat' => 0 );
+			$out[ $rate ]['vat'] += (int) $r['vat_cents'];
+			$out[ $rate ]['net'] += (int) $r['amount_cents'] - (int) $r['vat_cents'];
+		}
+		ksort( $out );
+		return $out;
+	}
+
 	private static function header( Pdf $pdf ): float {
 		$name = (string) Settings::get( 'association_name' );
 		$cf   = (string) Settings::get( 'tax_code' );
 		$pdf->text( 50, 62, '' !== $name ? $name : 'Associazione', 17, true );
-		if ( '' !== $cf ) {
-			$pdf->text( 50, 80, 'Codice fiscale: ' . $cf, 10 );
+		$vat = Fiscal::vat_applies() ? (string) Settings::get( 'vat_number' ) : '';
+		if ( '' !== $cf || '' !== $vat ) {
+			$pdf->text( 50, 80, trim( ( '' !== $cf ? 'Codice fiscale: ' . $cf : '' ) . ( '' !== $cf && '' !== $vat ? ' · ' : '' ) . ( '' !== $vat ? 'Partita IVA: ' . $vat : '' ) ), 10 );
 		}
 		$pdf->line( 50, 92, Pdf::W - 50, 92, 1.2 );
 		return 118;
@@ -294,7 +311,12 @@ final class Receipts {
 		$y += 8;
 		$pdf->text( 56, $y, 'Totale', 12, true );
 		$pdf->text( Pdf::W - 56, $y, Money::format( $total ), 12, true, 'R' );
-		$y += 20;
+		$y += 18;
+		foreach ( self::vat_breakdown( $rows ) as $rate => $b ) { // imponibile e IVA contenuta, per aliquota
+			$pdf->text( 56, $y, 'di cui imponibile ' . $rate . '%: ' . Money::format( $b['net'] ) . ' · IVA: ' . Money::format( $b['vat'] ), 10 );
+			$y += 14;
+		}
+		$y += 6;
 		$method = (string) $rows[0]['method'];
 		$pdf->text( 56, $y, 'Pagato con: ' . ( Labels::methods()[ $method ] ?? $method ), 10 );
 		if ( ! empty( $rows[0]['document_ref'] ) ) {

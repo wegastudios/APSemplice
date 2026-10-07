@@ -71,6 +71,34 @@ final class Ui {
 		echo '</form>';
 	}
 
+	/**
+	 * Riga del modulo per l'IVA (solo se l'ente applica l'IVA): aliquota e se l'importo scritto è IVA compresa o esclusa.
+	 *
+	 * @param ?int   $rate       aliquota attuale (null = fuori campo IVA)
+	 * @param string $mode       importo indicato: 'incl' o 'escl'
+	 * @param string $what       a cosa si riferisce («Contributo», «Importo»…)
+	 */
+	public static function vat_row( ?int $rate, string $mode, string $what = 'Gli importi', bool $auto = false ): string {
+		if ( ! \ApSemplice\Fiscal::vat_applies() ) {
+			return '';
+		}
+		$opts = $auto ? array( 'auto' => 'Automatica (dalla quota o dall\'attività)' ) + \ApSemplice\Fiscal::rate_options() : \ApSemplice\Fiscal::rate_options();
+		return '<tr><th>IVA</th><td><select name="vat_rate">' . self::options( $opts, $auto ? 'auto' : ( null === $rate ? 'none' : (string) $rate ) ) . '</select> '
+			. '<select name="vat_mode">' . self::options( array( \ApSemplice\Fiscal::INCLUDED => 'Importi scritti: IVA compresa', \ApSemplice\Fiscal::EXCLUDED => 'Importi scritti: IVA esclusa' ), $mode ) . '</select>'
+			. '<p class="description">Aliquota applicata e modo in cui hai scritto gli importi: quello che paga chi partecipa è sempre l\'importo con l\'IVA. «Fuori campo IVA» per i contributi che non sono operazioni commerciali.</p></td></tr>';
+	}
+
+	/** Il modulo ha lasciato l'aliquota su «Automatica»? */
+	public static function vat_is_auto( array $p ): bool {
+		return 'auto' === (string) ( $p['vat_rate'] ?? '' );
+	}
+
+	/** Aliquota e modo letti da un modulo con {@see Ui::vat_row()}: [aliquota|null, 'incl'|'escl']. */
+	public static function vat_input( array $p ): array {
+		$mode = isset( $p['vat_mode'] ) && \ApSemplice\Fiscal::EXCLUDED === (string) $p['vat_mode'] ? \ApSemplice\Fiscal::EXCLUDED : \ApSemplice\Fiscal::INCLUDED;
+		return array( \ApSemplice\Fiscal::clean_rate( $p['vat_rate'] ?? null ), $mode );
+	}
+
 	public static function hidden( string $name, $value ): string {
 		return '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '">';
 	}

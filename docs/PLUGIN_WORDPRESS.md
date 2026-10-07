@@ -563,3 +563,13 @@ La voce di menu **Strumenti** raccoglie in un unico posto ciò che riguarda impo
 - **Esporta**: soci e ospiti, prima nota e rendiconto per cassa (anno solare), report delle attività (anno sociale), in CSV con punto e virgola e virgola decimale.
 - **Calendari**: calendario interno di tutte le attività e indirizzo del calendario pubblicato; il calendario della singola attività resta nella sua scheda. Il calendario è raggiungibile anche dalla Bacheca.
 - **Copia di sicurezza** e **Integrazioni** (prima nelle Impostazioni).
+
+## IVA su quote, attività, incassi e spese
+
+Solo se l'ente ha la partita IVA (e non è in regime forfettario); altrimenti non compare nulla di fiscale. Gli importi si memorizzano sempre **IVA compresa** (quello che paga o incassa chi partecipa): l'IVA è un'informazione contenuta nell'importo.
+- **Attività**: nella scheda si sceglie l'aliquota (o «Fuori campo IVA», per i contributi che non sono operazioni commerciali) e se gli importi scritti sono IVA compresa o esclusa; se esclusa, il contributo viene salvato con l'IVA aggiunta. Per le nuove attività si propone l'aliquota e la modalità dell'ente.
+- **Quote associative**: un'unica aliquota (di norma fuori campo IVA) in Dati e fiscalità.
+- **Incassi**: l'aliquota è automatica (quota associativa o attività) oppure scelta nel modulo; gli importi si possono scrivere IVA compresa o esclusa. Ogni riga della prima nota registra aliquota e IVA contenuta; gli incassi online e alla porta usano l'aliquota della voce.
+- **Spese**: aliquota e modalità nel modulo; la spesa registra l'importo con l'IVA e l'IVA contenuta.
+- **Ricevute**: mostrano la partita IVA dell'ente e, per ogni aliquota, imponibile e IVA contenuta.
+- **Prima nota**: l'importo di ogni riga resta quello lordo, con la nota «di cui IVA»; l'esportazione CSV aggiunge aliquota, imponibile e IVA, per il commercialista.
