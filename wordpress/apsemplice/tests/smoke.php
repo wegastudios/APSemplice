@@ -952,6 +952,36 @@ $ev_list = (string) ob_get_clean();
 apse_ok( false !== strpos( $ev_list, 'Quarta serata' ) && false !== strpos( $ev_list, '<details' ) && false !== strpos( $ev_list, 'Lia Otto' ) && false !== strpos( $ev_list, 'wa.me/' ) && false === strpos( $ev_list, 'page=apse-booking-delete' ), 'elenco attività: partecipanti attesi a scomparsa in ogni evento, con WhatsApp (la cancellazione resta nella scheda)' );
 \ApSemplice\ActivityReset::delete( $ev_a4, 'void' );
 \ApSemplice\ActivityReset::delete( $ev_r, 'refund' );
+// corso: iscritti non confermati da togliere dall'elenco, pagamento diretto dalla lista
+$pg_c  = $acts->create( array( 'name' => 'Corso pulizia elenco', 'social_year' => $ev_sy, 'kind' => 'course', 'monthly_fee_cents' => 8000 ) );
+$pg_a  = $ev_mk( 'Anna', 'Ritirata' );
+$pg_b  = $ev_mk( 'Bruno', 'Pagante' );
+$pg_k  = $ev_mk( 'Carla', 'Attiva', '340 1234567' );
+foreach ( array( $pg_a, $pg_b ) as $pg_p ) { // iscrizioni già finite (non confermate)
+	Db::db()->insert( Db::t( 'enrollments' ), array( 'activity_id' => $pg_c, 'person_id' => $pg_p, 'start_month' => '2000-01', 'end_month' => '2000-02', 'created_at' => Db::now() ) );
+}
+$acts->enroll( $pg_c, $pg_k, $sy->clamp( substr( $today, 0, 7 ) ) );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $pg_b, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 8000, 'activity_id' => $pg_c, 'competence_month' => '2000-01' ) ) ) );
+$pg_ended = \ApSemplice\ActivityReset::ended_enrollments( $pg_c );
+apse_ok( 2 === count( $pg_ended ) && in_array( $pg_a, $pg_ended, true ) && in_array( $pg_b, $pg_ended, true ) && ! in_array( $pg_k, $pg_ended, true ), 'corso: si riconoscono gli iscritti con l\'iscrizione già finita' );
+$pg_purge = new ReflectionMethod( Admin\Actions::class, 'purge_enrollments' );
+$pg_purge->setAccessible( true );
+apse_ok( null !== apse_throws( function () use ( $pg_purge, $pg_c ) { $pg_purge->invoke( null, array( 'activity_id' => $pg_c ) ); } ) && 2 === count( \ApSemplice\ActivityReset::ended_enrollments( $pg_c ) ), 'corso: senza la conferma non si toglie nessuno' );
+$pg_res = $pg_purge->invoke( null, array( 'activity_id' => $pg_c, 'confirm' => '1' ) );
+$pg_left = \ApSemplice\ActivityReset::ended_enrollments( $pg_c );
+apse_ok( array( $pg_b ) === $pg_left && false !== strpos( $pg_res[1], 'Bruno Pagante' ) && false !== strpos( $pg_res[1], 'la prima nota non è cambiata' ), 'corso: si tolgono gli iscritti senza incassi, resta chi ha incassi (con il nome nel messaggio) e la prima nota non cambia' );
+apse_ok( 1 === (int) Db::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = ' . (int) $pg_c . ' AND person_id = ' . (int) $pg_k ), 'corso: l\'iscritto attivo resta' );
+$_GET = array( 'id' => (string) $pg_c );
+ob_start();
+Admin\ActivitiesPage::render_detail();
+$pg_html = (string) ob_get_clean();
+apse_ok( false !== strpos( $pg_html, 'apse_purge_enrollments' ) && false !== strpos( $pg_html, 'Da versare' ) && 1 === preg_match( '/page=apse-income[^"]*person_id=' . (int) $pg_k . '[^"]*due=1|page=apse-income[^"]*due=1[^"]*person_id=' . (int) $pg_k . '/', html_entity_decode( $pg_html ) ) && false !== strpos( $pg_html, 'page=apse-booking-delete' ), 'corso: dalla lista si va al pagamento diretto («Paga») e si cancella ogni iscritto' );
+$_GET = array();
+$pg_del_b = new ReflectionMethod( Admin\Actions::class, 'delete_booking' );
+$pg_del_b->setAccessible( true );
+$pg_del_b->invoke( null, array( 'activity' => $pg_c, 'person' => $pg_b, 'session' => 0, 'mode' => 'refund', 'confirm' => '1', 'typed' => 'Bruno Pagante' ) );
+apse_ok( array() === \ApSemplice\ActivityReset::ended_enrollments( $pg_c ), 'corso: chi ha incassi si cancella dalla lista scegliendo cosa fare delle somme' );
+\ApSemplice\ActivityReset::delete( $pg_c, 'refund' );
 // strumenti
 foreach ( array( 'apse-import', 'apse-wpai', 'apse-exports', 'apse-calendar', 'apse-backup', 'apse-tech', 'apse-tools' ) as $tl_p ) {
 	apse_ok( 'apse-tools' === Admin\Admin::menu_item_of( $tl_p ), 'strumenti: ' . $tl_p . ' sta negli Strumenti' );

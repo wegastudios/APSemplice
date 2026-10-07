@@ -322,6 +322,38 @@ final class ActivityReset {
 		return $out;
 	}
 
+	/** Iscritti a un corso la cui iscrizione è finita prima del mese in corso (ad esempio chi non ha confermato). @return int[] id delle persone */
+	public static function ended_enrollments( int $activity_id ): array {
+		return array_map( 'intval', self::db()->get_col( self::db()->prepare(
+			'SELECT person_id FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND end_month IS NOT NULL AND end_month < %s ORDER BY id',
+			$activity_id,
+			current_time( 'Y-m' )
+		) ) );
+	}
+
+	/**
+	 * Toglie dall'elenco gli iscritti con l'iscrizione già finita, ma solo se non hanno incassi registrati: la prima nota non si tocca.
+	 * Chi ha incassi resta e va cancellato a mano con la scelta sulle somme.
+	 *
+	 * @return array{removed:int,kept:string[]} quanti tolti e i nomi di chi resta perché ha incassi
+	 */
+	public static function purge_ended_enrollments( int $activity_id ): array {
+		$out = array( 'removed' => 0, 'kept' => array() );
+		foreach ( self::ended_enrollments( $activity_id ) as $pid ) {
+			$pre = self::registration_preview( $activity_id, $pid, 0 );
+			if ( ! $pre ) {
+				continue;
+			}
+			if ( $pre['income']['count'] > 0 ) {
+				$out['kept'][] = Plugin::people()->full_name( $pre['person'] );
+				continue;
+			}
+			self::delete_registration( $activity_id, $pid, 0, self::REFUND );
+			$out['removed']++;
+		}
+		return $out;
+	}
+
 	/** @return string[] */
 	public static function registration_blockers( int $activity_id, int $person_id, int $session_id, string $mode ): array {
 		$p = self::registration_preview( $activity_id, $person_id, $session_id );

@@ -347,13 +347,25 @@ final class ActivitiesPage {
 		if ( ! $statuses ) {
 			echo '<p>Nessun iscritto.</p>';
 		}
+		$ended = \ApSemplice\ActivityReset::ended_enrollments( $id );
+		if ( $ended && current_user_can( Plugin::CAP ) ) { // chi non ha confermato: si toglie dall'elenco in un colpo solo
+			Ui::form_open( 'apse_purge_enrollments', $back, false, 'apse-inline' );
+			echo Ui::hidden( 'activity_id', $id ) // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<div class="notice notice-warning inline"><p><strong>' . count( $ended ) . ( 1 === count( $ended ) ? ' iscritto con l\'iscrizione già finita' : ' iscritti con l\'iscrizione già finita' ) . '</strong> (non confermati o disdetti). '
+				. '<label><input type="checkbox" name="confirm" value="1"> Togli dall\'elenco chi non ha incassi registrati</label> <button class="button">Togli dall\'elenco</button></p>'
+				. '<p class="description">Si tolgono soltanto gli iscritti senza incassi: la prima nota non cambia. Chi ha incassi resta e si cancella uno per uno con «Cancella», scegliendo cosa fare delle somme.</p></div>';
+			Ui::form_close();
+		}
 		foreach ( $statuses as $s ) {
 			$e      = $s['enrollment'];
 			$active = null === $e['end_month'];
 			$label  = trim( ( $e['card_number'] ? 'n.' . $e['card_number'] . ' · ' : '' ) . $e['first_name'] . ' ' . $e['last_name'] );
 			echo '<details class="apse-detail"><summary><a href="' . esc_url( Ui::url( 'apse-person', array( 'id' => $e['person_id'] ) ) ) . '"><strong>' . esc_html( $label ) . '</strong></a> '
 				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( $active ? '' : ' <span class="apse-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' ) . '</summary>';
+				. ( $active ? '' : ' <span class="apse-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' )
+				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'apse-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
+				. ( current_user_can( Plugin::CAP ) ? ' <a class="button button-small" style="color:#b32d2e" href="' . esc_url( DeleteBookingPage::url( $id, (int) $e['person_id'], 0 ) ) . '">Cancella</a>' : '' )
+				. '</summary>';
 			echo Ui::months_table( $s['summary'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_open( $active ? 'apse_cancel_enrollment' : 'apse_enroll', $back );
 			echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
