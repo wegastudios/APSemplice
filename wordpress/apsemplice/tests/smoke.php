@@ -826,7 +826,7 @@ ob_start();
 Admin\ActivitiesPage::render_detail();
 $ev_html = (string) ob_get_clean();
 apse_ok( false !== strpos( $ev_html, 'Partecipanti attesi' ) && false !== strpos( $ev_html, '<details' ) && false !== strpos( $ev_html, 'wa.me/' ) && false !== strpos( $ev_html, 'Paola Prenotata' ) && false !== strpos( $ev_html, 'nessun cellulare' ), 'evento: elenco a scomparsa dei partecipanti con il collegamento WhatsApp solo per chi ha lasciato il numero' );
-apse_ok( false !== strpos( $ev_html, 'page=apse-activity-delete' ) && false !== strpos( $ev_html, 'page=apse-booking-delete' ), 'evento: eliminazione dell\'evento e cancellazione delle iscrizioni per gli amministratori' );
+apse_ok( false !== strpos( $ev_html, 'page=apse-activity-delete' ) && false !== strpos( $ev_html, 'apse_delete_booking' ), 'evento: eliminazione dell\'evento e cancellazione delle iscrizioni per gli amministratori' );
 // incassi
 $ev_bal = function () use ( $ledger, $cash ) {
 	foreach ( $ledger->balances() as $b ) {
