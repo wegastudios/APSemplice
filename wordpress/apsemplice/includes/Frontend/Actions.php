@@ -354,7 +354,7 @@ final class Actions {
 				'email' => $email, 'phone' => trim( (string) ( $post['phone'] ?? '' ) ),
 			)
 		);
-		Audit::log( 'person.registered_front', 'person', (int) $id );
+		\ApSemplice\Audit::log( 'person.registered_front', 'person', (int) $id );
 		$p = Plugin::people()->get( (int) $id );
 		return 'Socio registrato: ' . Plugin::people()->full_name( $p ) . ( ! empty( $p['card_number'] ) ? ' (tessera n. ' . $p['card_number'] . ')' : '' ) . '. Ora puoi incassare la quota associativa.';
 	}
