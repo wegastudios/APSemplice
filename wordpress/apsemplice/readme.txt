@@ -1,62 +1,62 @@
 === APSemplice ===
 Contributors: wegastudios
-Tags: associazioni, soci, prima nota, terzo settore, aps
+Tags: nonprofit, members, membership, accounting, association
 Requires at least: 6.0
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale e altri enti del terzo settore.
+Members, activities, cash book and financial statements for small Italian non-profit associations (APS and other third-sector entities).
 
 == Description ==
 
-APSemplice aiuta una piccola associazione a tenere in ordine soci, attività e conti direttamente dal proprio sito WordPress. Le funzioni facoltative sono spente all'inizio: una configurazione guidata chiede poche cose e accende solo ciò che serve.
+APSemplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
 
-* **Libro soci**: schede dei soci, quote, tessere con QR, ospiti, importazione da file CSV o Excel.
-* **Corsi ed eventi**: iscrizioni, posti limitati con lista d'attesa, tolleranza per il pagamento, elenco dei partecipanti.
-* **Soldi e contabilità**: incassi, spese, giroconti, prima nota, ricevute in PDF, rendiconto, esportazioni.
-* **Area soci** sul sito, con pagine e blocchi (anche per Elementor) da inserire dove vuoi.
-* **Ruoli**: presidente, segreteria, tesoriere, volontari, con permessi separati.
-* **Privacy**: informativa, consensi e anonimizzazione dei dati.
+The plugin is designed for Italian associations: its interface and texts are in Italian.
 
-I testi del plugin sono in italiano.
+* **Member register**: member records, fees, QR membership cards, guests, import from CSV or Excel files.
+* **Courses and events**: registrations, limited seats with a waiting list, a payment grace period, participant lists.
+* **Money and accounting**: income, expenses, transfers, cash book, PDF receipts, financial statement, exports.
+* **Members' area** on the site, with pages and blocks (also for Elementor) to place wherever you like.
+* **Roles**: president, secretary, treasurer, volunteers, each with separate permissions.
+* **Privacy**: privacy notice, consents and data anonymisation.
 
 == External services ==
 
-Il plugin non contatta nessun servizio esterno finché non si accende la funzione corrispondente.
+The plugin does not contact any external service until the matching feature is turned on.
 
-= Stripe (pagamenti con carta) =
-Se attivi i pagamenti con Stripe, il plugin invia a Stripe (api.stripe.com) l'importo, la descrizione e l'indirizzo email di chi paga per creare e verificare il pagamento. Termini: https://stripe.com/legal – Privacy: https://stripe.com/privacy
+= Stripe (card payments) =
+If you enable Stripe payments, the plugin sends the amount, the description and the payer's email address to Stripe (api.stripe.com) to create and check the payment. Terms: https://stripe.com/legal - Privacy: https://stripe.com/privacy
 
 = PayPal =
-Se attivi PayPal, il plugin invia a PayPal (api-m.paypal.com) l'importo e la descrizione del pagamento per crearlo e verificarlo. Termini: https://www.paypal.com/legalhub – Privacy: https://www.paypal.com/privacy
+If you enable PayPal, the plugin sends the amount and the description of the payment to PayPal (api-m.paypal.com) to create and check it. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
 
-= Google Wallet (tessera nel telefono) =
-Se attivi la tessera per Google Wallet, il socio che la richiede viene portato a pay.google.com con un link firmato che contiene il numero e il nome sulla tessera. Termini: https://payments.developers.google.com/terms/sellertos – Privacy: https://policies.google.com/privacy
+= Google Wallet (membership card on the phone) =
+If you enable the Google Wallet card, a member who asks for it is sent to pay.google.com with a signed link containing the card number and the name on the card. Terms: https://payments.developers.google.com/terms/sellertos - Privacy: https://policies.google.com/privacy
 
-= Notifiche push (browser) =
-Se attivi le notifiche, il plugin invia il testo dell'avviso all'indirizzo (endpoint) che il browser dell'iscritto ha comunicato al momento dell'iscrizione. L'endpoint dipende dal browser (per esempio Google, Mozilla o Apple) e se ne applicano i rispettivi termini e informative.
+= Push notifications (browser) =
+If you enable notifications, the plugin sends the text of the notice to the address (endpoint) that the subscriber's browser provided at subscription time. The endpoint depends on the browser (for example Google, Mozilla or Apple) and the respective terms and privacy policies apply.
 
 == Installation ==
 
-1. Carica la cartella `apsemplice` in `/wp-content/plugins/` oppure installa il plugin dalla schermata Plugin.
-2. Attivalo dalla schermata Plugin.
-3. Segui la configurazione guidata che si apre alla prima attivazione (si può rilanciare da Strumenti).
+1. Upload the `apsemplice` folder to `/wp-content/plugins/`, or install the plugin from the Plugins screen.
+2. Activate it from the Plugins screen.
+3. Follow the guided setup that opens on first activation (it can be started again from the Tools menu).
 
 == Frequently Asked Questions ==
 
-= Cosa succede ai dati se elimino il plugin? =
-Di default restano. In Impostazioni si può scegliere di cancellarli definitivamente all'eliminazione del plugin.
+= What happens to the data if I delete the plugin? =
+By default it stays. In the settings you can choose to delete it permanently when the plugin is deleted.
 
-= Serve WooCommerce? =
-No. I pagamenti online funzionano anche con Stripe e PayPal direttamente; WooCommerce è un'alternativa facoltativa.
+= Does it need WooCommerce? =
+No. Online payments also work directly with Stripe and PayPal; WooCommerce is an optional alternative.
 
-= Posso importare l'elenco dei soci che ho già? =
-Sì, da file CSV o Excel, con anteprima prima della conferma.
+= Can I import my existing member list? =
+Yes, from a CSV or Excel file, with a preview before confirming.
 
 == Changelog ==
 
 = 0.1.0 =
-* Prima versione.
+* First release.

@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Generatore di QR Code (ISO 18004), senza librerie: modalità byte, correzione errori M (≈15%), versioni 1–10 (fino a 213 byte).

@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Riconosce nei messaggi i contenuti con cui di solito si dirottano i pagamenti: indirizzi web e coordinate bancarie (IBAN).

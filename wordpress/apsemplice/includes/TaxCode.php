@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Codice fiscale italiano delle persone fisiche: forma e carattere di controllo (anche con i casi di omocodia). Logica pura. */
 final class TaxCode {

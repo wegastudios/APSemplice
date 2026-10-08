@@ -47,7 +47,7 @@ function apse_uninstall_site() {
 
 	// Cartella privata (allegati e copie di sicurezza).
 	$upload = wp_upload_dir( null, false );
-	$dir    = rtrim( (string) $upload['basedir'], '/\' ) . '/apsemplice-private';
+	$dir    = rtrim( (string) $upload['basedir'], '/\\' ) . '/apsemplice-private';
 	if ( is_dir( $dir ) ) {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		if ( WP_Filesystem() ) {

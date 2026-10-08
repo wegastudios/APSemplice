@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Notifiche Web Push senza librerie esterne: cifratura del messaggio (RFC 8291, aes128gcm / RFC 8188), firma VAPID (RFC 8292, ES256) e invio.

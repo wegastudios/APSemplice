@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Lingue: i testi del plugin sono scritti in italiano; un pacchetto di traduzione è una tabella «testo italiano → traduzione»

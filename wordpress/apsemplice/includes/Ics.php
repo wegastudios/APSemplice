@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Generatore di calendari iCalendar (RFC 5545), leggibili da Google Calendar, Apple Calendar, Outlook. */
 final class Ics {

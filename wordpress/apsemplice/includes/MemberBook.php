@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Libro soci: l'elenco progressivo di tutti i soci con la data di ingresso e, se c'è stato, di cessazione (recesso, esclusione, decesso).

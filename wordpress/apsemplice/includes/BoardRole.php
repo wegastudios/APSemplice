@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Cariche del consiglio direttivo: 1 presidente, 1 vicepresidente e un numero di consiglieri (impostabile). */
 final class BoardRole {

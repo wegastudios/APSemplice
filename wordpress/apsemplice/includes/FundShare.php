@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Quota di un pagamento che va accantonata nel fondo del rimborso (importo fisso o percentuale), mai oltre il pagamento. */
 final class FundShare {

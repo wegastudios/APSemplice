@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Apre i file di import (Excel .xlsx o CSV) e li porta tutti alla stessa forma: fogli di righe di testo.

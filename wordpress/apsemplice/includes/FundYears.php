@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Fondi per anno solare: quanto è stato accantonato in ogni anno e quanto di quell'accantonamento è già stato rimborsato o liberato.

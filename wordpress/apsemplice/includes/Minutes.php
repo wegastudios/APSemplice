@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Libro dei verbali: assemblee dei soci e riunioni del consiglio direttivo, con numerazione progressiva per tipo e anno. */
 final class Minutes {

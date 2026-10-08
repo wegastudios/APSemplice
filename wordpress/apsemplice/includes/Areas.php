@@ -3,7 +3,7 @@ namespace ApSemplice;
 
 use ApSemplice\Frontend\Shortcodes;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Le aree del sito: ogni vista (shortcode, blocco, widget) appartiene a un'area, così blocchi e widget si scelgono in ordine.

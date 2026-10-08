@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Tessera per Google Wallet: un indirizzo "Salva su Google Wallet" che contiene la tessera in un JWT firmato (RS256)

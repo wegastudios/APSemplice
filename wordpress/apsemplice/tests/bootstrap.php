@@ -4,6 +4,7 @@
  * Le classi che usano il database sono verificate da tests/smoke.php dentro un WordPress reale.
  */
 define( 'APSE_TESTS', true );
+define( 'ABSPATH', dirname( __DIR__ ) . '/' ); // le classi hanno la guardia contro l'accesso diretto
 
 spl_autoload_register(
 	function ( $class ) {

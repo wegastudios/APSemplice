@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Rendiconto per cassa di un anno solare, nello schema usato dagli enti del terzo settore: entrate e uscite raggruppate per area,

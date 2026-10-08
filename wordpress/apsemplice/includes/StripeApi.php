@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Stripe Checkout: l'utente paga su una pagina ospitata da Stripe, noi non vediamo mai i dati della carta.

@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * 5x1000: il messaggio per chiedere la firma ai soci (con il codice fiscale dell'associazione) e il registro dei contributi ricevuti,
