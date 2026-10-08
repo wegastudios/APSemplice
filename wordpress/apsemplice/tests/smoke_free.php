@@ -123,6 +123,8 @@ free_ok( $n_pages > 30, "$n_pages pagine provate" );
 
 // ---------- Pagamenti: solo l'elenco di ciò che c'è da pagare ----------
 free_ok( ! Edition::has( 'payments' ) && get_class( Plugin::payments() ) === 'ApSemplice\OfflinePayments' && ! Plugin::payments()->enabled() && array() === Plugin::payments()->providers(), 'pagamenti online assenti' );
+$aid2 = $acts->create( array( 'name' => 'Gita da pagare', 'social_year' => $sy, 'kind' => 'event', 'fee_cents' => 1000, 'session' => array( 'session_date' => current_time( 'Y-m-d' ), 'capacity' => 10 ) ) );
+$acts->book( (int) $acts->sessions( $aid2 )[0]['id'], $pid );
 $actor = $people->get( $pid );
 $dues  = Plugin::payments()->dues_for( $actor );
 free_ok( is_array( $dues ) && count( $dues ) >= 1, 'le voci da pagare si calcolano lo stesso' );
