@@ -48,8 +48,25 @@ final class WizardPage {
 		return '<select name="' . esc_attr( $name ) . '">' . Ui::options( $opts, '' ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
-	private static function step( string $title, string $intro, string $if = '' ): void {
-		echo '<section class="apse-wiz-step"' . ( '' !== $if ? ' data-if="' . esc_attr( $if ) . '"' : '' ) . '><h2>' . esc_html( $title ) . '</h2>' . ( '' !== $intro ? '<p class="description">' . esc_html( $intro ) . '</p>' : '' );
+	private static function step( string $title, string $intro, string $if = '', string $group = '' ): void {
+		echo '<section class="apse-wiz-step"' . ( '' !== $if ? ' data-if="' . esc_attr( $if ) . '"' : '' ) . ( '' !== $group ? ' data-group="' . esc_attr( $group ) . '"' : '' ) . '><h2>' . esc_html( $title ) . '</h2>' . ( '' !== $intro ? '<p class="description">' . esc_html( $intro ) . '</p>' : '' );
+	}
+
+	/** Sezioni dell'indicatore: Ente (dati dell'ente, partita IVA, quota), Gestione (cosa serve), Pagamenti, Aspetto (pagine e privacy). L'ultima schermata (l'elenco dei soci) è facoltativa e non si conta. */
+	const SECTIONS = array(
+		'ente'      => 'Ente',
+		'gestione'  => 'Gestione',
+		'pagamenti' => 'Pagamenti',
+		'aspetto'   => 'Aspetto',
+	);
+
+	/** Indicatore di sezione: dove ci si trova, senza contare le pagine. */
+	private static function stepper(): string {
+		$html = '<div class="apse-wiz-stepper"><span class="apse-wiz-where"></span><ol>';
+		foreach ( self::SECTIONS as $id => $label ) {
+			$html .= '<li data-group="' . esc_attr( $id ) . '"><span class="apse-wiz-dot"></span>' . esc_html( $label ) . '</li>';
+		}
+		return $html . '</ol></div>';
 	}
 
 	private static function end_step(): void {
@@ -80,14 +97,15 @@ final class WizardPage {
 		$woo  = WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
-		echo '<p>Poche domande per cominciare: il resto si aggiunge dopo, solo se serve. Le voci «Più dettagli» sono facoltative; ciò che non scegli resta spento e si accende in seguito dalle impostazioni o riaprendo questa procedura dagli Strumenti.</p>';
+		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 veloci sezioni i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
 		Ui::form_open( 'apse_wizard_save', Ui::url( 'apse-wizard' ), false, 'apse-wizard' );
+	echo self::stepper(); // phpcs:ignore WordPress.Security.EscapeOutput
 
 		// 1. Ente, ospiti e iscrizione
 		$ents = array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) );
 		$mems = array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) );
 		$jm   = (string) $s['join_mode'];
-		self::step( 'Il tuo ente', 'Poche righe per cominciare: tipo di ente e come chiami chi partecipa adattano da soli tutti i testi.' );
+		self::step( 'Il tuo ente', 'Poche righe per cominciare: tipo di ente e come chiami chi partecipa adattano da soli tutti i testi.', '', 'ente' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>Di che tipo è</th><td><select name="entity_type">' . Ui::options( array_combine( $ents, $ents ), (string) $s['entity_type'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -105,7 +123,7 @@ final class WizardPage {
 		self::end_step();
 
 		// 2. Partita IVA
-		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.' );
+		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.', '', 'ente' );
 		echo self::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
 		$rates = array();
 		foreach ( Fiscal::RATES as $r ) {
@@ -123,24 +141,8 @@ final class WizardPage {
 		echo '</tbody></table></details></div>';
 		self::end_step();
 
-		// 3. Quota associativa
-		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.' );
-		echo '<table class="form-table"><tbody>';
-		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
-		echo '</tbody></table>';
-		echo '<details class="apse-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
-		$have = array();
-		foreach ( Levels::all( true ) as $lv ) {
-			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
-		}
-		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
-		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
-		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
-		echo '</tbody></table></details>';
-		self::end_step();
-
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
-		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.' );
+		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.', '', 'gestione' );
 		echo '<input type="hidden" name="mod_present" value="1">';
 		foreach ( Modules::defs() as $key => $d ) {
 			if ( 'import' === $key ) {
@@ -160,8 +162,24 @@ final class WizardPage {
 		self::end_step();
 
 
+		// 3. Quota associativa
+		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'pagamenti' );
+		echo '<table class="form-table"><tbody>';
+		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
+		echo '</tbody></table>';
+		echo '<details class="apse-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
+		$have = array();
+		foreach ( Levels::all( true ) as $lv ) {
+			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
+		}
+		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
+		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
+		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
+		echo '</tbody></table></details>';
+		self::end_step();
+
 		// 8. Pagamenti
-		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1' );
+		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1', 'pagamenti' );
 		$current = (string) $s['payment_provider'];
 		foreach ( Wizard::payment_choices() as $val => $c ) {
 			$off  = PaymentConfig::WOOCOMMERCE === $val && ! $euro;
@@ -182,7 +200,7 @@ final class WizardPage {
 		if ( $euro ) {
 			$products = WooBridge::products();
 			$map      = WooLinks::map();
-			self::step( 'Prodotti di WooCommerce', 'Ogni quota deve corrispondere a un prodotto del negozio: collegane uno esistente oppure crealo ora (prodotto virtuale, non visibile in vetrina; il prezzo applicato lo calcola il plugin).', 'payment_choice=woocommerce' );
+			self::step( 'Prodotti di WooCommerce', 'Ogni quota deve corrispondere a un prodotto del negozio: collegane uno esistente oppure crealo ora (prodotto virtuale, non visibile in vetrina; il prezzo applicato lo calcola il plugin).', 'payment_choice=woocommerce', 'pagamenti' );
 			echo '<table class="form-table"><tbody>';
 			foreach ( Levels::all( true ) as $lv ) {
 				$cur = (int) ( $map[ 'level:' . (int) $lv['id'] ] ?? 0 );
@@ -196,7 +214,7 @@ final class WizardPage {
 
 		// 10. Pagine
 		$exist = Pages::existing();
-		self::step( 'Pagine del sito', 'Le pagine con gli shortcode già inseriti, proposte in base alle tue risposte. Potrai personalizzarne l\'impaginazione; quelle già create non si duplicano.' );
+		self::step( 'Pagine del sito', 'Le pagine con gli shortcode già inseriti, proposte in base alle tue risposte. Potrai personalizzarne l\'impaginazione; quelle già create non si duplicano.', '', 'aspetto' );
 		echo '<input type="hidden" name="pages_present" value="1">';
 		$priv_sel = 0;
 		if ( '' !== (string) $s['privacy_url'] ) {
@@ -224,7 +242,7 @@ final class WizardPage {
 		}
 		self::end_step();
 
-		self::step( 'Elenco dei soci', 'Hai già un elenco di soci e ospiti (Excel o CSV, anche in un unico file)? Puoi caricarlo subito dopo: si vede un\'anteprima e si conferma prima di salvare. L\'importazione resta sempre disponibile dagli Strumenti.' );
+		self::step( 'Elenco dei soci', 'Hai già un elenco di soci e ospiti (Excel o CSV, anche in un unico file)? Puoi caricarlo subito dopo: si vede un\'anteprima e si conferma prima di salvare. L\'importazione resta sempre disponibile dagli Strumenti.', '', 'optional' );
 		echo self::yes_no( 'go_import', 'Vuoi importare ora l\'elenco dei soci e degli ospiti?', false ); // phpcs:ignore WordPress.Security.EscapeOutput
 		self::end_step();
 
@@ -240,7 +258,7 @@ final class WizardPage {
 
 	/** Un passo alla volta, saltando ciò che non serve; i campi nascosti non vengono inviati. */
 	private static function script(): void {
-		echo '<style>.apse-wizard:not(.apse-wiz-js) [data-wiz=back],.apse-wizard:not(.apse-wiz-js) [data-wiz=next],.apse-wizard:not(.apse-wiz-js) .apse-wiz-count{display:none}.apse-wiz-step{max-width:820px}.apse-wiz-more{margin:12px 0}.apse-wiz-more>summary{cursor:pointer;color:#2271b1}</style>';
+		echo '<style>.apse-wizard:not(.apse-wiz-js) [data-wiz=back],.apse-wizard:not(.apse-wiz-js) [data-wiz=next],.apse-wizard:not(.apse-wiz-js) .apse-wiz-count{display:none}.apse-wiz-step{max-width:820px}.apse-wiz-more{margin:12px 0}.apse-wiz-stepper{margin:10px 0 18px;max-width:820px}.apse-wiz-where{display:block;font-weight:600;margin-bottom:6px;min-height:1.4em}.apse-wiz-stepper ol{display:flex;gap:6px;list-style:none;margin:0;padding:0}.apse-wiz-stepper li{flex:1;font-size:12px;color:#646970;border-top:4px solid #dcdcde;padding-top:5px}.apse-wiz-stepper li.done{border-color:#2271b1;color:#1d2327}.apse-wiz-stepper li.current{border-color:#2271b1;color:#1d2327;font-weight:600}.apse-wiz-dot{display:none}.apse-wizard:not(.apse-wiz-js) .apse-wiz-stepper{display:none}.apse-wiz-more>summary{cursor:pointer;color:#2271b1}</style>';
 		echo '<script>(function(){var f=document.querySelector("form.apse-wizard");if(!f)return;'
 			. 'var steps=[].slice.call(f.querySelectorAll(".apse-wiz-step")),cur=0;f.classList.add("apse-wiz-js");'
 			. 'function ok(el){var c=el.getAttribute("data-if");if(!c)return true;var i=c.lastIndexOf("="),n=c.slice(0,i),v=c.slice(i+1);'
@@ -250,7 +268,11 @@ final class WizardPage {
 			. '[].slice.call(e.querySelectorAll("input,select,textarea")).forEach(function(i){if(!i.hasAttribute("data-was"))i.setAttribute("data-was",i.disabled?"1":"0");i.disabled=!show||i.getAttribute("data-was")==="1";});});}'
 			. 'function vis(){return steps.filter(function(s){return s.getAttribute("data-skip")!=="1";});}'
 			. 'function show(){sync();var v=vis();if(v.indexOf(steps[cur])<0){cur=steps.indexOf(v[0]);}steps.forEach(function(s,i){s.style.display=i===cur?"":"none";});'
-			. 'var n=v.indexOf(steps[cur]);f.querySelector(".apse-wiz-count").textContent="Passo "+(n+1)+" di "+v.length;'
+			. 'var n=v.indexOf(steps[cur]),g=steps[cur].getAttribute("data-group")||"",W=f.querySelector(".apse-wiz-where"),lis=[].slice.call(f.querySelectorAll(".apse-wiz-stepper li"));'
+			. 'var groups=[];v.forEach(function(s){var x=s.getAttribute("data-group");if(x&&x!=="optional"&&groups.indexOf(x)<0)groups.push(x);});'
+			. 'var gi=groups.indexOf(g);lis.forEach(function(li){var x=li.getAttribute("data-group"),k=groups.indexOf(x);li.style.display=k<0?"none":"";li.className=(g==="optional"||(gi>=0&&k<gi))?"done":(k===gi?"current":"");});'
+			. 'var lab=lis.filter(function(li){return li.getAttribute("data-group")===g;})[0];W.textContent=g==="optional"?"Facoltativo: elenco dei soci":(gi>=0&&lab?"Sezione "+(gi+1)+" di "+groups.length+": "+lab.textContent:"");'
+			. 'f.querySelector(".apse-wiz-count").textContent="";'
 			. 'f.querySelector("[data-wiz=back]").style.display=n>0?"":"none";f.querySelector("[data-wiz=next]").style.display=n<v.length-1?"":"none";f.querySelector("[data-wiz=finish]").style.display=n===v.length-1?"":"none";}'
 			. 'f.addEventListener("change",show);'
 			. 'f.querySelector("[data-wiz=next]").addEventListener("click",function(){var v=vis(),n=v.indexOf(steps[cur]);cur=steps.indexOf(v[Math.min(n+1,v.length-1)]);show();window.scrollTo(0,0);});'
