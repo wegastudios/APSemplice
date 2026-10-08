@@ -634,3 +634,9 @@ Impostazioni → Sistema → **Azzeramento dati** (solo amministratori) per ripa
 Prima di cancellare il sito salva una **copia completa con gli allegati** tra le copie di sicurezza (si conservano le ultime): se la copia non riesce non viene cancellato nulla. Le tabelle si svuotano in un'unica transazione e la numerazione riparte da 1. Il registro azioni registra l'azzeramento.
 
 **Dopo le prove sul sito vero**: l'elenco dei partecipanti attesi dei corsi è chiuso di default (si apre con un clic); nella procedura guidata la pagina privacy di WordPress si propone solo alla prima configurazione (su un sito già in uso non si cambia da sola l'accettazione dell'informativa); la Bacheca segnala agli amministratori il nome dell'ente mancante, con il collegamento a «Dati e fiscalità».
+
+## Tolleranza per il pagamento e lista d'attesa
+
+Negli eventi con posti limitati e un contributo, alla creazione si può indicare la **tolleranza per il pagamento** in ore (0 = nessun limite, massimo 720). Chi prenota e paga con bonifico o contanti ha quel tempo per versare: scaduto il termine senza alcun pagamento il posto si libera, la persona riceve una email e subentra il primo della lista d'attesa. Il controllo gira ogni ora e anche al momento di ogni nuova prenotazione.
+
+Non si libera mai il posto di chi ha già versato (anche in parte), di chi sta pagando online, di chi ha già l'ingresso registrato o di una data passata. Quando i posti sono esauriti l'evento mostra «Posti esauriti · lista d'attesa».

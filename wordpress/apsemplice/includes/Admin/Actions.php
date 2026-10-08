@@ -657,6 +657,9 @@ final class Actions {
 		if ( array_key_exists( 'vat_rate', $p ) ) { // senza il campo (ente senza IVA) l'aliquota già memorizzata non si tocca
 			$data['vat_rate'] = $vat_rate;
 		}
+		if ( array_key_exists( 'hold_hours', $p ) ) { // solo gli eventi hanno il campo
+			$data['hold_hours'] = max( 0, min( 720, (int) $p['hold_hours'] ) );
+		}
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
 			Plugin::activities()->update( $id, $data );

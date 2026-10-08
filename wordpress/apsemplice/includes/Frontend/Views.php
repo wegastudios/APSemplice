@@ -709,7 +709,7 @@ final class Views {
 		}
 		$cls  = 0 === $seat['free'] ? 'apsf-bad' : 'apsf-good';
 		$wait = \ApSemplice\Waitlist::count( (int) $s['id'] );
-		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="apsf-small apsf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span>' . ( $wait ? ' <span class="apsf-small apsf-muted">· in lista d\'attesa: ' . (int) $wait . '</span>' : '' ) . '</p>';
+		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti · lista d’attesa' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="apsf-small apsf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span>' . ( $wait ? ' <span class="apsf-small apsf-muted">· in lista d\'attesa: ' . (int) $wait . '</span>' : '' ) . '</p>';
 	}
 
 	private static function door_form( array $s, array $a ): string {
@@ -1158,7 +1158,7 @@ final class Views {
 		$full   = null !== $cap && $booked >= $cap;
 		$html   = '<li><div>' . $prefix . '<strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
 			. ( $s['location'] ? '<div class="apsf-small">' . esc_html( $s['location'] ) . '</div>' : '' )
-			. ( null !== $cap ? '<div class="apsf-small">' . ( $full ? 'Posti esauriti' : max( 0, $cap - $booked ) . ' posti liberi' ) . '</div>' : '' ) . '</div><div class="apsf-actions">';
+			. ( null !== $cap ? '<div class="apsf-small">' . ( $full ? 'Posti esauriti · lista d’attesa' : max( 0, $cap - $booked ) . ' posti liberi' ) . '</div>' : '' ) . '</div><div class="apsf-actions">';
 		if ( ! $ctx['logged'] ) {
 			$html .= '<a class="apsf-btn wp-element-button" href="' . esc_url( wp_login_url( Restrict::current_url() ) ) . '">Accedi per prenotarti</a>';
 		} elseif ( ! empty( $ctx['can_book'] ) ) {

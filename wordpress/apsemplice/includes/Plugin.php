@@ -26,6 +26,7 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
+		Holds::register();       // posti liberati se il pagamento non arriva entro la tolleranza
 		Reminders::register();   // promemoria giornalieri (spenti finché non li accendi nelle impostazioni)
 		Broadcasts::register();  // invio a gruppi in background
 		Backup::register();      // download della copia di sicurezza

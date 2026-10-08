@@ -71,6 +71,7 @@ class ActivityService {
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
 				'vat_rate'             => $d['vat_rate'],
+				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['booking_qr'] : 0,
@@ -116,6 +117,7 @@ class ActivityService {
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
 				'vat_rate'             => $d['vat_rate'],
+				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $current['kind'] ) ? $d['booking_qr'] : 0,
@@ -253,6 +255,7 @@ class ActivityService {
 			'fee_cents'            => (int) ( $in['fee_cents'] ?? 0 ),
 			'guest_fee_cents'      => $guest,
 			'vat_rate'             => Fiscal::clean_rate( $in['vat_rate'] ?? null ),
+			'hold_hours'           => max( 0, min( 720, (int) ( $in['hold_hours'] ?? 0 ) ) ),
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
 			'cancel_policy'        => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'booking_qr'           => ! empty( $in['booking_qr'] ) ? 1 : 0,
@@ -497,6 +500,9 @@ class ActivityService {
 		$person = Plugin::people()->get( $person_id );
 		if ( ! $a || ! $person ) {
 			throw new \InvalidArgumentException( 'Attività o persona non trovata.' );
+		}
+		if ( null !== $s['capacity'] && (int) ( $a['hold_hours'] ?? 0 ) > 0 ) {
+			Holds::release_expired( $session_id ); // prima di dire «posti esauriti» si liberano le prenotazioni non pagate entro la tolleranza
 		}
 		$tbl = Db::t( 'bookings' );
 		// Posti e doppie prenotazioni: controllo e scrittura sotto blocco, così due richieste insieme non superano la capienza.
