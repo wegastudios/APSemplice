@@ -1,0 +1,8 @@
+# File (dentro includes/) che NON fanno parte dell'edizione gratuita. Una riga per file.
+# Li usa il workflow per provare il plugin senza di loro (tests/smoke_free.php) e, più avanti, per costruire i due pacchetti.
+License.php
+LicensePolicy.php
+LicenseRules.php
+Admin/LicenseNotice.php
+Admin/VatFields.php
+Admin/LevelsEditor.php
