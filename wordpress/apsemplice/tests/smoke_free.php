@@ -103,6 +103,41 @@ free_ok( $tx > 0, 'incasso registrato in prima nota' );
 $row = $wpdb->get_row( $wpdb->prepare( 'SELECT vat_rate, vat_cents FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $tx ), ARRAY_A );
 free_ok( null === $row['vat_rate'] && 0 === (int) $row['vat_cents'], 'nessuna IVA sull\'incasso' );
 
+// ---------- Tutte le pagine di amministrazione si aprono (anche quelle delle funzioni assenti, con l'avviso) ----------
+$src = (string) file_get_contents( APSE_DIR . 'includes/Admin/Admin.php' );
+preg_match_all( "/array\( '(apse[a-z-]*)', '(?:[^'\\\\]|\\\\.)*', array\( ([A-Za-z]+)::class, '([a-z_]+)' \) \)/", $src, $m, PREG_SET_ORDER );
+free_ok( count( $m ) > 30, 'elenco delle pagine di amministrazione letto (' . count( $m ) . ')' );
+$skip = array( 'apse-activity-delete', 'apse-booking-delete', 'apse-reset', 'apse-activity' );
+$n_pages = 0;
+foreach ( $m as $pg ) {
+	if ( in_array( $pg[1], $skip, true ) ) {
+		continue;
+	}
+	$cb   = array( 'ApSemplice\Admin\' . $pg[2], $pg[3] );
+	$wrap = \ApSemplice\Admin\Admin::guard( $pg[1], $cb );
+	$out  = free_render( $wrap, array( 'page' => $pg[1] ) );
+	free_ok( '' !== $out, 'pagina ' . $pg[1] . ' si apre' );
+	$n_pages++;
+}
+free_ok( $n_pages > 30, "$n_pages pagine provate" );
+
+// ---------- Pagamenti: solo l'elenco di ciò che c'è da pagare ----------
+free_ok( ! Edition::has( 'payments' ) && get_class( Plugin::payments() ) === 'ApSemplice\OfflinePayments' && ! Plugin::payments()->enabled() && array() === Plugin::payments()->providers(), 'pagamenti online assenti' );
+$actor = $people->get( $pid );
+$dues  = Plugin::payments()->dues_for( $actor );
+free_ok( is_array( $dues ) && count( $dues ) >= 1, 'le voci da pagare si calcolano lo stesso' );
+$area = \ApSemplice\Frontend\Views::section_pay( $actor );
+free_ok( false !== strpos( $area, 'Pagamenti' ) && false === strpos( $area, 'apse_front_pay' ), 'area soci: voci da pagare senza pulsanti di pagamento online' );
+$threw = null !== ( function () use ( $actor ) {
+	try {
+		\ApSemplice\Frontend\Actions::do_pay( array() );
+	} catch ( \Throwable $e ) {
+		return $e->getMessage();
+	}
+	return null;
+} )();
+free_ok( $threw, 'il pagamento online è rifiutato' );
+
 // ---------- Il salvataggio dei livelli è rifiutato ----------
 $threw = false;
 try {

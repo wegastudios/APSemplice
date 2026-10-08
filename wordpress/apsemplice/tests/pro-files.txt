@@ -6,3 +6,12 @@ LicenseRules.php
 Admin/LicenseNotice.php
 Admin/VatFields.php
 Admin/LevelsEditor.php
+PaymentService.php
+Gateways.php
+StripeApi.php
+StripeWebhook.php
+PayPalApi.php
+WooBridge.php
+WooLinks.php
+Frontend/PayReturn.php
+Admin/PaymentsPage.php

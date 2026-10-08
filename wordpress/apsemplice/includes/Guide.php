@@ -33,7 +33,7 @@ final class Guide {
 
 	/** Funzioni facoltative, spente di default. @return array[] title, on, page, hint */
 	public static function options(): array {
-		return array(
+		$list = array(
 			array( 'title' => 'Pagamenti online', 'on' => PaymentConfig::NONE !== (string) Settings::get( 'payment_provider' ), 'page' => 'apse-payments', 'hint' => 'Carta, PayPal e altri metodi dall\'area soci.' ),
 			array( 'title' => 'Tessera con QR e Wallet', 'on' => Settings::card_qr_enabled(), 'page' => 'apse-card', 'hint' => 'QR della tessera e biglietti degli eventi.' ),
 			array( 'title' => 'Promemoria automatici', 'on' => (bool) Settings::get( 'reminders_enabled' ), 'page' => 'apse-comms', 'hint' => 'Tessera in scadenza, mensilità dei corsi, eventi.' ),
@@ -42,6 +42,9 @@ final class Guide {
 			array( 'title' => '5x1000', 'on' => FivePerMille::enabled(), 'page' => 'apse-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' ),
 			array( 'title' => 'Lingua del sito', 'on' => Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'apse-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' ),
 		);
+		return array_values( array_filter( $list, function ( $o ) { // le funzioni che questa edizione non ha non si propongono
+			return ! in_array( $o['page'], Edition::missing_pages(), true );
+		} ) );
 	}
 
 	/** @return array{done:int,total:int} */

@@ -193,7 +193,7 @@ final class Admin {
 
 	/** Schede spente dalle impostazioni (report e rendiconto). @return string[] */
 	public static function disabled_pages(): array {
-		return \ApSemplice\Modules::off_pages();
+		return array_merge( \ApSemplice\Modules::off_pages(), \ApSemplice\Edition::missing_pages() );
 	}
 
 	/** Voce di menu da nascondere: tutte le sue pagine sono spente. */
@@ -217,6 +217,12 @@ final class Admin {
 			return $made[ $slug ];
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
+			if ( in_array( $slug, \ApSemplice\Edition::missing_pages(), true ) ) {
+				Ui::header( 'Funzione non inclusa' );
+				echo '<p>Questa funzione fa parte di APSemplice Pro e non è inclusa in questa edizione.</p>';
+				Ui::footer();
+				return;
+			}
 			if ( in_array( $slug, self::disabled_pages(), true ) ) {
 				Ui::header( 'Parte non in uso' );
 				echo '<p>Questa parte del gestionale è spenta. I dati non sono stati toccati: si riaccende dalla <a href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">configurazione guidata</a>.</p>';

@@ -31,6 +31,9 @@ final class TechActions {
 
 	public static function register(): void {
 		foreach ( self::ACTIONS as $action => $method ) {
+			if ( 'apse_save_woo' === $action && ! \ApSemplice\Edition::has( 'payments' ) ) { // il collegamento con WooCommerce è dei pagamenti online
+				continue;
+			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {

@@ -250,6 +250,9 @@ final class Actions {
 	}
 
 	public static function do_pay( array $post ): string {
+		if ( ! \ApSemplice\Edition::has( 'payments' ) ) {
+			throw new \InvalidArgumentException( 'I pagamenti online non sono disponibili in questa edizione.' );
+		}
 		$actor = self::actor();
 		self::assert_profile( $actor );
 		self::require_cap( 'apse_view_payments', (int) $actor['id'] );

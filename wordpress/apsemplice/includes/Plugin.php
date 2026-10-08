@@ -126,8 +126,9 @@ final class Plugin {
 		return self::$services['funds'] ?? ( self::$services['funds'] = new FundService() );
 	}
 
-	public static function payments(): PaymentService {
-		return self::$services['payments'] ?? ( self::$services['payments'] = new PaymentService() );
+	/** Servizio dei pagamenti: quello online delle funzioni avanzate se c'è, altrimenti solo l'elenco di ciò che c'è da pagare. */
+	public static function payments(): OfflinePayments {
+		return self::$services['payments'] ?? ( self::$services['payments'] = Edition::has( 'payments' ) ? new PaymentService() : new OfflinePayments() );
 	}
 
 	public static function reports(): ReportService {

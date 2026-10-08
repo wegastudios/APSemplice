@@ -29,7 +29,9 @@ final class Api {
 			return self::guard();
 		};
 		self::event_routes( $logged_in );
-		register_rest_route( self::NS, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
+		if ( Edition::has( 'payments' ) ) {
+			register_rest_route( self::NS, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
+		}
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'me' ), 'permission_callback' => $logged_in ) );
 		register_rest_route( self::NS, '/me/activities', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'my_activities' ), 'permission_callback' => $logged_in ) );
 		register_rest_route(

@@ -94,7 +94,7 @@ final class WizardPage {
 
 	public static function render(): void {
 		$s    = Settings::all();
-		$woo  = WooBridge::active();
+		$woo  = \ApSemplice\Edition::has( 'payments' ) && WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
 		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 veloci sezioni i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
@@ -185,7 +185,11 @@ final class WizardPage {
 		// 8. Pagamenti
 		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1', 'pagamenti' );
 		$current = (string) $s['payment_provider'];
-		foreach ( Wizard::payment_choices() as $val => $c ) {
+		$pay_choices = \ApSemplice\Edition::has( 'payments' ) ? Wizard::payment_choices() : array(); // senza pagamenti online resta solo il bonifico
+		if ( ! $pay_choices ) {
+			echo '<input type="hidden" name="payment_choice" value="none">';
+		}
+		foreach ( $pay_choices as $val => $c ) {
 			$off  = PaymentConfig::WOOCOMMERCE === $val && ! $euro;
 			$note = '';
 			if ( PaymentConfig::WOOCOMMERCE === $val ) {

@@ -29,6 +29,11 @@ final class Actions {
 		'apse_delete_activity', 'apse_delete_booking', 'apse_purge_enrollments', 'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
 	);
 
+	/** Azioni che appartengono a una funzione avanzata: senza la funzione non si registrano. */
+	const FEATURE_ACTIONS = array(
+		'payments' => array( 'apse_save_payment_settings', 'apse_test_gateway', 'apse_check_payments', 'apse_payment_reviewed' ),
+	);
+
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
 	public static function required_cap( string $action ): string {
 		return in_array( $action, self::ADMIN_ONLY, true ) ? Plugin::CAP : Plugin::CAP_OPS;
@@ -131,6 +136,11 @@ final class Actions {
 			'apse_wpai_retry'         => 'wpai_retry',
 			'apse_wpai_clear'         => 'wpai_clear',
 		);
+		foreach ( self::FEATURE_ACTIONS as $feature => $actions ) { // le azioni delle funzioni avanzate esistono solo se la funzione c'è
+			if ( ! \ApSemplice\Edition::has( $feature ) ) {
+				$map = array_diff_key( $map, array_flip( $actions ) );
+			}
+		}
 		add_action( 'admin_post_apse_attachment', array( Attachments::class, 'handle_download' ) );
 		foreach ( $map as $action => $method ) {
 			add_action(

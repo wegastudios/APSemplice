@@ -29,6 +29,22 @@ final class Edition {
 		'door_sales' => 'DoorSales.php',      // incasso sul posto
 	);
 
+	/** Pagine di amministrazione di ogni funzione avanzata: se la funzione non c'è, spariscono dal menu e dalle schede. */
+	const PAGES = array(
+		'payments' => array( 'apse-payments', 'apse-tech' ),
+	);
+
+	/** @return string[] pagine di amministrazione delle funzioni che questa installazione non ha */
+	public static function missing_pages(): array {
+		$out = array();
+		foreach ( self::PAGES as $feature => $pages ) {
+			if ( ! self::has( $feature ) ) {
+				$out = array_merge( $out, $pages );
+			}
+		}
+		return $out;
+	}
+
 	/** @var string[] cartelle (con la barra finale) in cui cercare i file: la prima è quella di questo plugin */
 	private static $dirs = array();
 
