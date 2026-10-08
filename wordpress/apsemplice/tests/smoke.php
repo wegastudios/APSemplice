@@ -5087,9 +5087,9 @@ apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=aps
 apse_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
 
 // ---------- Azzeramento dei dati (ultimo: cancella tutto) ----------
-wp_set_current_user( 1 );
-wp_set_password( 'Azzera-Pass-123', 1 );
-wp_set_current_user( 1 );
+// un amministratore con una password nota (wp_set_current_user non ricarica l'utente già in uso: se ne crea uno nuovo)
+$rs_admin = wp_insert_user( array( 'user_login' => 'azzeratore', 'user_pass' => 'Azzera-Pass-123', 'user_email' => 'azzeratore@example.com', 'role' => 'administrator' ) );
+wp_set_current_user( (int) $rs_admin );
 $rs_prev = \ApSemplice\Reset::preview();
 apse_ok( $rs_prev['people'] > 0 && $rs_prev['transactions'] > 0 && $rs_prev['activities'] > 0 && $rs_prev['users'] > 0, 'azzeramento: l\'anteprima conta ciò che verrebbe cancellato' );
 $_GET = array();
