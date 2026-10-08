@@ -636,7 +636,7 @@ final class Install {
 	public static function seed(): void {
 		global $wpdb;
 		$cat = Db::t( 'categories' );
-		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $cat" ) ) {
+		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $cat" ) ) { // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabelle del plugin, nessuna API di WordPress equivalente
 			$entrate  = 'Entrate da attività di interesse generale';
 			$uscite   = 'Uscite da attività di interesse generale';
 			$seed     = array(
@@ -650,15 +650,15 @@ final class Install {
 				array( 'Rettifica di cassa', 'adjustment', 'Rettifiche' ),
 			);
 			foreach ( $seed as $s ) {
-				$wpdb->insert( $cat, array( 'name' => $s[0], 'kind' => $s[1], 'fiscal_group' => $s[2] ) );
+				$wpdb->insert( $cat, array( 'name' => $s[0], 'kind' => $s[1], 'fiscal_group' => $s[2] ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- tabelle del plugin, nessuna API di WordPress equivalente
 			}
 		}
 		Levels::seed();
 		FiscalYears::seed(); // l'anno solare in corso (e quelli con movimenti) esiste sempre
 		$acc = Db::t( 'accounts' );
-		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ) ) {
+		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ) ) { // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabelle del plugin, nessuna API di WordPress equivalente
 			$wpdb->insert( $acc, array( 'name' => 'Cassa contanti', 'type' => 'cash', 'sort_order' => 0 ) );
-			$wpdb->insert( $acc, array( 'name' => 'Conto corrente', 'type' => 'bank', 'sort_order' => 1 ) );
+			$wpdb->insert( $acc, array( 'name' => 'Conto corrente', 'type' => 'bank', 'sort_order' => 1 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- tabelle del plugin, nessuna API di WordPress equivalente
 		}
 	}
 }

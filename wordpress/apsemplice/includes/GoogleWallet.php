@@ -70,7 +70,7 @@ final class GoogleWallet {
 				return 'https://pay.google.com/gp/v/save/' . $last;
 			}
 		}
-		throw new \InvalidArgumentException( 'La tessera è troppo lunga per Google Wallet (' . strlen( $last ) . ' caratteri).' );
+		throw new \InvalidArgumentException( 'La tessera è troppo lunga per Google Wallet (' . strlen( $last ) . ' caratteri).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 	}
 
 	public static function jwt( array $cfg, array $claims ): string {

@@ -55,7 +55,7 @@ final class FivePerMille {
 			throw new \InvalidArgumentException( 'Indica la data in cui è stato accreditato.' );
 		}
 		if ( self::db()->get_var( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'fivepm' ) . ' WHERE year = %d', $year ) ) ) {
-			throw new \InvalidArgumentException( 'Il 5x1000 dell\'anno ' . $year . ' è già registrato.' );
+			throw new \InvalidArgumentException( 'Il 5x1000 dell\'anno ' . $year . ' è già registrato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$ok = self::db()->insert( Db::t( 'fivepm' ), array( 'year' => $year, 'amount_cents' => $cents, 'choices' => $choices, 'received_on' => $rec, 'created_at' => Db::now() ) );
 		if ( ! $ok ) {

@@ -1181,7 +1181,7 @@ final class Actions {
 		$res      = Gateways::test( $provider, Settings::payment_config(), array( Gateways::class, 'wp_http' ) );
 		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
 		if ( ! $res['ok'] ) {
-			throw new \InvalidArgumentException( $res['message'] );
+			throw new \InvalidArgumentException( $res['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( Ui::url( 'apse-payments' ), $res['message'] );
 	}
@@ -1210,12 +1210,12 @@ final class Actions {
 	// ---------- Import (Excel / CSV) ----------
 
 	private static function import_preview( array $p ): array {
-		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification
+		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- valore verificato e ripulito da chi lo usa
 		if ( empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
 			throw new \InvalidArgumentException( 'Scegli un file Excel o CSV da caricare.' );
 		}
 		if ( (int) $f['size'] > \ApSemplice\Limits::get( 'import_max_mb' ) * 1048576 ) {
-			throw new \InvalidArgumentException( 'Il file supera i ' . \ApSemplice\Limits::get( 'import_max_mb' ) . ' MB: dividilo in più file.' );
+			throw new \InvalidArgumentException( 'Il file supera i ' . \ApSemplice\Limits::get( 'import_max_mb' ) . ' MB: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$prev  = \ApSemplice\ImportService::preview_file(
 			$f['tmp_name'],

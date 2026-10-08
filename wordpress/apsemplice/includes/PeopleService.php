@@ -176,7 +176,7 @@ class PeopleService {
 				$taken = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND board_role = %s AND id <> %d', $role, $person_id ) );
 				$max   = BoardRole::seats( $role, Settings::councillors() );
 				if ( $taken >= $max ) {
-					throw new \InvalidArgumentException( 'Posti già coperti per questa carica (' . $max . '): togli prima la carica a qualcun altro.' );
+					throw new \InvalidArgumentException( 'Posti già coperti per questa carica (' . $max . '): togli prima la carica a qualcun altro.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			}
 		}
@@ -207,10 +207,10 @@ class PeopleService {
 				throw new \InvalidArgumentException( 'Livello non trovato.' );
 			}
 			if ( $lv['base_type'] !== $p['type'] ) {
-				throw new \InvalidArgumentException( 'Il livello «' . $lv['name'] . '» non corrisponde al tipo scelto (' . MemberType::label( $p['type'] ) . ').' );
+				throw new \InvalidArgumentException( 'Il livello «' . $lv['name'] . '» non corrisponde al tipo scelto (' . MemberType::label( $p['type'] ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( ! (int) $lv['active'] && (int) $p['level_id'] !== $level_id ) {
-				throw new \InvalidArgumentException( 'Il livello «' . $lv['name'] . '» non è più attivo.' );
+				throw new \InvalidArgumentException( 'Il livello «' . $lv['name'] . '» non è più attivo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		if ( null !== $head_id ) {
@@ -382,18 +382,18 @@ class PeopleService {
 		$host   = $d['host_person_id'] ? $this->get( (int) $d['host_person_id'] ) : null;
 		$errors = Rules::validate_person( $d, $host );
 		if ( $errors ) {
-			throw new \InvalidArgumentException( implode( ' ', $errors ) );
+			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( null !== $d['card_number'] ) {
 			$holder = $this->find_by_card( $d['card_number'], $except_id );
 			if ( $holder ) {
-				throw new \InvalidArgumentException( 'La tessera ' . $d['card_number'] . ' è già assegnata a ' . $this->full_name( $holder ) . '.' );
+				throw new \InvalidArgumentException( 'La tessera ' . $d['card_number'] . ' è già assegnata a ' . $this->full_name( $holder ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		if ( null !== $d['email'] ) {
 			$holder = $this->find_by_email( $d['email'], $except_id );
 			if ( $holder ) {
-				throw new \InvalidArgumentException( 'L\'email ' . $d['email'] . ' è già usata da ' . $this->full_name( $holder ) . '.' );
+				throw new \InvalidArgumentException( 'L\'email ' . $d['email'] . ' è già usata da ' . $this->full_name( $holder ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 	}
@@ -699,7 +699,7 @@ class PeopleService {
 			)
 		);
 		if ( is_wp_error( $uid ) ) {
-			throw new \InvalidArgumentException( 'Impossibile creare l\'utente WordPress: ' . $uid->get_error_message() );
+			throw new \InvalidArgumentException( 'Impossibile creare l\'utente WordPress: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return (int) $uid;
 	}
@@ -726,7 +726,7 @@ class PeopleService {
 		}
 		$res = wp_update_user( $args );
 		if ( is_wp_error( $res ) ) {
-			throw new \InvalidArgumentException( 'Impossibile aggiornare l\'utente WordPress: ' . $res->get_error_message() );
+			throw new \InvalidArgumentException( 'Impossibile aggiornare l\'utente WordPress: ' . $res->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 

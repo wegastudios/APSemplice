@@ -301,7 +301,7 @@ class ActivityService {
 			$errors[] = 'Anno sociale mancante.';
 		}
 		if ( $errors ) {
-			throw new \InvalidArgumentException( implode( ' ', $errors ) );
+			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -326,7 +326,7 @@ class ActivityService {
 	private function validate_session( array $s ): void {
 		$errors = Rules::validate_session( $s );
 		if ( $errors ) {
-			throw new \InvalidArgumentException( implode( ' ', $errors ) );
+			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -343,7 +343,7 @@ class ActivityService {
 		$from = $sy->start()->format( 'Y-m-d' );
 		$to   = $sy->end()->format( 'Y-m-d' );
 		if ( $date < $from || $date > $to ) {
-			throw new \InvalidArgumentException( $what . ' (' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ') deve cadere nell\'anno sociale ' . $social_year_label . ', dal ' . ( new \DateTimeImmutable( $from ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $to ) )->format( 'd/m/Y' ) . ': un corso o un evento inizia e finisce nello stesso anno sociale.' );
+			throw new \InvalidArgumentException( $what . ' (' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ') deve cadere nell\'anno sociale ' . $social_year_label . ', dal ' . ( new \DateTimeImmutable( $from ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $to ) )->format( 'd/m/Y' ) . ': un corso o un evento inizia e finisce nello stesso anno sociale.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -817,7 +817,7 @@ class ActivityService {
 			return array( 'status' => 'already', 'at' => $b['checked_in_at'] );
 		}
 		if ( ! $force && $s['session_date'] !== current_time( 'Y-m-d' ) ) {
-			throw new \InvalidArgumentException( 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ').' );
+			throw new \InvalidArgumentException( 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$now = Db::now();
 		$this->db()->update( $tbl, array( 'checked_in_at' => $now, 'checked_in_by' => get_current_user_id() ?: null ), array( 'id' => (int) $b['id'] ) );
@@ -905,7 +905,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'L\'evento è già iniziato: non si può più cambiare il nominativo.' );
 		}
 		if ( $this->has_active_booking( $session_id, $to_id ) ) {
-			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' );
+			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$tbl  = Db::t( 'bookings' );
 		$fee  = $this->fee_for( $a, $to['type'] );
@@ -943,7 +943,7 @@ class ActivityService {
 
 	private function assert_month( string $m ): void {
 		if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $m ) ) {
-			throw new \InvalidArgumentException( 'Mese non valido: ' . $m );
+			throw new \InvalidArgumentException( 'Mese non valido: ' . $m ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 

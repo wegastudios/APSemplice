@@ -94,7 +94,7 @@ final class Activation {
 		if ( $need ) {
 			foreach ( array( 'address' => 'l\'indirizzo', 'zip' => 'il CAP', 'city' => 'il comune' ) as $k => $label ) {
 				if ( '' === $in[ $k ] ) {
-					throw new \InvalidArgumentException( 'Indica ' . $label . '.' );
+					throw new \InvalidArgumentException( 'Indica ' . $label . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			}
 		}
@@ -175,10 +175,10 @@ final class Activation {
 		$param = sanitize_text_field( wp_unslash( $_GET['apse_activate'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		$post  = array();
 		$error = '';
-		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['apse_activate_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['apse_activate_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$post    = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
 			$parsed  = ActivationToken::parse( $param );
-			$rl_key  = 'apse_act_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+			$rl_key  = 'apse_act_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';

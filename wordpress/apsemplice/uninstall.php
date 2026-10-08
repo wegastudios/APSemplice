@@ -23,13 +23,13 @@ function apse_uninstall_site() {
 
 	// Tabelle del plugin.
 	$like = $wpdb->esc_like( $wpdb->prefix . 'apse_' ) . '%';
-	foreach ( (array) $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) ) as $table ) {
-		$wpdb->query( 'DROP TABLE IF EXISTS `' . esc_sql( $table ) . '`' ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	foreach ( (array) $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) ) as $table ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- tabelle del plugin, nessuna API di WordPress equivalente
+		$wpdb->query( 'DROP TABLE IF EXISTS `' . esc_sql( $table ) . '`' ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- tabelle del plugin, nessuna API di WordPress equivalente
 	}
 
 	// Opzioni e dati temporanei.
-	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s", $wpdb->esc_like( 'apse_' ) . '%', $wpdb->esc_like( '_transient_apse_' ) . '%', $wpdb->esc_like( '_transient_timeout_apse_' ) . '%' ) );
-	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE %s", $wpdb->esc_like( 'apse_' ) . '%' ) );
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s", $wpdb->esc_like( 'apse_' ) . '%', $wpdb->esc_like( '_transient_apse_' ) . '%', $wpdb->esc_like( '_transient_timeout_apse_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- tabelle del plugin, nessuna API di WordPress equivalente
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE %s", $wpdb->esc_like( 'apse_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- tabelle del plugin, nessuna API di WordPress equivalente
 
 	// Ruoli del plugin: gli utenti che li avevano restano su WordPress.
 	remove_role( 'apse_member' );

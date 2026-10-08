@@ -127,7 +127,7 @@ final class Actions {
 		self::require_cap( 'apse_book_for', $person_id );
 		$block = \ApSemplice\Regulation::booking_block( $actor );
 		if ( '' !== $block ) {
-			throw new \InvalidArgumentException( $block );
+			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
 			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
@@ -152,7 +152,7 @@ final class Actions {
 		self::require_cap( 'apse_book_for', $person_id );
 		$block = \ApSemplice\Regulation::booking_block( $actor );
 		if ( '' !== $block ) {
-			throw new \InvalidArgumentException( $block );
+			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
 			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
@@ -194,7 +194,7 @@ final class Actions {
 		}
 		$eval = Plugin::activities()->cancellation_for( $session_id, $person_id );
 		if ( ! $eval['allowed'] ) {
-			throw new \InvalidArgumentException( $eval['message'] );
+			throw new \InvalidArgumentException( $eval['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		Plugin::activities()->cancel_booking( $session_id, $person_id );
 		return 'Prenotazione annullata.';
@@ -214,7 +214,7 @@ final class Actions {
 		}
 		$block = \ApSemplice\Regulation::booking_block( $actor );
 		if ( '' !== $block ) {
-			throw new \InvalidArgumentException( $block );
+			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$to_id = (int) ( $post['to_person_id'] ?? 0 );
 		$first = trim( (string) ( $post['new_first_name'] ?? '' ) );
@@ -404,17 +404,17 @@ final class Actions {
 				foreach ( $lines as $l ) {
 					// Un socio con la tessera non in regola prenota solo se la rinnova nello stesso incasso
 					if ( ! empty( $l['session_id'] ) && $who && MemberType::is_member( $who['type'] ) && ! $renewing && ! $people->is_active_member( $pid ) ) {
-						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: aggiungi la quota associativa nello stesso incasso.' );
+						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: aggiungi la quota associativa nello stesso incasso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 					}
 				}
 				foreach ( $lines as $l ) { // corsi: tessera in regola (o rinnovata qui), socio non sospeso, iscrizione se manca
 					if ( ! empty( $l['competence_month'] ) && ! empty( $l['activity_id'] ) ) {
 						$cname = $who ? trim( $who['first_name'] . ' ' . $who['last_name'] ) : '';
 						if ( $who && MemberType::is_member( $who['type'] ) && ! MemberType::is_auto_renewed( $who['type'] ) && ! $renewing && ! $people->is_active_member( $pid ) ) {
-							throw new \InvalidArgumentException( $cname . ': per un corso la tessera deve essere in regola (aggiungi la quota associativa nello stesso incasso).' );
+							throw new \InvalidArgumentException( $cname . ': per un corso la tessera deve essere in regola (aggiungi la quota associativa nello stesso incasso).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						if ( $people->is_suspended( $pid ) ) {
-							throw new \InvalidArgumentException( $cname . ' è sospeso (inattivo): va riattivato prima di iscriverlo a un corso.' );
+							throw new \InvalidArgumentException( $cname . ' è sospeso (inattivo): va riattivato prima di iscriverlo a un corso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						if ( ! in_array( (int) $l['activity_id'], $acts->active_activity_ids( $pid ), true ) ) {
 							$acts->enroll( (int) $l['activity_id'], $pid, (string) $l['competence_month'] );

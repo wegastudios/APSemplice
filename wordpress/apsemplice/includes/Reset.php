@@ -84,7 +84,7 @@ final class Reset {
 			throw new \InvalidArgumentException( 'Scegli che tipo di azzeramento fare.' );
 		}
 		if ( function_exists( 'set_time_limit' ) ) {
-			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
 		$copy  = Backup::safety_copy(); // se non riesce, si ferma qui: non si cancella niente
 		$users = $delete_users ? self::member_only_users() : array();
@@ -99,7 +99,7 @@ final class Reset {
 			$db->query( 'COMMIT' );
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
-			throw new \RuntimeException( 'Azzeramento non riuscito, nulla è stato cancellato: ' . $e->getMessage() );
+			throw new \RuntimeException( 'Azzeramento non riuscito, nulla è stato cancellato: ' . $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		foreach ( $names as $name ) { // numerazione di nuovo da 1 (fuori dalla transazione)
 			$db->query( 'ALTER TABLE `' . $db->prefix . $name . '` AUTO_INCREMENT = 1' ); // phpcs:ignore WordPress.DB.PreparedSQL
@@ -108,7 +108,10 @@ final class Reset {
 		// Allegati (scontrini e fatture): si tolgono i file, non la cartella delle copie di sicurezza.
 		$files = 0;
 		foreach ( glob( Attachments::dir() . '/*' ) ?: array() as $f ) {
-			if ( is_file( $f ) && '.htaccess' !== basename( $f ) && 'index.php' !== basename( $f ) && @unlink( $f ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( is_file( $f ) && '.htaccess' !== basename( $f ) && 'index.php' !== basename( $f ) ) {
+				wp_delete_file( $f );
+			}
+			if ( ! file_exists( $f ) ) {
 				$files++;
 			}
 		}

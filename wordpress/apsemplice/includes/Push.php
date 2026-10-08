@@ -73,7 +73,7 @@ final class Push {
 			return $id;
 		}
 		if ( (int) self::db()->get_var( self::db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE user_id = %d", $user_id ) ) >= Limits::get( 'push_max_devices' ) ) {
-			throw new \InvalidArgumentException( 'Hai già ' . Limits::get( 'push_max_devices' ) . ' dispositivi con le notifiche attive: disattivane qualcuno.' );
+			throw new \InvalidArgumentException( 'Hai già ' . Limits::get( 'push_max_devices' ) . ' dispositivi con le notifiche attive: disattivane qualcuno.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::db()->insert( $tbl, $data + array( 'endpoint_hash' => $hash, 'created_at' => Db::now() ) );
 		return (int) self::db()->insert_id;

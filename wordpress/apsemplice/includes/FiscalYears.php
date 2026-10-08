@@ -66,7 +66,7 @@ final class FiscalYears {
 			throw new \InvalidArgumentException( 'Anno non valido.' );
 		}
 		if ( self::get( $year ) ) {
-			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' esiste già.' );
+			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' esiste già.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::db()->insert( Db::t( 'fiscal_years' ), array( 'year' => $year, 'status' => 'open', 'created_at' => Db::now() ) );
 		Audit::log( 'year.created', 'year', $year );
@@ -87,10 +87,10 @@ final class FiscalYears {
 		}
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' non è stato creato: crealo da Contabilità › Anni solari prima di registrare movimenti in quella data.' );
+			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' non è stato creato: crealo da Contabilità › Anni solari prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'open' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' è chiuso: non accetta più incassi né spese. Riaprilo da Contabilità › Anni solari se devi correggerlo.' );
+			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' è chiuso: non accetta più incassi né spese. Riaprilo da Contabilità › Anni solari se devi correggerlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -113,11 +113,11 @@ final class FiscalYears {
 			throw new \InvalidArgumentException( 'Anno solare non trovato.' );
 		}
 		if ( 'open' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' è già chiuso.' );
+			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' è già chiuso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$b = self::blockers( $year );
 		if ( $b ) {
-			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' non si può chiudere: ' . implode( '; ', $b ) . '.' );
+			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' non si può chiudere: ' . implode( '; ', $b ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => Db::now() ), array( 'year' => $year ) );
 		Audit::log( 'year.closed', 'year', $year );

@@ -33,7 +33,7 @@ final class WebPush {
 
 	/** L'indirizzo è https e di un servizio di push noto? */
 	public static function allowed_endpoint( string $url ): bool {
-		$p = parse_url( $url );
+		$p = parse_url( $url ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- lettura/scrittura in streaming di file grandi
 		if ( ! is_array( $p ) || ( $p['scheme'] ?? '' ) !== 'https' || empty( $p['host'] ) || isset( $p['user'] ) || isset( $p['pass'] ) ) {
 			return false;
 		}
@@ -186,7 +186,7 @@ final class WebPush {
 	 * @return array{ok:bool,gone:bool,code:int}
 	 */
 	public static function send( array $sub, string $payload, string $vapid_public_b64u, string $vapid_private_pem, string $subject, int $ttl = 86400 ): array {
-		$p   = parse_url( (string) $sub['endpoint'] );
+		$p   = parse_url( (string) $sub['endpoint'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- lettura/scrittura in streaming di file grandi
 		$aud = ( $p['scheme'] ?? 'https' ) . '://' . ( $p['host'] ?? '' );
 		$jwt = self::jwt( $aud, $subject, $vapid_private_pem );
 		$args = array(

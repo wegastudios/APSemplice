@@ -35,7 +35,7 @@ final class RegistersPage {
 		echo '<p class="description">L\'elenco progressivo dei soci con data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Gli ospiti non sono soci e non compaiono. '
 			. 'La cessazione si registra dalla scheda del socio.</p>';
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-book"><select name="filter">'
-			. Ui::options( array( MemberBook::IN_FORCE => 'In carica', MemberBook::LEFT => 'Cessati' ), $filter, 'Tutti' ) . '</select> <button class="button">Filtra</button> '
+			. Ui::options( array( MemberBook::IN_FORCE => 'In carica', MemberBook::LEFT => 'Cessati' ), $filter, 'Tutti' ) . '</select> <button class="button">Filtra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. self::downloads( 'book', array( 'filter' => $filter ) ) . '</form>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Livello</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
@@ -80,7 +80,7 @@ final class RegistersPage {
 		for ( $y = (int) substr( Db::today(), 0, 4 ); $y >= (int) substr( Db::today(), 0, 4 ) - 10; $y-- ) {
 			$years[ $y ] = (string) $y;
 		}
-		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-minutes"><select name="kind">' . Ui::options( Minutes::kinds(), $kind, 'Tutti i tipi' )
+		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-minutes"><select name="kind">' . Ui::options( Minutes::kinds(), $kind, 'Tutti i tipi' ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. '</select> <select name="year">' . Ui::options( $years, $year ?: null, 'Tutti gli anni' ) . '</select> <button class="button">Filtra</button></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$rows  = Minutes::all( $kind ?: null, $year ?: null );
 		$kinds = Minutes::kinds();
@@ -168,7 +168,7 @@ final class RegistersPage {
 		}
 		echo '</tbody></table>';
 		Ui::form_open( 'apse_policy_add', Ui::url( 'apse-volunteers' ) );
-		echo '<h3>Registra una polizza dell\'associazione</h3><p><select name="kind">' . Ui::options( $kinds, AssocPolicies::RC ) . '</select> <input type="text" name="company" placeholder="Compagnia" required> <input type="text" name="policy_no" placeholder="N. polizza" size="14"> '
+		echo '<h3>Registra una polizza dell\'associazione</h3><p><select name="kind">' . Ui::options( $kinds, AssocPolicies::RC ) . '</select> <input type="text" name="company" placeholder="Compagnia" required> <input type="text" name="policy_no" placeholder="N. polizza" size="14"> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. 'dal <input type="date" name="valid_from" value="' . esc_attr( Db::today() ) . '" required> al <input type="date" name="valid_to" required></p>'
 			. '<p><input type="text" name="premium" placeholder="Premio € (facoltativo)" size="18" inputmode="decimal"> <input type="text" name="coverage" placeholder="Massimale / descrizione (facoltativo)" class="regular-text" maxlength="255"> <button class="button button-primary">Registra la polizza</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
@@ -238,7 +238,7 @@ final class RegistersPage {
 			$acts[ $a['id'] ] = $a['name'] . ' (' . $a['social_year'] . ')';
 		}
 		echo '<p class="description">Per ogni lezione di un corso (o data di un evento) segna chi era presente. Il registro si compila a lezione fatta e si stampa per periodo.</p>';
-		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-attendance"><select name="activity">' . Ui::options( $acts, $aid ?: null, '— scegli il corso o l\'evento —' ) . '</select> '
+		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-attendance"><select name="activity">' . Ui::options( $acts, $aid ?: null, '— scegli il corso o l\'evento —' ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. '<input type="month" name="ym" value="' . esc_attr( $ym ) . '"> <button class="button">Mostra le lezioni</button></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$a = $aid ? Plugin::activities()->get( $aid ) : null;
 		if ( ! $a ) {
@@ -310,7 +310,7 @@ final class RegistersPage {
 		Ui::header( 'Rendiconto per cassa' );
 		echo '<p class="description">Il rendiconto dell\'anno solare costruito dalla prima nota: entrate e uscite per area, confronto con l\'anno precedente, avanzo o disavanzo, cassa e conti. '
 			. 'Le aree seguono la «voce di rendiconto» di ogni categoria. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
-		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-statement"><select name="year">' . Ui::options( array_combine( $years, $years ), $year ) . '</select> <button class="button">Mostra</button> '
+		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-statement"><select name="year">' . Ui::options( array_combine( $years, $years ), $year ) . '</select> <button class="button">Mostra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'statement', array( 'year' => $year ) ) ) . '">PDF del rendiconto</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$s    = Statement::data( $year );
 		$show = function ( string $label, array $groups, array $total ) use ( $year ) {

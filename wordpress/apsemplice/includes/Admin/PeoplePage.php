@@ -43,8 +43,8 @@ final class PeoplePage {
 
 		echo '<form method="get" class="apse-filters"><input type="hidden" name="page" value="apse-people">';
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
-		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ';
-		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> ';
+		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
@@ -318,7 +318,7 @@ final class PeoplePage {
 		}
 		Ui::form_open( 'apse_promote_guest', Ui::url( 'apse-person', array( 'id' => (int) $p['id'] ) ), false, 'apse-confirm' );
 		echo '<details style="margin-top:10px"' . ( $ov && $ov['flag'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
+			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
 			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \ApSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>';

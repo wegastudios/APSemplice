@@ -39,7 +39,7 @@ final class MemberBook {
 			throw new \InvalidArgumentException( 'La cessazione non può essere nel futuro.' );
 		}
 		if ( $date < (string) $p['joined_on'] ) {
-			throw new \InvalidArgumentException( 'La cessazione non può essere prima dell\'ingresso (' . $p['joined_on'] . ').' );
+			throw new \InvalidArgumentException( 'La cessazione non può essere prima dell\'ingresso (' . $p['joined_on'] . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		// Chi ha lasciato l'associazione non è più un socio attivo: non prenota, non riceve promemoria né comunicazioni ai soci, non compare tra quelli da rinnovare.
 		// Si usa lo stato «sospeso»; per il fondatore (sempre in regola) si ferma la tessera alla data di cessazione.

@@ -255,7 +255,7 @@ final class Wizard {
 			}
 			$fee = $parts[1] ?? '';
 			if ( '' !== $fee && null === Money::parse( $fee ) ) {
-				throw new \InvalidArgumentException( 'La quota di «' . $name . '» non è un importo valido.' );
+				throw new \InvalidArgumentException( 'La quota di «' . $name . '» non è un importo valido.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$out[] = array( $name, $fee );
 		}

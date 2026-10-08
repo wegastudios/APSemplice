@@ -22,7 +22,7 @@ final class Statement {
 	public static function save_notes( int $year, string $text ): void {
 		$text = trim( sanitize_textarea_field( $text ) );
 		if ( mb_strlen( $text ) > self::MAX_NOTES ) {
-			throw new \InvalidArgumentException( 'La relazione è troppo lunga (al massimo ' . self::MAX_NOTES . ' caratteri).' );
+			throw new \InvalidArgumentException( 'La relazione è troppo lunga (al massimo ' . self::MAX_NOTES . ' caratteri).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		update_option( 'apse_statement_notes_' . $year, $text, false );
 	}

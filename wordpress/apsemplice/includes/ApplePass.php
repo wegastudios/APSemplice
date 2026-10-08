@@ -77,7 +77,7 @@ final class ApplePass {
 			$zip->close();
 			return (string) file_get_contents( $tmp );
 		} finally {
-			@unlink( $tmp );
+			wp_delete_file( $tmp );
 		}
 	}
 
@@ -99,9 +99,9 @@ final class ApplePass {
 			}
 			return self::smime_to_der( (string) file_get_contents( $out ) );
 		} finally {
-			@unlink( $in );
-			@unlink( $out );
-			@unlink( $wwdr );
+			wp_delete_file( $in );
+			wp_delete_file( $out );
+			wp_delete_file( $wwdr );
 		}
 	}
 

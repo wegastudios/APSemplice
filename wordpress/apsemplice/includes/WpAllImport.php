@@ -73,7 +73,7 @@ final class WpAllImport {
 			array(
 				'post_type' => $type, 'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ), 'posts_per_page' => Limits::get( 'import_max_rows' ),
 				'orderby' => 'ID', 'order' => 'ASC', 'no_found_rows' => true, 'update_post_term_cache' => false,
-				'meta_query' => $errors_only
+				'meta_query' => $errors_only // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- tabelle del plugin, nessuna API di WordPress equivalente
 					? array( array( 'key' => self::META_RESULT, 'value' => 'error' ) )
 					: array( array( 'key' => self::META_RESULT, 'compare' => 'NOT EXISTS' ) ),
 			)

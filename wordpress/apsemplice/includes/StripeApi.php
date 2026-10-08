@@ -53,7 +53,7 @@ final class StripeApi {
 		$data = json_decode( (string) $r['body'], true );
 		if ( (int) $r['code'] < 200 || (int) $r['code'] >= 300 || ! is_array( $data ) ) {
 			$msg = is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'risposta ' . (int) $r['code'];
-			throw new \RuntimeException( 'Stripe: ' . $msg );
+			throw new \RuntimeException( 'Stripe: ' . $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $data;
 	}

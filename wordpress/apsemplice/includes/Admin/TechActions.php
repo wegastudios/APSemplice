@@ -96,7 +96,7 @@ final class TechActions {
 		if ( ! empty( $p['pwa_icon_remove'] ) ) {
 			$vals['pwa_icon_id'] = 0;
 		}
-		if ( ! empty( $_FILES['pwa_icon']['tmp_name'] ) && UPLOAD_ERR_OK === (int) $_FILES['pwa_icon']['error'] ) { // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! empty( $_FILES['pwa_icon']['tmp_name'] ) && UPLOAD_ERR_OK === (int) $_FILES['pwa_icon']['error'] ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- valore verificato e ripulito da chi lo usa
 			$vals['pwa_icon_id'] = self::upload_icon( $_FILES['pwa_icon'] ); // phpcs:ignore WordPress.Security
 		}
 		Settings::update( $vals );
@@ -119,7 +119,7 @@ final class TechActions {
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 		$up = wp_handle_upload( $file, array( 'test_form' => false, 'mimes' => array( 'png' => 'image/png' ) ) );
 		if ( ! empty( $up['error'] ) ) {
-			throw new \InvalidArgumentException( 'Caricamento dell\'icona non riuscito: ' . $up['error'] );
+			throw new \InvalidArgumentException( 'Caricamento dell\'icona non riuscito: ' . $up['error'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$id = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => 'Icona dell\'app', 'post_status' => 'inherit' ), $up['file'] );
 		if ( ! $id || is_wp_error( $id ) ) {

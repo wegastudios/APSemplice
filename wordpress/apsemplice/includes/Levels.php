@@ -103,22 +103,22 @@ final class Levels {
 			$name = mb_substr( $name, 0, 80 );
 			$base = (string) ( $r['base_type'] ?? '' );
 			if ( ! MemberType::is_member( $base ) ) {
-				throw new \InvalidArgumentException( 'Scegli la base del livello «' . $name . '».' );
+				throw new \InvalidArgumentException( 'Scegli la base del livello «' . $name . '».' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$key = function_exists( 'mb_strtolower' ) ? mb_strtolower( $name ) : strtolower( $name );
 			if ( isset( $names[ $key ] ) ) {
-				throw new \InvalidArgumentException( 'Il livello «' . $name . '» è scritto due volte.' );
+				throw new \InvalidArgumentException( 'Il livello «' . $name . '» è scritto due volte.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$names[ $key ] = true;
 			$fee_txt       = trim( (string) ( $r['fee'] ?? '' ) );
 			$fee           = '' === $fee_txt ? null : Money::parse( $fee_txt );
 			if ( '' !== $fee_txt && null === $fee ) {
-				throw new \InvalidArgumentException( 'La quota del livello «' . $name . '» non è un importo valido.' );
+				throw new \InvalidArgumentException( 'La quota del livello «' . $name . '» non è un importo valido.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$clean[] = array( 'id' => (int) ( $r['id'] ?? 0 ), 'name' => $name, 'base_type' => $base, 'fee_cents' => $fee, 'active' => ! empty( $r['active'] ) ? 1 : 0 );
 		}
 		if ( count( $clean ) > self::MAX ) {
-			throw new \InvalidArgumentException( 'Al massimo ' . self::MAX . ' livelli.' );
+			throw new \InvalidArgumentException( 'Al massimo ' . self::MAX . ' livelli.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		foreach ( MemberType::member_types() as $t ) {
 			$has = false;
@@ -128,7 +128,7 @@ final class Levels {
 				}
 			}
 			if ( ! $has ) {
-				throw new \InvalidArgumentException( 'Serve almeno un livello attivo per ogni base (manca: ' . MemberType::label( $t ) . ').' );
+				throw new \InvalidArgumentException( 'Serve almeno un livello attivo per ogni base (manca: ' . MemberType::label( $t ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		$now_sort = 0;
@@ -137,7 +137,7 @@ final class Levels {
 			$old  = $c['id'] ? self::get( $c['id'] ) : null;
 			if ( $old ) {
 				if ( $old['base_type'] !== $c['base_type'] && self::in_use( (int) $old['id'] ) ) {
-					throw new \InvalidArgumentException( 'La base del livello «' . $old['name'] . '» non si può cambiare finché ci sono soci con quel livello.' );
+					throw new \InvalidArgumentException( 'La base del livello «' . $old['name'] . '» non si può cambiare finché ci sono soci con quel livello.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$db->update( $tbl, $data, array( 'id' => (int) $old['id'] ) );
 				$keep[] = (int) $old['id'];

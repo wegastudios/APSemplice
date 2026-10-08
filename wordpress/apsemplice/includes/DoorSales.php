@@ -58,7 +58,7 @@ final class DoorSales {
 						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' );
 					}
 					if ( ! $people->is_active_member( $pid ) ) {
-						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: va rinnovata (in segreteria o dal tesoriere) prima di prenotare.' );
+						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: va rinnovata (in segreteria o dal tesoriere) prima di prenotare.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 					}
 				}
 				if ( ! $svc->has_active_booking( $sid, $pid ) ) {

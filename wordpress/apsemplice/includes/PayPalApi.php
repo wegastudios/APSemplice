@@ -41,7 +41,7 @@ final class PayPalApi {
 			'grant_type=client_credentials'
 		);
 		if ( 200 !== $res['code'] || empty( $res['data']['access_token'] ) ) {
-			throw self::fail( $res, 'accesso' );
+			throw self::fail( $res, 'accesso' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return (string) $res['data']['access_token'];
 	}
@@ -98,7 +98,7 @@ final class PayPalApi {
 			self::json( $payload )
 		);
 		if ( ! in_array( $res['code'], array( 200, 201 ), true ) || empty( $res['data']['id'] ) ) {
-			throw self::fail( $res, 'ordine' );
+			throw self::fail( $res, 'ordine' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$url = '';
 		foreach ( (array) ( $res['data']['links'] ?? array() ) as $l ) {
@@ -116,7 +116,7 @@ final class PayPalApi {
 	public static function get_order( callable $http, bool $live, string $token, string $order_id ): array {
 		$res = self::request( $http, 'GET', self::base( $live ) . '/v2/checkout/orders/' . rawurlencode( $order_id ), array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ), null );
 		if ( 200 !== $res['code'] || ! is_array( $res['data'] ) ) {
-			throw self::fail( $res, 'lettura ordine' );
+			throw self::fail( $res, 'lettura ordine' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $res['data'];
 	}
@@ -136,7 +136,7 @@ final class PayPalApi {
 		if ( 422 === $res['code'] && false !== strpos( self::json( $res['data'] ), 'ORDER_ALREADY_CAPTURED' ) ) {
 			return self::get_order( $http, $live, $token, $order_id );
 		}
-		throw self::fail( $res, 'cattura' );
+		throw self::fail( $res, 'cattura' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 	}
 
 	public static function is_completed( array $order ): bool {

@@ -38,7 +38,7 @@ final class ExpensePage {
 		echo '<tr><th>Attività</th><td><select name="activity_id">' . Ui::options( $acts, null, 'Nessuna (costo generale)' ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Beneficiario</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / fornitore —', 'apse-beneficiary' ) . '<p class="description">Es. il referente o il socio rimborsato.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Descrizione</th><td><input type="text" name="description" class="large-text"></td></tr>';
-		echo Ui::vat_row( null, \ApSemplice\Fiscal::default_mode() ) . '<tr><th>N. fattura / scontrino</th><td><input type="text" name="document_ref" maxlength="80"></td></tr>';
+		echo Ui::vat_row( null, \ApSemplice\Fiscal::default_mode() ) . '<tr><th>N. fattura / scontrino</th><td><input type="text" name="document_ref" maxlength="80"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo '<tr><th>Documenti</th><td><input type="file" name="docs[]" class="apse-doc-input" accept="image/*,application/pdf" multiple> '
 			. '<label class="button apse-shot">📷 Scatta una foto<input type="file" name="shots[]" class="apse-doc-input" accept="image/*" capture="environment" hidden></label>'
 			. '<p class="description">Scontrini e fatture, in PDF o foto (anche più file). Dal telefono puoi scattare la foto direttamente: viene ridotta prima dell\'invio. Restano in una cartella privata del sito, non nella libreria media.</p></td></tr>';
