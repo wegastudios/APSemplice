@@ -83,7 +83,7 @@ final class WizardPage {
 	private static function features_box( array $s ): string {
 		$conditional = array( 'card_qr_enabled' => 'card_enabled=1', 'wallet_enabled' => 'card_enabled=1' );
 		$html        = '<input type="hidden" name="features_present" value="1">';
-		foreach ( SettingsPage::FEATURES as $k => $label ) {
+		foreach ( SettingsPage::visible_features() as $k => $label ) {
 			if ( in_array( $k, \ApSemplice\Wizard::OWN_STEP, true ) ) {
 				continue;
 			}

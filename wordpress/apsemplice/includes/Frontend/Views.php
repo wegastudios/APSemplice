@@ -150,7 +150,7 @@ final class Views {
 			. '<dl class="apsf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'
-			. self::card_qr( $p ) . \ApSemplice\Wallet::buttons( $p )
+			. self::card_qr( $p ) . ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
 			. '</div></section>';
 	}
 
@@ -450,7 +450,7 @@ final class Views {
 
 	/** Cassa per più persone del tesoriere: chi paga salda quote, eventi e corsi per sé e per altri (anche nuovi ospiti). Importo vuoto = importo standard. */
 	private static function section_group(): string {
-		if ( ! current_user_can( 'apse_collect', 0 ) ) {
+		if ( ! \ApSemplice\Edition::has( 'funds' ) || ! current_user_can( 'apse_collect', 0 ) ) {
 			return '';
 		}
 		$ledger = Plugin::ledger();
@@ -713,7 +713,7 @@ final class Views {
 	}
 
 	private static function door_form( array $s, array $a ): string {
-		if ( ! current_user_can( 'apse_door_cash', (int) $a['id'] ) || ! empty( $s['cancelled_at'] ) ) {
+		if ( ! \ApSemplice\Edition::has( 'door_sales' ) || ! current_user_can( 'apse_door_cash', (int) $a['id'] ) || ! empty( $s['cancelled_at'] ) ) {
 			return '';
 		}
 		$seat = Plugin::activities()->seats( (int) $s['id'] );
@@ -1034,6 +1034,9 @@ final class Views {
 
 	/** Le mie ricevute: scarico dei PDF (anche per gli ospiti che ho pagato) e attestazione annuale. */
 	public static function section_receipts( array $p ): string {
+		if ( ! \ApSemplice\Edition::has( 'receipts' ) ) {
+			return '';
+		}
 		$pid   = (int) $p['id'];
 		$mine  = \ApSemplice\Receipts::list_for_payer( $pid, 15 );
 		$years = \ApSemplice\Receipts::years_for_payer( $pid );
@@ -1071,7 +1074,7 @@ final class Views {
 
 	/** Messaggio pubblico del 5x1000 con il codice fiscale dell'associazione (vuoto se spento o senza codice fiscale). */
 	public static function five_per_mille(): string {
-		if ( ! \ApSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
+		if ( ! \ApSemplice\Edition::has( 'fivepm' ) || ! \ApSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
 			return '';
 		}
 		$name = trim( (string) Settings::get( 'association_name' ) );
@@ -1090,7 +1093,7 @@ final class Views {
 
 	/** App installabile e notifiche: si vede solo se l'app è accesa nelle impostazioni. */
 	public static function section_app( array $p ): string {
-		if ( ! \ApSemplice\Pwa::enabled() ) {
+		if ( ! \ApSemplice\Edition::has( 'pwa' ) || ! \ApSemplice\Pwa::enabled() ) {
 			return '';
 		}
 		$push = \ApSemplice\Push::enabled();

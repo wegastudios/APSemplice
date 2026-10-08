@@ -14,24 +14,30 @@ final class Edition {
 
 	/** Funzione => file (dentro includes/) che la contiene. */
 	const FEATURES = array(
-		'license'    => 'License.php',        // verifica della licenza (solo Pro)
-		'vat'        => 'Admin/VatFields.php', // IVA: campi nei moduli e impostazioni fiscali
-		'levels'     => 'Admin/LevelsEditor.php', // più livelli di socio, ognuno con la sua quota
-		'payments'   => 'PaymentService.php', // pagamenti online
-		'funds'      => 'FundService.php',    // conti multipli, fondi e cassa dei gruppi
-		'reports'    => 'ReportService.php',  // report, rendiconto e anni solari
-		'fivepm'     => 'FivePerMille.php',   // 5 per mille
-		'insurance'  => 'Insurance.php',      // assicurazioni e presenze
-		'broadcasts' => 'Broadcasts.php',     // comunicazioni di massa
-		'pwa'        => 'Pwa.php',            // app installabile e notifiche
-		'wallet'     => 'Wallet.php',         // tessera in Apple e Google Wallet
-		'receipts'   => 'Receipts.php',       // ricevute PDF
-		'door_sales' => 'DoorSales.php',      // incasso sul posto
+		'license'    => 'License.php',             // verifica della licenza (solo Pro)
+		'vat'        => 'Admin/VatFields.php',     // IVA: campi nei moduli e impostazioni fiscali
+		'levels'     => 'Admin/LevelsEditor.php',  // più livelli di socio, ognuno con la sua quota
+		'payments'   => 'PaymentService.php',      // pagamenti online
+		'funds'      => 'Admin/AccountsPage.php',  // conti multipli, giroconti, fondi e cassa per più persone
+		'reports'    => 'Admin/ReportsPage.php',   // report, rendiconto, anni solari e contabilità
+		'fivepm'     => 'FivePerMille.php',        // 5 per mille
+		'insurance'  => 'Insurance.php',           // assicurazioni e presenze
+		'broadcasts' => 'Broadcasts.php',          // comunicazioni di massa
+		'pwa'        => 'Pwa.php',                 // app installabile e notifiche
+		'wallet'     => 'Wallet.php',              // tessera in Apple e Google Wallet
+		'receipts'   => 'Receipts.php',            // ricevute PDF
+		'door_sales' => 'DoorSales.php',           // incasso sul posto
 	);
 
 	/** Pagine di amministrazione di ogni funzione avanzata: se la funzione non c'è, spariscono dal menu e dalle schede. */
 	const PAGES = array(
-		'payments' => array( 'apse-payments', 'apse-tech' ),
+		'payments'   => array( 'apse-payments' ),
+		'funds'      => array( 'apse-accounts', 'apse-transfer', 'apse-group' ),
+		'reports'    => array( 'apse-accounting', 'apse-years', 'apse-reports', 'apse-statement', 'apse-acct' ),
+		'fivepm'     => array( 'apse-fivepm' ),
+		'insurance'  => array( 'apse-volunteers', 'apse-attendance' ),
+		'broadcasts' => array( 'apse-messages' ),
+		'pwa'        => array( 'apse-app' ),
 	);
 
 	/** @return string[] pagine di amministrazione delle funzioni che questa installazione non ha */

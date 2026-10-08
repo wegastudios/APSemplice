@@ -31,7 +31,13 @@ final class Actions {
 
 	/** Azioni che appartengono a una funzione avanzata: senza la funzione non si registrano. */
 	const FEATURE_ACTIONS = array(
-		'payments' => array( 'apse_save_payment_settings', 'apse_test_gateway', 'apse_check_payments', 'apse_payment_reviewed' ),
+		'payments'   => array( 'apse_save_payment_settings', 'apse_test_gateway', 'apse_check_payments', 'apse_payment_reviewed' ),
+		'funds'      => array( 'apse_save_group_cash', 'apse_save_transfer', 'apse_add_account', 'apse_update_account', 'apse_close_account', 'apse_reopen_account', 'apse_fund_create', 'apse_fund_deposit', 'apse_fund_release', 'apse_fund_settle' ),
+		'reports'    => array( 'apse_create_year', 'apse_close_year', 'apse_reopen_year' ),
+		'receipts'   => array( 'apse_receipt_email' ),
+		'door_sales' => array( 'apse_walk_in' ),
+		'broadcasts' => array( 'apse_broadcast_send', 'apse_broadcast_test', 'apse_broadcast_retry' ),
+		'wallet'     => array( 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear' ),
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */

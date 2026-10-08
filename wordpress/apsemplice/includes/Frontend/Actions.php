@@ -113,6 +113,13 @@ final class Actions {
 		return $p;
 	}
 
+	/** Le azioni delle funzioni avanzate si rifiutano se la funzione non c'è in questa edizione. */
+	private static function require_feature( string $feature ): void {
+		if ( ! \ApSemplice\Edition::has( $feature ) ) {
+			throw new \InvalidArgumentException( 'Questa funzione non è disponibile in questa edizione.' );
+		}
+	}
+
 	private static function require_cap( string $ability, int $object_id ): void {
 		if ( ! current_user_can( $ability, $object_id ) ) {
 			throw new \InvalidArgumentException( 'Non hai il permesso di fare questa operazione.' );
@@ -462,6 +469,7 @@ final class Actions {
 
 	/** Cassa per più persone del tesoriere (stesse regole degli amministratori). */
 	public static function do_group_collect( array $post ): string {
+		self::require_feature( 'funds' );
 		self::require_cap( 'apse_collect', 0 );
 		$month  = Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) );
 		$people = array();
@@ -510,6 +518,7 @@ final class Actions {
 
 	/** Cassa per più soci sul posto (staff): un socio paga il biglietto per sé e per altri soci, importi calcolati dal sito. */
 	public static function do_door_group( array $post ): string {
+		self::require_feature( 'door_sales' );
 		$sid     = (int) ( $post['session_id'] ?? 0 );
 		$session = Plugin::activities()->session( $sid );
 		if ( ! $session ) {
@@ -556,6 +565,7 @@ final class Actions {
 
 	/** Ingresso sul posto: chi non ha prenotato viene prenotato (se c'è posto), paga il biglietto in contanti o con il POS e entra. Solo soci e solo con l'incasso abilitato. */
 	public static function do_door( array $post ): string {
+		self::require_feature( 'door_sales' );
 		$sid     = (int) ( $post['session_id'] ?? 0 );
 		$session = Plugin::activities()->session( $sid );
 		if ( ! $session ) {

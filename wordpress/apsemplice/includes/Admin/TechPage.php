@@ -20,10 +20,11 @@ final class TechPage {
 
 	public static function render_integrations(): void {
 		Ui::header( 'Integrazioni' );
-		$woo    = WooBridge::active();
+		$pay    = \ApSemplice\Edition::has( 'payments' ); // WooCommerce e i gateway sono dei pagamenti online
+		$woo    = $pay && WooBridge::active();
 		$on     = PaymentConfig::WOOCOMMERCE === (string) Settings::get( 'payment_provider' );
-		$prods  = WooBridge::products();
-		$map    = WooLinks::map();
+		$prods  = $pay ? WooBridge::products() : array();
+		$map    = $pay ? WooLinks::map() : array();
 		$select = function ( string $name, int $current ) use ( $prods ) {
 			$html = '<select name="' . esc_attr( $name ) . '"><option value="0">— nessun prodotto —</option>';
 			foreach ( $prods as $id => $label ) {
@@ -34,6 +35,7 @@ final class TechPage {
 			}
 			return $html . '</select>';
 		};
+		if ( $pay ) {
 		echo '<h2>WooCommerce</h2>';
 		if ( ! $woo ) {
 			echo '<p class="description">WooCommerce non è attivo su questo sito: installalo e attivalo per far pagare quote e contributi dal negozio.</p>';
@@ -65,8 +67,9 @@ final class TechPage {
 			Ui::form_close();
 			echo '<p class="description">I rimborsi di un ordine si registrano a mano in prima nota.</p>';
 		}
+		}
 		echo '<h2>Altre integrazioni</h2><ul>';
-		echo '<li><strong>Stripe e PayPal</strong> — carta e PayPal senza negozio: <a href="' . esc_url( Ui::url( 'apse-payments' ) ) . '">Pagamenti online</a>.</li>';
+		if ( $pay ) echo '<li><strong>Stripe e PayPal</strong> — carta e PayPal senza negozio: <a href="' . esc_url( Ui::url( 'apse-payments' ) ) . '">Pagamenti online</a>.</li>';
 		echo '<li><strong>Apple Wallet, Google Wallet, QR e calendario</strong>: <a href="' . esc_url( Ui::url( 'apse-card' ) ) . '">Tessera, QR e Wallet</a>.</li>';
 		echo '<li><strong>WP All Import</strong> — ' . ( class_exists( 'PMXI_Plugin' ) ? 'attivo su questo sito' : 'non attivo' ) . ': <a href="' . esc_url( Ui::url( 'apse-wpai' ) ) . '">Import con WP All Import</a>.</li>';
 		echo '<li><strong>Elementor e Gutenberg</strong> — widget e blocchi «APSemplice» disponibili dove gli editor sono attivi.</li></ul>';

@@ -658,6 +658,9 @@ final class Install {
 		$acc = Db::t( 'accounts' );
 		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ) ) { // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabelle del plugin, nessuna API di WordPress equivalente
 			$wpdb->insert( $acc, array( 'name' => 'Cassa contanti', 'type' => 'cash', 'sort_order' => 0 ) );
+			if ( ! Edition::has( 'funds' ) ) {
+				return; // l'edizione gratuita ha una cassa unica
+			}
 			$wpdb->insert( $acc, array( 'name' => 'Conto corrente', 'type' => 'bank', 'sort_order' => 1 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- tabelle del plugin, nessuna API di WordPress equivalente
 		}
 	}

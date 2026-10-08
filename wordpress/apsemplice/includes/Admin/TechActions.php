@@ -34,6 +34,9 @@ final class TechActions {
 			if ( 'apse_save_woo' === $action && ! \ApSemplice\Edition::has( 'payments' ) ) { // il collegamento con WooCommerce è dei pagamenti online
 				continue;
 			}
+			if ( in_array( $action, array( 'apse_push_test', 'apse_push_reset', 'apse_save_app' ), true ) && ! \ApSemplice\Edition::has( 'pwa' ) ) { // app e notifiche
+				continue;
+			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {

@@ -55,6 +55,9 @@ final class ActivitiesPage {
 
 	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
 	private static function fund_row( ?array $a ): string {
+		if ( ! \ApSemplice\Edition::has( 'funds' ) ) { // il rimborso al volontario con accantonamento è delle funzioni avanzate
+			return '';
+		}
 		$mode  = $a ? (string) $a['fund_mode'] : '';
 		$value = $a ? (int) $a['fund_value'] : 0;
 		$shown = \ApSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
@@ -620,7 +623,9 @@ final class ActivitiesPage {
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
 				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'apse-book-' . (int) $s['id'] ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
-				self::walk_in_form( $activity, $s, $candidates, $back );
+				if ( \ApSemplice\Edition::has( 'door_sales' ) ) {
+					self::walk_in_form( $activity, $s, $candidates, $back );
+				}
 
 				Ui::form_open( 'apse_update_session', $back );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput

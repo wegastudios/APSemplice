@@ -29,10 +29,25 @@ final class SettingsPage {
 		'push_enabled'          => 'Notifiche push ai dispositivi dei soci',
 	);
 
+	/** Interruttori che si mostrano: quelli delle funzioni avanzate solo se la funzione c'è in questa edizione. */
+	public static function visible_features(): array {
+		$need = array(
+			'wallet_enabled' => 'wallet', 'insurance_volunteers' => 'insurance', 'insurance_association' => 'insurance',
+			'fivepm_enabled' => 'fivepm', 'pwa_enabled' => 'pwa', 'push_enabled' => 'pwa',
+		);
+		$out  = array();
+		foreach ( self::FEATURES as $k => $label ) {
+			if ( ! isset( $need[ $k ] ) || Edition::has( $need[ $k ] ) ) {
+				$out[ $k ] = $label;
+			}
+		}
+		return $out;
+	}
+
 	/** Caselle delle funzioni, lette e salvate dal modulo «Generale». */
 	private static function feature_boxes( array $s ): string {
 		$html = '<input type="hidden" name="features_present" value="1">';
-		foreach ( self::FEATURES as $k => $label ) {
+		foreach ( self::visible_features() as $k => $label ) {
 			$html .= '<label><input type="checkbox" name="' . esc_attr( $k ) . '" value="1"' . checked( ! empty( $s[ $k ] ), true, false ) . '> ' . esc_html( $label ) . '</label><br>';
 		}
 		return $html;

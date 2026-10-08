@@ -82,7 +82,9 @@ final class Reminders {
 		}
 		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
 		$ok = (bool) \ApSemplice\Texts::mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
-		Push::notify_email( (string) $to['email'], $subject, $body );
+		if ( Edition::has( 'pwa' ) ) {
+			Push::notify_email( (string) $to['email'], $subject, $body );
+		}
 		return $ok;
 	}
 
@@ -226,7 +228,7 @@ final class Reminders {
 	}
 
 	private static function month_name( string $ym ): string {
-		return ( Receipts::MONTHS[ (int) substr( $ym, 5, 2 ) ] ?? $ym ) . ' ' . substr( $ym, 0, 4 );
+		return ( Frontend\Views::MONTHS[ (int) substr( $ym, 5, 2 ) ] ?? $ym ) . ' ' . substr( $ym, 0, 4 );
 	}
 
 	private static function events( string $today, bool $send ): int {
