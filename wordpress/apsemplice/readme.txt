@@ -14,7 +14,7 @@ Members, activities, cash book and financial statements for small Italian non-pr
 
 APSemplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
 
-The plugin is designed for Italian associations: its interface and texts are in Italian.
+The plugin is built around Italian third-sector rules (APS, ETS, registers, receipts, tax rules), so its interface and texts are in Italian. An English text pack is included and can be selected in the settings, and further language packs can be uploaded as CSV, Excel or JSON files; the plugin does not use the WordPress translation files.
 
 * **Member register**: member records, fees, QR membership cards, guests, import from CSV or Excel files.
 * **Courses and events**: registrations, limited seats with a waiting list, a payment grace period, participant lists.
