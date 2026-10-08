@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, accounting, association
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -58,5 +58,6 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 
 == Changelog ==
 
-= 0.1.0 =
-* First release.
+= 1.1.1 =
+* Guided setup, member register with QR cards and guests, courses and events with waiting list and payment grace period, cash book, privacy tools, backup and reset, and a members' area.
+* Uninstall keeps your data unless you choose to delete it.
