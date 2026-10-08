@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Controllo e scrittura degli IBAN (ISO 13616, cifra di controllo mod 97). Logica pura. */
 final class Iban {

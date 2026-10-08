@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Quando si può annullare una prenotazione a un evento, e quando solo cambiare nominativo.

@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Etichette e classificazioni usate da contabilità e report. */
 final class Labels {

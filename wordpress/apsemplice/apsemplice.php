@@ -6,6 +6,7 @@
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Wega Studios
+ * Domain Path:       /languages
  * License:           GPL-2.0-or-later
  * Text Domain:       apsemplice
  */

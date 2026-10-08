@@ -42,7 +42,7 @@ final class Backup {
 		foreach ( glob( self::dir() . '/*.zip' ) ?: array() as $f ) {
 			if ( preg_match( '/^prima-del-ripristino-(\d{8}-\d{6})\.zip$/', basename( $f ), $m ) ) { // copie fatte da versioni precedenti, con il nome prevedibile
 				$new = dirname( $f ) . '/prima-del-ripristino-' . $m[1] . '-' . bin2hex( random_bytes( 8 ) ) . '.zip';
-				if ( @rename( $f, $new ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				if ( @rename( $f, $new ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.rename_rename -- lettura/scrittura in streaming di file grandi
 					$f = $new;
 				}
 			}
@@ -68,7 +68,7 @@ final class Backup {
 			throw new \RuntimeException( 'La copia di sicurezza non è stata creata.' );
 		}
 		foreach ( array_slice( self::saved(), max( 1, (int) Limits::get( 'backup_keep' ) ) ) as $o ) {
-			@unlink( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			wp_delete_file( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 		return $file;
 	}
@@ -114,7 +114,7 @@ final class Backup {
 			throw new \RuntimeException( 'Questo server non può creare file ZIP (manca l\'estensione zip di PHP).' );
 		}
 		if ( function_exists( 'set_time_limit' ) ) {
-			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
 		$db    = Db::db();
 		$path  = $to ?: wp_tempnam( 'apse-copia' );
@@ -128,7 +128,7 @@ final class Backup {
 			$tbl = $db->prefix . $name;
 			$f   = wp_tempnam( 'apse-t' );
 			$tmp[] = $f;
-			$h   = fopen( $f, 'wb' );
+			$h   = fopen( $f, 'wb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- lettura/scrittura in streaming di file grandi
 			$n   = 0;
 			for ( $off = 0; ; $off += self::CHUNK ) {
 				$rows = $db->get_results( $db->prepare( "SELECT * FROM `$tbl` ORDER BY 1 LIMIT %d OFFSET %d", self::CHUNK, $off ), ARRAY_A );
@@ -136,11 +136,11 @@ final class Backup {
 					break;
 				}
 				foreach ( $rows as $r ) {
-					fwrite( $h, wp_json_encode( $r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "\n" );
+					fwrite( $h, wp_json_encode( $r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- lettura/scrittura in streaming di file grandi
 					$n++;
 				}
 			}
-			fclose( $h );
+			fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- lettura/scrittura in streaming di file grandi
 			$counts[ $name ] = $n;
 			$zip->addFile( $f, 'tabelle/' . $name . '.jsonl' );
 		}
@@ -167,7 +167,7 @@ final class Backup {
 		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di APSemplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati.\nSi ripristina da Impostazioni → Copia di sicurezza, sullo stesso sito.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
 		$ok = $zip->close();
 		foreach ( $tmp as $f ) {
-			@unlink( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			wp_delete_file( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 		if ( ! $ok || ! is_file( $path ) ) {
 			throw new \RuntimeException( 'Creazione della copia non riuscita.' );
@@ -207,7 +207,7 @@ final class Backup {
 			$st = $zip->statName( 'tabelle/' . $t . '.jsonl' );
 			if ( ! $st || (int) $st['size'] > self::MAX_ENTRY ) {
 				$zip->close();
-				throw new \InvalidArgumentException( 'La copia è incompleta: manca la tabella ' . $t . '.' );
+				throw new \InvalidArgumentException( 'La copia è incompleta: manca la tabella ' . $t . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		$zip->close();
@@ -233,7 +233,7 @@ final class Backup {
 			$values[] = '(' . implode( ',', $vals ) . ')';
 		}
 		if ( false === $db->query( "INSERT INTO `$tbl` (`" . implode( '`,`', $cols ) . '`) VALUES ' . implode( ',', $values ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL
-			throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error );
+			throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -246,14 +246,14 @@ final class Backup {
 	public static function restore( string $zip_path ): array {
 		$m = self::inspect( $zip_path );
 		if ( function_exists( 'set_time_limit' ) ) {
-			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
 		$dir    = self::ensure_dir();
 		$safety = $dir . '/prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip'; // nome non indovinabile: la cartella potrebbe essere raggiungibile da web (nginx ignora .htaccess)
 		self::export( true, $safety );
 		$old = self::saved();
 		foreach ( array_slice( $old, Limits::get( 'backup_keep' ) ) as $o ) {
-			@unlink( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			wp_delete_file( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 		$db  = Db::db();
 		$zip = new \ZipArchive();
@@ -290,7 +290,7 @@ final class Backup {
 						$batch = array();
 					}
 				}
-				fclose( $h );
+				fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- lettura/scrittura in streaming di file grandi
 				if ( $batch ) {
 					self::insert_rows( $tbl, $use, $batch );
 				}
@@ -299,7 +299,7 @@ final class Backup {
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
 			$zip->close();
-			throw new \RuntimeException( $e->getMessage() . ' Nessun dato è stato cambiato.' );
+			throw new \RuntimeException( $e->getMessage() . ' Nessun dato è stato cambiato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		// impostazioni (le chiavi segrete restano quelle del sito) e opzioni collegate
 		$raw = $zip->getFromName( 'impostazioni.json' );
@@ -356,9 +356,9 @@ final class Backup {
 		header( 'X-Content-Type-Options: nosniff' );
 		header( 'Content-Disposition: attachment; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $filename ) . '"' );
 		header( 'Content-Length: ' . filesize( $path ) );
-		readfile( $path );
+		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura/scrittura in streaming di file grandi
 		if ( $delete ) {
-			@unlink( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			wp_delete_file( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 		exit;
 	}

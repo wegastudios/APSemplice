@@ -34,13 +34,13 @@ final class ImportService {
 			if ( SheetReader::ROLE_PEOPLE === $role ) {
 				$p = PeopleCsv::parse_table( $sh['rows'], $sh['lines'] ?? null, (string) $sh['name'] );
 				if ( isset( $p['error'] ) ) {
-					throw new \InvalidArgumentException( $p['error'] );
+					throw new \InvalidArgumentException( $p['error'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$people_rows = array_merge( $people_rows, $p['rows'] );
 			} elseif ( SheetReader::ROLE_LEDGER === $role ) {
 				$l = LedgerImport::parse_table( $sh['rows'], $sh['lines'] ?? null, (string) $sh['name'] );
 				if ( isset( $l['error'] ) ) {
-					throw new \InvalidArgumentException( $l['error'] );
+					throw new \InvalidArgumentException( $l['error'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$ledger_rows = array_merge( $ledger_rows, $l['rows'] );
 			} else {
@@ -49,11 +49,11 @@ final class ImportService {
 		}
 		if ( ! $people_rows && ! $ledger_rows ) {
 			throw new \InvalidArgumentException(
-				'Non sono stati trovati né soci né movimenti. Per i soci servono le colonne "Nome" e "Cognome"; per la prima nota "Data" e "Importo" (oppure "Entrata" e "Uscita"). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.'
+				'Non sono stati trovati né soci né movimenti. Per i soci servono le colonne "Nome" e "Cognome"; per la prima nota "Data" e "Importo" (oppure "Entrata" e "Uscita"). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.' // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			);
 		}
 		if ( count( $people_rows ) > Limits::get( 'import_max_rows' ) || count( $ledger_rows ) > Limits::get( 'import_max_rows' ) ) {
-			throw new \InvalidArgumentException( 'Il file ha più di ' . Limits::get( 'import_max_rows' ) . ' righe per tipo: dividilo in più file.' );
+			throw new \InvalidArgumentException( 'Il file ha più di ' . Limits::get( 'import_max_rows' ) . ' righe per tipo: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$out = array( 'people' => null, 'ledger' => null, 'ignored' => $ignored );
 		if ( $people_rows ) {

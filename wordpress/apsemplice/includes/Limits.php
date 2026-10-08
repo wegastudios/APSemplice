@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Limiti, gruppi e comportamenti automatici del plugin.

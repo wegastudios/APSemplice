@@ -107,7 +107,7 @@ final class Notices {
 			throw new \InvalidArgumentException( 'Negli avvisi dei volontari non si possono inserire indirizzi web né coordinate bancarie. Per i pagamenti rimanda i soci all\'area riservata o alla segreteria.' );
 		}
 		if ( mb_strlen( $subject ) > self::MAX_SUBJECT || mb_strlen( $body ) > self::MAX_BODY ) {
-			throw new \InvalidArgumentException( 'Avviso troppo lungo: titolo fino a ' . self::MAX_SUBJECT . ' caratteri, testo fino a ' . self::MAX_BODY . '.' );
+			throw new \InvalidArgumentException( 'Avviso troppo lungo: titolo fino a ' . self::MAX_SUBJECT . ' caratteri, testo fino a ' . self::MAX_BODY . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$session = null;
 		if ( $session_id ) {
@@ -119,7 +119,7 @@ final class Notices {
 		$db  = self::db();
 		$day = $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'notices' ) . ' WHERE activity_id = %d AND created_at >= %s', $activity_id, gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
 		if ( (int) $day >= Limits::get( 'notice_per_day' ) ) {
-			throw new \InvalidArgumentException( 'Per questa attività sono già stati inviati ' . Limits::get( 'notice_per_day' ) . ' avvisi nelle ultime 24 ore: aspetta un po\'.' );
+			throw new \InvalidArgumentException( 'Per questa attività sono già stati inviati ' . Limits::get( 'notice_per_day' ) . ' avvisi nelle ultime 24 ore: aspetta un po\'.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$rcpt = self::recipients( $activity_id, $session_id );
 		$user = wp_get_current_user();

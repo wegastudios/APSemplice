@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Generatore minimo di PDF (A4, testo e linee, font Helvetica standard): serve per ricevute e attestazioni, senza librerie esterne.

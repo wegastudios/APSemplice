@@ -189,7 +189,7 @@ final class ActivityReset {
 		}
 		$blockers = self::blockers( $activity_id, $mode, ! empty( $opts['void_costs'] ) );
 		if ( $blockers ) {
-			throw new \InvalidArgumentException( $blockers[0] );
+			throw new \InvalidArgumentException( $blockers[0] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$p    = self::preview( $activity_id );
 		$a    = $p['activity'];
@@ -400,7 +400,7 @@ final class ActivityReset {
 		}
 		$blockers = self::registration_blockers( $activity_id, $person_id, $session_id, $mode );
 		if ( $blockers ) {
-			throw new \InvalidArgumentException( $blockers[0] );
+			throw new \InvalidArgumentException( $blockers[0] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$p      = self::registration_preview( $activity_id, $person_id, $session_id );
 		$a      = $p['activity'];

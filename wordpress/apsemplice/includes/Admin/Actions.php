@@ -485,8 +485,11 @@ final class Actions {
 			$p['mode'] = \ApSemplice\ActivityReset::REFUND;
 		}
 		$s    = \ApSemplice\ActivityReset::delete( $id, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ), 'void_costs' => ! empty( $p['void_costs'] ) ) );
-		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . (int) $s['sessions'] . ' date e ' . (int) $s['bookings'] . ' prenotazioni attive cancellate.';
-		$msg .= $s['refunds'] ? ' Registrate ' . (int) $s['refunds'] . ' restituzioni in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
+		$ns   = (int) $s['sessions'];
+		$nb   = (int) $s['bookings'];
+		$nr   = (int) $s['refunds'];
+		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . ( 1 === $ns ? '1 data' : $ns . ' date' ) . ' e ' . ( 1 === $nb ? '1 prenotazione attiva cancellata' : $nb . ' prenotazioni attive cancellate' ) . '.';
+		$msg .= $nr ? ' ' . ( 1 === $nr ? 'Registrata 1 restituzione' : 'Registrate ' . $nr . ' restituzioni' ) . ' in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
 		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
@@ -1109,6 +1112,9 @@ final class Actions {
 		if ( ! empty( $p['guests_present'] ) ) { // la casella non spuntata non arriva nel modulo
 			$ente['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
 		}
+		if ( ! empty( $p['uninstall_present'] ) ) {
+			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;
+		}
 		Settings::update(
 			$ente + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
@@ -1175,7 +1181,7 @@ final class Actions {
 		$res      = Gateways::test( $provider, Settings::payment_config(), array( Gateways::class, 'wp_http' ) );
 		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
 		if ( ! $res['ok'] ) {
-			throw new \InvalidArgumentException( $res['message'] );
+			throw new \InvalidArgumentException( $res['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( Ui::url( 'apse-payments' ), $res['message'] );
 	}
@@ -1204,12 +1210,12 @@ final class Actions {
 	// ---------- Import (Excel / CSV) ----------
 
 	private static function import_preview( array $p ): array {
-		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification
+		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- valore verificato e ripulito da chi lo usa
 		if ( empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
 			throw new \InvalidArgumentException( 'Scegli un file Excel o CSV da caricare.' );
 		}
 		if ( (int) $f['size'] > \ApSemplice\Limits::get( 'import_max_mb' ) * 1048576 ) {
-			throw new \InvalidArgumentException( 'Il file supera i ' . \ApSemplice\Limits::get( 'import_max_mb' ) . ' MB: dividilo in più file.' );
+			throw new \InvalidArgumentException( 'Il file supera i ' . \ApSemplice\Limits::get( 'import_max_mb' ) . ' MB: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$prev  = \ApSemplice\ImportService::preview_file(
 			$f['tmp_name'],

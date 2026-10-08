@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Regole delle licenze, pure e senza rete: le usa il plugin per mostrare lo stato e le userà identiche
@@ -36,7 +36,7 @@ final class LicenseRules {
 		if ( false === strpos( $s, '://' ) ) {
 			$s = 'http://' . $s;
 		}
-		$host = parse_url( $s, PHP_URL_HOST );
+		$host = parse_url( $s, PHP_URL_HOST ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- lettura/scrittura in streaming di file grandi
 		return is_string( $host ) ? rtrim( $host, '.' ) : '';
 	}
 

@@ -176,7 +176,7 @@ final class Privacy {
 	public static function anonymize( int $person_id ): void {
 		$why = self::blocker( $person_id );
 		if ( '' !== $why ) {
-			throw new \InvalidArgumentException( $why );
+			throw new \InvalidArgumentException( $why ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$p    = Plugin::people()->get( $person_id );
 		$db   = Db::db();

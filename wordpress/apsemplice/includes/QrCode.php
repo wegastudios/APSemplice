@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Generatore di QR Code (ISO 18004), senza librerie: modalità byte, correzione errori M (≈15%), versioni 1–10 (fino a 213 byte).
@@ -161,7 +161,7 @@ final class QrCode {
 	public static function matrix( string $data ): array {
 		$ver = self::version_for( strlen( $data ) );
 		if ( null === $ver ) {
-			throw new \InvalidArgumentException( 'Testo troppo lungo per il QR (massimo ' . self::MAX_BYTES . ' caratteri).' );
+			throw new \InvalidArgumentException( 'Testo troppo lungo per il QR (massimo ' . self::MAX_BYTES . ' caratteri).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$words = self::codewords( $data, $ver );
 		$size  = 17 + 4 * $ver;

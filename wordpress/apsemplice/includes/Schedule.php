@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Programma di un'attività descritto a regole: date uniche e giorni ricorrenti con una data di fine
@@ -69,12 +69,12 @@ final class Schedule {
 			$start = self::time( $r['from'] ?? '' );
 			$end   = self::time( $r['to'] ?? '' );
 			if ( $start && $end && $end <= $start ) {
-				throw new \InvalidArgumentException( "Riga $n: l'orario di fine deve essere dopo quello di inizio." );
+				throw new \InvalidArgumentException( "Riga $n: l'orario di fine deve essere dopo quello di inizio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( 'single' === $type ) {
 				$date = self::date( $r['date'] ?? '' );
 				if ( ! $date ) {
-					throw new \InvalidArgumentException( "Riga $n: indica la data." );
+					throw new \InvalidArgumentException( "Riga $n: indica la data." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$out[ $date . '|' . $start ] = array( 'date' => $date, 'start' => $start, 'end' => $end );
 			} elseif ( 'weekly' === $type ) {
@@ -82,27 +82,27 @@ final class Schedule {
 				$from = self::date( $r['start'] ?? '' );
 				$to   = self::date( $r['end'] ?? '' );
 				if ( ! $days ) {
-					throw new \InvalidArgumentException( "Riga $n: scegli almeno un giorno della settimana." );
+					throw new \InvalidArgumentException( "Riga $n: scegli almeno un giorno della settimana." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( ! $from ) {
-					throw new \InvalidArgumentException( "Riga $n: indica da quando inizia." );
+					throw new \InvalidArgumentException( "Riga $n: indica da quando inizia." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( ! $to ) {
-					throw new \InvalidArgumentException( "Riga $n: indica la data di fine." );
+					throw new \InvalidArgumentException( "Riga $n: indica la data di fine." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( $to < $from ) {
-					throw new \InvalidArgumentException( "Riga $n: la data di fine è prima di quella di inizio." );
+					throw new \InvalidArgumentException( "Riga $n: la data di fine è prima di quella di inizio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				foreach ( $days as $day ) {
 					foreach ( self::weekly_dates( $from, $to, $day ) as $date ) {
 						$out[ $date . '|' . $start ] = array( 'date' => $date, 'start' => $start, 'end' => $end );
 						if ( count( $out ) > $max ) {
-							throw new \InvalidArgumentException( "Troppe date in una volta (massimo $max): accorcia il periodo." );
+							throw new \InvalidArgumentException( "Troppe date in una volta (massimo $max): accorcia il periodo." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 					}
 				}
 			} elseif ( '' !== $type ) {
-				throw new \InvalidArgumentException( "Riga $n: tipo non valido." );
+				throw new \InvalidArgumentException( "Riga $n: tipo non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		$out = array_values( $out );

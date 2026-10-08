@@ -4,6 +4,7 @@
  * Le classi che usano il database sono verificate da tests/smoke.php dentro un WordPress reale.
  */
 define( 'APSE_TESTS', true );
+define( 'ABSPATH', dirname( __DIR__ ) . '/' ); // le classi hanno la guardia contro l'accesso diretto
 
 spl_autoload_register(
 	function ( $class ) {
@@ -17,3 +18,12 @@ spl_autoload_register(
 		}
 	}
 );
+
+if ( ! function_exists( 'wp_delete_file' ) ) {
+	/** Sostituto minimo di quello di WordPress per i test senza WordPress. */
+	function wp_delete_file( $file ) {
+		if ( is_file( $file ) ) {
+			unlink( $file );
+		}
+	}
+}

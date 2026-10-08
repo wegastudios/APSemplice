@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Codice di verifica della tessera, stampato nel QR: "ID.firma". La firma (HMAC) non si può indovinare né costruire senza il segreto

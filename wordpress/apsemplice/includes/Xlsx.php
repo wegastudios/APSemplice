@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Lettura di file Excel (.xlsx) senza librerie esterne: serve solo l'estensione zip di PHP.
@@ -254,7 +254,7 @@ final class Xlsx {
 				continue;
 			}
 			if ( count( $rows ) >= self::MAX_ROWS ) {
-				throw new \InvalidArgumentException( 'Il foglio ha più di ' . self::MAX_ROWS . ' righe: dividilo in più file.' );
+				throw new \InvalidArgumentException( 'Il foglio ha più di ' . self::MAX_ROWS . ' righe: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$rows[]  = $out;
 			$lines[] = $line;

@@ -66,7 +66,7 @@ final class GroupCash {
 				}
 				$name = trim( $person['first_name'] . ' ' . $person['last_name'] );
 				if ( $staff && ( ! MemberType::is_member( $person['type'] ) || ! $people->is_active_member( $pid ) ) ) {
-					throw new \InvalidArgumentException( MemberType::is_member( $person['type'] ) ? 'La tessera di ' . $name . ' non è in regola: va rinnovata (in segreteria o dal tesoriere) prima di prenotare.' : 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' );
+					throw new \InvalidArgumentException( MemberType::is_member( $person['type'] ) ? 'La tessera di ' . $name . ' non è in regola: va rinnovata (in segreteria o dal tesoriere) prima di prenotare.' : 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$b_lines = array_values( array_filter( (array) ( $b['lines'] ?? array() ), 'is_array' ) );
 				if ( ! $b_lines ) {
@@ -116,10 +116,10 @@ final class GroupCash {
 					} elseif ( 'course' === $kind ) {
 						$aid = (int) ( $l['activity_id'] ?? 0 );
 						if ( MemberType::is_member( $person['type'] ) && ! MemberType::is_auto_renewed( $person['type'] ) && ! $has_membership_line && ! $people->is_active_member( $pid ) ) {
-							throw new \InvalidArgumentException( $name . ': per un corso la tessera deve essere in regola (aggiungi la quota associativa nello stesso incasso, oppure riattiva il socio).' );
+							throw new \InvalidArgumentException( $name . ': per un corso la tessera deve essere in regola (aggiungi la quota associativa nello stesso incasso, oppure riattiva il socio).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						if ( $people->is_suspended( $pid ) ) {
-							throw new \InvalidArgumentException( $name . ' è sospeso (inattivo): riattivalo a mano prima di iscriverlo a un corso.' );
+							throw new \InvalidArgumentException( $name . ' è sospeso (inattivo): riattivalo a mano prima di iscriverlo a un corso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						$month = (string) ( $l['month'] ?? '' );
 						if ( ! in_array( $aid, $acts->active_activity_ids( $pid ), true ) ) {

@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Verifica della firma dei webhook di Stripe (intestazione Stripe-Signature: "t=…,v1=…"). */
 final class StripeWebhook {

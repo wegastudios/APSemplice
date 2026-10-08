@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Numeri di cellulare. Per gli ospiti è il dato migliore per riconoscere la stessa persona (e per contattarla su WhatsApp):

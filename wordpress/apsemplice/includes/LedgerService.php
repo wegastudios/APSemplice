@@ -88,7 +88,7 @@ class LedgerService {
 			}
 		}
 		if ( 0 !== $balance ) {
-			throw new \InvalidArgumentException( 'Il conto ha ancora ' . Money::format( $balance ) . ': spostali con un giroconto (o rettifica il saldo) prima di chiuderlo.' );
+			throw new \InvalidArgumentException( 'Il conto ha ancora ' . Money::format( $balance ) . ': spostali con un giroconto (o rettifica il saldo) prima di chiuderlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$this->db()->update( Db::t( 'accounts' ), array( 'closed_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'account.closed', 'account', $id );
@@ -267,65 +267,65 @@ class LedgerService {
 			if ( ! empty( $l['person_id'] ) && ( ! $payer || (int) $l['person_id'] !== (int) $payer['id'] ) ) {
 				$person = Plugin::people()->get( (int) $l['person_id'] );
 				if ( ! $person ) {
-					throw new \InvalidArgumentException( "Voce $n: persona non trovata." );
+					throw new \InvalidArgumentException( "Voce $n: persona non trovata." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			}
 			$cat  = $this->category( (int) ( $l['category_id'] ?? 0 ) );
 			$cents = (int) ( $l['amount_cents'] ?? 0 );
 			if ( ! $cat || ! Labels::category_kinds()[ $cat['kind'] ][1] || 'adjustment' === $cat['kind'] ) {
-				throw new \InvalidArgumentException( "Voce $n: categoria non valida per un incasso." );
+				throw new \InvalidArgumentException( "Voce $n: categoria non valida per un incasso." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$discount = max( 0, (int) ( $l['discount_cents'] ?? 0 ) ); // sconto, promozione o arrotondamento: la voce conta come pagata anche se si incassa meno
 			if ( $cents < 0 || ( $cents <= 0 && $discount <= 0 ) ) {
-				throw new \InvalidArgumentException( "Voce $n: importo non valido." );
+				throw new \InvalidArgumentException( "Voce $n: importo non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( ! empty( $l['competence_month'] ) && ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $l['competence_month'] ) ) {
-				throw new \InvalidArgumentException( "Voce $n: mese di competenza non valido." );
+				throw new \InvalidArgumentException( "Voce $n: mese di competenza non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$activity_id = ! empty( $l['activity_id'] ) ? (int) $l['activity_id'] : null;
 			$session_id  = ! empty( $l['session_id'] ) ? (int) $l['session_id'] : null;
 			$activity    = $activity_id ? Plugin::activities()->get( $activity_id ) : null;
 			if ( $activity_id && ! $activity ) {
-				throw new \InvalidArgumentException( "Voce $n: attività non trovata." );
+				throw new \InvalidArgumentException( "Voce $n: attività non trovata." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( $activity_id && ! $person ) {
-				throw new \InvalidArgumentException( "Voce $n: indica chi paga il contributo dell'attività." );
+				throw new \InvalidArgumentException( "Voce $n: indica chi paga il contributo dell'attività." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( $session_id && ! $activity_id ) {
-				throw new \InvalidArgumentException( "Voce $n: la data dell'evento richiede l'attività." );
+				throw new \InvalidArgumentException( "Voce $n: la data dell'evento richiede l'attività." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( $activity && ActivityKind::uses_sessions( $activity['kind'] ) ) {
 				// Eventi: il contributo si paga per una data a cui la persona è prenotata
 				$session = $session_id ? Plugin::activities()->session( $session_id ) : null;
 				if ( ! $session || (int) $session['activity_id'] !== $activity_id ) {
-					throw new \InvalidArgumentException( "Voce $n: indica a quale data dell'evento si riferisce il contributo." );
+					throw new \InvalidArgumentException( "Voce $n: indica a quale data dell'evento si riferisce il contributo." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( ! Plugin::activities()->has_active_booking( $session_id, (int) $person['id'] ) ) {
-					throw new \InvalidArgumentException( "Voce $n: la persona non è prenotata a questa data." );
+					throw new \InvalidArgumentException( "Voce $n: la persona non è prenotata a questa data." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			} elseif ( $session_id ) {
-				throw new \InvalidArgumentException( "Voce $n: i corsi non hanno date: indica il mese di competenza." );
+				throw new \InvalidArgumentException( "Voce $n: i corsi non hanno date: indica il mese di competenza." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$social_year = null;
 			$free_year   = null;
 			if ( 'membership' === $cat['kind'] ) {
 				if ( ! $person ) {
-					throw new \InvalidArgumentException( "Voce $n: la quota associativa richiede di indicare il socio." );
+					throw new \InvalidArgumentException( "Voce $n: la quota associativa richiede di indicare il socio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( MemberType::GUEST === $person['type'] ) {
-					throw new \InvalidArgumentException( "Voce $n: un ospite non è socio e non paga la quota associativa." );
+					throw new \InvalidArgumentException( "Voce $n: un ospite non è socio e non paga la quota associativa." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( MemberType::is_auto_renewed( $person['type'] ) ) {
-					throw new \InvalidArgumentException( "Voce $n: il socio fondatore ha la tessera sempre rinnovata." );
+					throw new \InvalidArgumentException( "Voce $n: il socio fondatore ha la tessera sempre rinnovata." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( Plugin::people()->is_suspended( (int) $person['id'] ) ) {
-					throw new \InvalidArgumentException( "Voce $n: il socio è sospeso (inattivo): riattivalo a mano dalla sua scheda prima di incassare la quota." );
+					throw new \InvalidArgumentException( "Voce $n: il socio è sospeso (inattivo): riattivalo a mano dalla sua scheda prima di incassare la quota." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				// La quota va all'anno più recente creato; se non è quello in corso, l'anno in corso è in omaggio (a chi non è un socio scaduto).
 				$plan        = Plugin::people()->membership_plan( (int) $person['id'], $date );
 				$social_year = ! empty( $l['social_year'] ) ? (string) $l['social_year'] : $plan['year'];
 				if ( ! preg_match( '#^(19|20)\d{2}(/(19|20)\d{2})?$#', $social_year ) ) {
-					throw new \InvalidArgumentException( "Voce $n: anno della tessera non valido." );
+					throw new \InvalidArgumentException( "Voce $n: anno della tessera non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}

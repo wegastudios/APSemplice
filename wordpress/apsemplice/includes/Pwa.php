@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * App installabile (PWA): manifest, service worker (solo offline minimo e notifiche: le pagine con dati personali non si salvano mai),

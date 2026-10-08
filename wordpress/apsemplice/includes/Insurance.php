@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Assicurazione dei volontari (obbligatoria per chi svolge attività in modo continuativo): polizze per persona con validità,

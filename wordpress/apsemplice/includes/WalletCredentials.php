@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Lettura e controllo dei certificati e delle chiavi per Apple Wallet e Google Wallet. */
 final class WalletCredentials {

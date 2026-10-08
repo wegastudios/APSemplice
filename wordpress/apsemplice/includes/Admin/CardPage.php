@@ -60,7 +60,7 @@ final class CardPage {
 			$days = $info['expires'] ? (int) floor( ( strtotime( $info['expires'] ) - time() ) / DAY_IN_SECONDS ) : null;
 			echo '<p><strong class="apse-ok">Configurato</strong> · ' . esc_html( $cfg['pass_type'] ) . ' · team ' . esc_html( $cfg['team'] ) . '</p>';
 			if ( null !== $days ) {
-				echo '<p class="' . ( $days < 30 ? 'apse-neg' : 'description' ) . '">Il certificato scade il ' . esc_html( Ui::date( $info['expires'] ) ) . ( $days < 30 ? ' (tra ' . max( 0, $days ) . ' giorni: rinnovalo da Apple e ricaricalo qui)' : '' ) . '.</p>';
+				echo '<p class="' . ( $days < 30 ? 'apse-neg' : 'description' ) . '">Il certificato scade il ' . esc_html( Ui::date( $info['expires'] ) ) . ( $days < 30 ? ' (tra ' . max( 0, $days ) . ' giorni: rinnovalo da Apple e ricaricalo qui)' : '' ) . '.</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			}
 		} else {
 			echo '<p>Non configurato. Servono un <strong>account Apple Developer</strong> dell\'associazione, un <strong>Pass Type ID</strong> con il suo certificato (esportato in un file <code>.p12</code>) e il certificato intermedio <strong>WWDR</strong> di Apple (<code>.cer</code>).</p>';

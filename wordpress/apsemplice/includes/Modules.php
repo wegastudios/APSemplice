@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Le parti del gestionale che l'ente usa davvero. Una parte spenta sparisce dal menu e dalle schede (nulla viene cancellato: i dati restano

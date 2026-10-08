@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Import della prima nota da Excel/CSV: lettura delle righe e piano di importazione (crea / doppione / salta / errore).

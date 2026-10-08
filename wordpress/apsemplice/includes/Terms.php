@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Tipo di ente e termini per chi partecipa. I testi del plugin sono scritti per un'«associazione» con «soci»: scegliendo un altro tipo di ente

@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Link di attivazione per un socio registrato senza email: "ID.SCADENZA.firma". Chi ha il link (mandato su WhatsApp)

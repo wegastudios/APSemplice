@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Documenti stampabili dei registri: libro soci, registro volontari, presenze, verbali e rendiconto, in PDF (e CSV per gli elenchi).

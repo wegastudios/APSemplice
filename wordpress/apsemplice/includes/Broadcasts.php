@@ -189,12 +189,12 @@ final class Broadcasts {
 			throw new \InvalidArgumentException( 'Scrivi l\'oggetto e il testo del messaggio.' );
 		}
 		if ( mb_strlen( $subject ) > self::MAX_SUBJ || mb_strlen( $body ) > self::MAX_BODY ) {
-			throw new \InvalidArgumentException( 'Messaggio troppo lungo: oggetto fino a ' . self::MAX_SUBJ . ' caratteri, testo fino a ' . self::MAX_BODY . '.' );
+			throw new \InvalidArgumentException( 'Messaggio troppo lungo: oggetto fino a ' . self::MAX_SUBJ . ' caratteri, testo fino a ' . self::MAX_BODY . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$db    = self::db();
 		$today = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcasts' ) . ' WHERE created_at >= %s', gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
 		if ( $today >= Limits::get( 'broadcast_per_day' ) ) {
-			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' );
+			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$r = self::recipients( $audience, $ref );
 		if ( ! $r['list'] ) {

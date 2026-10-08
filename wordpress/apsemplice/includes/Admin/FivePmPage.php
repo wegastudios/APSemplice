@@ -56,7 +56,7 @@ final class FivePmPage {
 				. '</td><td>' . self::date( FivePerMille::due_date( $r ) ) . '</td><td><span class="' . esc_attr( $cls[ $st ] ) . '">' . esc_html( $labels[ $st ] ) . '</span></td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( FivePerMille::REPORTED !== $st ) {
 				Ui::form_open( 'apse_fivepm_report', Ui::url( 'apse-fivepm' ) );
-				echo Ui::hidden( 'id', $r['id'] ) . '<details><summary>Registra il rendiconto</summary><p><input type="date" name="reported_on" value="' . esc_attr( Db::today() ) . '" required></p>'
+				echo Ui::hidden( 'id', $r['id'] ) . '<details><summary>Registra il rendiconto</summary><p><input type="date" name="reported_on" value="' . esc_attr( Db::today() ) . '" required></p>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 					. '<p><textarea name="report_notes" rows="4" class="large-text" placeholder="Come è stato utilizzato il contributo" required></textarea></p><p><button class="button">Salva il rendiconto</button></p></details>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 			} else {

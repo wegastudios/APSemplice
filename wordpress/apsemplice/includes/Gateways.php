@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Prova di connessione ai gateway con le chiavi salvate: parte solo quando l'amministratore preme "Verifica connessione".
@@ -80,7 +80,7 @@ final class Gateways {
 	public static function wp_http( string $method, string $url, array $headers, ?string $body ): array {
 		$res = wp_remote_request( $url, array( 'method' => $method, 'headers' => $headers, 'body' => $body, 'timeout' => 15 ) );
 		if ( is_wp_error( $res ) ) {
-			throw new \RuntimeException( $res->get_error_message() );
+			throw new \RuntimeException( $res->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( 'code' => (int) wp_remote_retrieve_response_code( $res ), 'body' => (string) wp_remote_retrieve_body( $res ) );
 	}

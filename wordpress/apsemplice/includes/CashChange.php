@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Calcolo del resto per gli incassi in contanti (solo un aiuto: in cassa entra il dovuto). */
 final class CashChange {

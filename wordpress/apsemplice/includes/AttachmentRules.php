@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Regole (pure) sugli allegati dei movimenti: tipi ammessi, dimensione, nomi. Il resto sta in Attachments. */
 final class AttachmentRules {

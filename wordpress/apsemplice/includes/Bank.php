@@ -42,13 +42,13 @@ final class Bank {
 			}
 			if ( ! Iban::is_valid( $raw ) ) {
 				if ( $strict ) {
-					throw new \InvalidArgumentException( 'Conto ' . $n . ': l\'IBAN non è valido (controlla le cifre).' );
+					throw new \InvalidArgumentException( 'Conto ' . $n . ': l\'IBAN non è valido (controlla le cifre).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				continue;
 			}
 			if ( count( $out ) >= self::MAX_ACCOUNTS ) {
 				if ( $strict ) {
-					throw new \InvalidArgumentException( 'Si possono indicare al massimo ' . self::MAX_ACCOUNTS . ' conti.' );
+					throw new \InvalidArgumentException( 'Si possono indicare al massimo ' . self::MAX_ACCOUNTS . ' conti.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				break;
 			}

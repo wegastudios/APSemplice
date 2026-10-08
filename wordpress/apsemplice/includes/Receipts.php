@@ -359,7 +359,7 @@ final class Receipts {
 			ARRAY_A
 		) ?: array();
 		if ( ! $rows ) {
-			throw new \InvalidArgumentException( 'Nessun versamento nel ' . $year . '.' );
+			throw new \InvalidArgumentException( 'Nessun versamento nel ' . $year . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$groups = array( 'membership' => 'Quote associative', 'activity_fee' => 'Contributi per attività ed eventi', 'donation' => 'Erogazioni liberali' );
 		$sums   = array();
@@ -444,7 +444,7 @@ final class Receipts {
 		$tmp = wp_tempnam( 'apse-ricevuta' );
 		$dst = dirname( $tmp ) . '/' . $r['filename'];
 		file_put_contents( $dst, $r['pdf'] );
-		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		wp_delete_file( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		$assoc = (string) Settings::get( 'association_name' );
 		$ok    = \ApSemplice\Texts::mail(
 			$to,
@@ -453,7 +453,7 @@ final class Receipts {
 			array(),
 			array( $dst )
 		);
-		@unlink( $dst ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		wp_delete_file( $dst ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		if ( ! $ok ) {
 			throw new \InvalidArgumentException( 'Invio non riuscito: controlla la posta in uscita del sito.' );
 		}

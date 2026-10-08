@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Compatibilità con WooCommerce: i pagamenti dei soci passano dal carrello e dal checkout del negozio.
@@ -116,7 +116,7 @@ final class WooBridge {
 			$lines[] = array( $pid, $i );
 		}
 		if ( $missing ) {
-			throw new \InvalidArgumentException( 'Queste voci non sono collegate a un prodotto del negozio: ' . implode( ', ', $missing ) . '. Contatta la segreteria.' );
+			throw new \InvalidArgumentException( 'Queste voci non sono collegate a un prodotto del negozio: ' . implode( ', ', $missing ) . '. Contatta la segreteria.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( function_exists( 'wc_load_cart' ) && null === WC()->cart ) {
 			wc_load_cart();
@@ -134,7 +134,7 @@ final class WooBridge {
 			list( $pid, $i ) = $l;
 			$added = $cart->add_to_cart( $pid, 1, 0, array(), array( 'apse_pay' => $public_id, 'apse_key' => (string) $i['key'], 'apse_cents' => (int) $i['amount_cents'], 'apse_label' => PaymentItems::line_name( $i ) ) );
 			if ( false === $added ) {
-				throw new \InvalidArgumentException( 'Non è stato possibile aggiungere «' . PaymentItems::line_name( $i ) . '» al carrello.' );
+				throw new \InvalidArgumentException( 'Non è stato possibile aggiungere «' . PaymentItems::line_name( $i ) . '» al carrello.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		return wc_get_checkout_url();

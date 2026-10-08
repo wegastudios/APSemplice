@@ -202,7 +202,7 @@ class PaymentService {
 		$total = PaymentItems::total( $items );
 		$min = Limits::get( 'pay_min_cents' );
 		if ( $total < $min ) {
-			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( $min ) . '.' );
+			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( $min ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 
 		$public = wp_generate_uuid4();

@@ -52,8 +52,8 @@ final class LedgerPage {
 		}
 
 		Ui::header( 'Prima nota — anno solare ' . $year, Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta CSV' ) );
-		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-ledger', array( 'year' => $year - 1, 'account' => $acc ?: null ) ) ) . '">‹ ' . ( $year - 1 ) . '</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'apse-ledger', array( 'year' => $year + 1, 'account' => $acc ?: null ) ) ) . '">' . ( $year + 1 ) . ' ›</a> ';
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'apse-ledger', array( 'year' => $year - 1, 'account' => $acc ?: null ) ) ) . '">‹ ' . ( $year - 1 ) . '</a> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+			. '<a class="button" href="' . esc_url( Ui::url( 'apse-ledger', array( 'year' => $year + 1, 'account' => $acc ?: null ) ) ) . '">' . ( $year + 1 ) . ' ›</a> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		$accounts = array();
 		foreach ( Plugin::ledger()->accounts() as $a ) {
 			$accounts[ $a['id'] ] = $a['name'];

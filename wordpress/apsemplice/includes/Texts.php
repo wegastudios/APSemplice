@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Testi personalizzabili. Ogni testo che il plugin mostra (pagine dei soci, email, PDF, messaggi, amministrazione) si può cambiare dalle

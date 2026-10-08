@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Guida iniziale: i passi per mettere in funzione il plugin, controllati sullo stato reale dei dati, e le funzioni facoltative da attivare. */
 final class Guide {

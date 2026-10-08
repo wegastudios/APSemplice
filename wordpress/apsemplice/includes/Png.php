@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /** Immagini PNG tinta unita (per le icone obbligatorie delle tessere nei wallet), senza GD. */
 final class Png {

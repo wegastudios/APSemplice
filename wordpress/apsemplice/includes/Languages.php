@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice;
 
-defined( 'ABSPATH' ) || defined( 'APSE_TESTS' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Lingue: i testi del plugin sono scritti in italiano; un pacchetto di traduzione è una tabella «testo italiano → traduzione»
@@ -112,11 +112,11 @@ final class Languages {
 			throw new \InvalidArgumentException( 'Il file non contiene traduzioni.' );
 		}
 		if ( count( $strings ) > self::MAX_STRINGS ) {
-			throw new \InvalidArgumentException( 'Troppe righe (al massimo ' . self::MAX_STRINGS . ').' );
+			throw new \InvalidArgumentException( 'Troppe righe (al massimo ' . self::MAX_STRINGS . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$all = self::uploaded();
 		if ( ! isset( $all[ $code ] ) && count( $all ) >= self::MAX_PACKS ) {
-			throw new \InvalidArgumentException( 'Hai già caricato ' . self::MAX_PACKS . ' lingue: eliminane una.' );
+			throw new \InvalidArgumentException( 'Hai già caricato ' . self::MAX_PACKS . ' lingue: eliminane una.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$all[ $code ] = array( 'name' => mb_substr( $name, 0, 60 ), 'strings' => $strings );
 		update_option( self::OPT, $all, false );
