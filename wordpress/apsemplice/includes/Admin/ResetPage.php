@@ -11,7 +11,7 @@ final class ResetPage {
 	public static function render(): void {
 		Ui::header( 'Azzeramento dati' );
 		$p = Reset::preview();
-		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Cancella i dati dell\'associazione per poter ripartire da zero. Prima di cancellare il sito salva da solo una copia completa (con gli allegati) tra le <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">copie di sicurezza</a>; se la copia non riesce non viene cancellato nulla.</p></div>';
+		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Cancella i dati dell\'associazione per poter ripartire da zero. Prima di cancellare dovrai scaricare una copia completa (con gli allegati) e conservarla tu: sul sito non ne resta nessuna.</p></div>';
 
 		echo '<h2>Cosa c\'è adesso</h2><ul style="list-style:disc;margin-left:20px">'
 			. '<li>' . (int) $p['people'] . ' soci e volontari, ' . (int) $p['guests'] . ' ospiti</li>'
