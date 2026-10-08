@@ -211,7 +211,7 @@ final class Admin {
 	}
 
 	/** Una pagina di una parte spenta non mostra i suoi contenuti: dice come riaccenderla. */
-	public static function guard( string $slug, callable $render ): callable {
+	public static function guard( string $slug, $render ): callable { // $render può essere una classe che in questa edizione non c'è (la pagina mostra l'avviso)
 		static $made = array(); // lo stesso oggetto per la stessa pagina: se è registrata due volte (menu principale e prima voce) WordPress la disegna una volta sola
 		if ( isset( $made[ $slug ] ) ) {
 			return $made[ $slug ];
