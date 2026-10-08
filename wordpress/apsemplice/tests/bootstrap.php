@@ -18,3 +18,12 @@ spl_autoload_register(
 		}
 	}
 );
+
+if ( ! function_exists( 'wp_delete_file' ) ) {
+	/** Sostituto minimo di quello di WordPress per i test senza WordPress. */
+	function wp_delete_file( $file ) {
+		if ( is_file( $file ) ) {
+			unlink( $file );
+		}
+	}
+}
