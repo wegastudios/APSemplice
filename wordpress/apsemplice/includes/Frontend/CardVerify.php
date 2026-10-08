@@ -2,7 +2,7 @@
 namespace ApSemplice\Frontend;
 
 use ApSemplice\CardToken;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\MemberType;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -49,7 +49,7 @@ final class CardVerify {
 		if ( ! $parsed || ! CardToken::valid( $parsed[0], $parsed[1], Settings::card_secret() ) ) {
 			return array( 'status' => 'invalid', 'person' => null, 'until' => null );
 		}
-		if ( ! License::allows( 'member_area' ) ) {
+		if ( ! Edition::allows( 'member_area' ) ) {
 			return array( 'status' => 'suspended', 'person' => null, 'until' => null );
 		}
 		$people = Plugin::people();

@@ -65,7 +65,7 @@ class PaymentService {
 	}
 
 	public function enabled(): bool {
-		return array() !== $this->providers() && License::allows( 'online_payments' );
+		return array() !== $this->providers() && Edition::allows( 'online_payments' );
 	}
 
 	// ---------- Cosa c'è da pagare ----------
@@ -175,7 +175,7 @@ class PaymentService {
 	 */
 	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url, string $provider = '' ): string {
 		$available = $this->providers();
-		if ( ! $available || ! License::allows( 'online_payments' ) ) {
+		if ( ! $available || ! Edition::allows( 'online_payments' ) ) {
 			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi.' );
 		}
 		if ( '' === $provider ) {

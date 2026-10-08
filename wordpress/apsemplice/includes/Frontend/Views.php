@@ -5,7 +5,7 @@ use ApSemplice\Access;
 use ApSemplice\ActivityKind;
 use ApSemplice\Bank;
 use ApSemplice\Labels;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\Limits;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
@@ -120,7 +120,7 @@ final class Views {
 		}
 		$uid      = get_current_user_id();
 		$is_admin = Access::is_admin_user( $uid );
-		if ( ! $is_admin && ! License::allows( 'member_area' ) ) {
+		if ( ! $is_admin && ! Edition::allows( 'member_area' ) ) {
 			return self::wrap( self::notice( 'Servizio temporaneamente sospeso. Contatta l\'associazione.', 'apsf-err' ) );
 		}
 		$person = Access::person_for_user( $uid );
@@ -1138,7 +1138,7 @@ final class Views {
 		if ( ! $ctx['logged'] ) {
 			return $ctx;
 		}
-		if ( ! Access::is_admin_user( get_current_user_id() ) && ! License::allows( 'member_area' ) ) {
+		if ( ! Access::is_admin_user( get_current_user_id() ) && ! Edition::allows( 'member_area' ) ) {
 			$ctx['suspended'] = true;
 			return $ctx;
 		}

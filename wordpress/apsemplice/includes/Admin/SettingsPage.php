@@ -2,6 +2,7 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\CancelPolicy;
+use ApSemplice\Edition;
 use ApSemplice\License;
 use ApSemplice\Money;
 use ApSemplice\PaymentConfig;
@@ -69,12 +70,14 @@ final class SettingsPage {
 		echo '<tr><th>Pagina area riservata</th><td>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput
 			array( 'name' => 'member_area_page_id', 'selected' => (int) $s['member_area_page_id'], 'show_option_none' => '— home del sito —', 'option_none_value' => '0', 'echo' => 0 )
 		) . '<p class="description">La pagina del sito dove soci e volontari accedono alla propria area (si crea dalla sezione «Pagine del sito e shortcode» qui sotto). Chi ha solo il ruolo "Socio APS" viene indirizzato qui al posto di wp-admin.</p></td></tr>';
+		if ( Edition::has( 'license' ) ) {
 		$lic = License::status();
 		echo '<tr><th>Chiave di licenza</th><td><input type="text" name="license_key" value="' . esc_attr( (string) $s['license_key'] ) . '" class="regular-text" autocomplete="off">'
 			. '<p class="description">Una licenza vale per un dominio (<code>' . esc_html( $lic['domain'] ) . '</code>, sottodomini compresi) e per al massimo '
 			. (int) $lic['max_installs'] . ' installazioni attive insieme su quel dominio, ad esempio il sito e il suo staging. '
 			. ( $lic['local'] ? 'Questo è un ambiente locale: non richiede licenza. ' : '' )
 			. esc_html( $lic['note'] ) . '</p><p class="description">ID di questa installazione: <code>' . esc_html( $lic['install_id'] ) . '</code></p></td></tr>';
+		}
 		echo '</tbody></table><h2>Eventi: cancellazioni</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>';

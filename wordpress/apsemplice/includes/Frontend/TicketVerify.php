@@ -2,7 +2,7 @@
 namespace ApSemplice\Frontend;
 
 use ApSemplice\CardToken;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\Money;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -39,7 +39,7 @@ final class TicketVerify {
 		if ( ! $parsed || ! CardToken::ticket_valid( $parsed[0], $parsed[1], $parsed[2], Settings::card_secret() ) ) {
 			return array_merge( $none, array( 'status' => 'invalid' ) );
 		}
-		if ( ! License::allows( 'member_area' ) ) {
+		if ( ! Edition::allows( 'member_area' ) ) {
 			return array_merge( $none, array( 'status' => 'suspended' ) );
 		}
 		$acts     = Plugin::activities();

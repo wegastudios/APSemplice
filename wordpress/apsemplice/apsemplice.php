@@ -20,14 +20,19 @@ define( 'APSE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'APSE_URL', plugin_dir_url( __FILE__ ) );
 
 // Autoload semplice: ApSemplice\Foo => includes/Foo.php, ApSemplice\Admin\Bar => includes/Admin/Bar.php
+// (il plugin Pro aggiunge la sua cartella con Edition::add_dir: le sue classi usano lo stesso spazio dei nomi)
 spl_autoload_register(
 	function ( $class ) {
 		$prefix = 'ApSemplice\\';
 		if ( 0 !== strpos( $class, $prefix ) ) {
 			return;
 		}
-		$file = APSE_DIR . 'includes/' . str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
-		if ( is_readable( $file ) ) {
+		$rel  = str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
+		$file = APSE_DIR . 'includes/' . $rel;
+		if ( ! is_readable( $file ) && class_exists( 'ApSemplice\\Edition', false ) ) {
+			$file = (string) \ApSemplice\Edition::locate( $rel );
+		}
+		if ( '' !== $file && is_readable( $file ) ) {
 			require $file;
 		}
 	}

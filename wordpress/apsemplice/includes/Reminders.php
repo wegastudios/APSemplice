@@ -103,7 +103,7 @@ final class Reminders {
 		if ( $send && ! self::enabled() ) {
 			return $out;
 		}
-		if ( $send && ! License::allows( 'official_notices' ) ) {
+		if ( $send && ! Edition::allows( 'official_notices' ) ) {
 			return $out;
 		}
 		$today = $today ?: current_time( 'Y-m-d' );

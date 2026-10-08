@@ -3,7 +3,7 @@ namespace ApSemplice\Frontend;
 
 use ApSemplice\AccessRequests;
 use ApSemplice\Audit;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\Limits;
 use ApSemplice\MemberType;
 use ApSemplice\Phone;
@@ -39,7 +39,7 @@ final class FirstAccess {
 	 * Manda il link per scegliere la password se l'email è di un socio con accesso. @return bool true se è stata inviata una email
 	 */
 	public static function request( string $email ): bool {
-		if ( ! License::allows( 'member_area' ) ) {
+		if ( ! Edition::allows( 'member_area' ) ) {
 			return false;
 		}
 		$email = trim( $email );
@@ -82,7 +82,7 @@ final class FirstAccess {
 	 * @return string emailed | change_queued | unknown_queued | invalid | none
 	 */
 	public static function submit( string $name, string $email, string $phone ): string {
-		if ( ! License::allows( 'member_area' ) ) {
+		if ( ! Edition::allows( 'member_area' ) ) {
 			return 'none';
 		}
 		$name  = trim( $name );

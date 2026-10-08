@@ -2,7 +2,7 @@
 namespace ApSemplice\Frontend;
 
 use ApSemplice\ActivationToken;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\Limits;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -44,7 +44,7 @@ final class Activation {
 		if ( 'ok' !== $state ) {
 			return array( 'status' => $state, 'person' => null );
 		}
-		if ( ! License::allows( 'member_area' ) ) {
+		if ( ! Edition::allows( 'member_area' ) ) {
 			return array( 'status' => 'suspended', 'person' => null );
 		}
 		$p = Plugin::people()->get( ActivationToken::parse( $param )[0] );

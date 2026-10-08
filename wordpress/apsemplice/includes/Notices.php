@@ -90,7 +90,7 @@ final class Notices {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function send( int $activity_id, ?int $session_id, string $subject, string $body ): array {
-		if ( ! License::allows( 'official_notices' ) ) {
+		if ( ! Edition::allows( 'official_notices' ) ) {
 			throw new \InvalidArgumentException( 'L\'invio degli avvisi è sospeso perché la licenza di APSemplice non risulta in regola.' );
 		}
 		$a = Plugin::activities()->get( $activity_id );
