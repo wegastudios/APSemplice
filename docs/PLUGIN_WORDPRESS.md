@@ -532,7 +532,7 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 
 ## Configurazione guidata
 
-Al primo avvio (e a richiesta da Strumenti → Configurazione guidata) una procedura a domande, riservata agli amministratori, porta un passo alla volta alla configurazione. È pensata per **non spaventare**: poche domande indispensabili; i dettagli stanno in «Più dettagli» (a scomparsa) o in domande che compaiono solo se servono. Senza JavaScript i passi compaiono tutti insieme.
+Al primo avvio (e a richiesta da Strumenti → Configurazione guidata) una procedura a domande, riservata agli amministratori, porta alla configurazione. È pensata per **non spaventare**: poche domande indispensabili; i dettagli stanno in «Più dettagli» (a scomparsa) o in domande che compaiono solo se servono. Un indicatore dice in quale **sezione** ci si trova (Ente, Gestione, Pagamenti, Aspetto) senza contare le pagine; l'elenco dei soci, facoltativo, non si conta. Senza JavaScript le schermate compaiono tutte insieme.
 
 1. **Il tuo ente**: nome, tipo, come si chiama chi partecipa, se si accettano ospiti, chi può iscriversi (chiunque può chiedere / solo su presentazione). *Più dettagli*: codice fiscale, inizio dell'anno sociale, sede.
 2. **Partita IVA** (sì/no): se sì, numero e regime. *Più dettagli*: aliquota, importi IVA compresa o esclusa, IVA sulle quote, codice SDI.
