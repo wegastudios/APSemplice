@@ -93,3 +93,15 @@ jobs:
         with:
           name: apsemplice-plugin
           path: apsemplice.zip
+
+  plugincheck:
+    name: WordPress.org plugin check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Plugin check
+        uses: WordPress/plugin-check-action@v1
+        with:
+          build-dir: wordpress/apsemplice
+          exclude-directories: tests

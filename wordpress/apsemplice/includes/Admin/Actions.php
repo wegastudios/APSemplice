@@ -1112,6 +1112,9 @@ final class Actions {
 		if ( ! empty( $p['guests_present'] ) ) { // la casella non spuntata non arriva nel modulo
 			$ente['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
 		}
+		if ( ! empty( $p['uninstall_present'] ) ) {
+			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;
+		}
 		Settings::update(
 			$ente + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
