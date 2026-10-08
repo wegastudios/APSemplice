@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *  - Segreteria: il punto d'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente);
  *  - Tesoriere: incassi, spese, iscrizioni e vendita eventi;
  *  - Eventi: gestione per il responsabile e lo staff (ingressi, avvisi, iscritti);
- *  - Pubblico: elenco attività, prossimi eventi, bonifico, 5x1000, accesso.
+ *  - Pubblico: elenco attività, prossimi eventi, bonifico, donazioni, 5x1000, accesso.
  */
 final class Areas {
 
@@ -21,7 +21,7 @@ final class Areas {
 		'segreteria' => array( 'Segreteria', array( 'segreteria' ) ),
 		'tesoriere'  => array( 'Tesoriere', array( 'tesoriere' ) ),
 		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi' ) ),
-		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'cinquepermille', 'accesso' ) ),
+		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'donazioni', 'cinquepermille', 'accesso' ) ),
 	);
 
 	/** Viste che funzionano ma non si propongono più negli elenchi (nome vecchio di una vista). */
