@@ -23,7 +23,7 @@ final class Holds {
 	/** Ha un pagamento online avviato da poco per questa prenotazione? */
 	private static function online_in_progress( int $person_id, int $session_id ): bool {
 		$db    = Db::db();
-		$since = gmdate( 'Y-m-d H:i:s', time() - 3 * HOUR_IN_SECONDS );
+		$since = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS );
 		foreach ( $db->get_results( $db->prepare( 'SELECT items FROM ' . Db::t( 'payments' ) . " WHERE payer_person_id = %d AND status IN ('created','pending') AND updated_at >= %s", $person_id, $since ), ARRAY_A ) ?: array() as $p ) {
 			foreach ( (array) json_decode( (string) $p['items'], true ) as $it ) {
 				if ( (int) ( $it['session_id'] ?? 0 ) === $session_id ) {
