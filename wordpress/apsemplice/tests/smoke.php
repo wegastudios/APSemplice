@@ -4043,7 +4043,7 @@ $tm_old = $_GET;
 $_GET   = $tm_q;
 $tm_fl  = \ApSemplice\Flash::read( 'apsf' );
 $_GET   = $tm_old;
-apse_ok( "L'iscritto è stato aggiunto al comitato." === $tm_fl['ok'], 'ente e termini: anche i messaggi di conferma' );
+apse_ok( "L’iscritto è stato aggiunto al comitato." === $tm_fl['ok'], 'ente e termini: anche i messaggi di conferma' );
 $tm_page = apse_render( array( Admin\TextsPage::class, 'render' ), 'Tipo di ente e termini', array( 'page' => 'apse-texts' ) );
 apse_ok( false !== strpos( $tm_page, 'ha rinnovato la tessera del comitato' ), 'ente e termini: la pagina mostra l\'anteprima adattata' );
 Settings::update( array( 'entity_type' => 'associazione', 'member_term' => 'socio' ) );
