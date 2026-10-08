@@ -63,7 +63,7 @@ final class Admin {
 
 	public static function menu(): void {
 		$cap = Plugin::CAP_OPS;
-		add_menu_page( 'APSemplice', 'APSemplice', $cap, 'apse', array( DashboardPage::class, 'render' ), 'dashicons-groups', 30 );
+		add_menu_page( 'APSemplice', 'APSemplice', $cap, 'apse', self::guard( 'apse', array( DashboardPage::class, 'render' ) ), 'dashicons-groups', 30 );
 		$visible = array(
 			array( 'apse', 'Bacheca', array( DashboardPage::class, 'render' ) ),
 			array( 'apse-people', 'Rubrica', array( PeoplePage::class, 'render_list' ) ),
@@ -211,7 +211,11 @@ final class Admin {
 
 	/** Una pagina di una parte spenta non mostra i suoi contenuti: dice come riaccenderla. */
 	public static function guard( string $slug, callable $render ): callable {
-		return function () use ( $slug, $render ) {
+		static $made = array(); // lo stesso oggetto per la stessa pagina: se è registrata due volte (menu principale e prima voce) WordPress la disegna una volta sola
+		if ( isset( $made[ $slug ] ) ) {
+			return $made[ $slug ];
+		}
+		return $made[ $slug ] = function () use ( $slug, $render ) {
 			if ( in_array( $slug, self::disabled_pages(), true ) ) {
 				Ui::header( 'Parte non in uso' );
 				echo '<p>Questa parte del gestionale è spenta. I dati non sono stati toccati: si riaccende dalla <a href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">configurazione guidata</a>.</p>';

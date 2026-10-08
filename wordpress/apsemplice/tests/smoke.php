@@ -754,6 +754,19 @@ Admin\DashboardPage::render();
 $nm_dash2 = (string) ob_get_clean();
 Settings::update( array( 'association_name' => $nm_old ) );
 apse_ok( false !== strpos( $nm_dash, 'Manca il nome dell' ) && false === strpos( $nm_dash2, 'Manca il nome dell' ), 'bacheca: segnala il nome dell\'ente mancante, e non più quando c\'è' );
+// trovato sul sito vero: pagina disegnata due volte (stessa pagina registrata con due oggetti diversi) e messaggi con l'apostrofo che sparivano
+$gd = function () {};
+apse_ok( Admin\Admin::guard( 'apse-prova-guard', $gd ) === Admin\Admin::guard( 'apse-prova-guard', $gd ), 'menu: la stessa pagina ha sempre lo stesso oggetto (WordPress la disegna una volta sola)' );
+$fl_url  = \ApSemplice\Flash::url( 'https://example.com/wp-admin/admin.php?page=apse-entity', 'apse', 'Dati dell\'ente salvati.' );
+$fl_safe = wp_sanitize_redirect( $fl_url ); // il reindirizzamento di WordPress toglie i caratteri non ammessi
+parse_str( (string) wp_parse_url( $fl_safe, PHP_URL_QUERY ), $fl_q );
+$fl_get = $_GET;
+$_GET   = $fl_q;
+$fl_msg = \ApSemplice\Flash::read( 'apse' );
+$_GET   = $fl_get;
+apse_ok( 'Dati dell’ente salvati.' === $fl_msg['ok'], 'messaggi: con l\'apostrofo arrivano comunque (resta valida la firma dopo il reindirizzamento)' );
+apse_ok( false !== strpos( Admin\TechActions::wizard_skip( array() )[1], 'Strumenti' ), 'procedura: «Salta per ora» dice che si riapre dagli Strumenti' );
+Settings::update( array( 'association_name' => $nm_old ) );
 // ospiti non accettati
 \ApSemplice\Wizard::apply( array( 'guests_enabled' => '0' ) );
 apse_ok( ! Settings::guests_enabled() && null !== apse_throws( function () use ( $people, $ord ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Non', 'last_name' => 'Accettato', 'phone' => '348 7776655', 'host_person_id' => $ord ) ); } ), 'ospiti non accettati: non se ne registrano di nuovi' );
