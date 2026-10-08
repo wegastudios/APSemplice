@@ -374,7 +374,31 @@ final class Backup {
 		} catch ( \RuntimeException $e ) {
 			wp_die( esc_html( $e->getMessage() ), 500 );
 		}
+		self::mark_downloaded();
 		self::send_zip( $path, 'copia-apsemplice-' . gmdate( 'Y-m-d-His' ) . '.zip', true );
+	}
+
+	const META_DOWNLOADED = 'apse_backup_downloaded';
+
+	/** L'utente ha appena scaricato una copia completa (serve prima di azzerare i dati). */
+	public static function mark_downloaded(): void {
+		update_user_meta( get_current_user_id(), self::META_DOWNLOADED, time() );
+	}
+
+	/** Ha scaricato una copia nell'ultima ora? */
+	public static function downloaded_recently( int $within = HOUR_IN_SECONDS ): bool {
+		$t = (int) get_user_meta( get_current_user_id(), self::META_DOWNLOADED, true );
+		return $t > 0 && time() - $t <= $within;
+	}
+
+	/** Cancella le copie salvate sul sito (contengono dati personali). @return int copie cancellate */
+	public static function delete_saved(): int {
+		$n = 0;
+		foreach ( self::saved() as $o ) {
+			wp_delete_file( self::dir() . '/' . $o['name'] );
+			$n++;
+		}
+		return $n;
 	}
 
 	public static function handle_saved(): void {

@@ -204,7 +204,7 @@ final class TechActions {
 		}
 		$mode = 'factory' === (string) ( $p['mode'] ?? '' ) ? \ApSemplice\Reset::FACTORY : \ApSemplice\Reset::DATA;
 		$r    = \ApSemplice\Reset::run( $mode, ! empty( $p['users'] ) );
-		$msg  = ( \ApSemplice\Reset::FACTORY === $mode ? 'Ripristino di fabbrica completato.' : 'Dati azzerati.' ) . ' Prima di cancellare è stata salvata una copia completa tra le copie di sicurezza (' . $r['copy'] . ').'
+		$msg  = ( \ApSemplice\Reset::FACTORY === $mode ? 'Ripristino di fabbrica completato.' : 'Dati azzerati.' ) . ' Sul sito non resta nessuna copia dei dati: conserva quella che hai scaricato.'
 			. ( $r['users'] ? ' Eliminati ' . (int) $r['users'] . ' accessi di soci.' : '' );
 		return array( \ApSemplice\Reset::FACTORY === $mode ? Ui::url( 'apse-wizard' ) : Ui::url( 'apse' ), $msg );
 	}
