@@ -632,3 +632,5 @@ Impostazioni → Sistema → **Azzeramento dati** (solo amministratori) per ripa
 2. Riepilogo con il messaggio sulla prima nota e conferma tripla: spunta, frase «AZZERA TUTTO» e la password dell'amministratore che opera.
 
 Prima di cancellare il sito salva una **copia completa con gli allegati** tra le copie di sicurezza (si conservano le ultime): se la copia non riesce non viene cancellato nulla. Le tabelle si svuotano in un'unica transazione e la numerazione riparte da 1. Il registro azioni registra l'azzeramento.
+
+**Dopo le prove sul sito vero**: l'elenco dei partecipanti attesi dei corsi è chiuso di default (si apre con un clic); nella procedura guidata la pagina privacy di WordPress si propone solo alla prima configurazione (su un sito già in uso non si cambia da sola l'accettazione dell'informativa); la Bacheca segnala agli amministratori il nome dell'ente mancante, con il collegamento a «Dati e fiscalità».

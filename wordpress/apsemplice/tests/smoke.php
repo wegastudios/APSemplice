@@ -721,6 +721,39 @@ apse_ok( $wz_steps <= 8, 'procedura: al massimo otto passi (' . $wz_steps . ')' 
 apse_ok( false !== strpos( $wz_html3, 'Descrivi il tuo ente e scegli in 4 veloci sezioni i servizi che vuoi gestire' ) && 4 === preg_match_all( '/<li data-group="/', $wz_html3 ) && false !== strpos( $wz_html3, '>Ente<' ) && false !== strpos( $wz_html3, '>Gestione<' ) && false !== strpos( $wz_html3, '>Pagamenti<' ) && false !== strpos( $wz_html3, '>Aspetto<' ), 'procedura: indicatore di sezione (Ente, Gestione, Pagamenti, Aspetto) al posto del conteggio delle pagine' );
 apse_ok( 2 === preg_match_all( '/<section class="apse-wiz-step"[^>]*data-group="ente"/', $wz_html3 ) && (int) preg_match_all( '/<section class="apse-wiz-step"[^>]*data-group="pagamenti"/', $wz_html3 ) >= 2 && 1 === preg_match_all( '/<section class="apse-wiz-step"[^>]*data-group="gestione"/', $wz_html3 ) && 1 === preg_match_all( '/<section class="apse-wiz-step"[^>]*data-group="aspetto"/', $wz_html3 ) && 1 === preg_match_all( '/<section class="apse-wiz-step"[^>]*data-group="optional"/', $wz_html3 ) && false === strpos( $wz_html3, 'Passo "' ), 'procedura: l\'ente occupa tre schermate di una sola sezione, l\'elenco dei soci è facoltativo e non si conta' );
 apse_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazione: di default 5 anni di inattività' );
+// pagina privacy preselezionata solo alla prima configurazione; nome dell'ente mancante segnalato in Bacheca; partecipanti dei corsi chiusi di default
+$pv_page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Privacy di WordPress prova' ) );
+update_option( 'wp_page_for_privacy_policy', $pv_page );
+$pv_old = Settings::get( 'privacy_url' );
+Settings::update( array( 'privacy_url' => '' ) );
+$pv_status = get_option( \ApSemplice\Wizard::OPTION, '' );
+update_option( \ApSemplice\Wizard::OPTION, \ApSemplice\Wizard::SKIPPED ); // sito già in uso
+ob_start();
+Admin\WizardPage::render();
+$pv_used = (string) ob_get_clean();
+delete_option( \ApSemplice\Wizard::OPTION ); // prima configurazione
+ob_start();
+Admin\WizardPage::render();
+$pv_first = (string) ob_get_clean();
+$pv_sel = function ( string $html, int $id ) {
+	return 1 === preg_match( "/<option[^>]*value=\"" . $id . "\"[^>]*selected|<option[^>]*selected[^>]*value=\"" . $id . "\"|<option class=\"level-0\" value=\"" . $id . "\" selected/", $html ) || 1 === preg_match( '/value="' . $id . '"\s+selected/', $html );
+};
+apse_ok( ! $pv_sel( $pv_used, $pv_page ) && $pv_sel( $pv_first, $pv_page ), 'procedura: la pagina privacy di WordPress si propone solo alla prima configurazione, non su un sito già in uso' );
+update_option( \ApSemplice\Wizard::OPTION, '' !== $pv_status ? $pv_status : \ApSemplice\Wizard::DONE );
+delete_option( 'wp_page_for_privacy_policy' );
+wp_delete_post( $pv_page, true );
+Settings::update( array( 'privacy_url' => $pv_old ) );
+$nm_old = Settings::get( 'association_name' );
+Settings::update( array( 'association_name' => '' ) );
+ob_start();
+Admin\DashboardPage::render();
+$nm_dash = (string) ob_get_clean();
+Settings::update( array( 'association_name' => 'Associazione con nome' ) );
+ob_start();
+Admin\DashboardPage::render();
+$nm_dash2 = (string) ob_get_clean();
+Settings::update( array( 'association_name' => $nm_old ) );
+apse_ok( false !== strpos( $nm_dash, 'Manca il nome dell' ) && false === strpos( $nm_dash2, 'Manca il nome dell' ), 'bacheca: segnala il nome dell\'ente mancante, e non più quando c\'è' );
 // ospiti non accettati
 \ApSemplice\Wizard::apply( array( 'guests_enabled' => '0' ) );
 apse_ok( ! Settings::guests_enabled() && null !== apse_throws( function () use ( $people, $ord ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Non', 'last_name' => 'Accettato', 'phone' => '348 7776655', 'host_person_id' => $ord ) ); } ), 'ospiti non accettati: non se ne registrano di nuovi' );
@@ -1047,6 +1080,7 @@ Admin\ActivitiesPage::render_detail();
 $pg_html = (string) ob_get_clean();
 apse_ok( false !== strpos( $pg_html, 'apse_purge_enrollments' ) && false !== strpos( $pg_html, 'Da versare' ) && 1 === preg_match( '/page=apse-income[^"]*person_id=' . (int) $pg_k . '[^"]*due=1|page=apse-income[^"]*due=1[^"]*person_id=' . (int) $pg_k . '/', html_entity_decode( $pg_html ) ) && false !== strpos( $pg_html, 'page=apse-booking-delete' ), 'corso: dalla lista si va al pagamento diretto («Paga») e si cancella ogni iscritto' );
 $_GET = array();
+apse_ok( false !== strpos( $pg_html, 'Partecipanti attesi' ) && false === strpos( $pg_html, '<details open' ), 'corso: l\'elenco dei partecipanti attesi è a scomparsa e chiuso di default' );
 $pg_del_b = new ReflectionMethod( Admin\Actions::class, 'delete_booking' );
 $pg_del_b->setAccessible( true );
 $pg_del_b->invoke( null, array( 'activity' => $pg_c, 'person' => $pg_b, 'session' => 0, 'mode' => 'refund', 'confirm' => '1', 'typed' => 'Bruno Pagante' ) );

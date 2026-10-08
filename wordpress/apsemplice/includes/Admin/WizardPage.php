@@ -220,7 +220,7 @@ final class WizardPage {
 		if ( '' !== (string) $s['privacy_url'] ) {
 			$priv_sel = (int) url_to_postid( (string) $s['privacy_url'] );
 		}
-		if ( ! $priv_sel ) {
+		if ( ! $priv_sel && Wizard::pending() ) { // solo alla prima configurazione si propone la pagina privacy di WordPress; su un sito già in uso non si cambia da sola l'accettazione dell'informativa
 			$priv_sel = (int) get_option( 'wp_page_for_privacy_policy', 0 );
 		}
 		echo '<p><label><strong>Pagina con l\'informativa privacy</strong><br>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput

@@ -268,7 +268,7 @@ final class ActivitiesPage {
 					$rows .= self::participant_row( $activity, $person, 0, '', $with_delete );
 				}
 			}
-			$html = '<details open style="margin:6px 0"><summary><strong>' . (int) $cnt . ( 1 === $cnt ? ' iscritto' : ' iscritti' ) . '</strong></summary>' . ( $rows ? '<ul style="list-style:none;margin:6px 0 6px 12px">' . $rows . '</ul>' : '<p class="description">Nessuno ancora.</p>' ) . '</details>';
+			$html = '<details style="margin:6px 0"><summary><strong>' . (int) $cnt . ( 1 === $cnt ? ' iscritto' : ' iscritti' ) . '</strong></summary>' . ( $rows ? '<ul style="list-style:none;margin:6px 0 6px 12px">' . $rows . '</ul>' : '<p class="description">Nessuno ancora.</p>' ) . '</details>';
 		}
 		return $html;
 	}
