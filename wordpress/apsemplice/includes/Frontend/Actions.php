@@ -613,6 +613,9 @@ final class Actions {
 	}
 
 	public static function do_add_guest( array $post ): string {
+		if ( ! Settings::guests_enabled() ) {
+			throw new \InvalidArgumentException( 'L\'ente non accetta ospiti.' );
+		}
 		$actor = self::actor();
 		self::require_cap( 'apse_add_guest', (int) $actor['id'] );
 		$phone = (string) ( $post['phone'] ?? '' );

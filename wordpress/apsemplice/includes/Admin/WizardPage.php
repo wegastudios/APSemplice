@@ -80,25 +80,32 @@ final class WizardPage {
 		$woo  = WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
-		echo '<p>Poche domande per tenere solo ciò che ti serve: prima scegli quali parti del gestionale usare, poi configuri solo quelle. Nulla viene cancellato: una parte spenta si riaccende riaprendo questa procedura da Strumenti. Le funzioni facoltative restano spente se non le scegli.</p>';
+		echo '<p>Poche domande per cominciare: il resto si aggiunge dopo, solo se serve. Le voci «Più dettagli» sono facoltative; ciò che non scegli resta spento e si accende in seguito dalle impostazioni o riaprendo questa procedura dagli Strumenti.</p>';
 		Ui::form_open( 'apse_wizard_save', Ui::url( 'apse-wizard' ), false, 'apse-wizard' );
 
-		// 1. Ente
+		// 1. Ente, ospiti e iscrizione
 		$ents = array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) );
 		$mems = array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) );
-		self::step( 'Il tuo ente', 'Tipo di ente e termine per chi partecipa: tutti i testi si adattano da soli (articoli compresi).' );
+		$jm   = (string) $s['join_mode'];
+		self::step( 'Il tuo ente', 'Poche righe per cominciare: tipo di ente e come chiami chi partecipa adattano da soli tutti i testi.' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>Di che tipo è</th><td><select name="entity_type">' . Ui::options( array_combine( $ents, $ents ), (string) $s['entity_type'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Chi partecipa si chiama</th><td><select name="member_term">' . Ui::options( array_combine( $mems, $mems ), (string) $s['member_term'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '</tbody></table>';
+		echo self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p class="apse-wiz-q"><strong>Chi può iscriversi</strong><br>'
+			. '<label><input type="radio" name="join_mode" value="request"' . checked( 'invite' !== $jm, true, false ) . '> Chiunque può chiedere di iscriversi</label> <span class="description">(la richiesta arriva alla segreteria, che approva)</span><br>'
+			. '<label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> Solo su presentazione</label> <span class="description">(le iscrizioni le fa la segreteria)</span></p>';
+		echo '<details class="apse-wiz-more"><summary>Più dettagli: codice fiscale, anno sociale, sede</summary><table class="form-table"><tbody>';
 		echo '<tr><th>Codice fiscale dell\'ente</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Sede (facoltativa)</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
-		echo '</tbody></table>';
+		echo '<tr><th>Sede</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
+		echo '</tbody></table></details>';
 		self::end_step();
 
-		// 1b. Partita IVA
-		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale (niente aliquote né importi IVA). Con la partita IVA la gestione resta essenziale: il commercialista completa i quadri.' );
+		// 2. Partita IVA
+		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.' );
 		echo self::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
 		$rates = array();
 		foreach ( Fiscal::RATES as $r ) {
@@ -107,66 +114,51 @@ final class WizardPage {
 		echo '<div data-if="has_vat=1"><table class="form-table"><tbody>';
 		echo '<tr><th>Partita IVA</th><td><input type="text" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="11 cifre"></td></tr>';
 		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( Fiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '</tbody></table><details class="apse-wiz-more"><summary>Più dettagli: aliquote e importi</summary><table class="form-table"><tbody>';
 		echo '<tr><th>Aliquota proposta</th><td><select name="vat_default_rate">' . Ui::options( $rates, (int) $s['vat_default_rate'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( Fiscal::INCLUDED => 'IVA compresa', Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Scelta iniziale: su ogni attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$mr = Fiscal::membership_rate();
 		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( Fiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"> <span class="description">facoltativo</span></td></tr>';
-		echo '</tbody></table></div>';
+		echo '</tbody></table></details></div>';
 		self::end_step();
 
-		// 2. Chi può iscriversi
-		self::step( 'Chi può iscriversi', 'Decide cosa succede a chi chiede l\'accesso dal sito senza essere già in elenco.' );
-		$jm = (string) $s['join_mode'];
-		echo '<p><label><input type="radio" name="join_mode" value="request"' . checked( 'invite' !== $jm, true, false ) . '> <strong>Chiunque può chiedere di iscriversi</strong></label><br><span class="description">La richiesta arriva alla segreteria, che verifica e approva.</span></p>';
-		echo '<p><label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> <strong>Solo su presentazione</strong></label><br><span class="description">Chi non è in elenco non può iscriversi da solo: le iscrizioni le fa la segreteria. «Primo accesso» resta per chi è già iscritto.</span></p>';
-		self::end_step();
-
-		// 3. Tipi di socio e quote
-		self::step( 'Tipi di socio e quote', 'La quota proposta vale per tutti i tipi di socio senza una quota propria.' );
+		// 3. Quota associativa
+		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
+		echo '</tbody></table>';
+		echo '<details class="apse-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
 		$have = array();
 		foreach ( Levels::all( true ) as $lv ) {
 			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
 		}
 		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
-		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="4" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli, basi e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
+		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
-		echo '</tbody></table>';
+		echo '</tbody></table></details>';
 		self::end_step();
 
-		// 4. Parti da usare
-		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede.' );
+		// 4. Parti da usare, con le domande che dipendono dalle risposte
+		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.' );
 		echo '<input type="hidden" name="mod_present" value="1">';
 		foreach ( Modules::defs() as $key => $d ) {
-			echo '<div' . ( '' !== $d['needs'] ? ' data-if="mod[' . esc_attr( $d['needs'] ) . ']=1" style="margin-left:24px"' : '' ) . '>' . self::yes_no( 'mod[' . $key . ']', $d['ask'], Modules::on( $key ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			if ( 'import' === $key ) {
+				continue; // le importazioni sono sempre disponibili (dagli Strumenti)
+			}
+			echo '<div' . ( '' !== $d['needs'] ? ' data-if="mod[' . esc_attr( $d['needs'] ) . ']=1" style="margin-left:24px"' : '' ) . '>' . self::yes_no( 'mod[' . $key . ']', $d['ask'], Modules::on( $key ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+			if ( 'ledger' === $key ) {
+				echo '<p data-if="mod[ledger]=1" style="margin-left:24px"><label>Riga in fondo alle ricevute (ad esempio il riferimento normativo; facoltativa)<br><input type="text" name="receipt_footer" value="' . esc_attr( (string) $s['receipt_footer'] ) . '" class="large-text" maxlength="300"></label></p>';
+			}
+			if ( 'accounting' === $key ) {
+				echo '<div data-if="mod[accounting]=1" style="margin-left:24px"><input type="hidden" name="adempimenti_present" value="1">'
+					. self::yes_no( 'fivepm_enabled', 'Raccogli il 5x1000? Si attiva il messaggio per i soci, il promemoria e il registro dei contributi ricevuti.', ! empty( $s['fivepm_enabled'] ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</div>';
 		}
+		echo '<details class="apse-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		self::end_step();
 
-		// 5. Prima nota
-		self::step( 'Ricevute e prima nota', 'Riga in fondo alle ricevute (ad esempio il riferimento normativo): la decidi tu.', 'mod[ledger]=1' );
-		echo '<p><input type="text" name="receipt_footer" value="' . esc_attr( (string) $s['receipt_footer'] ) . '" class="large-text" maxlength="300"></p>';
-		self::end_step();
-
-		// 5b. Adempimenti (solo se la contabilità si tiene qui)
-		self::step( 'Adempimenti', 'Scadenze e documenti della contabilità tenuta qui.', 'mod[accounting]=1' );
-		echo '<input type="hidden" name="adempimenti_present" value="1">';
-		echo self::yes_no( 'fivepm_enabled', 'Raccogli il 5x1000? Si attiva il messaggio per i soci, il promemoria e il registro dei contributi ricevuti.', ! empty( $s['fivepm_enabled'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
-		self::end_step();
-
-		// 6. Privacy
-		self::step( 'Privacy', 'L\'informativa privacy va accettata da chi attiva l\'accesso; dopo il tempo di inattività che indichi il plugin propone di anonimizzare i dati.' );
-		echo '<table class="form-table"><tbody>';
-		echo '<tr><th>Indirizzo dell\'informativa</th><td><input type="url" name="privacy_url" value="' . esc_attr( (string) $s['privacy_url'] ) . '" class="regular-text" placeholder="https://"><p class="description">Lascia vuoto se non hai ancora la pagina: chi attiva l\'accesso non dovrà accettarla.</p></td></tr>';
-		echo '<tr><th>Conservazione dei dati</th><td><input type="number" min="1" max="30" name="privacy_retention_years" value="' . (int) $s['privacy_retention_years'] . '"> anni di inattività prima di proporre l\'anonimizzazione</td></tr>';
-		echo '</tbody></table>';
-		self::end_step();
-
-		// 7. Funzioni facoltative
-		self::step( 'Altre funzioni', 'Tutte facoltative: accendi solo quelle che usi. App e notifiche hanno la loro scheda.' );
-		echo self::features_box( $s ); // phpcs:ignore WordPress.Security.EscapeOutput
-		self::end_step();
 
 		// 8. Pagamenti
 		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1' );
@@ -206,6 +198,16 @@ final class WizardPage {
 		$exist = Pages::existing();
 		self::step( 'Pagine del sito', 'Le pagine con gli shortcode già inseriti, proposte in base alle tue risposte. Potrai personalizzarne l\'impaginazione; quelle già create non si duplicano.' );
 		echo '<input type="hidden" name="pages_present" value="1">';
+		$priv_sel = 0;
+		if ( '' !== (string) $s['privacy_url'] ) {
+			$priv_sel = (int) url_to_postid( (string) $s['privacy_url'] );
+		}
+		if ( ! $priv_sel ) {
+			$priv_sel = (int) get_option( 'wp_page_for_privacy_policy', 0 );
+		}
+		echo '<p><label><strong>Pagina con l\'informativa privacy</strong><br>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput
+			array( 'name' => 'privacy_page_id', 'selected' => $priv_sel, 'show_option_none' => '— non ho ancora la pagina —', 'option_none_value' => '0', 'echo' => 0 )
+		) . '</label><br><span class="description">Chi attiva l\'accesso dal sito dovrà accettarla. Si sceglie tra le pagine che hai già su WordPress.</span></p>';
 		$titles = \ApSemplice\Areas::titles();
 		foreach ( Pages::by_area() as $area => $defs ) {
 			$conds = array_unique( array_map( function ( $k ) {
@@ -222,7 +224,7 @@ final class WizardPage {
 		}
 		self::end_step();
 
-		self::step( 'Elenco dei soci', 'Se hai già un elenco di soci e ospiti (Excel o CSV, anche in un unico file) puoi caricarlo subito dopo: si vede un\'anteprima e si conferma prima di salvare.', 'mod[import]=1' );
+		self::step( 'Elenco dei soci', 'Hai già un elenco di soci e ospiti (Excel o CSV, anche in un unico file)? Puoi caricarlo subito dopo: si vede un\'anteprima e si conferma prima di salvare. L\'importazione resta sempre disponibile dagli Strumenti.' );
 		echo self::yes_no( 'go_import', 'Vuoi importare ora l\'elenco dei soci e degli ospiti?', false ); // phpcs:ignore WordPress.Security.EscapeOutput
 		self::end_step();
 
@@ -238,7 +240,7 @@ final class WizardPage {
 
 	/** Un passo alla volta, saltando ciò che non serve; i campi nascosti non vengono inviati. */
 	private static function script(): void {
-		echo '<style>.apse-wizard:not(.apse-wiz-js) [data-wiz=back],.apse-wizard:not(.apse-wiz-js) [data-wiz=next],.apse-wizard:not(.apse-wiz-js) .apse-wiz-count{display:none}.apse-wiz-step{max-width:820px}</style>';
+		echo '<style>.apse-wizard:not(.apse-wiz-js) [data-wiz=back],.apse-wizard:not(.apse-wiz-js) [data-wiz=next],.apse-wizard:not(.apse-wiz-js) .apse-wiz-count{display:none}.apse-wiz-step{max-width:820px}.apse-wiz-more{margin:12px 0}.apse-wiz-more>summary{cursor:pointer;color:#2271b1}</style>';
 		echo '<script>(function(){var f=document.querySelector("form.apse-wizard");if(!f)return;'
 			. 'var steps=[].slice.call(f.querySelectorAll(".apse-wiz-step")),cur=0;f.classList.add("apse-wiz-js");'
 			. 'function ok(el){var c=el.getAttribute("data-if");if(!c)return true;var i=c.lastIndexOf("="),n=c.slice(0,i),v=c.slice(i+1);'

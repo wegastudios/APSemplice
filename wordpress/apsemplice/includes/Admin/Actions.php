@@ -1103,6 +1103,9 @@ final class Actions {
 		if ( array_key_exists( 'social_year_start_month', $p ) ) {
 			$ente['social_year_start_month'] = (int) $p['social_year_start_month'];
 		}
+		if ( ! empty( $p['guests_present'] ) ) { // la casella non spuntata non arriva nel modulo
+			$ente['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
+		}
 		Settings::update(
 			$ente + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,

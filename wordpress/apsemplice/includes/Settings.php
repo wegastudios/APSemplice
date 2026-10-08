@@ -99,6 +99,7 @@ final class Settings {
 			'sdi_code'                => '',        // codice destinatario per la fatturazione elettronica
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
 			'join_mode'               => 'request', // chi non è in elenco: 'request' = può chiedere l'accesso alla segreteria; 'invite' = solo su presentazione
+			'guests_enabled'          => 1,         // si accettano ospiti (non soci): se spento non si registrano e spariscono dall'area soci
 			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
 			'pay_label_stripe'        => '',        // diciture dei pulsanti di pagamento (vuoto = predefinita, vedi PaymentConfig)
 			'pay_note_stripe'         => '',
@@ -117,6 +118,11 @@ final class Settings {
 	public static function all(): array {
 		$saved = get_option( self::OPTION, array() );
 		return array_merge( self::defaults(), is_array( $saved ) ? $saved : array() );
+	}
+
+	/** L'ente accetta ospiti (persone che partecipano senza essere soci)? */
+	public static function guests_enabled(): bool {
+		return ! empty( self::get( 'guests_enabled' ) );
 	}
 
 	public static function get( string $key ) {
@@ -213,7 +219,8 @@ final class Settings {
 		}
 		$clean['sdi_code']                = strtoupper( substr( preg_replace( '/[^A-Za-z0-9]/', '', (string) $clean['sdi_code'] ), 0, 7 ) );
 		$clean['modules']                 = Modules::sanitize( is_array( $clean['modules'] ) ? $clean['modules'] : array() );
-		$clean['join_mode']               = 'invite' === $clean['join_mode'] ? 'invite' : 'request';
+		$clean['guests_enabled']          = empty( $clean['guests_enabled'] ) ? 0 : 1;
+		$clean['join_mode']               ='invite' === $clean['join_mode'] ? 'invite' : 'request';
 		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
 		foreach ( array( 'stripe', 'paypal', 'woocommerce' ) as $g ) {
 			$clean[ 'pay_label_' . $g ] = mb_substr( trim( (string) $clean[ 'pay_label_' . $g ] ), 0, 60 );

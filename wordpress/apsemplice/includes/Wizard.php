@@ -102,6 +102,9 @@ final class Wizard {
 		// 1. Ente
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 
+		if ( array_key_exists( 'guests_enabled', $p ) ) {
+			$vals['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
+		}
 		if ( isset( $p['join_mode'] ) ) {
 			$vals['join_mode'] = 'invite' === (string) $p['join_mode'] ? 'invite' : 'request';
 		}
@@ -112,6 +115,7 @@ final class Wizard {
 			foreach ( array_keys( Modules::defs() ) as $k ) {
 				$mods[ $k ] = ! empty( $p['mod'][ $k ] ) ? 1 : 0;
 			}
+			$mods['import'] = 1; // le importazioni sono sempre disponibili (dagli Strumenti): non si chiedono
 			$vals['modules']         = $mods;
 			$vals['reports_enabled'] = ! empty( $mods['reports'] ) ? 1 : 0;
 		}
@@ -119,6 +123,19 @@ final class Wizard {
 		// Adempimenti (solo con la contabilità): 5x1000
 		if ( ! empty( $p['adempimenti_present'] ) ) {
 			$vals['fivepm_enabled'] = ! empty( $p['fivepm_enabled'] ) ? 1 : 0;
+		}
+
+		// Informativa privacy: si sceglie tra le pagine che esistono già su WordPress
+		if ( array_key_exists( 'privacy_page_id', $p ) ) {
+			$pid = (int) $p['privacy_page_id'];
+			if ( $pid > 0 ) {
+				if ( 'page' !== get_post_type( $pid ) || 'publish' !== get_post_status( $pid ) ) {
+					throw new \InvalidArgumentException( 'La pagina scelta per l\'informativa privacy non esiste o non è pubblicata.' );
+				}
+				$vals['privacy_url'] = (string) get_permalink( $pid );
+			} elseif ( '' !== (string) Settings::get( 'privacy_url' ) && url_to_postid( (string) Settings::get( 'privacy_url' ) ) > 0 ) {
+				$vals['privacy_url'] = ''; // era una pagina del sito e ora non se ne vuole nessuna (un indirizzo esterno non si tocca)
+			}
 		}
 
 		// Privacy e ricevute

@@ -562,7 +562,7 @@ final class Views {
 	}
 
 	public static function section_guests( array $p ): string {
-		if ( ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! MemberType::is_member( $p['type'] ) || ( ! Settings::guests_enabled() && ! Plugin::people()->guests_of( (int) $p['id'] ) ) ) {
 			return '';
 		}
 		$guests = Plugin::people()->guests_of( (int) $p['id'] );
