@@ -35,7 +35,7 @@ final class Donations {
 			if ( null === $cents || $cents <= 0 || $cents > self::MAX_CENTS ) {
 				continue;
 			}
-			$out[ $cents ] = Money::plain( $cents );
+			$out[ $cents ] = 0 === $cents % 100 ? (string) intdiv( $cents, 100 ) : Money::plain( $cents ); // «5» e «7,50»
 		}
 		ksort( $out );
 		return implode( ';', array_slice( array_values( $out ), 0, self::MAX_AMOUNTS ) );
