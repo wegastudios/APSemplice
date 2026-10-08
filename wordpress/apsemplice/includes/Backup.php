@@ -54,6 +54,25 @@ final class Backup {
 		return $out;
 	}
 
+	/**
+	 * Copia completa (con gli allegati) salvata sul sito prima di un'operazione distruttiva; si conservano le ultime, come per i ripristini.
+	 *
+	 * @return string nome del file nella cartella delle copie
+	 * @throws \RuntimeException se la copia non riesce: in quel caso l'operazione non deve partire
+	 */
+	public static function safety_copy(): string {
+		$dir  = self::ensure_dir();
+		$file = 'prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip'; // nome non indovinabile
+		self::export( true, $dir . '/' . $file );
+		if ( ! is_file( $dir . '/' . $file ) ) {
+			throw new \RuntimeException( 'La copia di sicurezza non è stata creata.' );
+		}
+		foreach ( array_slice( self::saved(), max( 1, (int) Limits::get( 'backup_keep' ) ) ) as $o ) {
+			@unlink( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		}
+		return $file;
+	}
+
 	public static function last(): ?int {
 		$v = (int) get_option( self::OPT_LAST, 0 );
 		return $v > 0 ? $v : null;

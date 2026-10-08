@@ -29,7 +29,7 @@ final class Admin {
 		'apse-money'      => array( 'Soldi', array( 'apse-money' => 'Cassa', 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi' ) ),
 		'apse-accounting' => array( 'Contabilità', array( 'apse-accounting' => 'Anno solare', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto', 'apse-fivepm' => 'Adempimenti (5x1000)' ) ),
 		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze' ) ),
-		'apse-settings'   => array( 'Impostazioni', array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-payments' => 'Pagamenti online', 'apse-acct' => 'Opzioni contabili', 'apse-app' => 'App e notifiche', 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ) ),
+		'apse-settings'   => array( 'Impostazioni', array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-payments' => 'Pagamenti online', 'apse-acct' => 'Opzioni contabili', 'apse-app' => 'App e notifiche', 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale', 'apse-reset' => 'Azzeramento dati' ) ),
 	);
 
 	/** Le Impostazioni sono in tre sezioni: ente e funzioni, tecniche, contabilità. Titolo => pagine (la prima è quella a cui porta la scheda). */
@@ -39,11 +39,11 @@ final class Admin {
 		'Soldi'            => array( 'apse-payments' => 'Pagamenti online' ),
 		'Contabilità'      => array( 'apse-acct' => 'Opzioni contabili' ),
 		'Comunicazioni'    => array( 'apse-app' => 'App e notifiche' ),
-		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale' ),
+		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale', 'apse-reset' => 'Azzeramento dati' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete' );
+	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities', 'apse-activity-delete' => 'apse-activities', 'apse-booking-delete' => 'apse-activities' );
@@ -84,6 +84,7 @@ final class Admin {
 		$hidden = array(
 			array( 'apse-activity-delete', 'Elimina l\'evento', array( DeleteActivityPage::class, 'render' ) ),
 			array( 'apse-booking-delete', 'Cancella l\'iscrizione', array( DeleteBookingPage::class, 'render' ) ),
+			array( 'apse-reset', 'Azzeramento dati', array( ResetPage::class, 'render' ) ),
 			array( 'apse-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'apse-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
 			array( 'apse-years', 'Anni solari', array( YearsPage::class, 'render' ) ),

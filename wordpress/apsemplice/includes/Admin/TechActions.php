@@ -24,6 +24,7 @@ final class TechActions {
 		'apse_save_limits' => 'save_limits',
 		'apse_reset_limits' => 'reset_limits',
 		'apse_save_entity' => 'save_entity',
+		'apse_reset_all'   => 'reset_all',
 		'apse_wizard_save' => 'wizard_save',
 		'apse_wizard_skip' => 'wizard_skip',
 	);
@@ -187,6 +188,25 @@ final class TechActions {
 		Settings::update( array( 'limits' => array() ) );
 		Audit::log( 'limits.reset', 'settings' );
 		return array( Ui::url( 'apse-limits' ), 'Ripristinati i valori predefiniti.' );
+	}
+
+	/** Azzeramento dei dati: spunta, frase scritta e password dell'amministratore che opera, poi copia di sicurezza e cancellazione. */
+	public static function reset_all( array $p ): array {
+		$user = wp_get_current_user();
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma: i dati verranno cancellati per sempre.' );
+		}
+		if ( trim( (string) ( $p['phrase'] ?? '' ) ) !== \ApSemplice\Reset::PHRASE ) {
+			throw new \InvalidArgumentException( 'La frase scritta non corrisponde: non è stato cancellato nulla.' );
+		}
+		if ( ! $user || ! $user->exists() || '' === (string) ( $p['password'] ?? '' ) || ! wp_check_password( (string) $p['password'], $user->user_pass, $user->ID ) ) {
+			throw new \InvalidArgumentException( 'La password non è corretta: non è stato cancellato nulla.' );
+		}
+		$mode = 'factory' === (string) ( $p['mode'] ?? '' ) ? \ApSemplice\Reset::FACTORY : \ApSemplice\Reset::DATA;
+		$r    = \ApSemplice\Reset::run( $mode, ! empty( $p['users'] ) );
+		$msg  = ( \ApSemplice\Reset::FACTORY === $mode ? 'Ripristino di fabbrica completato.' : 'Dati azzerati.' ) . ' Prima di cancellare è stata salvata una copia completa tra le copie di sicurezza (' . $r['copy'] . ').'
+			. ( $r['users'] ? ' Eliminati ' . (int) $r['users'] . ' accessi di soci.' : '' );
+		return array( \ApSemplice\Reset::FACTORY === $mode ? Ui::url( 'apse-wizard' ) : Ui::url( 'apse' ), $msg );
 	}
 
 	/** Dati dell'ente e fiscali. Con la partita IVA attiva il numero deve essere valido. */
