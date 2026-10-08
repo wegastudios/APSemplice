@@ -22,7 +22,7 @@ final class Flash {
 		if ( '' === $kind ) {
 			return $url;
 		}
-		$msg = Texts::plain( 'err' === $kind ? $err : $ok ); // testi personalizzati
+		$msg = str_replace( "'", '’', Texts::plain( 'err' === $kind ? $err : $ok ) ); // testi personalizzati; l'apostrofo dritto verrebbe tolto dal reindirizzamento e la firma non tornerebbe: si usa quello tipografico
 		return add_query_arg( array( $prefix . '_' . $kind => $msg, $prefix . '_sig' => self::sign( $kind, $msg ) ), $url );
 	}
 

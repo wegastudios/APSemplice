@@ -241,7 +241,7 @@ final class TechActions {
 
 	public static function wizard_skip( array $p ): array {
 		\ApSemplice\Wizard::mark( \ApSemplice\Wizard::SKIPPED );
-		return array( Ui::url( 'apse' ), 'Configurazione guidata rimandata: la riapri quando vuoi da Impostazioni.' );
+		return array( Ui::url( 'apse' ), 'Configurazione guidata rimandata: la riapri quando vuoi da Strumenti.' );
 	}
 
 	public static function save_acct( array $p ): array {
