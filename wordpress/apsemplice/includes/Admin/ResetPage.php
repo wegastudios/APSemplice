@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\Backup;
 use ApSemplice\Reset;
 
 defined( 'ABSPATH' ) || exit;
