@@ -141,22 +141,6 @@ final class WizardPage {
 		echo '</tbody></table></details></div>';
 		self::end_step();
 
-		// 3. Quota associativa
-		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'ente' );
-		echo '<table class="form-table"><tbody>';
-		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
-		echo '</tbody></table>';
-		echo '<details class="apse-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
-		$have = array();
-		foreach ( Levels::all( true ) as $lv ) {
-			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
-		}
-		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
-		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
-		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
-		echo '</tbody></table></details>';
-		self::end_step();
-
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
 		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.', '', 'gestione' );
 		echo '<input type="hidden" name="mod_present" value="1">';
@@ -177,6 +161,22 @@ final class WizardPage {
 		echo '<details class="apse-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		self::end_step();
 
+
+		// 3. Quota associativa
+		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'pagamenti' );
+		echo '<table class="form-table"><tbody>';
+		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
+		echo '</tbody></table>';
+		echo '<details class="apse-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
+		$have = array();
+		foreach ( Levels::all( true ) as $lv ) {
+			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
+		}
+		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
+		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
+		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
+		echo '</tbody></table></details>';
+		self::end_step();
 
 		// 8. Pagamenti
 		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1', 'pagamenti' );

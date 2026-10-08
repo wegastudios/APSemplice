@@ -532,12 +532,12 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 
 ## Configurazione guidata
 
-Al primo avvio (e a richiesta da Strumenti → Configurazione guidata) una procedura a domande, riservata agli amministratori, porta alla configurazione. È pensata per **non spaventare**: poche domande indispensabili; i dettagli stanno in «Più dettagli» (a scomparsa) o in domande che compaiono solo se servono. Un indicatore dice in quale **sezione** ci si trova (Ente, Gestione, Pagamenti, Aspetto) senza contare le pagine; l'elenco dei soci, facoltativo, non si conta. Senza JavaScript le schermate compaiono tutte insieme.
+Al primo avvio (e a richiesta da Strumenti → Configurazione guidata) una procedura a domande, riservata agli amministratori, porta alla configurazione. È pensata per **non spaventare**: poche domande indispensabili; i dettagli stanno in «Più dettagli» (a scomparsa) o in domande che compaiono solo se servono. Un indicatore dice in quale **sezione** ci si trova (Ente: ente e partita IVA · Gestione: cosa ti serve · Pagamenti: quota e pagamenti · Aspetto: pagine e privacy) senza contare le schermate; l'elenco dei soci, facoltativo, non si conta. Senza JavaScript le schermate compaiono tutte insieme.
 
 1. **Il tuo ente**: nome, tipo, come si chiama chi partecipa, se si accettano ospiti, chi può iscriversi (chiunque può chiedere / solo su presentazione). *Più dettagli*: codice fiscale, inizio dell'anno sociale, sede.
 2. **Partita IVA** (sì/no): se sì, numero e regime. *Più dettagli*: aliquota, importi IVA compresa o esclusa, IVA sulle quote, codice SDI.
-3. **Quota associativa**. *Più dettagli*: altri tipi di socio e sconto per il nucleo familiare.
-4. **Cosa ti serve** (sì/no): corsi ed eventi, soldi e prima nota (se sì: riga in fondo alle ricevute), conti e fondi, contabilità (se sì: 5x1000), bilanci e rendiconto, libro soci e verbali, comunicazioni via email. *Più dettagli*: le altre funzioni facoltative, tutte spente. Una parte spenta sparisce dal menu; i dati non si toccano.
+3. **Cosa ti serve** (sì/no): corsi ed eventi, soldi e prima nota (se sì: riga in fondo alle ricevute), conti e fondi, contabilità (se sì: 5x1000), bilanci e rendiconto, libro soci e verbali, comunicazioni via email. *Più dettagli*: le altre funzioni facoltative, tutte spente. Una parte spenta sparisce dal menu; i dati non si toccano.
+4. **Quota associativa**. *Più dettagli*: altri tipi di socio e sconto per il nucleo familiare.
 5. **Pagamenti dei soci** (solo con la prima nota): nessuno, Stripe, PayPal, Stripe e PayPal insieme, WooCommerce (con il collegamento o la creazione dei prodotti), bonifico; guide dei fornitori in una nuova finestra.
 6. **Pagine del sito**: la pagina dell'informativa privacy si sceglie tra le pagine già presenti su WordPress; le pagine con gli shortcode si propongono per area in base alle risposte.
 7. **Elenco dei soci**: «Vuoi importare ora l'elenco dei soci e degli ospiti?» (le importazioni sono sempre disponibili dagli Strumenti).
