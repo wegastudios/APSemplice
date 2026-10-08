@@ -715,7 +715,7 @@ apse_ok( false !== strpos( $wz_tools, 'Configurazione guidata' ) && false !== st
 $wz_p_ente = strpos( $wz_html3, 'Il tuo ente' );
 $wz_p_iva  = strpos( $wz_html3, '>Partita IVA</h2>' );
 apse_ok( false !== $wz_p_ente && false !== $wz_p_iva && $wz_p_ente < $wz_p_iva && ( $wz_ente_html = substr( $wz_html3, $wz_p_ente, $wz_p_iva - $wz_p_ente ) ) && false !== strpos( $wz_ente_html, 'name="guests_enabled"' ) && false !== strpos( $wz_ente_html, 'name="join_mode"' ) && false !== strpos( $wz_ente_html, 'name="member_term"' ) && false !== strpos( $wz_ente_html, '<details' ), 'procedura: nel primo passo nome, tipo, come si chiamano i soci, ospiti e chi può iscriversi; il resto in «Più dettagli»' );
-apse_ok( false !== strpos( $wz_html3, 'name="privacy_page_id"' ) && false === strpos( $wz_html3, 'privacy_retention_years' ) && false === strpos( $wz_html3, 'Conservazione dei dati' ) && false !== strpos( $wz_html3, 'altre funzioni facoltative' ), 'procedura: privacy tra le pagine esistenti, niente anonimizzazione, funzioni facoltative a scomparsa' );
+apse_ok( false !== strpos( $wz_html3, 'privacy_page_id' ) && false === strpos( $wz_html3, 'privacy_retention_years' ) && false === strpos( $wz_html3, 'Conservazione dei dati' ) && false !== strpos( $wz_html3, 'altre funzioni facoltative' ), 'procedura: privacy tra le pagine esistenti, niente anonimizzazione, funzioni facoltative a scomparsa' );
 $wz_steps = preg_match_all( '/<section class="apse-wiz-step"/', $wz_html3 );
 apse_ok( $wz_steps <= 8, 'procedura: al massimo otto passi (' . $wz_steps . ')' );
 apse_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazione: di default 5 anni di inattività' );
