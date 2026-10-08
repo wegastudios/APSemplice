@@ -105,3 +105,4 @@ jobs:
         with:
           build-dir: wordpress/apsemplice
           exclude-directories: tests
+          exclude-files: phpunit.xml.dist

@@ -116,7 +116,7 @@ final class Views {
 			return self::login_prompt();
 		}
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
-			define( 'DONOTCACHEPAGE', true ); // dati personali: mai nella cache di pagina (plugin di cache, CDN) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- costante della classe
+			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- costante standard dei plugin di cache: dati personali mai nella cache di pagina
 		}
 		$uid      = get_current_user_id();
 		$is_admin = Access::is_admin_user( $uid );
