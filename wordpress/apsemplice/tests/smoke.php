@@ -724,7 +724,9 @@ apse_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazion
 apse_ok( ! Settings::guests_enabled() && null !== apse_throws( function () use ( $people, $ord ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Non', 'last_name' => 'Accettato', 'phone' => '348 7776655', 'host_person_id' => $ord ) ); } ), 'ospiti non accettati: non se ne registrano di nuovi' );
 apse_ok( '' === \ApSemplice\Frontend\Views::section_guests( $people->get( $founder ) ) || $people->guests_of( $founder ), 'ospiti non accettati: la sezione «I miei ospiti» non compare' );
 \ApSemplice\Wizard::apply( array( 'guests_enabled' => '1' ) );
-apse_ok( Settings::guests_enabled() && is_int( $people->create( array( 'type' => 'guest', 'first_name' => 'Ora', 'last_name' => 'Accettato', 'phone' => '348 7776644', 'host_person_id' => $ord ) ) ), 'ospiti accettati: si registrano' );
+$wz_g2 = $people->create( array( 'type' => 'guest', 'first_name' => 'Ora', 'last_name' => 'Accettato', 'phone' => '348 7776644', 'host_person_id' => $ord ) );
+apse_ok( Settings::guests_enabled() && $wz_g2 > 0, 'ospiti accettati: si registrano' );
+$people->delete( $wz_g2 ); // l'ospite di prova non resta: altri controlli eliminano il socio ospitante
 // informativa privacy: scelta tra le pagine esistenti
 $wz_pg = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Informativa privacy prova' ) );
 $wz_draft = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'draft', 'post_title' => 'Bozza' ) );
