@@ -5131,6 +5131,14 @@ apse_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_
 $saved = \ApSemplice\Backup::saved();
 apse_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
 apse_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $saved[0]['name'] ), 'sicurezza: il nome della copia salvata non è indovinabile' );
+// le copie salvate sul sito scadono da sole
+$bk_old = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200102-000000-0123456789abcdef.zip';
+file_put_contents( $bk_old, 'x' );
+touch( $bk_old, time() - 25 * HOUR_IN_SECONDS );
+$bk_new = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200103-000000-fedcba9876543210.zip';
+file_put_contents( $bk_new, 'x' );
+apse_ok( 1 <= \ApSemplice\Backup::purge_old() && ! file_exists( $bk_old ) && file_exists( $bk_new ), 'copie di sicurezza: dopo 24 ore si cancellano da sole, quelle recenti restano' );
+wp_delete_file( $bk_new );
 $bk_legacy = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200101-000000.zip';
 copy( $bk_zip, $bk_legacy );
 $bk_names = array_column( \ApSemplice\Backup::saved(), 'name' );

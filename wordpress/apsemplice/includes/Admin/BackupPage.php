@@ -35,7 +35,7 @@ final class BackupPage {
 			foreach ( $saved as $s ) {
 				echo '<li><a href="' . esc_url( Backup::saved_url( $s['name'] ) ) . '">' . esc_html( $s['name'] ) . '</a> <span class="description">' . esc_html( wp_date( 'd/m/Y H:i', $s['time'] ) ) . ' · ' . esc_html( size_format( $s['size'] ) ) . '</span></li>';
 			}
-			echo '</ul><p class="description">Si conservano le ultime ' . (int) \ApSemplice\Limits::get( 'backup_keep' ) . '. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
+			echo '</ul><p class="description">Si conservano al massimo ' . (int) \ApSemplice\Limits::get( 'backup_keep' ) . ' copie e solo per ' . (int) \ApSemplice\Limits::get( 'backup_hours' ) . ' ore, poi vengono cancellate da sole. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
 		}
 		Ui::footer();
 	}

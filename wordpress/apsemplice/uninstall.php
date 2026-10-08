@@ -17,7 +17,7 @@ function apse_uninstall_site() {
 		return;
 	}
 
-	foreach ( array( 'apse_send_reminders', 'apse_release_holds', 'apse_broadcast_batch', 'apse_check_pending_payments' ) as $hook ) {
+	foreach ( array( 'apse_send_reminders', 'apse_release_holds', 'apse_broadcast_batch', 'apse_check_pending_payments', 'apse_purge_backups' ) as $hook ) {
 		wp_clear_scheduled_hook( $hook );
 	}
 
