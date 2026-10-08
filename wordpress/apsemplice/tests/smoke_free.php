@@ -113,7 +113,7 @@ foreach ( $m as $pg ) {
 	if ( in_array( $pg[1], $skip, true ) ) {
 		continue;
 	}
-	$cb   = array( 'ApSemplice\Admin\' . $pg[2], $pg[3] );
+	$cb   = array( 'ApSemplice\\Admin\\' . $pg[2], $pg[3] );
 	$wrap = \ApSemplice\Admin\Admin::guard( $pg[1], $cb );
 	$out  = free_render( $wrap, array( 'page' => $pg[1] ) );
 	free_ok( '' !== $out, 'pagina ' . $pg[1] . ' si apre' );
