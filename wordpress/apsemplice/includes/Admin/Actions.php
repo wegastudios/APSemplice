@@ -485,8 +485,11 @@ final class Actions {
 			$p['mode'] = \ApSemplice\ActivityReset::REFUND;
 		}
 		$s    = \ApSemplice\ActivityReset::delete( $id, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ), 'void_costs' => ! empty( $p['void_costs'] ) ) );
-		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . (int) $s['sessions'] . ' date e ' . (int) $s['bookings'] . ' prenotazioni attive cancellate.';
-		$msg .= $s['refunds'] ? ' Registrate ' . (int) $s['refunds'] . ' restituzioni in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
+		$ns   = (int) $s['sessions'];
+		$nb   = (int) $s['bookings'];
+		$nr   = (int) $s['refunds'];
+		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . ( 1 === $ns ? '1 data' : $ns . ' date' ) . ' e ' . ( 1 === $nb ? '1 prenotazione attiva cancellata' : $nb . ' prenotazioni attive cancellate' ) . '.';
+		$msg .= $nr ? ' ' . ( 1 === $nr ? 'Registrata 1 restituzione' : 'Registrate ' . $nr . ' restituzioni' ) . ' in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
 		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
