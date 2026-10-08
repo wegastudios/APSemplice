@@ -1091,6 +1091,27 @@ final class Views {
 		return '<section class="apsf-section apsf-bankpub">' . Bank::html_accounts() . '</section>';
 	}
 
+	/** Modulo di donazione: porta il donatore alla pagina di PayPal già compilata (spento finché non si imposta il conto PayPal). */
+	public static function donate(): string {
+		if ( ! \ApSemplice\Donations::enabled() ) {
+			return '';
+		}
+		Assets::enqueue();
+		$amounts = \ApSemplice\Donations::amounts();
+		$select  = '<label>Importo <select name="amount">';
+		foreach ( $amounts as $a ) {
+			$select .= '<option value="' . esc_attr( \ApSemplice\Donations::paypal_amount( $a ) ) . '">' . esc_html( $a ) . ' €</option>';
+		}
+		$select .= '<option value="">Un altro importo (lo scegli su PayPal)</option></select></label>';
+		return '<section class="apsf-section apsf-donate"><h3>' . esc_html( \ApSemplice\Donations::purpose() ) . '</h3>'
+			. '<form method="post" action="' . esc_url( \ApSemplice\Donations::URL ) . '" target="_blank" rel="noopener">'
+			. '<input type="hidden" name="business" value="' . esc_attr( \ApSemplice\Donations::account() ) . '">'
+			. '<input type="hidden" name="item_name" value="' . esc_attr( \ApSemplice\Donations::purpose() ) . '">'
+			. '<input type="hidden" name="currency_code" value="EUR"><input type="hidden" name="no_recurring" value="1">'
+			. '<p>' . $select . '</p><p><button type="submit" class="apsf-btn wp-element-button">Dona con PayPal</button></p>'
+			. '<p class="apsf-small apsf-muted">Il pagamento avviene sul sito di PayPal: qui non passa nessun dato di pagamento.</p></form></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
 	/** App installabile e notifiche: si vede solo se l'app è accesa nelle impostazioni. */
 	public static function section_app( array $p ): string {
 		if ( ! \ApSemplice\Edition::has( 'pwa' ) || ! \ApSemplice\Pwa::enabled() ) {

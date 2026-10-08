@@ -38,6 +38,7 @@ final class Shortcodes {
 		'app'             => 'App e notifiche (installazione e notifiche sul telefono)',
 		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
 		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
+		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
 		'accesso'         => 'Accesso / login',
 	);
 
@@ -94,6 +95,8 @@ final class Shortcodes {
 				return Views::five_per_mille();
 			case 'bonifico':
 				return Views::bank_public();
+			case 'donazioni':
+				return Views::donate();
 			case 'accesso':
 				return is_user_logged_in() ? '' : Views::login_prompt();
 		}

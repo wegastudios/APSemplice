@@ -5190,6 +5190,20 @@ $_GET = array();
 apse_ok( false !== strpos( $rs_p1, 'Operazione definitiva' ) && false !== strpos( $rs_p1, 'Ripristino di fabbrica' ) && false !== strpos( $rs_p1, 'Solo i dati' ) && false === strpos( $rs_p1, 'name="password"' ), 'azzeramento: primo passaggio con le due scelte e nessun campo di conferma' );
 apse_ok( false !== strpos( $rs_p2, 'AZZERA TUTTO' ) && false !== strpos( $rs_p2, 'name="password"' ) && false !== strpos( $rs_p2, 'name="phrase"' ) && false !== strpos( $rs_p2, 'name="confirm"' ) && false !== strpos( $rs_p2, 'tutta la prima nota' ) && false !== strpos( $rs_p2, 'copia completa' ), 'azzeramento: secondo passaggio con il messaggio chiaro, la frase, la password e la spunta' );
 apse_ok( in_array( 'apse-reset', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_reset_all'] ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
+// donazioni con PayPal
+apse_ok( '' === \ApSemplice\Donations::clean_account( 'non una mail' ) && 'abc@example.com' === \ApSemplice\Donations::clean_account( ' ABC@Example.com ' ) && 'AB12CD34EF56G' === \ApSemplice\Donations::clean_account( 'AB12CD34EF56G' ), 'donazioni: conto PayPal valido solo se email o ID commerciante' );
+apse_ok( '5;7,50;10' === \ApSemplice\Donations::clean_amounts( '10; 5 7,50;0;abc;10' ) && '' === \ApSemplice\Donations::clean_amounts( 'niente' ), 'donazioni: gli importi si ripuliscono, ordinano e senza doppioni' );
+Settings::update( array( 'donate_enabled' => 1, 'donate_paypal' => '' ) );
+apse_ok( '' === \ApSemplice\Frontend\Views::donate(), 'donazioni: senza conto PayPal il modulo non compare' );
+$dn_save = new ReflectionMethod( Admin\Actions::class, 'save_donate' );
+$dn_save->setAccessible( true );
+apse_ok( null !== apse_throws( function () use ( $dn_save ) { $dn_save->invoke( null, array( 'donate_enabled' => '1', 'donate_paypal' => 'xx' ) ); } ), 'donazioni: non si accendono senza un conto valido' );
+$dn_save->invoke( null, array( 'donate_enabled' => '1', 'donate_paypal' => 'donazioni@example.org', 'donate_amounts' => '5;15', 'donate_purpose' => 'Per il tetto' ) );
+$dn_html = do_shortcode( '[apsemplice_donazioni]' );
+apse_ok( false !== strpos( $dn_html, 'https://www.paypal.com/donate' ) && false !== strpos( $dn_html, 'value="donazioni@example.org"' ) && false !== strpos( $dn_html, 'value="15.00"' ) && false !== strpos( $dn_html, 'Per il tetto' ) && false !== strpos( $dn_html, 'name="currency_code" value="EUR"' ), 'donazioni: il modulo porta a PayPal con conto, causale e importi' );
+apse_render( array( Admin\DonatePage::class, 'render' ), 'Conto PayPal' );
+$dn_save->invoke( null, array( 'donate_paypal' => 'donazioni@example.org' ) );
+apse_ok( '' === do_shortcode( '[apsemplice_donazioni]' ), 'donazioni: spente il modulo sparisce' );
 // tolleranza per il pagamento: il posto non versato si libera, chi ha pagato resta
 $hd_a = $acts->create( array( 'name' => 'Cena con tolleranza', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 1000, 'hold_hours' => 24, 'session' => array( 'session_date' => $today, 'capacity' => 2 ) ) );
 $hd_s = (int) $acts->sessions( $hd_a )[0]['id'];

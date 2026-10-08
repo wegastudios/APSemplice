@@ -24,7 +24,7 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
-		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
+		'apse_save_donate', 'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
 		'apse_delete_activity', 'apse_delete_booking', 'apse_purge_enrollments', 'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
 	);
@@ -129,6 +129,7 @@ final class Actions {
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_quick_cash'         => 'quick_cash',
+			'apse_save_donate'        => 'save_donate',
 			'apse_save_ical'          => 'save_ical',
 			'apse_regen_ical'         => 'regen_ical',
 			'apse_quick_enroll'       => 'quick_enroll',
@@ -1254,6 +1255,23 @@ final class Actions {
 	private static function regen_ical( array $p ): array {
 		\ApSemplice\Calendar::regenerate_token();
 		return array( Ui::url( 'apse-calendar' ), 'Nuovo indirizzo del calendario: aggiorna il collegamento in Google Calendar.' );
+	}
+
+	private static function save_donate( array $p ): array {
+		$account = \ApSemplice\Donations::clean_account( (string) ( $p['donate_paypal'] ?? '' ) );
+		$on      = ! empty( $p['donate_enabled'] );
+		if ( $on && '' === $account ) {
+			throw new \InvalidArgumentException( 'Per accendere le donazioni scrivi l\'email del conto PayPal oppure il suo ID commerciante.' );
+		}
+		Settings::update(
+			array(
+				'donate_enabled' => $on ? 1 : 0,
+				'donate_paypal'  => $account,
+				'donate_amounts' => (string) ( $p['donate_amounts'] ?? '' ),
+				'donate_purpose' => (string) ( $p['donate_purpose'] ?? '' ),
+			)
+		);
+		return array( Ui::url( 'apse-donate' ), $on ? 'Donazioni attive: inserisci [apsemplice_donazioni] dove vuoi il modulo.' : 'Impostazioni salvate: le donazioni sono spente.' );
 	}
 
 	private static function save_card( array $p ): array {

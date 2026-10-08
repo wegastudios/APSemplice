@@ -109,6 +109,10 @@ final class Settings {
 			'pay_label_woocommerce'   => '',
 			'pay_note_woocommerce'    => '',
 			'bank_enabled'            => 0,         // coordinate bancarie (IBAN) mostrate ai soci e inviate per email: spente di default
+			'donate_enabled'          => 0,         // raccolta donazioni con PayPal: spenta di default
+			'donate_paypal'           => '',        // email PayPal o ID commerciante che riceve le donazioni
+			'donate_amounts'          => '5;10;20;50', // importi proposti (euro), separati da punto e virgola
+			'donate_purpose'          => '',        // causale mostrata a chi dona (vuoto = nome dell'ente)
 			'bank_title'              => '',        // titolo del riquadro (vuoto = «Pagamento con bonifico»)
 			'bank_note'               => '',        // istruzioni sotto le coordinate (vuoto = testo predefinito)
 			'bank_in_reminders'       => 1,         // ... aggiunte anche ai promemoria di pagamento
@@ -229,6 +233,10 @@ final class Settings {
 			$clean[ 'pay_note_' . $g ]  = mb_substr( trim( (string) $clean[ 'pay_note_' . $g ] ), 0, 300 );
 		}
 		$clean['bank_enabled']            = empty( $clean['bank_enabled'] ) ? 0 : 1;
+		$clean['donate_enabled']          = empty( $clean['donate_enabled'] ) ? 0 : 1;
+		$clean['donate_paypal']           = Donations::clean_account( (string) $clean['donate_paypal'] );
+		$clean['donate_amounts']          = Donations::clean_amounts( (string) $clean['donate_amounts'] );
+		$clean['donate_purpose']          = mb_substr( trim( (string) $clean['donate_purpose'] ), 0, 120 );
 		$clean['bank_in_reminders']       = empty( $clean['bank_in_reminders'] ) ? 0 : 1;
 		$clean['bank_title']              = mb_substr( trim( (string) $clean['bank_title'] ), 0, 80 );
 		$clean['bank_note']               = mb_substr( trim( (string) $clean['bank_note'] ), 0, 400 );
