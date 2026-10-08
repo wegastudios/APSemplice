@@ -27,7 +27,7 @@ final class PeoplePage {
 		Ui::header(
 			'Soci e ospiti',
 			'<a class="page-title-action" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
-			. '<a class="page-title-action" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a> '
+			. ( \ApSemplice\Settings::guests_enabled() ? '<a class="page-title-action" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a> ' : '' )
 			. '<a class="page-title-action" href="' . esc_url( Ui::url( 'apse-import' ) ) . '">Importa da Excel/CSV</a> '
 			. Exports::link( 'people', array(), 'Esporta CSV' )
 		);

@@ -401,6 +401,9 @@ class PeopleService {
 	/** Crea una persona. Per i soci crea (o collega) l'utente WordPress con la stessa email. */
 	public function create( array $input ): int {
 		$d = $this->normalize( $input );
+		if ( MemberType::GUEST === $d['type'] && ! Settings::guests_enabled() ) {
+			throw new \InvalidArgumentException( 'L\'ente non accetta ospiti: si possono registrare solo soci.' );
+		}
 		$this->assert_valid( $d, null );
 
 		$user_id = null;

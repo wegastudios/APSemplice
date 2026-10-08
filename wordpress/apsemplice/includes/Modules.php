@@ -18,7 +18,7 @@ final class Modules {
 			'accounting' => array( 'label' => 'Contabilità', 'ask' => 'Tieni la contabilità qui (anni solari, adempimenti, 5x1000)? Se la tiene un altro, resta solo la prima nota.', 'pages' => array( 'apse-accounting', 'apse-years', 'apse-fivepm' ), 'needs' => 'ledger' ),
 			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'apse-reports', 'apse-statement' ), 'needs' => 'accounting' ),
 			'book'       => array( 'label' => 'Libro soci e verbali', 'ask' => 'Ti serve il libro soci (con i verbali)?', 'pages' => array( 'apse-book', 'apse-minutes' ), 'needs' => '' ),
-			'messages'   => array( 'label' => 'Comunicazioni', 'ask' => 'Vuoi scrivere ai soci dal gestionale (email, messaggi)?', 'pages' => array( 'apse-messages' ), 'needs' => '' ),
+			'messages'   => array( 'label' => 'Comunicazioni', 'ask' => 'Vuoi scrivere ai soci dal gestionale, via email?', 'pages' => array( 'apse-messages' ), 'needs' => '' ),
 			'import'     => array( 'label' => 'Importazioni', 'ask' => 'Devi importare soci da Excel, CSV o da WP All Import?', 'pages' => array( 'apse-import', 'apse-wpai' ), 'needs' => '' ),
 		);
 	}

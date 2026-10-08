@@ -697,8 +697,8 @@ apse_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: il 5x1000 si
 ob_start();
 Admin\WizardPage::render();
 $wz_html3 = (string) ob_get_clean();
-apse_ok( false !== strpos( $wz_html3, 'Partita IVA' ) && false !== strpos( $wz_html3, 'data-if="has_vat=1"' ) && false !== strpos( $wz_html3, 'name="vat_number"' ) && false !== strpos( $wz_html3, 'data-if="mod[accounting]=1"' ) && false !== strpos( $wz_html3, 'Adempimenti' ) && false !== strpos( $wz_html3, 'name="legal_address"' ), 'procedura: passo partita IVA con i campi che compaiono solo se c\'è, e passo adempimenti legato alla contabilità' );
-apse_ok( false !== strpos( $wz_html3, 'name="go_import"' ) && false !== strpos( $wz_html3, 'Elenco dei soci' ) && false !== strpos( $wz_html3, 'data-if="mod[import]=1"' ), 'procedura: passo per importare l\'elenco di soci e ospiti, solo se le importazioni servono' );
+apse_ok( false !== strpos( $wz_html3, 'Partita IVA' ) && false !== strpos( $wz_html3, 'data-if="has_vat=1"' ) && false !== strpos( $wz_html3, 'name="vat_number"' ) && false !== strpos( $wz_html3, 'data-if="mod[accounting]=1"' ) && false !== strpos( $wz_html3, 'name="fivepm_enabled"' ) && false !== strpos( $wz_html3, 'name="legal_address"' ), 'procedura: passo partita IVA con i campi che compaiono solo se c\'è, e domanda sul 5x1000 legata alla contabilità' );
+apse_ok( false !== strpos( $wz_html3, 'name="go_import"' ) && false !== strpos( $wz_html3, 'Elenco dei soci' ) && false === strpos( $wz_html3, 'name="mod[import]"' ), 'procedura: passo per importare l\'elenco di soci e ospiti, sempre proposto (le importazioni non si chiedono)' );
 Settings::update( array( 'payment_provider' => 'none', 'bank_enabled' => 0 ) );
 $wz_go = Admin\TechActions::wizard_save( array( 'go_import' => '1' ) );
 apse_ok( false !== strpos( $wz_go[0], 'apse-import' ) && false !== strpos( $wz_go[1], 'elenco' ), 'procedura: a fine configurazione porta all\'importazione dell\'elenco' );
@@ -711,6 +711,33 @@ ob_start();
 Admin\EntityPage::render();
 $wz_ent_html = (string) ob_get_clean();
 apse_ok( false !== strpos( $wz_tools, 'Configurazione guidata' ) && false !== strpos( $wz_tools, 'page=apse-wizard' ) && false === strpos( $wz_ent_html, 'page=apse-wizard' ), 'procedura: si riapre dagli Strumenti, non è sempre in prima linea nelle impostazioni' );
+// procedura minima: ospiti e iscrizione nel primo passo, privacy tra le pagine esistenti, niente anonimizzazione, funzioni facoltative a scomparsa
+$wz_p_ente = strpos( $wz_html3, 'Il tuo ente' );
+$wz_p_iva  = strpos( $wz_html3, '>Partita IVA</h2>' );
+apse_ok( false !== $wz_p_ente && false !== $wz_p_iva && $wz_p_ente < $wz_p_iva && ( $wz_ente_html = substr( $wz_html3, $wz_p_ente, $wz_p_iva - $wz_p_ente ) ) && false !== strpos( $wz_ente_html, 'name="guests_enabled"' ) && false !== strpos( $wz_ente_html, 'name="join_mode"' ) && false !== strpos( $wz_ente_html, 'name="member_term"' ) && false !== strpos( $wz_ente_html, '<details' ), 'procedura: nel primo passo nome, tipo, come si chiamano i soci, ospiti e chi può iscriversi; il resto in «Più dettagli»' );
+apse_ok( false !== strpos( $wz_html3, 'name="privacy_page_id"' ) && false === strpos( $wz_html3, 'privacy_retention_years' ) && false === strpos( $wz_html3, 'Conservazione dei dati' ) && false !== strpos( $wz_html3, 'altre funzioni facoltative' ), 'procedura: privacy tra le pagine esistenti, niente anonimizzazione, funzioni facoltative a scomparsa' );
+$wz_steps = preg_match_all( '/<section class="apse-wiz-step"/', $wz_html3 );
+apse_ok( $wz_steps <= 8, 'procedura: al massimo otto passi (' . $wz_steps . ')' );
+apse_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazione: di default 5 anni di inattività' );
+// ospiti non accettati
+\ApSemplice\Wizard::apply( array( 'guests_enabled' => '0' ) );
+apse_ok( ! Settings::guests_enabled() && null !== apse_throws( function () use ( $people, $ord ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Non', 'last_name' => 'Accettato', 'phone' => '348 7776655', 'host_person_id' => $ord ) ); } ), 'ospiti non accettati: non se ne registrano di nuovi' );
+apse_ok( '' === \ApSemplice\Frontend\Views::section_guests( $people->get( $founder ) ) || $people->guests_of( $founder ), 'ospiti non accettati: la sezione «I miei ospiti» non compare' );
+\ApSemplice\Wizard::apply( array( 'guests_enabled' => '1' ) );
+apse_ok( Settings::guests_enabled() && is_int( $people->create( array( 'type' => 'guest', 'first_name' => 'Ora', 'last_name' => 'Accettato', 'phone' => '348 7776644', 'host_person_id' => $ord ) ) ), 'ospiti accettati: si registrano' );
+// informativa privacy: scelta tra le pagine esistenti
+$wz_pg = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Informativa privacy prova' ) );
+$wz_draft = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'draft', 'post_title' => 'Bozza' ) );
+\ApSemplice\Wizard::apply( array( 'privacy_page_id' => (string) $wz_pg ) );
+apse_ok( get_permalink( $wz_pg ) === Settings::get( 'privacy_url' ) && null !== apse_throws( function () use ( $wz_draft ) { \ApSemplice\Wizard::apply( array( 'privacy_page_id' => (string) $wz_draft ) ); } ) && null !== apse_throws( function () { \ApSemplice\Wizard::apply( array( 'privacy_page_id' => '999999' ) ); } ), 'procedura: l\'informativa privacy è una pagina pubblicata già presente (le bozze e le pagine inesistenti si rifiutano)' );
+\ApSemplice\Wizard::apply( array( 'privacy_page_id' => '0' ) );
+apse_ok( '' === Settings::get( 'privacy_url' ), 'procedura: nessuna pagina scelta, nessuna informativa da accettare' );
+Settings::update( array( 'privacy_url' => 'https://esterno.example.com/privacy' ) );
+\ApSemplice\Wizard::apply( array( 'privacy_page_id' => '0' ) );
+apse_ok( 'https://esterno.example.com/privacy' === Settings::get( 'privacy_url' ), 'procedura: un indirizzo esterno già impostato non si cancella' );
+Settings::update( array( 'privacy_url' => '' ) );
+wp_delete_post( $wz_pg, true );
+wp_delete_post( $wz_draft, true );
 $wz_pos_pay = strpos( $wz_html3, 'Pagamenti dei soci' );
 apse_ok( false !== $wz_pos_pay && false !== strpos( substr( $wz_html3, max( 0, $wz_pos_pay - 200 ), 260 ), 'mod[ledger]=1' ), 'procedura: i pagamenti si chiedono solo se c\'è la prima nota' );
 Settings::update( array( 'fivepm_enabled' => 0, 'has_vat' => 0, 'vat_number' => '', 'vat_membership_rate' => '', 'vat_default_rate' => 22, 'vat_prices_mode' => 'incl', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'pec' => '', 'association_name' => $wz_old['association_name'] ) );
