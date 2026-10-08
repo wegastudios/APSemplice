@@ -87,7 +87,7 @@ final class Reset {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
 		if ( ! Backup::downloaded_recently() ) { // la copia non resta sul sito (conterrebbe i dati che si vogliono cancellare): va scaricata e conservata da chi azzera
-			throw new InvalidArgumentException( 'Scarica prima una copia completa dei dati e conservala: non è stato cancellato nulla.' );
+			throw new \InvalidArgumentException( 'Scarica prima una copia completa dei dati e conservala: non è stato cancellato nulla.' );
 		}
 		$users = $delete_users ? self::member_only_users() : array();
 		$db    = self::db();
