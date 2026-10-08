@@ -624,3 +624,11 @@ L'ultimo passo della procedura chiede se si vuole importare subito l'**elenco di
 **Lista degli iscritti a un corso**: accanto a ogni iscritto con importi da versare c'è «Paga», che apre l'incasso già impostato su quella persona con gli importi dovuti; gli amministratori hanno «Cancella» (con la scelta sulle somme e la doppia conferma). Sopra l'elenco, per gli iscritti con l'iscrizione già finita (non confermati o disdetti), il pulsante «Togli dall'elenco» li rimuove in un colpo solo con una spunta di conferma: si tolgono solo quelli senza incassi registrati (la prima nota non cambia); chi ha incassi resta e si cancella uno per uno.
 
 **Cancellazioni senza effetto sulla prima nota**: se un'iscrizione o un evento non ha nessun incasso, spesa o restituzione collegati, la cancellazione non chiede né la scelta sulle somme né il nome da scrivere: basta una sola conferma (dalla lista, una finestra di conferma del browser; dalla pagina, il pulsante). La doppia conferma resta per tutto ciò che tocca la prima nota. Il controllo lo fa il server al momento dell'operazione.
+
+## Azzeramento dei dati
+
+Impostazioni → Sistema → **Azzeramento dati** (solo amministratori) per ripartire da zero, in due passaggi:
+1. Scelta e anteprima di ciò che c'è: **solo i dati** (soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute con la loro numerazione e allegati; restano impostazioni, testi, pagine e registro azioni; si ricreano conti, voci, livelli e anno solare predefiniti) oppure **ripristino di fabbrica** (cancella anche impostazioni, testi, elenco delle pagine create, richieste di accesso e registro azioni, e riapre la configurazione guidata). A scelta si eliminano anche gli accessi dei soci, cioè gli utenti WordPress con il solo ruolo «Socio APS» (mai amministratori, segreteria o altri utenti).
+2. Riepilogo con il messaggio sulla prima nota e conferma tripla: spunta, frase «AZZERA TUTTO» e la password dell'amministratore che opera.
+
+Prima di cancellare il sito salva una **copia completa con gli allegati** tra le copie di sicurezza (si conservano le ultime): se la copia non riesce non viene cancellato nulla. Le tabelle si svuotano in un'unica transazione e la numerazione riparte da 1. Il registro azioni registra l'azzeramento.

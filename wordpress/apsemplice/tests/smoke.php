@@ -5086,6 +5086,44 @@ if ( is_file( $bk_file ) ) {
 apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=apse_backup' ) && has_action( 'admin_post_apse_backup' ) && Admin\Actions::required_cap( 'apse_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
 apse_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
 
+// ---------- Azzeramento dei dati (ultimo: cancella tutto) ----------
+wp_set_current_user( 1 );
+wp_set_password( 'Azzera-Pass-123', 1 );
+wp_set_current_user( 1 );
+$rs_prev = \ApSemplice\Reset::preview();
+apse_ok( $rs_prev['people'] > 0 && $rs_prev['transactions'] > 0 && $rs_prev['activities'] > 0 && $rs_prev['users'] > 0, 'azzeramento: l\'anteprima conta ciò che verrebbe cancellato' );
+$_GET = array();
+ob_start();
+Admin\ResetPage::render();
+$rs_p1 = (string) ob_get_clean();
+$_GET = array( 'step' => '2', 'mode' => 'data', 'users' => '1' );
+ob_start();
+Admin\ResetPage::render();
+$rs_p2 = (string) ob_get_clean();
+$_GET = array();
+apse_ok( false !== strpos( $rs_p1, 'Operazione definitiva' ) && false !== strpos( $rs_p1, 'Ripristino di fabbrica' ) && false !== strpos( $rs_p1, 'Solo i dati' ) && false === strpos( $rs_p1, 'name="password"' ), 'azzeramento: primo passaggio con le due scelte e nessun campo di conferma' );
+apse_ok( false !== strpos( $rs_p2, 'AZZERA TUTTO' ) && false !== strpos( $rs_p2, 'name="password"' ) && false !== strpos( $rs_p2, 'name="phrase"' ) && false !== strpos( $rs_p2, 'name="confirm"' ) && false !== strpos( $rs_p2, 'tutta la prima nota' ) && false !== strpos( $rs_p2, 'copia completa' ), 'azzeramento: secondo passaggio con il messaggio chiaro, la frase, la password e la spunta' );
+apse_ok( in_array( 'apse-reset', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_reset_all'] ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
+$rs_ok = array( 'confirm' => '1', 'phrase' => 'AZZERA TUTTO', 'password' => 'Azzera-Pass-123', 'mode' => 'data', 'users' => '1' );
+$rs_people0 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+apse_ok( null !== apse_throws( function () use ( $rs_ok ) { Admin\TechActions::reset_all( array_diff_key( $rs_ok, array( 'confirm' => 1 ) ) ); } ) && null !== apse_throws( function () use ( $rs_ok ) { Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'phrase' => 'azzera' ) ) ); } ) && null !== apse_throws( function () use ( $rs_ok ) { Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'password' => 'sbagliata' ) ) ); } ) && null !== apse_throws( function () use ( $rs_ok ) { Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'password' => '' ) ) ); } ) && $rs_people0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'azzeramento: senza spunta, con la frase sbagliata o con la password sbagliata non si cancella nulla' );
+Settings::update( array( 'association_name' => 'Associazione da azzerare' ) );
+$rs_audit0 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
+$rs_saved0 = count( \ApSemplice\Backup::saved() );
+$rs_mu  = \ApSemplice\Reset::member_only_users();
+$rs_msg = Admin\TechActions::reset_all( $rs_ok );
+apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) ), 'azzeramento dei dati: soci, attività, prima nota, prenotazioni e ricevute cancellati' );
+apse_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'accounts' ) ) >= 2 && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'categories' ) ) >= 8 && count( \ApSemplice\Levels::all() ) >= 2 && \ApSemplice\FiscalYears::is_open( \ApSemplice\FiscalYears::current() ), 'azzeramento dei dati: conti, voci, livelli e anno solare predefiniti ricreati' );
+apse_ok( 'Associazione da azzerare' === Settings::get( 'association_name' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) >= $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 5 ), 'action' ), true ), 'azzeramento dei dati: impostazioni e registro azioni restano, con la registrazione dell\'azzeramento' );
+apse_ok( count( \ApSemplice\Backup::saved() ) > $rs_saved0 || count( \ApSemplice\Backup::saved() ) >= (int) \ApSemplice\Limits::get( 'backup_keep' ), 'azzeramento: prima di cancellare è stata salvata una copia completa' );
+apse_ok( false !== get_userdata( 1 ) && $rs_mu && ! array_filter( $rs_mu, function ( $uid ) { return false !== get_userdata( $uid ); } ) && false !== strpos( $rs_msg[1], 'Dati azzerati' ) && $rs_msg[0] === Admin\Ui::url( 'apse' ), 'azzeramento: gli amministratori restano, gli accessi dei soci (solo ruolo «Socio APS») sono eliminati' );
+$rs_new = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Primo', 'last_name' => 'Dopo' ) );
+apse_ok( 1 === (int) $rs_new, 'azzeramento: la numerazione riparte da 1' );
+// ripristino di fabbrica
+Settings::update( array( 'association_name' => 'Da cancellare del tutto', 'tax_code' => '12345678903' ) );
+update_option( 'apse_pages', array( 'area' => 1 ) );
+$rs_msg2 = Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'mode' => 'factory', 'users' => '' ) ) );
+apse_ok( '' === (string) Settings::get( 'association_name' ) && '' === (string) Settings::get( 'tax_code' ) && false === get_option( 'apse_pages', false ) && \ApSemplice\Wizard::pending() && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) < $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 10 ), 'action' ), true ) && false !== strpos( $rs_msg2[1], 'Ripristino di fabbrica completato' ) && false !== strpos( $rs_msg2[0], 'apse-wizard' ), 'ripristino di fabbrica: impostazioni, pagine, registro azioni cancellati e configurazione guidata riaperta' );
 apse_ok( ! $GLOBALS['apse_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['apse_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['apse_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
