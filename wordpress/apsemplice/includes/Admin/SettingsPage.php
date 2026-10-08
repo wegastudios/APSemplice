@@ -38,21 +38,6 @@ final class SettingsPage {
 		return $html;
 	}
 
-	/** Livelli di socio: righe dinamiche (nome, base, quota, attivo), si aggiungono senza limiti. */
-	private static function levels_section(): void {
-		$rows = array();
-		foreach ( \ApSemplice\Levels::all() as $lv ) {
-			$rows[] = array( 'id' => (int) $lv['id'], 'name' => $lv['name'], 'base' => $lv['base_type'], 'fee' => null === $lv['fee_cents'] ? '' : Money::plain( (int) $lv['fee_cents'] ), 'active' => (bool) (int) $lv['active'], 'used' => \ApSemplice\Levels::in_use( (int) $lv['id'] ) );
-		}
-		echo '<h2>Livelli di socio</h2><p class="description">Ogni livello ha il suo nome (come appare sulla tessera e negli elenchi), una base che ne decide il comportamento e, se serve, una quota propria. '
-			. 'Lascia vuota la quota per usare quella proposta qui sopra: così puoi avere, ad esempio, soci ordinari, soci ridotti, sostenitori o soci onorari con quote diverse. '
-			. 'Un livello con dei soci non si cancella: se lo togli resta, ma non si può più assegnare.</p>';
-		Ui::form_open( 'apse_save_levels', Ui::url( 'apse-settings' ) );
-		echo '<div class="apse-levels" data-bases="' . esc_attr( wp_json_encode( \ApSemplice\Levels::bases() ) ) . '" data-rows="' . esc_attr( wp_json_encode( $rows ) ) . '"><div class="apse-levels-rows"></div>'
-			. '<p><button type="button" class="button" data-add="1">+ Aggiungi livello</button></p></div>';
-		echo '<p><button class="button button-primary">Salva i livelli</button></p>';
-		Ui::form_close();
-	}
 
 	public static function render(): void {
 		$s = Settings::all();
@@ -93,7 +78,9 @@ final class SettingsPage {
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		self::levels_section();
+		if ( Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
+			LevelsEditor::section();
+		}
 		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>APSemplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>APSemplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
 		Ui::form_open( 'apse_create_pages', Ui::url( 'apse-settings' ) );
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già inseriti. Puoi poi personalizzarne l\'impaginazione.</span></p>';

@@ -122,6 +122,7 @@ final class WizardPage {
 		echo '</tbody></table></details>';
 		self::end_step();
 
+		if ( \ApSemplice\Edition::has( 'vat' ) ) {
 		// 2. Partita IVA
 		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.', '', 'ente' );
 		echo self::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -140,6 +141,7 @@ final class WizardPage {
 		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"> <span class="description">facoltativo</span></td></tr>';
 		echo '</tbody></table></details></div>';
 		self::end_step();
+		}
 
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
 		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.', '', 'gestione' );
@@ -172,8 +174,10 @@ final class WizardPage {
 		foreach ( Levels::all( true ) as $lv ) {
 			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
 		}
+		if ( \ApSemplice\Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
 		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
 		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
+		}
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
 		echo '</tbody></table></details>';
 		self::end_step();

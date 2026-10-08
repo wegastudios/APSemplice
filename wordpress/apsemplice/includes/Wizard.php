@@ -200,7 +200,7 @@ final class Wizard {
 		}
 
 		// Altri tipi di socio: righe «Nome; quota». I livelli esistenti restano come sono.
-		$new_levels = self::parse_levels( (string) ( $p['extra_levels'] ?? '' ) );
+		$new_levels = Edition::has( 'levels' ) ? self::parse_levels( (string) ( $p['extra_levels'] ?? '' ) ) : array();
 		if ( $new_levels ) {
 			$rows  = array();
 			$known = array();

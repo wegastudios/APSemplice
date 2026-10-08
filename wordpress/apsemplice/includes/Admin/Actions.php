@@ -261,6 +261,9 @@ final class Actions {
 	}
 
 	private static function save_levels( array $p ): array {
+		if ( ! \ApSemplice\Edition::has( 'levels' ) ) {
+			throw new \InvalidArgumentException( 'Questa edizione ha un\'unica quota associativa.' );
+		}
 		$rows = array();
 		foreach ( (array) ( $p['level'] ?? array() ) as $r ) {
 			if ( is_array( $r ) ) {

@@ -15,6 +15,8 @@ final class Edition {
 	/** Funzione => file (dentro includes/) che la contiene. */
 	const FEATURES = array(
 		'license'    => 'License.php',        // verifica della licenza (solo Pro)
+		'vat'        => 'Admin/VatFields.php', // IVA: campi nei moduli e impostazioni fiscali
+		'levels'     => 'Admin/LevelsEditor.php', // più livelli di socio, ognuno con la sua quota
 		'payments'   => 'PaymentService.php', // pagamenti online
 		'funds'      => 'FundService.php',    // conti multipli, fondi e cassa dei gruppi
 		'reports'    => 'ReportService.php',  // report, rendiconto e anni solari
