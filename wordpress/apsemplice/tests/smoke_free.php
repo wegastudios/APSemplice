@@ -1,6 +1,6 @@
 <?php
 /**
- * Prova dell'edizione gratuita dentro un WordPress reale: il plugin SENZA i file elencati in wordpress/pro-files.txt deve funzionare.
+ * Prova dell'edizione gratuita dentro un WordPress reale: il plugin SENZA i file elencati in tests/pro-files.txt deve funzionare.
  *   wp eval-file wp-content/plugins/apsemplice/tests/smoke_free.php
  * Si lancia dopo aver cancellato quei file dalla cartella del plugin (lo fa il workflow).
  */
@@ -50,7 +50,7 @@ wp_set_current_user( $admin->ID );
 \ApSemplice\Admin\Admin::init();
 
 // ---------- Cosa c'è e cosa no ----------
-$lines = array_filter( array_map( 'trim', file( dirname( __DIR__, 2 ) . '/pro-files.txt' ) ?: array() ), function ( $l ) {
+$lines = array_filter( array_map( 'trim', file( __DIR__ . '/pro-files.txt' ) ?: array() ), function ( $l ) {
 	return '' !== $l && '#' !== $l[0];
 } );
 free_ok( count( $lines ) >= 1, 'elenco dei file avanzati letto' );

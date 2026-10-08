@@ -94,7 +94,7 @@ jobs:
         run: npx --yes @wordpress/env start
       - name: Remove the advanced files
         run: |
-          grep -v '^#' pro-files.txt | grep -v '^$' | while read -r f; do rm -v "apsemplice/includes/$f"; done
+          grep -v '^#' apsemplice/tests/pro-files.txt | grep -v '^$' | while read -r f; do rm -v "apsemplice/includes/$f"; done
       - name: Run the free edition smoke test
         run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke_free.php
       - name: Debug log
