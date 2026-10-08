@@ -17,10 +17,6 @@ final class Broadcasts {
 	const MAX_BODY   = 5000;
 	const MAX_PER_DAY = 20;
 
-	public static function register(): void {
-		add_action( self::HOOK, array( __CLASS__, 'process_all' ) );
-	}
-
 	private static function db(): \wpdb {
 		return Db::db();
 	}

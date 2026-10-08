@@ -340,6 +340,11 @@ class PaymentService {
 		return 'in attesa';
 	}
 
+	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
+	public static function check_pending_job(): void {
+		Plugin::payments()->check_pending();
+	}
+
 	/** Ricontrolla i pagamenti rimasti in sospeso (chiamato ogni ora da WP-Cron e dal pulsante in amministrazione). */
 	public function check_pending( bool $include_recent = false ): array {
 		$this->recover_stuck();

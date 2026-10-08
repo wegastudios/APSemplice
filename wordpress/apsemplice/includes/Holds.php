@@ -11,14 +11,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Holds {
 
+	/** Lavoro periodico, pianificato da Plugin::schedule_jobs(). */
 	const HOOK = 'apse_release_holds';
-
-	public static function register(): void {
-		add_action( self::HOOK, array( __CLASS__, 'release_expired' ) );
-		if ( ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_event( time() + 900, 'hourly', self::HOOK );
-		}
-	}
 
 	/** Ha un pagamento online avviato da poco per questa prenotazione? */
 	private static function online_in_progress( int $person_id, int $session_id ): bool {

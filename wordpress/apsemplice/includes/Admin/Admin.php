@@ -20,7 +20,6 @@ final class Admin {
 		RegistersActions::register();
 		TechActions::register();
 		\ApSemplice\Wizard::register();
-		\ApSemplice\Docs::register();
 	}
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */

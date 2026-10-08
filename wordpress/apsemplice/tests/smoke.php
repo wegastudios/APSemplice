@@ -2432,7 +2432,7 @@ apse_ok( null !== apse_throws( function () use ( $guest ) { Wallet::apple_pass( 
 // pulsanti nell'area soci e permessi di scarico
 $html = $as( $u_f, '[apsemplice_tessera]' );
 apse_ok( false !== strpos( $html, 'Aggiungi ad Apple Wallet' ) && false !== strpos( $html, 'apse_wallet_apple' ) && false !== strpos( $html, '_wpnonce=' ), 'area soci: pulsante per Apple Wallet con controllo dei permessi' );
-apse_ok( user_can( $u_f, 'apse_view_person', $founder ) && ! user_can( $u_tre, 'apse_view_person', $founder ) && has_action( 'admin_post_apse_wallet_apple' ), 'la tessera Apple si scarica solo per sé stessi (o da amministratore)' );
+apse_ok( user_can( $u_f, 'apse_view_person', $founder ) && ! user_can( $u_tre, 'apse_view_person', $founder ) && ( \ApSemplice\Plugin::load_for_action( 'apse_wallet_apple' ) && has_action( 'admin_post_apse_wallet_apple' ) ), 'la tessera Apple si scarica solo per sé stessi (o da amministratore)' );
 
 // Google
 list( , $g_key ) = $mk_cert( 'google' );
@@ -4015,7 +4015,7 @@ apse_render( array( Admin\TextsPage::class, 'render' ), 'Nessun testo con questi
 $tx_reset = new ReflectionMethod( Admin\Actions::class, 'reset_texts' );
 $tx_reset->invoke( null, array() );
 apse_ok( array() === \ApSemplice\Texts::overrides(), 'testi: ripristino di tutti i testi originali' );
-apse_ok( has_action( 'admin_post_apse_export_texts' ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
+apse_ok( ( \ApSemplice\Plugin::load_for_action( 'apse_export_texts' ) && has_action( 'admin_post_apse_export_texts' ) ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
 
 // ---------- Tipo di ente e termini ----------
 wp_set_current_user( 1 );
@@ -4689,7 +4689,7 @@ $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 wp_set_current_user( $sec_u );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-book' ), 'page=apse-minutes' ) && false !== strpos( Admin\Admin::tabs( 'apse-accounting' ), 'page=apse-statement' ) && Admin\Actions::required_cap( 'apse_save_levels' ) === Plugin::CAP && current_user_can( Plugin::CAP_OPS ), 'registri: la segreteria li vede' );
 wp_set_current_user( 1 );
-apse_ok( has_action( 'admin_post_apse_doc' ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
+apse_ok( ( \ApSemplice\Plugin::load_for_action( 'apse_doc' ) && has_action( 'admin_post_apse_doc' ) ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
 
 // ---------- 5x1000, guida iniziale, lingue ----------
 wp_set_current_user( 1 );
@@ -5169,7 +5169,7 @@ unlink( $bk_zip );
 if ( is_file( $bk_file ) ) {
 	unlink( $bk_file );
 }
-apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=apse_backup' ) && has_action( 'admin_post_apse_backup' ) && Admin\Actions::required_cap( 'apse_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
+apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=apse_backup' ) && ( \ApSemplice\Plugin::load_for_action( 'apse_backup' ) && has_action( 'admin_post_apse_backup' ) ) && Admin\Actions::required_cap( 'apse_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
 apse_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
 
 // ---------- Azzeramento dei dati (ultimo: cancella tutto) ----------

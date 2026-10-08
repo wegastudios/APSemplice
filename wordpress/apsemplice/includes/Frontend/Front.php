@@ -16,7 +16,6 @@ final class Front {
 		Activation::register();
 		FirstAccess::register();
 		\ApSemplice\Calendar::register();
-		\ApSemplice\Wallet::register();
 		Blocks::register();
 		ElementorSupport::register();
 	}

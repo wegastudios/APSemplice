@@ -19,10 +19,6 @@ final class Backup {
 	public static function register(): void {
 		add_action( 'admin_post_apse_backup', array( __CLASS__, 'handle_download' ) );
 		add_action( 'admin_post_apse_backup_saved', array( __CLASS__, 'handle_saved' ) );
-		add_action( 'apse_purge_backups', array( __CLASS__, 'purge_old' ) );
-		if ( ! wp_next_scheduled( 'apse_purge_backups' ) ) {
-			wp_schedule_event( time() + 1200, 'hourly', 'apse_purge_backups' );
-		}
 	}
 
 	// ---------- Cartella delle copie di sicurezza ----------

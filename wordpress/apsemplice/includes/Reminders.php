@@ -16,13 +16,6 @@ final class Reminders {
 	const OPT_LAST        = 'apse_reminders_last';
 	const EXPIRED_WINDOW  = 7; // giorni dopo la scadenza in cui si manda ancora il promemoria "scaduta"
 
-	public static function register(): void {
-		add_action( self::HOOK, array( __CLASS__, 'run' ) );
-		if ( ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_event( time() + 600, 'daily', self::HOOK );
-		}
-	}
-
 	public static function enabled(): bool {
 		return ! empty( Settings::get( 'reminders_enabled' ) );
 	}
