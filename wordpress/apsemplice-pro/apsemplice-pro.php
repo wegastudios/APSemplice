@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       APSemplice Pro
  * Description:       Funzioni avanzate per APSemplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede APSemplice.
- * Version:           1.1.12
+ * Version:           1.1.13
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  apsemplice
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'APSE_PRO_VERSION', '1.1.12' );
+define( 'APSE_PRO_VERSION', '1.1.13' );
 define( 'APSE_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
