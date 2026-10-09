@@ -46,38 +46,37 @@ final class DashboardPage {
 		if ( current_user_can( \ApSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
 			$bk = \ApSemplice\Backup::last();
 			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {
-				echo '<div class="notice notice-warning inline"><p>' . ( $bk ? 'L\'ultima copia di sicurezza dei dati risale a più di 30 giorni fa.' : 'Non hai ancora scaricato una copia di sicurezza dei dati.' )
-					. ' <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">Scaricala ora</a>.</p></div>';
+				echo Dismiss::html( 'backup', 'warning', ( $bk ? 'L\'ultima copia di sicurezza dei dati risale a più di 30 giorni fa.' : 'Non hai ancora scaricato una copia di sicurezza dei dati.' ) . ' <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">Scaricala ora</a>.', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
 		if ( \ApSemplice\Edition::has( 'insurance' ) && \ApSemplice\Settings::insurance_association() ) {
 			$rc = \ApSemplice\AssocPolicies::rc_status();
 			if ( \ApSemplice\Insurance::VALID !== $rc ) {
 				$msg = array( \ApSemplice\Insurance::NONE => 'non risulta nessuna polizza di responsabilità civile dell\'associazione', \ApSemplice\Insurance::EXPIRED => 'la polizza di responsabilità civile dell\'associazione è scaduta', \ApSemplice\Insurance::EXPIRING => 'la polizza di responsabilità civile dell\'associazione sta per scadere' );
-				echo '<div class="notice notice-warning inline"><p>Assicurazione: ' . esc_html( $msg[ $rc ] ) . '. <a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri le assicurazioni</a>.</p></div>';
+				echo Dismiss::html( 'insurance-rc-' . $rc, 'warning', 'Assicurazione: ' . esc_html( $msg[ $rc ] ) . '. <a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri le assicurazioni</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
 		if ( current_user_can( \ApSemplice\Plugin::CAP ) && '' === trim( (string) \ApSemplice\Settings::get( 'association_name' ) ) ) {
-			echo '<div class="notice notice-info inline"><p><strong>Manca il nome dell\'ente.</strong> Compare su ricevute, tessere e messaggi ai soci: inseriscilo in <a href="' . esc_url( Ui::url( 'apse-entity' ) ) . '">Impostazioni → Dati e fiscalità</a>.</p></div>';
+			echo Dismiss::html( 'entity-name', 'info', '<strong>Manca il nome dell\'ente.</strong> Compare su ricevute, tessere e messaggi ai soci: inseriscilo in <a href="' . esc_url( Ui::url( 'apse-entity' ) ) . '">Impostazioni → Dati e fiscalità</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		if ( current_user_can( \ApSemplice\Plugin::CAP ) && \ApSemplice\Wizard::pending() ) {
-			echo '<div class="notice notice-info inline"><p><strong>Benvenuto.</strong> Configura il plugin in pochi minuti: ente, quote, pagamenti e pagine del sito. <a class="button button-primary" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a></p></div>';
+			echo Dismiss::html( 'wizard', 'info', '<strong>Benvenuto.</strong> Configura il plugin in pochi minuti: ente, quote, pagamenti e pagine del sito. <a class="button button-primary" href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">Avvia la configurazione guidata</a>', 3 ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		if ( \ApSemplice\Guide::show_banner( get_current_user_id() ) ) {
 			$gp = \ApSemplice\Guide::progress();
-			echo '<div class="notice notice-info inline"><p>Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'apse-guide' ) ) . '">Apri la guida</a>.</p></div>';
+			echo Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'apse-guide' ) ) . '">Apri la guida</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		if ( \ApSemplice\Edition::has( 'fivepm' ) && \ApSemplice\FivePerMille::enabled() ) {
 			$fp = \ApSemplice\FivePerMille::alerts();
 			if ( $fp ) {
-				echo '<div class="notice notice-warning inline"><p>5x1000: ' . count( $fp ) . ( 1 === count( $fp ) ? ' contributo ha il rendiconto sull\'utilizzo scaduto o in scadenza' : ' contributi hanno il rendiconto sull\'utilizzo scaduto o in scadenza' ) . '. <a href="' . esc_url( Ui::url( 'apse-fivepm' ) ) . '">Apri il 5x1000</a>.</p></div>';
+				echo Dismiss::html( 'fivepm-' . count( $fp ), 'warning', '5x1000: ' . count( $fp ) . ( 1 === count( $fp ) ? ' contributo ha il rendiconto sull\'utilizzo scaduto o in scadenza' : ' contributi hanno il rendiconto sull\'utilizzo scaduto o in scadenza' ) . '. <a href="' . esc_url( Ui::url( 'apse-fivepm' ) ) . '">Apri il 5x1000</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
 		$ins = \ApSemplice\Edition::has( 'insurance' ) && \ApSemplice\Settings::insurance_volunteers() ? \ApSemplice\Insurance::counts() : array( 'none' => 0, 'expired' => 0, 'expiring' => 0 );
 		if ( $ins['none'] + $ins['expired'] + $ins['expiring'] > 0 ) {
-			echo '<div class="notice notice-warning inline"><p>Assicurazione dei volontari: '
+			echo Dismiss::html( 'insurance-vol-' . ( $ins['none'] + $ins['expired'] ) . '-' . $ins['expiring'], 'warning', 'Assicurazione dei volontari: '
 				. (int) ( $ins[ \ApSemplice\Insurance::NONE ] + $ins[ \ApSemplice\Insurance::EXPIRED ] ) . ' senza copertura valida, ' . (int) $ins[ \ApSemplice\Insurance::EXPIRING ] . ' in scadenza. '
-				. '<a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri il registro</a>.</p></div>';
+				. '<a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri il registro</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		self::quick_cash();
 		self::quick_enroll();

@@ -5180,6 +5180,18 @@ $_GET = array();
 apse_ok( false !== strpos( $rs_p1, 'Operazione definitiva' ) && false !== strpos( $rs_p1, 'Ripristino di fabbrica' ) && false !== strpos( $rs_p1, 'Solo i dati' ) && false === strpos( $rs_p1, 'name="password"' ), 'azzeramento: primo passaggio con le due scelte e nessun campo di conferma' );
 apse_ok( false !== strpos( $rs_p2, 'AZZERA TUTTO' ) && false !== strpos( $rs_p2, 'name="password"' ) && false !== strpos( $rs_p2, 'name="phrase"' ) && false !== strpos( $rs_p2, 'name="confirm"' ) && false !== strpos( $rs_p2, 'tutta la prima nota' ) && false !== strpos( $rs_p2, 'copia completa' ), 'azzeramento: secondo passaggio con il messaggio chiaro, la frase, la password e la spunta' );
 apse_ok( in_array( 'apse-reset', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_reset_all'] ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
+// avvisi chiudibili: si chiudono per qualche giorno, poi tornano
+wp_set_current_user( 1 );
+delete_user_meta( 1, Admin\Dismiss::META );
+$dm_html = Admin\Dismiss::html( 'prova', 'warning', 'Testo <a href="#">link</a>', 7 );
+apse_ok( false !== strpos( $dm_html, 'is-dismissible' ) && false !== strpos( $dm_html, 'data-apse-key="prova"' ) && false !== strpos( $dm_html, 'data-apse-days="7"' ), 'avvisi chiudibili: l\'avviso ha la X e ricorda chi è' );
+Admin\Dismiss::dismiss( 'prova', 7 );
+apse_ok( '' === Admin\Dismiss::html( 'prova', 'warning', 'Testo', 7 ) && '' !== Admin\Dismiss::html( 'altro', 'warning', 'Testo', 7 ), 'avvisi chiudibili: chiuso non ricompare, gli altri sì' );
+$dm_meta = (array) get_user_meta( 1, Admin\Dismiss::META, true );
+apse_ok( isset( $dm_meta['prova'] ) && $dm_meta['prova'] > time() + 6 * DAY_IN_SECONDS && $dm_meta['prova'] <= time() + 7 * DAY_IN_SECONDS + 5, 'avvisi chiudibili: la chiusura dura i giorni indicati' );
+update_user_meta( 1, Admin\Dismiss::META, array( 'prova' => time() - 10 ) );
+apse_ok( '' !== Admin\Dismiss::html( 'prova', 'warning', 'Testo', 7 ), 'avvisi chiudibili: scaduta la chiusura l\'avviso ricompare' );
+delete_user_meta( 1, Admin\Dismiss::META );
 // aspetto: logo e colori, di default quelli del sito, personalizzabili
 $lk_save = new ReflectionMethod( Admin\Actions::class, 'save_look' );
 $lk_save->setAccessible( true );

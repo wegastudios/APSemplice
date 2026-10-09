@@ -14,6 +14,7 @@ final class Admin {
 		Actions::register();
 		Exports::register();
 		IncomePage::register_ajax();
+		Dismiss::register();
 		if ( \ApSemplice\Edition::has( 'license' ) ) {
 			LicenseNotice::register();
 		}
