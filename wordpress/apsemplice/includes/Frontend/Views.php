@@ -1014,6 +1014,9 @@ final class Views {
 			$html .= self::notice_form( $a );
 			$html .= '</div>';
 		}
+		if ( ! $found && 'event' === $only ) {
+			return ''; // chi gestisce eventi senza esserne referente (staff, gestori) trova qui sotto solo gli ingressi
+		}
 		if ( ! $found ) {
 			$html .= '<p class="apsf-muted">Non risulti referente di attività dell\'anno sociale in corso.</p>';
 		}
