@@ -31,7 +31,7 @@ final class Shortcodes {
 		'avvisi'          => 'Avvisi dei volontari agli iscritti (bacheca)',
 		'ospiti'          => 'I miei ospiti',
 		'profilo'         => 'Il mio profilo',
-		'area_volontari'  => 'Area volontari (le attività che tengo)',
+		'area_volontari'  => 'Area volontari (le attività di cui sei referente)',
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',

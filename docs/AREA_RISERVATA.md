@@ -18,9 +18,9 @@ già con gli shortcode dentro. L'Area soci diventa la pagina di arrivo dopo il l
 
 | Shortcode | Cosa mostra | Chi |
 |---|---|---|
-| `[apsemplice_area_soci]` | tessera, le mie attività, ospiti, profilo (e le attività che tengo, se volontario). Opzione `sezioni="tessera,attivita,ospiti,profilo,volontario"` | soci |
+| `[apsemplice_area_soci]` | tessera, le mie attività, ospiti, profilo (e le attività che gestisci, se volontario). Opzione `sezioni="tessera,attivita,ospiti,profilo,volontario"` | soci |
 | `[apsemplice_tessera]` `[apsemplice_mie_attivita]` `[apsemplice_ospiti]` `[apsemplice_profilo]` | le singole sezioni, da disporre come vuoi | soci |
-| `[apsemplice_area_volontari]` | le attività che tengo: iscritti (solo nomi) e prenotati per data | volontari |
+| `[apsemplice_area_volontari]` | le attività che gestisci: iscritti (solo nomi) e prenotati per data | volontari |
 | `[apsemplice_attivita]` | elenco pubblico di corsi ed eventi con contributi e prossime date; filtri `tipo="corso\|evento\|ricorrente"`, `anno="2025/2026"`, `id="12"`, `date="5"` | tutti (prenota chi ha tessera valida) |
 | `[apsemplice_prossimi_eventi limite="5" prenotazione="si\|no"]` | le prossime date | tutti |
 | `[apsemplice_accesso]` | modulo di accesso (sparisce se sei già dentro) | tutti |

@@ -31,7 +31,7 @@ final class Pages {
 	public static function defs(): array {
 		return array(
 			'area'      => array( 'title' => 'Area soci', 'content' => '[apsemplice_area_soci]', 'access' => '', 'hint' => 'Tessera, attività, pagamenti, ospiti e profilo dei soci: è la pagina principale.', 'default' => true ),
-			'volontari' => array( 'title' => 'Area volontari', 'content' => '[apsemplice_area_volontari]', 'access' => 'volunteers', 'hint' => 'Le attività che tengono i volontari (visibile solo a loro).', 'default' => true ),
+			'volontari' => array( 'title' => 'Area volontari', 'content' => '[apsemplice_area_volontari]', 'access' => 'volunteers', 'hint' => 'Le attività di cui i volontari sono referenti (visibile solo a loro).', 'default' => true ),
 			'attivita'  => array( 'title' => 'Attività ed eventi', 'content' => '[apsemplice_attivita]', 'access' => '', 'hint' => 'L\'elenco pubblico di corsi ed eventi, con la prenotazione.', 'default' => true ),
 			'calendario' => array( 'title' => 'Calendario', 'content' => '[apsemplice_calendario]', 'access' => 'members', 'hint' => 'Il calendario di corsi ed eventi per i soli soci.', 'default' => false ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[apsemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
