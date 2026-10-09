@@ -83,7 +83,7 @@ final class Edition {
 			self::$mismatch = (string) APSE_PRO_VERSION;
 			return;
 		}
-		$dir = rtrim( $dir, '/\' ) . '/';
+		$dir = rtrim( $dir, '/\\' ) . '/';
 		if ( ! in_array( $dir, self::dirs(), true ) ) {
 			self::$dirs[] = $dir;
 		}
