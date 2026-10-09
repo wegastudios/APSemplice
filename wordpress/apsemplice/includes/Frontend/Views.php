@@ -972,7 +972,7 @@ final class Views {
 			return '';
 		}
 		$svc   = Plugin::activities();
-		$title = array( 'course' => 'I corsi che tengo', 'event' => 'Gli eventi che tengo' )[ $only ] ?? 'Le attività che tengo';
+		$title = array( 'course' => 'I corsi che gestisci', 'event' => 'Gli eventi che gestisci' )[ $only ] ?? 'Le attività che gestisci';
 		$html  = '<section class="apsf-section"><h3>' . esc_html( $title ) . '</h3>';
 		$found = false;
 		foreach ( $svc->taught_activity_ids( (int) $p['id'] ) as $aid ) {
@@ -1018,7 +1018,7 @@ final class Views {
 			return ''; // chi gestisce eventi senza esserne referente (staff, gestori) trova qui sotto solo gli ingressi
 		}
 		if ( ! $found ) {
-			$html .= '<p class="apsf-muted">Non risulti referente di attività dell\'anno sociale in corso.</p>';
+			$html .= '<p class="apsf-muted">Non sei referente di nessuna attività dell\'anno sociale in corso.</p>';
 		}
 		return $html . '</section>';
 	}
