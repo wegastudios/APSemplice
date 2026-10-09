@@ -62,7 +62,7 @@
 	body.apsf-printing * { visibility: hidden !important; }
 	body.apsf-printing .apsf-memcard, body.apsf-printing .apsf-memcard * { visibility: visible !important; }
 	body.apsf-printing .apsf-memcard { position: fixed; left: 0; top: 0; width: 90mm; max-width: none; margin: 0; box-shadow: none; }
-	body.apsf-printing .apsf-memcard-img { width: 100mm; }
+	body.apsf-printing .apsf-memcard-img { width: var(--apsf-card-w, 8.56cm); max-width: none; }
 	body.apsf-printing .apsf-memcard .apsf-btn { display: none !important; }
 	body.apsf-printing .apsf-memcard-qr .apsf-small { display: none !important; } /* sulla tessera stampata resta solo il codice, senza le istruzioni */
 }
@@ -150,8 +150,10 @@
 .apsf-bank-form { margin-top: .5rem; }
 
 /* Tessera su immagine propria: i dati sono posizionati sopra l'immagine, in percentuale (si ridimensiona da sola, anche in stampa) */
-.apsf-memcard-img { padding: 0; border: 0; background: none; position: relative; max-width: 640px; container-type: inline-size; line-height: 1.15; }
-.apsf-card-bg { display: block; width: 100%; height: auto; border-radius: 10px; }
+.apsf-memcard-img { padding: 0; border: 0; background: none; position: relative; width: 100%; max-width: calc(var(--apsf-card-px, 640) * 1px); container-type: inline-size; line-height: 1.15; overflow: hidden; border-radius: 14px; box-sizing: border-box; }
+.apsf-memcard-img.apsf-card-plain { background: #fff; border: 2px solid var(--apsf-accent); border-top: 8px solid var(--apsf-accent-2); }
+.apsf-card-logo { height: auto; display: block; }
+.apsf-card-bg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .apsf-card-f { position: absolute; white-space: nowrap; font-weight: 600; }
 .apsf-card-qr { line-height: 0; background: #fff; padding: .4cqw; border-radius: 1cqw; }
 .apsf-card-qr svg { width: 100%; height: auto; background: #fff; border-radius: 0; max-width: none; }

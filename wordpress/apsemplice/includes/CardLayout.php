@@ -4,26 +4,42 @@ namespace ApSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Tessera su un'immagine propria: l'associazione carica il disegno della tessera e sceglie dove posizionarci sopra nome e cognome, numero
- * di tessera, data di scadenza e (se attivo) il QR. Posizioni in percentuale della larghezza e dell'altezza; dimensioni in percentuale della
- * larghezza della tessera, così la tessera si ridimensiona da sola ed è uguale a schermo e in stampa.
+ * Tessera personalizzata: l'associazione sceglie le dimensioni in centimetri (orizzontale, verticale, quadrata o misura propria), un'immagine
+ * di sfondo facoltativa e dove posizionare logo, nome e cognome, numero di tessera, data di scadenza e (se attivo) il QR. Posizioni in
+ * percentuale della larghezza e dell'altezza; dimensioni in percentuale della larghezza della tessera, così la tessera si ridimensiona da sola
+ * ed è uguale a schermo e in stampa (in stampa ha le dimensioni in centimetri scelte).
  */
 final class CardLayout {
 
 	const MODE_STANDARD = 'standard';
-	const MODE_IMAGE    = 'image';
+	const MODE_IMAGE    = 'image'; // tessera personalizzata (con o senza immagine di sfondo)
+
+	const MIN_CM = 3.0;
+	const MAX_CM = 30.0;
 
 	/** Campo => etichetta. */
 	const FIELDS = array(
+		'logo'   => 'Logo',
 		'name'   => 'Nome e cognome',
 		'number' => 'Numero di tessera',
 		'valid'  => 'Data di scadenza',
 		'qr'     => 'QR della tessera',
 	);
 
+	/** Forme proposte: chiave => [etichetta, larghezza cm, altezza cm]. La misura propria si scrive a mano. */
+	const SHAPES = array(
+		'landscape' => array( 'Orizzontale (come una carta di credito)', 8.56, 5.4 ),
+		'portrait'  => array( 'Verticale', 5.4, 8.56 ),
+		'square'    => array( 'Quadrata', 6.0, 6.0 ),
+	);
+
+	/** Campi che si dimensionano in percentuale della larghezza della tessera (immagini) invece che come grandezza delle lettere. */
+	const BOXED = array( 'logo', 'qr' );
+
 	/** Posizioni e dimensioni predefinite (x e y in %, size in % della larghezza, color). */
 	public static function defaults(): array {
 		return array(
+			'logo'   => array( 'show' => 1, 'x' => 6, 'y' => 8, 'size' => 24.0, 'color' => '#000000' ),
 			'name'   => array( 'show' => 1, 'x' => 6, 'y' => 58, 'size' => 5.0, 'color' => '#222222' ),
 			'number' => array( 'show' => 1, 'x' => 6, 'y' => 74, 'size' => 3.5, 'color' => '#222222' ),
 			'valid'  => array( 'show' => 1, 'x' => 6, 'y' => 84, 'size' => 3.5, 'color' => '#222222' ),
@@ -42,9 +58,12 @@ final class CardLayout {
 				'show'  => array_key_exists( 'show', $r ) ? ( empty( $r['show'] ) ? 0 : 1 ) : $d['show'],
 				'x'     => max( 0.0, min( 100.0, round( (float) ( $r['x'] ?? $d['x'] ), 1 ) ) ),
 				'y'     => max( 0.0, min( 100.0, round( (float) ( $r['y'] ?? $d['y'] ), 1 ) ) ),
-				'size'  => max( 1.0, min( 40.0, round( (float) ( $r['size'] ?? $d['size'] ), 1 ) ) ),
+				'size'  => max( 1.0, min( 100.0, round( (float) ( $r['size'] ?? $d['size'] ), 1 ) ) ),
 				'color' => '' !== $c ? $c : $d['color'],
 			);
+			if ( ! in_array( $k, self::BOXED, true ) ) {
+				$out[ $k ]['size'] = min( 40.0, $out[ $k ]['size'] ); // le lettere non vanno oltre il 40% della larghezza
+			}
 		}
 		return $out;
 	}
@@ -53,24 +72,58 @@ final class CardLayout {
 		return self::clean( Settings::get( 'card_layout' ) );
 	}
 
+	/** Una misura in centimetri dentro i limiti (con un decimale). */
+	public static function clean_cm( $v, float $fallback ): float {
+		$f = (float) str_replace( ',', '.', (string) $v );
+		if ( $f <= 0 ) {
+			$f = $fallback;
+		}
+		return max( self::MIN_CM, min( self::MAX_CM, round( $f, 2 ) ) );
+	}
+
+	/** @return array{w:float,h:float} larghezza e altezza della tessera in centimetri */
+	public static function dims(): array {
+		return array(
+			'w' => self::clean_cm( Settings::get( 'card_w_cm' ), self::SHAPES['landscape'][1] ),
+			'h' => self::clean_cm( Settings::get( 'card_h_cm' ), self::SHAPES['landscape'][2] ),
+		);
+	}
+
+	/** Quale forma è quella scelta ('custom' se non coincide con nessuna proposta). */
+	public static function shape(): string {
+		$d = self::dims();
+		foreach ( self::SHAPES as $key => $s ) {
+			if ( abs( $s[1] - $d['w'] ) < 0.05 && abs( $s[2] - $d['h'] ) < 0.05 ) {
+				return $key;
+			}
+		}
+		return 'custom';
+	}
+
 	public static function bg_url(): string {
 		$id = (int) Settings::get( 'card_bg_id' );
 		$u  = $id > 0 ? wp_get_attachment_image_url( $id, 'large' ) : false;
 		return $u ? (string) $u : '';
 	}
 
-	/** La tessera su immagine è scelta e l'immagine c'è? */
+	/** La tessera personalizzata è scelta? (l'immagine di sfondo è facoltativa: senza, la tessera è bianca) */
 	public static function active(): bool {
-		return self::MODE_IMAGE === (string) Settings::get( 'card_mode' ) && '' !== self::bg_url();
+		return self::MODE_IMAGE === (string) Settings::get( 'card_mode' );
 	}
 
-	/** Stile di un campo posizionato. */
+	/** Stile di un campo di testo posizionato. */
 	private static function style( array $f, bool $with_color = true ): string {
 		return 'left:' . (float) $f['x'] . '%;top:' . (float) $f['y'] . '%;font-size:' . (float) $f['size'] . 'cqw;' . ( $with_color ? 'color:' . $f['color'] . ';' : '' );
 	}
 
+	/** Stile del contenitore: proporzioni e larghezza in stampa dalle misure in centimetri. */
+	public static function box_style(): string {
+		$d = self::dims();
+		return 'aspect-ratio:' . $d['w'] . '/' . $d['h'] . ';--apsf-card-w:' . $d['w'] . 'cm;--apsf-card-px:' . (int) round( min( 640, $d['w'] * 74.8 ) ) . ';';
+	}
+
 	/**
-	 * La tessera su immagine con i dati sopra.
+	 * La tessera personalizzata con i dati sopra.
 	 *
 	 * @param string $name   nome e cognome
 	 * @param string $number numero di tessera (testo, già pronto)
@@ -79,7 +132,13 @@ final class CardLayout {
 	 */
 	public static function html( string $name, string $number, string $valid, string $qr_svg ): string {
 		$l    = self::layout();
-		$html = '<div class="apsf-memcard apsf-memcard-img"><img class="apsf-card-bg" src="' . esc_url( self::bg_url() ) . '" alt="">';
+		$bg   = self::bg_url();
+		$html = '<div class="apsf-memcard apsf-memcard-img' . ( '' === $bg ? ' apsf-card-plain' : '' ) . '" style="' . esc_attr( self::box_style() ) . '">'
+			. ( '' !== $bg ? '<img class="apsf-card-bg" src="' . esc_url( $bg ) . '" alt="">' : '' );
+		$logo = Frontend\Assets::logo_url();
+		if ( $l['logo']['show'] && '' !== $logo ) {
+			$html .= '<img class="apsf-card-f apsf-card-logo" src="' . esc_url( $logo ) . '" alt="" style="left:' . (float) $l['logo']['x'] . '%;top:' . (float) $l['logo']['y'] . '%;width:' . (float) $l['logo']['size'] . '%">';
+		}
 		if ( $l['name']['show'] && '' !== $name ) {
 			$html .= '<span class="apsf-card-f" style="' . esc_attr( self::style( $l['name'] ) ) . '">' . esc_html( $name ) . '</span>';
 		}
@@ -97,6 +156,6 @@ final class CardLayout {
 
 	/** Testi di esempio per l'anteprima e per il trascinamento nell'amministrazione. */
 	public static function samples(): array {
-		return array( 'name' => 'Nome Cognome', 'number' => 'N. 123', 'valid' => 'Valida fino al 31/12/' . ( (int) current_time( 'Y' ) + 1 ), 'qr' => 'QR' );
+		return array( 'logo' => 'Logo', 'name' => 'Nome Cognome', 'number' => 'N. 123', 'valid' => 'Valida fino al 31/12/' . ( (int) current_time( 'Y' ) + 1 ), 'qr' => 'QR' );
 	}
 }

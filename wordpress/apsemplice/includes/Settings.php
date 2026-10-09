@@ -61,7 +61,9 @@ final class Settings {
 			'secondary_color'         => '',    // colore secondario; vuoto = quello del sito (Elementor o tema)
 			'logo_id'                 => 0,     // logo dell'ente (allegato della libreria media); 0 = il logo del sito
 			'card_mode'               => 'standard', // tessera: 'standard' (bianca) oppure 'image' (su un'immagine propria)
-			'card_bg_id'              => 0,     // immagine della tessera (libreria media)
+			'card_bg_id'              => 0,     // immagine della tessera (libreria media), facoltativa
+			'card_w_cm'               => 8.56,  // misure della tessera personalizzata, in centimetri (orizzontale come una carta di credito)
+			'card_h_cm'               => 5.4,
 			'card_layout'             => array(), // posizione di nome, numero, scadenza e QR sull'immagine (vedi CardLayout)
 			'payment_hint'            => self::DEFAULT_PAYMENT_HINT, // testo mostrato ai soci che hanno importi da pagare
 			'gate_message'            => '',    // messaggio sui contenuti riservati; vuoto = automatico
@@ -206,6 +208,8 @@ final class Settings {
 		$clean['card_mode']               = CardLayout::MODE_IMAGE === (string) $clean['card_mode'] ? CardLayout::MODE_IMAGE : CardLayout::MODE_STANDARD;
 		$clean['card_bg_id']              = max( 0, (int) $clean['card_bg_id'] );
 		$clean['card_layout']             = CardLayout::clean( $clean['card_layout'] );
+		$clean['card_w_cm']               = CardLayout::clean_cm( $clean['card_w_cm'], 8.56 );
+		$clean['card_h_cm']               = CardLayout::clean_cm( $clean['card_h_cm'], 5.4 );
 		$clean['payment_hint']            = '' === trim( (string) $clean['payment_hint'] ) ? self::DEFAULT_PAYMENT_HINT : mb_substr( trim( (string) $clean['payment_hint'] ), 0, 300 );
 		$clean['gate_message']            = mb_substr( trim( (string) $clean['gate_message'] ), 0, 200 );
 		$clean['payment_provider']        = PaymentConfig::is_valid( (string) $clean['payment_provider'] ) ? (string) $clean['payment_provider'] : PaymentConfig::NONE;

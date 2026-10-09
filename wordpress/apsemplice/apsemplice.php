@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       APSemplice
  * Description:       Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale (APS).
- * Version:           1.1.3
+ * Version:           1.1.4
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Wega Studios
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'APSE_VERSION', '1.1.3' );
+define( 'APSE_VERSION', '1.1.4' );
 define( 'APSE_API', 1 ); // livello di compatibilità con APSemplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'APSE_FILE', __FILE__ );
 define( 'APSE_DIR', plugin_dir_path( __FILE__ ) );

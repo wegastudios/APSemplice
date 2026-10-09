@@ -5245,10 +5245,16 @@ apse_render( array( Admin\AppearancePage::class, 'render' ), 'Colore principale'
 // tessera su immagine propria
 $cl_att = wp_insert_attachment( array( 'post_title' => 'tessera-test', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), 'tessera-test.png' );
 update_attached_file( $cl_att, 'tessera-test.png' );
-apse_ok( null !== apse_throws( function () use ( $lk_save ) { $lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'image', 'card_bg_id' => '0' ) ); } ), 'tessera su immagine: senza immagine non si può attivare' );
+$lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'image', 'card_bg_id' => '0', 'card_w_cm' => '5,4', 'card_h_cm' => '8,56' ) );
+apse_ok( \ApSemplice\CardLayout::active() && '' === \ApSemplice\CardLayout::bg_url() && 5.4 === \ApSemplice\CardLayout::dims()['w'] && 8.56 === \ApSemplice\CardLayout::dims()['h'] && 'portrait' === \ApSemplice\CardLayout::shape(), 'tessera personalizzata: senza immagine di sfondo è quella generata dal sito, con le misure scelte (verticale)' );
+$cl_plain = \ApSemplice\CardLayout::html( 'Mario Rossi', 'N. 7', 'Valida', '' );
+apse_ok( false !== strpos( $cl_plain, 'apsf-card-plain' ) && false !== strpos( $cl_plain, 'aspect-ratio:5.4/8.56' ) && false !== strpos( $cl_plain, '--apsf-card-w:5.4cm' ) && false === strpos( $cl_plain, 'apsf-card-bg' ), 'tessera personalizzata: senza immagine ha lo sfondo del sito e le proporzioni in centimetri' );
+apse_render( array( Admin\AppearancePage::class, 'render' ), 'Misure' );
+$lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'standard', 'card_w_cm' => '500', 'card_h_cm' => '' ) );
+apse_ok( 30.0 === \ApSemplice\CardLayout::dims()['w'] && 5.4 === \ApSemplice\CardLayout::dims()['h'], 'tessera personalizzata: le misure restano nei limiti' );
 $lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'image', 'card_bg_id' => (string) $cl_att, 'layout' => array( 'name' => array( 'show' => '1', 'x' => '10', 'y' => '55.5', 'size' => '6', 'color' => '#112233' ), 'qr' => array( 'show' => '0', 'x' => '150', 'y' => '-5', 'size' => '999' ) ) ) );
 $cl_l = \ApSemplice\CardLayout::layout();
-apse_ok( 'image' === Settings::get( 'card_mode' ) && (int) Settings::get( 'card_bg_id' ) === $cl_att && 10.0 === $cl_l['name']['x'] && 55.5 === $cl_l['name']['y'] && '#112233' === $cl_l['name']['color'] && 0 === $cl_l['qr']['show'] && 100.0 === $cl_l['qr']['x'] && 0.0 === $cl_l['qr']['y'] && 40.0 === $cl_l['qr']['size'] && 1 === $cl_l['number']['show'], 'tessera su immagine: posizioni, colori e dimensioni si salvano e restano nei limiti' );
+apse_ok( 'image' === Settings::get( 'card_mode' ) && (int) Settings::get( 'card_bg_id' ) === $cl_att && 10.0 === $cl_l['name']['x'] && 55.5 === $cl_l['name']['y'] && '#112233' === $cl_l['name']['color'] && 0 === $cl_l['qr']['show'] && 100.0 === $cl_l['qr']['x'] && 0.0 === $cl_l['qr']['y'] && 100.0 === $cl_l['qr']['size'] && 1 === $cl_l['number']['show'], 'tessera su immagine: posizioni, colori e dimensioni si salvano e restano nei limiti' );
 $cl_img = \ApSemplice\CardLayout::html( 'Mario Rossi', 'N. 7', 'Valida fino al 31/12/2027', '<svg></svg>' );
 apse_ok( false !== strpos( $cl_img, 'apsf-memcard-img' ) && false !== strpos( $cl_img, 'Mario Rossi' ) && false !== strpos( $cl_img, 'N. 7' ) && false !== strpos( $cl_img, 'left:10%;top:55.5%;font-size:6cqw;color:#112233' ) && false === strpos( $cl_img, '<svg>' ), 'tessera su immagine: i dati sono posizionati sopra l\'immagine, il QR nascosto non compare' );
 apse_render( array( Admin\AppearancePage::class, 'render' ), 'Tessera su un\'immagine mia' );

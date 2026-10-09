@@ -13,24 +13,42 @@ defined( 'ABSPATH' ) || exit;
  */
 final class AppearancePage {
 
-	/** Scelta della tessera: standard (bianca) oppure su un'immagine propria con i dati trascinabili. */
+	/** Scelta della tessera: quella generata dal sito oppure personalizzata (misure, immagine di sfondo facoltativa, dati e logo trascinabili). */
 	private static function card_section( array $s ): void {
 		$bg     = CardLayout::bg_url();
 		$layout = CardLayout::layout();
 		$sample = CardLayout::samples();
+		$dims   = CardLayout::dims();
+		$shape  = CardLayout::shape();
 		$mode   = CardLayout::MODE_IMAGE === (string) $s['card_mode'] ? CardLayout::MODE_IMAGE : CardLayout::MODE_STANDARD;
+		$acc    = Assets::accent( '#2271b1' );
+		$sec    = Assets::secondary( $acc );
+		$logo   = Assets::logo_url();
 		echo '<h2>Tessera</h2><input type="hidden" name="card_present" value="1">';
 		echo '<p><label><input type="radio" name="card_mode" value="standard"' . checked( CardLayout::MODE_STANDARD === $mode, true, false ) . '> <strong>Tessera standard</strong>: bianca, con il logo e i testi nel colore principale.</label><br>'
-			. '<label><input type="radio" name="card_mode" value="image"' . checked( CardLayout::MODE_IMAGE === $mode, true, false ) . '> <strong>Tessera su un\'immagine mia</strong>: carichi il disegno della tessera e trascini sopra nome, numero, scadenza e QR.</label></p>';
-		echo '<div id="apse-card-image"><input type="hidden" name="card_bg_id" id="apse-card-bg-id" value="' . (int) $s['card_bg_id'] . '">'
-			. '<p><button type="button" class="button" id="apse-cardbg-pick">Scegli l\'immagine della tessera</button> <span class="description">Meglio un\'immagine orizzontale, con uno spazio libero dove vanno i dati (ad esempio 1011 × 638 pixel). Trascina le scritte dove vuoi, poi regola dimensione e colore.</span></p>';
-		echo '<div id="apse-cardedit" style="position:relative;max-width:640px;container-type:inline-size;border:1px solid #c3c4c7;background:#f0f0f1;aspect-ratio:1011/638">';
-		echo '<img id="apse-cardedit-img" src="' . esc_url( $bg ) . '" alt="" style="display:' . ( '' !== $bg ? 'block' : 'none' ) . ';width:100%;height:auto">';
-		echo '<div id="apse-cardedit-empty" class="description" style="position:absolute;top:8px;left:12px;' . ( '' !== $bg ? 'display:none' : '' ) . '">Nessuna immagine scelta.</div>';
+			. '<label><input type="radio" name="card_mode" value="image"' . checked( CardLayout::MODE_IMAGE === $mode, true, false ) . '> <strong>Tessera personalizzata</strong>: scegli le misure e trascina logo, nome, numero, scadenza e QR dove vuoi, sulla tessera generata dal sito oppure su un\'immagine tua.</label></p>';
+		echo '<div id="apse-card-image"><h3>Misure</h3><p>'
+			. '<select name="card_shape" id="apse-card-shape">';
+		foreach ( CardLayout::SHAPES as $key => $sh ) {
+			echo '<option value="' . esc_attr( $key ) . '" data-w="' . (float) $sh[1] . '" data-h="' . (float) $sh[2] . '"' . selected( $shape, $key, false ) . '>' . esc_html( $sh[0] ) . '</option>';
+		}
+		echo '<option value="custom"' . selected( $shape, 'custom', false ) . '>Misura propria</option></select> '
+			. 'larghezza <input type="number" step="0.01" min="' . (float) CardLayout::MIN_CM . '" max="' . (float) CardLayout::MAX_CM . '" name="card_w_cm" id="apse-card-w" value="' . (float) $dims['w'] . '" style="width:80px"> cm '
+			. 'altezza <input type="number" step="0.01" min="' . (float) CardLayout::MIN_CM . '" max="' . (float) CardLayout::MAX_CM . '" name="card_h_cm" id="apse-card-h" value="' . (float) $dims['h'] . '" style="width:80px"> cm '
+			. '<span class="description">In stampa la tessera ha queste misure.</span></p>';
+		echo '<h3>Sfondo e posizione dei dati</h3><input type="hidden" name="card_bg_id" id="apse-card-bg-id" value="' . (int) $s['card_bg_id'] . '">'
+			. '<p><button type="button" class="button" id="apse-cardbg-pick">Scegli un\'immagine di sfondo</button> <button type="button" class="button" id="apse-cardbg-clear"' . ( '' !== $bg ? '' : ' style="display:none"' ) . '>Usa la tessera generata dal sito</button> '
+			. '<span class="description">Facoltativa: senza immagine la tessera è quella generata dal sito (bianca, con i colori scelti sopra). Con un\'immagine, meglio con le stesse proporzioni delle misure e con uno spazio libero dove vanno i dati. Trascina le scritte dove vuoi, poi regola dimensione e colore.</span></p>';
+		$max = (int) round( min( 640, $dims['w'] * 74.8 ) );
+		echo '<div id="apse-cardedit" class="' . ( '' === $bg ? 'apse-plain' : '' ) . '" data-acc="' . esc_attr( $acc ) . '" data-sec="' . esc_attr( $sec ) . '" style="position:relative;width:100%;max-width:' . $max . 'px;container-type:inline-size;aspect-ratio:' . (float) $dims['w'] . '/' . (float) $dims['h'] . ';border:1px solid #c3c4c7;background:#fff;box-sizing:border-box;border-radius:14px;overflow:hidden;' . ( '' === $bg ? 'border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . ';' : '' ) . '">';
+		echo '<img id="apse-cardedit-img" src="' . esc_url( $bg ) . '" alt="" style="display:' . ( '' !== $bg ? 'block' : 'none' ) . ';position:absolute;inset:0;width:100%;height:100%;object-fit:cover">';
 		foreach ( CardLayout::FIELDS as $k => $label ) {
 			$f = $layout[ $k ];
 			if ( 'qr' === $k ) {
 				echo '<span class="apse-chip" data-f="qr" style="position:absolute;left:' . (float) $f['x'] . '%;top:' . (float) $f['y'] . '%;width:' . (float) $f['size'] . '%;aspect-ratio:1;background:#fff;border:1px dashed #333;cursor:move;display:flex;align-items:center;justify-content:center;font-size:3cqw;color:#333">QR</span>';
+			} elseif ( 'logo' === $k ) {
+				echo '<span class="apse-chip" data-f="logo" style="position:absolute;left:' . (float) $f['x'] . '%;top:' . (float) $f['y'] . '%;width:' . (float) $f['size'] . '%;cursor:move;outline:1px dashed rgba(0,0,0,.45);line-height:0">'
+					. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="width:100%;height:auto;display:block;pointer-events:none">' : '<span style="display:block;padding:2cqw;font-size:3cqw;line-height:1.2;color:#333">Logo</span>' ) . '</span>';
 			} else {
 				echo '<span class="apse-chip" data-f="' . esc_attr( $k ) . '" style="position:absolute;left:' . (float) $f['x'] . '%;top:' . (float) $f['y'] . '%;font-size:' . (float) $f['size'] . 'cqw;color:' . esc_attr( $f['color'] ) . ';cursor:move;white-space:nowrap;font-weight:600;outline:1px dashed rgba(0,0,0,.45)">' . esc_html( $sample[ $k ] ) . '</span>';
 			}
@@ -38,14 +56,16 @@ final class AppearancePage {
 		echo '</div>';
 		echo '<table class="widefat striped" style="max-width:640px;margin-top:10px"><thead><tr><th>Dato</th><th>Mostra</th><th>Dimensione</th><th>Colore</th><th>Posizione (%)</th></tr></thead><tbody>';
 		foreach ( CardLayout::FIELDS as $k => $label ) {
-			$f = $layout[ $k ];
+			$f     = $layout[ $k ];
+			$boxed = in_array( $k, CardLayout::BOXED, true );
 			echo '<tr><td>' . esc_html( $label ) . '</td>'
 				. '<td><input type="hidden" name="layout[' . esc_attr( $k ) . '][show]" value="0"><input type="checkbox" name="layout[' . esc_attr( $k ) . '][show]" value="1"' . checked( ! empty( $f['show'] ), true, false ) . '></td>'
-				. '<td><input type="number" step="0.5" min="1" max="40" name="layout[' . esc_attr( $k ) . '][size]" value="' . (float) $f['size'] . '" style="width:70px"></td>'
-				. '<td>' . ( 'qr' === $k ? '—' : '<input type="color" name="layout[' . esc_attr( $k ) . '][color]" value="' . esc_attr( $f['color'] ) . '">' ) . '</td>'
+				. '<td><input type="number" step="0.5" min="1" max="' . ( $boxed ? 100 : 40 ) . '" name="layout[' . esc_attr( $k ) . '][size]" value="' . (float) $f['size'] . '" style="width:70px">' . ( $boxed ? ' <span class="description">% larghezza</span>' : '' ) . '</td>'
+				. '<td>' . ( $boxed ? '—' : '<input type="color" name="layout[' . esc_attr( $k ) . '][color]" value="' . esc_attr( $f['color'] ) . '">' ) . '</td>'
 				. '<td>x <input type="number" step="0.5" min="0" max="100" name="layout[' . esc_attr( $k ) . '][x]" value="' . (float) $f['x'] . '" style="width:70px"> y <input type="number" step="0.5" min="0" max="100" name="layout[' . esc_attr( $k ) . '][y]" value="' . (float) $f['y'] . '" style="width:70px"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '</tbody></table><p class="description">Per il QR la dimensione è la larghezza in percentuale della tessera; per i testi è la grandezza delle lettere (percentuale della larghezza). Con l\'immagine scelta la tessera si stampa uguale a come la vedi qui.</p></div>';
+		echo '</tbody></table><p class="description">Per logo e QR la dimensione è la larghezza in percentuale della tessera; per i testi è la grandezza delle lettere (percentuale della larghezza). La tessera si stampa uguale a come la vedi qui.</p>'
+			. '<p><button type="submit" class="button button-primary" id="apse-card-save">Salva la tessera</button></p></div>';
 	}
 
 	public static function render(): void {
@@ -92,8 +112,8 @@ final class AppearancePage {
 			. '<div style="display:flex;gap:32px;margin-top:14px"><div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Tessera n.</div><div style="font-size:20px;font-weight:600">123</div></div>'
 			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">31/12/' . ( (int) current_time( 'Y' ) + 1 ) . '</div></div></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<script>(function(){var pick=document.getElementById("apse-logo-pick"),clr=document.getElementById("apse-logo-clear"),id=document.getElementById("apse-logo-id"),pv=document.getElementById("apse-logo-preview"),f;'
-			. 'if(!pick||!window.wp||!wp.media){return;}'
-			. 'pick.addEventListener("click",function(e){e.preventDefault();if(!f){f=wp.media({title:"Logo dell\'ente",button:{text:"Usa questo logo"},library:{type:"image"},multiple:false});'
+			. 'if(!pick){return;}'
+			. 'pick.addEventListener("click",function(e){e.preventDefault();if(!window.wp||!wp.media){window.alert("La libreria media non è disponibile: ricarica la pagina.");return;}if(!f){f=wp.media({title:"Logo dell\'ente",button:{text:"Usa questo logo"},library:{type:"image"},multiple:false});'
 			. 'f.on("select",function(){var a=f.state().get("selection").first().toJSON();id.value=a.id;var u=(a.sizes&&a.sizes.medium)?a.sizes.medium.url:a.url;pv.innerHTML="<img src=\""+u+"\" alt=\"\" style=\"max-height:56px;max-width:220px;display:block\">";clr.style.display="";});}f.open();});'
 			. 'clr.addEventListener("click",function(e){e.preventDefault();id.value="0";pv.innerHTML="<span class=\"description\">Sarà usato il logo del sito dopo il salvataggio</span>";clr.style.display="none";});})();</script>';
 		Ui::footer();
