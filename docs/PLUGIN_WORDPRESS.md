@@ -646,7 +646,7 @@ Non si libera mai il posto di chi ha già versato (anche in parte), di chi sta p
 APSemplice (gratuito) contiene il nucleo; **APSemplice Pro** è un plugin a parte che si aggiunge e richiede l'altro attivo. Le due edizioni condividono dati e classi: una funzione avanzata esiste se il suo file è presente (`Edition::has`).
 
 - **Nel gratuito**: libro soci con una sola quota (più l'opzione socio fondatore), tessera con QR, ospiti, eventi e corsi, prima nota con una cassa unica, privacy, verbali, copia di sicurezza, area soci minima, ruoli, configurazione guidata, donazioni con PayPal, WP All Import ed Elementor. Esportazioni: solo libro soci e prima nota.
-- **Nel Pro**: pagamenti online, conti multipli e fondi, contabilità e report, 5 per mille, assicurazioni e presenze, comunicazioni di massa, app e notifiche, Wallet, ricevute PDF, incasso sul posto, IVA, più livelli di socio, licenza.
+- **Nel Pro**: pagamenti online, conti multipli e fondi, contabilità e report, 5 per mille, assicurazioni e presenze, comunicazioni di massa, app e notifiche, Wallet, ricevute PDF, incasso sul posto, IVA, più livelli di socio, personalizzazione dei testi (testi, lingue, tipo di ente e termini), licenza.
 - **Licenza non in regola** (pagamento mancante o dominio non più associato): APSemplice Pro **torna alle funzioni di base**. Le funzioni avanzate spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata (con il collegamento per farlo); in cima alle pagine c'è un avviso, ma niente copre i dati. Le quote diverse dei soci non si applicano più (vale la quota sola), la scelta del tipo di socio sparisce e i soci con un livello proprio pagano la quota generale. Soci, volontari ed esportazioni di base non si bloccano mai. I pagamenti online già avviati si chiudono comunque (webhook, ritorno dal gateway, controllo periodico), così gli incassi in arrivo si registrano. Regolarizzata la licenza, tutto torna come prima: i dati non si toccano.
 - I pacchetti si costruiscono con `wordpress/build.sh`; l'elenco dei file avanzati è in `apsemplice/tests/pro-files.txt`.
 
@@ -664,3 +664,27 @@ Il colore d'accento (tessera, pulsanti) è quello scelto in Impostazioni → Asp
 **Aspetto** (Impostazioni → Soci e identità → Aspetto): logo (dalla libreria media), colore principale e colore secondario. Di default si prendono dal sito: logo di Elementor, poi del tema, poi l'icona del sito; colori «Primario» e «Secondario» del kit di Elementor, poi la tavolozza dei temi a blocchi. Ogni voce si può personalizzare con la spunta «Personalizza» e si torna al sito togliendola. Valgono per tessera (bianca, stampabile, con logo e testi nel colore principale e un filetto nel secondario), pulsanti e pagine di verifica/attivazione.
 
 **Tessera su immagine propria** (Aspetto → Tessera): al posto della tessera standard bianca si carica il disegno della tessera dalla libreria media e si trascinano sopra nome e cognome, numero di tessera, data di scadenza e QR; per ogni dato si scelgono se mostrarlo, la dimensione e il colore (anche con i numeri x e y in percentuale). Le misure sono in percentuale della larghezza, quindi la tessera si ridimensiona da sola ed è uguale a schermo e in stampa («Stampa la tessera»). Nello stesso modulo l'anteprima della tessera standard mostra numero e scadenza.
+
+## Personalizzazione dei testi (Pro)
+
+Testi modificabili, lingue aggiuntive e tipo di ente con i termini («associazione/comitato», «socio/tesserato») sono una funzione di **APSemplice Pro** (`TextsEngine.php`, `Terms.php`, `Languages.php`, `Admin/TextsPage.php`). Nel gratuito resta `Texts.php`, una facciata (`mail`, `plain`, `html`, `flush`) che lascia i testi originali. Con la licenza scaduta tornano i testi originali; le personalizzazioni restano salvate. L'elenco dei testi non comincia mai con la punteggiatura che separa un frammento da ciò che lo precede.
+
+## Informativa privacy (GDPR)
+
+`PrivacyNotice.php` compila da sola l'informativa (artt. 13 e 14 GDPR) con i dati dell'ente (Dati e fiscalità: denominazione, codice fiscale, sede, PEC; Impostazioni → Privacy: email per la privacy). Il **responsabile del trattamento** è il presidente (Consiglio direttivo); in mancanza, il socio con il ruolo di segreteria. Dichiara: comunicazione a terzi solo per le finalità connesse agli eventi cui si partecipa, nessuna cessione per scopi commerciali, trattamento con strumenti informatici e nessuna profilazione commerciale. Cita Stripe/PayPal, Wallet e notifiche solo se attivi. Si vede in anteprima nelle impostazioni, si scarica in PDF (con la firma di presa visione) e diventa una pagina del sito (shortcode `[apsemplice_privacy]`), collegata all'informativa richiesta a chi attiva l'accesso se non ne c'era una. È un modello: va fatto verificare dal consulente.
+
+## Area riservata con menu laterale
+
+`[apsemplice_area_soci]` mostra «Il mio spazio» (tessera, attività, pagamenti, ospiti, profilo, avvisi, calendario) e, a chi ha il ruolo, un piccolo menu laterale con **Segreteria**, **Gestione corsi** e **Gestione eventi** (`?apsf_vista=`). Con l'attributo `sezioni` si torna all'elenco piatto. La voce «Area riservata» si aggiunge al menu di navigazione del sito quando si crea la pagina «Area soci».
+
+## Tessera personalizzata
+
+Aspetto → Tessera: misure in centimetri (orizzontale 8,56 × 5,4, verticale, quadrata o propria), immagine di sfondo facoltativa (senza, è la tessera generata dal sito con i colori scelti) e logo, nome, numero, scadenza e QR da trascinare. In stampa la tessera ha le misure scelte.
+
+## Ricerca dei luoghi con Google
+
+Strumenti → Integrazioni: con la chiave API di Google Maps dell'ente (spenta di default) i campi «Luogo» di corsi ed eventi suggeriscono i luoghi. Il collegamento con Google parte solo nell'amministrazione.
+
+## Versioni
+
+APSemplice e APSemplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`APSE_API` / `APSE_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.

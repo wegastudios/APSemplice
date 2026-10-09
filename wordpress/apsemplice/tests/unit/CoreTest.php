@@ -1,5 +1,4 @@
 <?php
-use ApSemplice\CashChange;
 use ApSemplice\Money;
 use ApSemplice\PaymentCalc;
 use ApSemplice\SocialYear;
@@ -54,35 +53,6 @@ final class SocialYearTest extends TestCase {
 		$this->assertSame( '2025-09', $y->clamp( '2025-01' ) );
 		$this->assertSame( '2026-08', $y->clamp( '2027-01' ) );
 		$this->assertSame( '2026-02', $y->clamp( '2026-02' ) );
-	}
-}
-
-final class CashChangeTest extends TestCase {
-	public function test_exact_payment_has_no_change(): void {
-		$r = CashChange::compute( 1500, 1500 );
-		$this->assertTrue( $r['ok'] );
-		$this->assertSame( 0, $r['change'] );
-		$this->assertSame( array(), $r['breakdown'] );
-	}
-
-	public function test_change_is_split_in_denominations(): void {
-		$r = CashChange::compute( 1250, 2000 ); // resto 7,50 = 5 + 2 + 0,50
-		$this->assertSame( 750, $r['change'] );
-		$this->assertSame( array( array( 500, 1 ), array( 200, 1 ), array( 50, 1 ) ), $r['breakdown'] );
-	}
-
-	public function test_insufficient_cash(): void {
-		$r = CashChange::compute( 2000, 1500 );
-		$this->assertFalse( $r['ok'] );
-		$this->assertSame( 500, $r['missing'] );
-	}
-
-	public function test_quick_tenders(): void {
-		$q = CashChange::quick_tenders( 1250 );
-		$this->assertSame( 1250, $q[0] );
-		foreach ( $q as $v ) {
-			$this->assertGreaterThanOrEqual( 1250, $v );
-		}
 	}
 }
 

@@ -91,6 +91,7 @@ final class Edition {
 		$dir = rtrim( $dir, '/\\' ) . '/';
 		if ( ! in_array( $dir, self::dirs(), true ) ) {
 			self::$dirs[] = $dir;
+			self::$found  = array();
 		}
 	}
 
@@ -106,8 +107,17 @@ final class Edition {
 
 	/** Il file della funzione c'è, a prescindere dalla licenza? */
 	public static function installed( string $feature ): bool {
-		return isset( self::FEATURES[ $feature ] ) && null !== self::locate( self::FEATURES[ $feature ] );
+		if ( ! isset( self::FEATURES[ $feature ] ) ) {
+			return false;
+		}
+		if ( ! isset( self::$found[ $feature ] ) ) { // il disco si interroga una volta sola per funzione e per richiesta
+			self::$found[ $feature ] = null !== self::locate( self::FEATURES[ $feature ] );
+		}
+		return self::$found[ $feature ];
 	}
+
+	/** @var array<string,bool> funzioni già cercate sul disco (si svuota quando cambiano le cartelle) */
+	private static $found = array();
 
 	/** Con APSemplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
 	public static function degraded(): bool {
