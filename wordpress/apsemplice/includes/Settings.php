@@ -118,6 +118,8 @@ final class Settings {
 			'donate_paypal'           => '',        // email PayPal o ID commerciante che riceve le donazioni
 			'donate_amounts'          => '5;10;20;50', // importi proposti (euro), separati da punto e virgola
 			'donate_purpose'          => '',        // causale mostrata a chi dona (vuoto = nome dell'ente)
+			'places_enabled'          => 0,         // ricerca dei luoghi con Google nei campi «Luogo»: spenta di default
+			'places_key'              => '',        // chiave API di Google Maps (per il browser, limitata ai siti dell'ente)
 			'bank_title'              => '',        // titolo del riquadro (vuoto = «Pagamento con bonifico»)
 			'bank_note'               => '',        // istruzioni sotto le coordinate (vuoto = testo predefinito)
 			'bank_in_reminders'       => 1,         // ... aggiunte anche ai promemoria di pagamento
@@ -247,6 +249,8 @@ final class Settings {
 		$clean['donate_paypal']           = Donations::clean_account( (string) $clean['donate_paypal'] );
 		$clean['donate_amounts']          = Donations::clean_amounts( (string) $clean['donate_amounts'] );
 		$clean['donate_purpose']          = mb_substr( trim( (string) $clean['donate_purpose'] ), 0, 120 );
+		$clean['places_enabled']          = empty( $clean['places_enabled'] ) ? 0 : 1;
+		$clean['places_key']              = Places::clean_key( (string) $clean['places_key'] );
 		$clean['bank_in_reminders']       = empty( $clean['bank_in_reminders'] ) ? 0 : 1;
 		$clean['bank_title']              = mb_substr( trim( (string) $clean['bank_title'] ), 0, 80 );
 		$clean['bank_note']               = mb_substr( trim( (string) $clean['bank_note'] ), 0, 400 );

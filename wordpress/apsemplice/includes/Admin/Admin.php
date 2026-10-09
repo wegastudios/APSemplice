@@ -316,5 +316,9 @@ final class Admin {
 		}
 		wp_enqueue_style( 'apse-admin', APSE_URL . 'assets/admin.css', array(), Plugin::asset_version( 'admin.css' ) );
 		wp_enqueue_script( 'apse-admin', APSE_URL . 'assets/admin.js', array(), Plugin::asset_version( 'admin.js' ), true );
+		$places = \ApSemplice\Places::script_url(); // suggerimenti di Google per i campi «Luogo», solo se l'ente li ha accesi
+		if ( '' !== $places ) {
+			wp_enqueue_script( 'apse-places', $places, array( 'apse-admin' ), null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- script esterno di Google, la versione la gestisce Google
+		}
 	}
 }

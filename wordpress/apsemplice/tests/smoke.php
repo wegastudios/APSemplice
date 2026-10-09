@@ -653,6 +653,25 @@ $nm_items = wp_get_nav_menu_items( $nm_id );
 apse_ok( 1 === count( $nm_items ) && 'Area riservata' === $nm_items[0]->title && (int) $nm_items[0]->object_id === $nm_page, 'menu del sito: una sola voce «Area riservata», verso la pagina dell\'area' );
 wp_delete_nav_menu( $nm_id );
 set_theme_mod( 'nav_menu_locations', array() );
+apse_ok( ! \ApSemplice\Places::enabled() && '' === \ApSemplice\Places::script_url(), 'ricerca dei luoghi: spenta di default' );
+try {
+	\ApSemplice\Admin\TechActions::save_places( array( 'places_enabled' => '1', 'places_key' => '' ) );
+	$pl_err = '';
+} catch ( \InvalidArgumentException $e ) {
+	$pl_err = $e->getMessage();
+}
+apse_ok( '' !== $pl_err && ! \ApSemplice\Places::enabled(), 'ricerca dei luoghi: non si accende senza chiave' );
+try {
+	\ApSemplice\Admin\TechActions::save_places( array( 'places_enabled' => '1', 'places_key' => 'non valida <script>' ) );
+	$pl_err2 = '';
+} catch ( \InvalidArgumentException $e ) {
+	$pl_err2 = $e->getMessage();
+}
+apse_ok( '' !== $pl_err2, 'ricerca dei luoghi: una chiave con caratteri strani si rifiuta' );
+\ApSemplice\Admin\TechActions::save_places( array( 'places_enabled' => '1', 'places_key' => 'AIzaSyA-1234567890_abcdefghijklmnopq' ) );
+apse_ok( \ApSemplice\Places::enabled() && false !== strpos( \ApSemplice\Places::script_url(), 'maps.googleapis.com/maps/api/js' ) && false !== strpos( \ApSemplice\Places::script_url(), 'callback=apsePlacesInit' ), 'ricerca dei luoghi: con la chiave si accende e lo script ha l\'indirizzo di Google' );
+\ApSemplice\Admin\TechActions::save_places( array() );
+apse_ok( ! \ApSemplice\Places::enabled(), 'ricerca dei luoghi: si spegne' );
 $wz_by = \ApSemplice\Pages::by_area();
 apse_ok( array( 'soci', 'segreteria', 'tesoriere', 'eventi', 'pubblico' ) === array_keys( $wz_by ) && isset( $wz_by['eventi']['ingressi'], $wz_by['soci']['area'], $wz_by['pubblico']['bonifico'] ), 'pagine: raggruppate per area (soci, segreteria, tesoriere, eventi, pubblico)' );
 $sg_adm  = $as( 1, '[apsemplice_segreteria]' );

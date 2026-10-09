@@ -17,6 +17,7 @@ final class TechActions {
 		'apse_save_woo'   => 'save_woo',
 		'apse_save_roles' => 'save_roles',
 		'apse_save_acct'  => 'save_acct',
+		'apse_save_places' => 'save_places',
 		'apse_save_app'   => 'save_app',
 		'apse_push_test'  => 'push_test',
 		'apse_push_reset' => 'push_reset',
@@ -81,6 +82,19 @@ final class TechActions {
 		}
 		Settings::update( array( 'payment_provider' => $provider, 'woo_default_product' => $default ) );
 		return array( Ui::url( 'apse-tech' ), $on ? 'WooCommerce attivo: i pagamenti passano dal negozio.' : 'Impostazioni di WooCommerce salvate.' );
+	}
+
+	public static function save_places( array $p ): array {
+		$key = \ApSemplice\Places::clean_key( (string) ( $p['places_key'] ?? '' ) );
+		$on  = ! empty( $p['places_enabled'] );
+		if ( '' !== trim( (string) ( $p['places_key'] ?? '' ) ) && '' === $key ) {
+			throw new \InvalidArgumentException( 'La chiave non sembra valida: copiala per intero dalla console di Google Cloud (lettere, cifre, trattini).' );
+		}
+		if ( $on && '' === $key ) {
+			throw new \InvalidArgumentException( 'Per accendere la ricerca dei luoghi inserisci la chiave API di Google Maps.' );
+		}
+		Settings::update( array( 'places_enabled' => $on ? 1 : 0, 'places_key' => $key ) );
+		return array( Ui::url( 'apse-tech' ), $on ? 'Ricerca dei luoghi attiva: nei campi «Luogo» compaiono i suggerimenti di Google.' : 'Impostazioni salvate: la ricerca dei luoghi è spenta.' );
 	}
 
 	public static function save_roles( array $p ): array {
