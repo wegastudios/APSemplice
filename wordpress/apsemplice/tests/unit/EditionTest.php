@@ -27,9 +27,9 @@ final class EditionTest extends TestCase {
 		rmdir( $dir );
 	}
 
-	public function test_pro_is_loaded_only_with_the_same_version(): void {
-		$this->assertTrue( Edition::compatible( '1.1.8', '1.1.8' ) );
-		$this->assertFalse( Edition::compatible( '1.1.5', '1.1.8' ) );
-		$this->assertFalse( Edition::compatible( '1.1.9', '1.1.8' ) );
+	public function test_free_and_pro_versions_are_independent_only_the_compatibility_level_counts(): void {
+		$this->assertTrue( Edition::compatible( 1, 1 ) );
+		$this->assertFalse( Edition::compatible( 2, 1 ) );
+		$this->assertFalse( Edition::compatible( 1, 2 ) );
 	}
 }

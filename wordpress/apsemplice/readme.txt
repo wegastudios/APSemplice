@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.14
+Stable tag: 1.1.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,6 +53,12 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.16 =
+* Administrative pages (settings, privacy, backup, reset and more) are now listed in the APSemplice menu, for administrators only.
+
+= 1.1.15 =
+* APSemplice and APSemplice Pro now update independently: they only need the same compatibility level, so no more "versions differ" notice.
 
 = 1.1.14 =
 * The APSemplice menu stays open on every plugin page; "Rubrica" is now "Rubrica soci" and "Soldi" is now "Cassa".

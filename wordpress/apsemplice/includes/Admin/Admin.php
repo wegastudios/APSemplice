@@ -9,6 +9,7 @@ final class Admin {
 
 	public static function init(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+		add_action( 'admin_head', array( __CLASS__, 'menu_style' ) );
 		add_filter( 'parent_file', array( __CLASS__, 'menu_parent' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		Actions::register();
@@ -128,16 +129,74 @@ final class Admin {
 			array( 'apse-import', 'Importa soci', array( ImportPage::class, 'render' ) ),
 			array( 'apse-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
 		);
+		// Le pagine amministrative (solo per gli amministratori) compaiono anche nel menu, dopo le voci principali
+		$in_menu = array();
+		if ( current_user_can( Plugin::CAP ) ) {
+			$off = self::disabled_pages();
+			foreach ( $hidden as $i => $h ) {
+				if ( isset( self::MENU_ADMIN[ $h[0] ] ) && ! in_array( $h[0], $off, true ) ) {
+					$h[1]      = self::MENU_ADMIN[ $h[0] ];
+					$in_menu[] = $h;
+					unset( $hidden[ $i ] );
+				}
+			}
+			$order = array_keys( self::MENU_ADMIN );
+			usort(
+				$in_menu,
+				function ( $a, $b ) use ( $order ) {
+					return array_search( $a[0], $order, true ) <=> array_search( $b[0], $order, true );
+				}
+			);
+		}
+		foreach ( $in_menu as $s ) {
+			add_submenu_page( 'apse', $s[1], $s[1], Plugin::CAP, $s[0], self::guard( $s[0], $s[2] ) );
+		}
 		foreach ( $hidden as $s ) {
 			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
 		}
+		// Un filetto sopra la prima voce amministrativa, per separarle da quelle di lavoro di tutti i giorni
+		global $submenu;
+		if ( isset( $submenu['apse'] ) && is_array( $submenu['apse'] ) && $in_menu ) {
+			foreach ( $submenu['apse'] as $k => $item ) {
+				if ( $item[2] === $in_menu[0][0] ) {
+					$submenu['apse'][ $k ][4] = 'apse-menu-sep'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride
+				}
+			}
+		}
+	}
+
+	/** Pagine amministrative che compaiono nel menu: indirizzo => voce, nell'ordine in cui si mostrano. */
+	const MENU_ADMIN = array(
+		'apse-entity'   => 'Dati e fiscalità',
+		'apse-look'     => 'Aspetto',
+		'apse-card'     => 'Tessera e QR',
+		'apse-payments' => 'Pagamenti online',
+		'apse-bank'     => 'Bonifico',
+		'apse-donate'   => 'Donazioni',
+		'apse-comms'    => 'Privacy e regolamento',
+		'apse-roles'    => 'Ruoli e accessi',
+		'apse-texts'    => 'Testi e lingua',
+		'apse-app'      => 'App e notifiche',
+		'apse-acct'     => 'Opzioni contabili',
+		'apse-tech'     => 'Integrazioni',
+		'apse-backup'   => 'Copia di sicurezza',
+		'apse-audit'    => 'Registro azioni',
+		'apse-limits'   => 'Limiti e soglie',
+		'apse-wizard'   => 'Configurazione guidata',
+		'apse-guide'    => 'Guida iniziale',
+		'apse-reset'    => 'Azzeramento dati',
+	);
+
+	/** Filetto di separazione nel menu (le pagine del plugin sono sempre sotto «APSemplice»). */
+	public static function menu_style(): void {
+		echo '<style>#adminmenu .wp-submenu li.apse-menu-sep{border-top:1px solid rgba(240,246,252,.25);margin-top:6px;padding-top:6px}</style>';
 	}
 
 	/** Tiene evidenziata la voce giusta del menu quando si è in una scheda nascosta. */
 	public static function menu_parent( $parent_file ) {
 		global $plugin_page, $submenu_file;
 		if ( is_string( $plugin_page ) && 0 === strpos( $plugin_page, 'apse' ) ) {
-			$submenu_file = self::menu_item_of( $plugin_page ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride
+			$submenu_file = isset( self::MENU_ADMIN[ $plugin_page ] ) && current_user_can( Plugin::CAP ) ? $plugin_page : self::menu_item_of( $plugin_page ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride
 			return 'apse';
 		}
 		return $parent_file;

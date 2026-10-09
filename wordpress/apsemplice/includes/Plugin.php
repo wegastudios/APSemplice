@@ -26,12 +26,12 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
-		if ( '' !== Edition::mismatch() ) { // APSemplice Pro di un'altra versione: non si carica, e si dice cosa fare
+		if ( '' !== Edition::mismatch() ) { // APSemplice Pro troppo diverso da questo APSemplice: non si carica, e si dice cosa fare
 			add_action(
 				'admin_notices',
 				function () {
 					if ( current_user_can( 'activate_plugins' ) ) {
-						echo '<div class="notice notice-error"><p><strong>APSemplice Pro</strong> (versione ' . esc_html( Edition::mismatch() ) . ') non corrisponde ad APSemplice (versione ' . esc_html( APSE_VERSION ) . '): le funzioni avanzate sono sospese. Aggiorna APSemplice Pro con il pacchetto della stessa versione; il resto funziona e i dati sono al sicuro.</p></div>';
+						echo '<div class="notice notice-error"><p><strong>APSemplice Pro</strong> non è compatibile con questa versione di APSemplice: le funzioni avanzate sono sospese. Aggiorna APSemplice Pro e APSemplice all\'ultima versione; il resto funziona e i dati sono al sicuro.</p></div>';
 					}
 				}
 			);
