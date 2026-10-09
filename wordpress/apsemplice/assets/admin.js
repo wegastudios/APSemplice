@@ -685,13 +685,13 @@
 		box.style.maxWidth = Math.round(Math.min(640, w * 74.8)) + 'px';
 	}
 	if (wIn && hIn) {
-		wIn.addEventListener('input', function () { if (shape) { shape.value = 'custom'; } applySize(); });
-		hIn.addEventListener('input', function () { if (shape) { shape.value = 'custom'; } applySize(); });
+		wIn.addEventListener('input', function () { if (shape) { shape.value = 'custom'; } applySize(); modeImage(); });
+		hIn.addEventListener('input', function () { if (shape) { shape.value = 'custom'; } applySize(); modeImage(); });
 	}
 	if (shape) {
 		shape.addEventListener('change', function () {
 			var o = shape.options[shape.selectedIndex];
-			if (o && o.getAttribute('data-w')) { wIn.value = o.getAttribute('data-w'); hIn.value = o.getAttribute('data-h'); applySize(); }
+			if (o && o.getAttribute('data-w')) { wIn.value = o.getAttribute('data-w'); hIn.value = o.getAttribute('data-h'); applySize(); modeImage(); }
 		});
 	}
 	/* Sfondo: con l'immagine la tessera è l'immagine; senza è quella generata dal sito (bianca, con i colori scelti) */
@@ -709,7 +709,7 @@
 		var f = chip.getAttribute('data-f');
 		['x', 'y', 'size', 'color', 'show'].forEach(function (n) {
 			var el = field(f, n);
-			if (el) { el.addEventListener('input', function () { applyChip(chip); }); el.addEventListener('change', function () { applyChip(chip); }); }
+			if (el) { el.addEventListener('input', function () { applyChip(chip); modeImage(); }); el.addEventListener('change', function () { applyChip(chip); modeImage(); }); }
 		});
 		chip.addEventListener('pointerdown', function (e) {
 			e.preventDefault();
@@ -721,7 +721,7 @@
 				var nx = clamp(x0 + (ev.clientX - startX) / r.width * 100, 0, 100);
 				var ny = clamp(y0 + (ev.clientY - startY) / r.height * 100, 0, 100);
 				field(f, 'x').value = nx.toFixed(1);
-				field(f, 'y').value = ny.toFixed(1);
+				field(f, 'y').value = ny.toFixed(1); modeImage();
 				applyChip(chip);
 			}
 			function up() { chip.removeEventListener('pointermove', move); chip.removeEventListener('pointerup', up); }

@@ -60,9 +60,9 @@ final class AppearancePage {
 			$boxed = in_array( $k, CardLayout::BOXED, true );
 			echo '<tr><td>' . esc_html( $label ) . '</td>'
 				. '<td><input type="hidden" name="layout[' . esc_attr( $k ) . '][show]" value="0"><input type="checkbox" name="layout[' . esc_attr( $k ) . '][show]" value="1"' . checked( ! empty( $f['show'] ), true, false ) . '></td>'
-				. '<td><input type="number" step="0.5" min="1" max="' . ( $boxed ? 100 : 40 ) . '" name="layout[' . esc_attr( $k ) . '][size]" value="' . (float) $f['size'] . '" style="width:70px">' . ( $boxed ? ' <span class="description">% larghezza</span>' : '' ) . '</td>'
+				. '<td><input type="number" step="any" min="1" max="' . ( $boxed ? 100 : 40 ) . '" name="layout[' . esc_attr( $k ) . '][size]" value="' . (float) $f['size'] . '" style="width:70px">' . ( $boxed ? ' <span class="description">% larghezza</span>' : '' ) . '</td>'
 				. '<td>' . ( $boxed ? '—' : '<input type="color" name="layout[' . esc_attr( $k ) . '][color]" value="' . esc_attr( $f['color'] ) . '">' ) . '</td>'
-				. '<td>x <input type="number" step="0.5" min="0" max="100" name="layout[' . esc_attr( $k ) . '][x]" value="' . (float) $f['x'] . '" style="width:70px"> y <input type="number" step="0.5" min="0" max="100" name="layout[' . esc_attr( $k ) . '][y]" value="' . (float) $f['y'] . '" style="width:70px"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td>x <input type="number" step="any" min="0" max="100" name="layout[' . esc_attr( $k ) . '][x]" value="' . (float) $f['x'] . '" style="width:70px"> y <input type="number" step="any" min="0" max="100" name="layout[' . esc_attr( $k ) . '][y]" value="' . (float) $f['y'] . '" style="width:70px"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</tbody></table><p class="description">Per logo e QR la dimensione è la larghezza in percentuale della tessera; per i testi è la grandezza delle lettere (percentuale della larghezza). La tessera si stampa uguale a come la vedi qui.</p>'
 			. '<p><button type="submit" class="button button-primary" id="apse-card-save">Salva la tessera</button></p></div>';
