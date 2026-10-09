@@ -649,3 +649,14 @@ APSemplice (gratuito) contiene il nucleo; **APSemplice Pro** è un plugin a part
 - **Nel Pro**: pagamenti online, conti multipli e fondi, contabilità e report, 5 per mille, assicurazioni e presenze, comunicazioni di massa, app e notifiche, Wallet, ricevute PDF, incasso sul posto, IVA, più livelli di socio, licenza.
 - **Licenza non in regola** (pagamento mancante o dominio non più associato): APSemplice Pro **torna alle funzioni di base**. Le funzioni avanzate spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata (con il collegamento per farlo); in cima alle pagine c'è un avviso, ma niente copre i dati. Le quote diverse dei soci non si applicano più (vale la quota sola), la scelta del tipo di socio sparisce e i soci con un livello proprio pagano la quota generale. Soci, volontari ed esportazioni di base non si bloccano mai. I pagamenti online già avviati si chiudono comunque (webhook, ritorno dal gateway, controllo periodico), così gli incassi in arrivo si registrano. Regolarizzata la licenza, tutto torna come prima: i dati non si toccano.
 - I pacchetti si costruiscono con `wordpress/build.sh`; l'elenco dei file avanzati è in `apsemplice/tests/pro-files.txt`.
+
+## Livelli di licenza del Pro e pagina «Scopri il Pro»
+
+- **Pro (contabile)**: pagamenti online, conti e fondi, report di gestione, quote diverse, comunicazioni, app e Wallet, incasso sul posto, assicurazioni e presenze.
+- **Pro Fiscale**: in più IVA, ricevute e attestazioni, 5 per mille, anni solari e rendiconto per il commercialista (`Edition::FISCAL`).
+- Il livello lo comunica il servizio delle licenze (`License::set_state( stato, dal, indirizzo, livello )`). Finché la verifica non è attiva (standby) il Pro vale come **completo**, fiscale compreso. Con la licenza scaduta si torna alle funzioni di base, con livello contabile spariscono solo le funzioni fiscali.
+- Nel gratuito (e col livello contabile) la voce di menu **Scopri il Pro** apre una pagina solo informativa con le funzioni dei due livelli (nessuna funzione finta); in Soldi c'è un'unica riga discreta. L'indirizzo del sito è modificabile con il filtro `apse_pro_url`.
+
+## Colori
+
+Il colore d'accento (tessera, pulsanti) è quello scelto in Impostazioni → Aspetto; se non è scelto si prende dal sito: il colore «Primario» di Elementor (kit attivo), poi il «primary» dei temi a blocchi, poi un blu neutro.
