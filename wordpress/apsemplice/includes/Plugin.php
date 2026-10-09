@@ -26,6 +26,16 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // apsemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
+		if ( '' !== Edition::mismatch() ) { // APSemplice Pro di un'altra versione: non si carica, e si dice cosa fare
+			add_action(
+				'admin_notices',
+				function () {
+					if ( current_user_can( 'activate_plugins' ) ) {
+						echo '<div class="notice notice-error"><p><strong>APSemplice Pro</strong> (versione ' . esc_html( Edition::mismatch() ) . ') non corrisponde ad APSemplice (versione ' . esc_html( APSE_VERSION ) . '): le funzioni avanzate sono sospese. Aggiorna APSemplice Pro con il pacchetto della stessa versione; il resto funziona e i dati sono al sicuro.</p></div>';
+					}
+				}
+			);
+		}
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.
