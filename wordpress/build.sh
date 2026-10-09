@@ -4,8 +4,10 @@
 #   dist/apsemplice-pro.zip   → cartella apsemplice-pro/  (quei file, che si aggiungono ad APSemplice quando è attivo)
 # Uso: bash wordpress/build.sh [cartella-di-uscita]
 set -euo pipefail
+root="$PWD"
 cd "$(dirname "$0")"
-out="${1:-dist}"
+out="${1:-wordpress/dist}"
+case "$out" in /*) ;; *) out="$root/$out" ;; esac
 list="apsemplice/tests/pro-files.txt"
 rm -rf "$out"
 mkdir -p "$out/free" "$out/pro"
