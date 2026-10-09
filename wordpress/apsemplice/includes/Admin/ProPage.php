@@ -48,7 +48,7 @@ final class ProPage {
 
 	public static function render(): void {
 		Ui::header( 'APSemplice Pro' );
-		echo '<p>APSemplice resta gratuito per la gestione di base di un\'associazione. <strong>APSemplice Pro</strong> è un plugin a parte che si aggiunge a questo e aggiunge le funzioni qui sotto, in due livelli di licenza. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
+		echo '<p>APSemplice resta gratuito per la gestione di base di un\'associazione. <strong>APSemplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, in due livelli di licenza. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
 		foreach ( self::catalog() as $level => $rows ) {
 			echo '<div class="apse-card"><h2>' . esc_html( $level ) . '</h2><table class="widefat striped"><tbody>';
 			foreach ( $rows as $r ) {

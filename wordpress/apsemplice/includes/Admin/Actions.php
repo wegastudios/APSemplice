@@ -756,7 +756,7 @@ final class Actions {
 	private static function send_notice( array $p ): array {
 		$aid = (int) ( $p['activity_id'] ?? 0 );
 		$r   = \ApSemplice\Notices::send( $aid, ! empty( $p['session_id'] ) ? (int) $p['session_id'] : null, (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) );
-		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ' persone (' . $r['emailed'] . ' email partite).' );
+		return array( Ui::url( 'apse-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ' persone (' . $r['emailed'] . ' email inviate).' );
 	}
 
 	private static function access_done( array $p ): array {
@@ -811,7 +811,7 @@ final class Actions {
 		list( $g, $ref ) = MessagesPage::parse_audience( (string) ( $p['audience'] ?? '' ) );
 		$id = \ApSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref );
 		$b  = \ApSemplice\Broadcasts::get( $id );
-		return array( Ui::url( 'apse-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . (int) $b['sent'] . ' email partite su ' . (int) $b['total'] . ( (int) $b['total'] > (int) $b['sent'] ? ', le altre continuano da sole in background.' : '.' ) );
+		return array( Ui::url( 'apse-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . (int) $b['sent'] . ' email inviate su ' . (int) $b['total'] . ( (int) $b['total'] > (int) $b['sent'] ? ', le altre continuano da sole in background.' : '.' ) );
 	}
 
 	private static function broadcast_test( array $p ): array {

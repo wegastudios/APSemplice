@@ -122,7 +122,7 @@
 					}
 				}).catch(function () {});
 			}, 300);
-		}).catch(function () { msg.textContent = 'Non riesco ad aprire la fotocamera: controlla il permesso del browser.'; });
+		}).catch(function () { msg.textContent = 'Impossibile aprire la fotocamera: controlla il permesso del browser.'; });
 	});
 })();
 

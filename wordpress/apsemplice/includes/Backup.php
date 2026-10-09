@@ -31,7 +31,7 @@ final class Backup {
 		Attachments::prepare_dir();
 		$dir = self::dir();
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
-			throw new \RuntimeException( 'Non riesco a creare la cartella delle copie di sicurezza: controlla i permessi di wp-content/uploads.' );
+			throw new \RuntimeException( 'Impossibile creare la cartella delle copie di sicurezza: controlla i permessi di wp-content/uploads.' );
 		}
 		return $dir;
 	}
@@ -115,7 +115,7 @@ final class Backup {
 		$path  = $to ?: wp_tempnam( 'apse-copia' );
 		$zip   = new \ZipArchive();
 		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
-			throw new \RuntimeException( 'Non riesco a creare il file della copia.' );
+			throw new \RuntimeException( 'Impossibile creare il file della copia.' );
 		}
 		$tmp    = array();
 		$counts = array();
@@ -262,7 +262,7 @@ final class Backup {
 				$db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
 				$h = $zip->getStream( 'tabelle/' . $name . '.jsonl' );
 				if ( ! $h ) {
-					throw new \RuntimeException( 'Non riesco a leggere la tabella ' . $name . '.' );
+					throw new \RuntimeException( 'Impossibile leggere la tabella ' . $name . '.' );
 				}
 				$batch = array();
 				$use   = null;

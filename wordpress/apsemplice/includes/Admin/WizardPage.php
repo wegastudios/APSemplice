@@ -97,7 +97,7 @@ final class WizardPage {
 		$woo  = \ApSemplice\Edition::has( 'payments' ) && WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
-		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 veloci sezioni i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
+		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
 		Ui::form_open( 'apse_wizard_save', Ui::url( 'apse-wizard' ), false, 'apse-wizard' );
 	echo self::stepper(); // phpcs:ignore WordPress.Security.EscapeOutput
 

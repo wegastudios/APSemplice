@@ -320,7 +320,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
 		if ( ! empty( $p['left_on'] ) ) {
-			throw new \InvalidArgumentException( 'Ha lasciato l\'associazione: per riammetterlo togli prima la cessazione dal riquadro «Libro soci».' );
+			throw new \InvalidArgumentException( 'Ha lasciato l\'associazione: per riammettere il socio togli prima la cessazione dal riquadro «Libro soci».' );
 		}
 		$this->db()->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $person_id ) );
 		Audit::log( 'person.reactivated', 'person', $person_id );

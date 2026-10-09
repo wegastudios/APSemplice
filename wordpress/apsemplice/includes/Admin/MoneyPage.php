@@ -40,7 +40,7 @@ final class MoneyPage {
 		echo '<div class="apse-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="apse-kv">'
 			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p class="description">Per cassa: conta quando i soldi entrano e escono, nell\'anno sociale. La contabilità per anno solare è in Contabilità.</p></div></div>';
+		echo '<p class="description">Per cassa: conta quando i soldi entrano ed escono, nell\'anno sociale. La contabilità per anno solare è in Contabilità.</p></div></div>';
 
 		// Ultimi movimenti
 		$to   = current_time( 'Y-m-d' );

@@ -86,7 +86,7 @@ final class ApplePass {
 		$cert = @openssl_x509_read( (string) $cfg['cert'] );
 		$key  = @openssl_pkey_get_private( (string) $cfg['key'] );
 		if ( ! $cert || ! $key ) {
-			throw new \InvalidArgumentException( 'Certificato o chiave per Apple Wallet non validi: ricaricali dalla pagina "Tessera e Wallet".' );
+			throw new \InvalidArgumentException( 'Certificato o chiave per Apple Wallet non validi: ricaricali dalla pagina "Tessera, QR e Wallet".' );
 		}
 		$in   = (string) tempnam( sys_get_temp_dir(), 'apsem' );
 		$out  = (string) tempnam( sys_get_temp_dir(), 'apseo' );

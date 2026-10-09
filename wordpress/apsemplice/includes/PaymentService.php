@@ -218,7 +218,7 @@ class PaymentService extends OfflinePayments {
 		if ( 'paid' === $p['status'] ) {
 			return 'Pagamento ricevuto: grazie!';
 		}
-		return 'Pagamento in attesa di conferma dal gateway: appena arriva lo registriamo.';
+		return 'Pagamento in attesa di conferma dal gateway: non appena arriva, lo registriamo.';
 	}
 
 	/** Interroga il gateway e, se il pagamento risulta riuscito, lo registra. @return bool true se è stato registrato ora */

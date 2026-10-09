@@ -50,7 +50,7 @@ final class Limits {
 		);
 		$add(
 			'notice_per_day', 'comunicazioni', 'Avvisi per attività nelle 24 ore', 'avvisi', 5, 1, 100,
-			'Quanti avvisi ufficiali può inviare, agli iscritti di una stessa attività, chi la tiene o la gestisce.',
+			'Quanti avvisi ufficiali può inviare, agli iscritti di una stessa attività, chi ne è referente o la gestisce.',
 			'Utile se un corso ha molte comunicazioni operative. Un valore alto espone gli iscritti a messaggi ripetuti e permette a un account compromesso di inviarne molti prima di essere fermato.',
 			'Riduce il rumore e l\'impatto di un uso scorretto, ma può impedire di correggere in tempo un avviso sbagliato.'
 		);

@@ -143,7 +143,7 @@ final class Privacy {
 			return 'Già anonimizzata.';
 		}
 		if ( ! empty( $p['wp_user_id'] ) && user_can( (int) $p['wp_user_id'], Plugin::CAP_OPS ) ) {
-			return 'È un amministratore del sito: togli prima il ruolo.';
+			return 'Ha il ruolo di amministratore del sito: toglilo prima.';
 		}
 		if ( ! empty( $p['board_role'] ) ) {
 			return 'Ha una carica nel consiglio direttivo: toglila prima.';

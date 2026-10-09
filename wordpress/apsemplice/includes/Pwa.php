@@ -223,7 +223,7 @@ JS;
 		return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sei offline</title>'
 			. '<style>body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#1d2327}'
 			. 'h1{font-size:1.4rem;margin:.2em 0}p{color:#50575e}.dot{width:56px;height:56px;border-radius:50%;background:' . $col . ';margin:0 auto 16px}</style></head>'
-			. '<body><main><div class="dot"></div><h1>Sei offline</h1><p>' . $name . ' ha bisogno di una connessione per mostrarti i tuoi dati. Riprova appena sei di nuovo online.</p></main></body></html>';
+			. '<body><main><div class="dot"></div><h1>Sei offline</h1><p>' . $name . ' ha bisogno di una connessione per mostrarti i tuoi dati. Riprova non appena sei di nuovo online.</p></main></body></html>';
 	}
 
 	// ---------- Pagine del sito ----------

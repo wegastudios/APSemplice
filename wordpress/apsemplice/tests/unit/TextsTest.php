@@ -31,6 +31,22 @@ PHP;
 		$this->assertNotContains( 'x', $f );
 	}
 
+	public function test_fragments_do_not_start_with_punctuation(): void {
+		$src = <<<'PHP'
+<?php
+$a = ', abbiamo ricevuto la tua richiesta di primo accesso.';
+$b = ': per un corso la tessera deve essere in regola';
+$c = ') ora puoi prenotare e pagare online';
+PHP;
+		$f = Texts::fragments_of_source( $src );
+		$this->assertContains( 'abbiamo ricevuto la tua richiesta di primo accesso.', $f );
+		$this->assertContains( 'per un corso la tessera deve essere in regola', $f );
+		$this->assertContains( 'ora puoi prenotare e pagare online', $f );
+		foreach ( $f as $t ) {
+			$this->assertDoesNotMatchRegularExpression( '/^[\s,.;:!?)\]»…–—-]/u', $t );
+		}
+	}
+
 	public function test_html_replaces_only_text_not_tags_scripts_or_urls(): void {
 		$map  = array( 'Salva' => 'Conferma & chiudi', 'Cerca per nome' => 'Trova un socio' );
 		$html = '<a href="/Salva">Salva</a><input placeholder="Cerca per nome" class="Salva"><script>var a="Salva";</script><style>.Salva{}</style> Salva!';
