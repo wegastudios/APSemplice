@@ -1,6 +1,6 @@
 === APSemplice ===
 Contributors: wegastudios
-Tags: nonprofit, members, membership, accounting, association
+Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
@@ -8,36 +8,32 @@ Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Members, activities, cash book and financial statements for small Italian non-profit associations (APS and other third-sector entities).
+Members, events and courses, and a cash book for small Italian non-profit associations (APS and other third-sector entities).
 
 == Description ==
 
 APSemplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
 
-The plugin is built around Italian third-sector rules (APS, ETS, registers, receipts, tax rules), so its interface and texts are in Italian. An English text pack is included and can be selected in the settings, and further language packs can be uploaded as CSV, Excel or JSON files; the plugin does not use the WordPress translation files.
+The plugin is built around Italian third-sector rules (APS, ETS, registers, tax rules), so its interface and texts are in Italian. An English text pack is included and can be selected in the settings, and further language packs can be uploaded as CSV, Excel or JSON files; the plugin does not use the WordPress translation files.
 
-* **Member register**: member records, fees, QR membership cards, guests, import from CSV or Excel files.
-* **Courses and events**: registrations, limited seats with a waiting list, a payment grace period, participant lists.
-* **Money and accounting**: income, expenses, transfers, cash book, PDF receipts, financial statement, exports.
-* **Members' area** on the site, with pages and blocks (also for Elementor) to place wherever you like.
-* **Roles**: president, secretary, treasurer, volunteers, each with separate permissions.
-* **Privacy**: privacy notice, consents and data anonymisation.
+* **Member register**: member records, one membership fee (with an option for founding members), QR membership cards, guests, import from CSV or Excel files, export of the register.
+* **Courses and events**: registrations, limited seats with a waiting list, a payment grace period for bank transfer and cash, participant lists, a calendar.
+* **Cash book**: income and expenses in a single cash account, bank transfer details for members, export of the cash book.
+* **Registers and privacy**: minutes book, privacy notice, consents, anonymisation, personal data download.
+* **Members' area** on the site, with notices, the rules to accept, the card and the events and courses, through shortcodes, blocks and Elementor widgets.
+* **Roles**: president, vice president, treasurer, councillors and secretary, with separate permissions.
+* **Donations with PayPal**: a form that takes the donor to PayPal's own donation page.
+* **Backup and reset**: download a full copy of the data; reset the data to start over.
+* Works with WP All Import and Elementor if you use them.
+
+Advanced features (online payments, several accounts and funds, accounting and reports, mass emails, app and wallet cards, receipts, VAT) are in the separate APSemplice Pro add-on.
 
 == External services ==
 
-The plugin does not contact any external service until the matching feature is turned on.
+The plugin does not contact any external service on its own.
 
-= Stripe (card payments) =
-If you enable Stripe payments, the plugin sends the amount, the description and the payer's email address to Stripe (api.stripe.com) to create and check the payment. Terms: https://stripe.com/legal - Privacy: https://stripe.com/privacy
-
-= PayPal =
-If you enable PayPal, the plugin sends the amount and the description of the payment to PayPal (api-m.paypal.com) to create and check it. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
-
-= Google Wallet (membership card on the phone) =
-If you enable the Google Wallet card, a member who asks for it is sent to pay.google.com with a signed link containing the card number and the name on the card. Terms: https://payments.developers.google.com/terms/sellertos - Privacy: https://policies.google.com/privacy
-
-= Push notifications (browser) =
-If you enable notifications, the plugin sends the text of the notice to the address (endpoint) that the subscriber's browser provided at subscription time. The endpoint depends on the browser (for example Google, Mozilla or Apple) and the respective terms and privacy policies apply.
+= PayPal donations (optional) =
+If you turn on donations, your website shows a form whose button opens PayPal's donation page (www.paypal.com/donate) in the visitor's browser, with the PayPal account, the purpose and the chosen amount you set. Nothing is sent from your server to PayPal. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
 
 == Installation ==
 
@@ -50,14 +46,14 @@ If you enable notifications, the plugin sends the text of the notice to the addr
 = What happens to the data if I delete the plugin? =
 By default it stays. In the settings you can choose to delete it permanently when the plugin is deleted.
 
-= Does it need WooCommerce? =
-No. Online payments also work directly with Stripe and PayPal; WooCommerce is an optional alternative.
-
 = Can I import my existing member list? =
 Yes, from a CSV or Excel file, with a preview before confirming.
+
+= Where do the donations go? =
+Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
 
 = 1.1.1 =
-* Guided setup, member register with QR cards and guests, courses and events with waiting list and payment grace period, cash book, privacy tools, backup and reset, and a members' area.
+* Guided setup, member register with QR cards and guests, courses and events with waiting list and payment grace period, cash book, privacy tools, backup and reset, donations with PayPal, and a members' area.
 * Uninstall keeps your data unless you choose to delete it.
