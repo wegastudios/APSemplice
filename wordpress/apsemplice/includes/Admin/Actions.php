@@ -1288,9 +1288,8 @@ final class Actions {
 				throw new \InvalidArgumentException( 'L\'immagine della tessera deve essere un\'immagine della libreria media.' );
 			}
 			$mode = \ApSemplice\CardLayout::MODE_IMAGE === (string) ( $p['card_mode'] ?? '' ) ? \ApSemplice\CardLayout::MODE_IMAGE : \ApSemplice\CardLayout::MODE_STANDARD;
-			if ( \ApSemplice\CardLayout::MODE_IMAGE === $mode && $bg <= 0 ) {
-				throw new \InvalidArgumentException( 'Per la tessera su immagine scegli prima l\'immagine, oppure torna alla tessera standard.' );
-			}
+			$upd['card_w_cm']   = \ApSemplice\CardLayout::clean_cm( $p['card_w_cm'] ?? '', 8.56 );
+			$upd['card_h_cm']   = \ApSemplice\CardLayout::clean_cm( $p['card_h_cm'] ?? '', 5.4 );
 			$upd['card_mode']   = $mode;
 			$upd['card_bg_id']  = max( 0, $bg );
 			$upd['card_layout'] = \ApSemplice\CardLayout::clean( $p['layout'] ?? array() );

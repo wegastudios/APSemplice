@@ -654,14 +654,17 @@
 	render();
 })();
 
-/* Tessera su immagine: scelta dell'immagine e posizionamento di nome, numero, scadenza e QR trascinando */
+/* Tessera personalizzata: misure, immagine di sfondo facoltativa e posizionamento di logo, nome, numero, scadenza e QR trascinando */
 (function () {
 	var box = document.getElementById('apse-cardedit');
 	if (!box) { return; }
 	var img = document.getElementById('apse-cardedit-img');
-	var empty = document.getElementById('apse-cardedit-empty');
 	var idField = document.getElementById('apse-card-bg-id');
 	var pick = document.getElementById('apse-cardbg-pick');
+	var clear = document.getElementById('apse-cardbg-clear');
+	var shape = document.getElementById('apse-card-shape');
+	var wIn = document.getElementById('apse-card-w');
+	var hIn = document.getElementById('apse-card-h');
 	var frame;
 	function field(f, n) { return document.querySelector('[name="layout[' + f + '][' + n + ']"]:not([type=hidden])') || document.querySelector('[name="layout[' + f + '][' + n + ']"]'); }
 	function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -669,13 +672,40 @@
 		var f = chip.getAttribute('data-f');
 		chip.style.left = field(f, 'x').value + '%';
 		chip.style.top = field(f, 'y').value + '%';
-		if (f === 'qr') { chip.style.width = field(f, 'size').value + '%'; }
+		if (f === 'qr' || f === 'logo') { chip.style.width = field(f, 'size').value + '%'; }
 		else { chip.style.fontSize = field(f, 'size').value + 'cqw'; var c = field(f, 'color'); if (c) { chip.style.color = c.value; } }
 		var sh = field(f, 'show');
 		chip.style.opacity = sh && sh.checked ? '1' : '.3';
 	}
-	var chips = box.querySelectorAll('.apse-chip');
-	Array.prototype.forEach.call(chips, function (chip) {
+	/* Misure: proporzioni e larghezza dell'anteprima seguono i centimetri scelti */
+	function applySize() {
+		var w = parseFloat(wIn.value), h = parseFloat(hIn.value);
+		if (!(w > 0 && h > 0)) { return; }
+		box.style.aspectRatio = w + '/' + h;
+		box.style.maxWidth = Math.round(Math.min(640, w * 74.8)) + 'px';
+	}
+	if (wIn && hIn) {
+		wIn.addEventListener('input', function () { if (shape) { shape.value = 'custom'; } applySize(); });
+		hIn.addEventListener('input', function () { if (shape) { shape.value = 'custom'; } applySize(); });
+	}
+	if (shape) {
+		shape.addEventListener('change', function () {
+			var o = shape.options[shape.selectedIndex];
+			if (o && o.getAttribute('data-w')) { wIn.value = o.getAttribute('data-w'); hIn.value = o.getAttribute('data-h'); applySize(); }
+		});
+	}
+	/* Sfondo: con l'immagine la tessera è l'immagine; senza è quella generata dal sito (bianca, con i colori scelti) */
+	function plain(on) {
+		if (on) {
+			box.classList.add('apse-plain');
+			box.style.border = '2px solid ' + box.getAttribute('data-acc');
+			box.style.borderTop = '8px solid ' + box.getAttribute('data-sec');
+		} else {
+			box.classList.remove('apse-plain');
+			box.style.border = '1px solid #c3c4c7';
+		}
+	}
+	Array.prototype.forEach.call(box.querySelectorAll('.apse-chip'), function (chip) {
 		var f = chip.getAttribute('data-f');
 		['x', 'y', 'size', 'color', 'show'].forEach(function (n) {
 			var el = field(f, n);
@@ -700,9 +730,15 @@
 		});
 		applyChip(chip);
 	});
-	if (pick && window.wp && wp.media) {
+	function modeImage() {
+		var im = document.querySelector('input[name="card_mode"][value="image"]');
+		if (im) { im.checked = true; }
+	}
+	/* wp.media si carica a fine pagina: si controlla al momento del clic, non all'avvio */
+	if (pick) {
 		pick.addEventListener('click', function (e) {
 			e.preventDefault();
+			if (!window.wp || !wp.media) { window.alert('La libreria media non è disponibile: ricarica la pagina.'); return; }
 			if (!frame) {
 				frame = wp.media({ title: 'Immagine della tessera', button: { text: 'Usa questa immagine' }, library: { type: 'image' }, multiple: false });
 				frame.on('select', function () {
@@ -710,12 +746,22 @@
 					idField.value = a.id;
 					img.src = (a.sizes && a.sizes.large) ? a.sizes.large.url : a.url;
 					img.style.display = 'block';
-					if (empty) { empty.style.display = 'none'; }
-					var im = document.querySelector('input[name="card_mode"][value="image"]');
-					if (im) { im.checked = true; }
+					plain(false);
+					if (clear) { clear.style.display = ''; }
+					modeImage();
 				});
 			}
 			frame.open();
+		});
+	}
+	if (clear) {
+		clear.addEventListener('click', function (e) {
+			e.preventDefault();
+			idField.value = '0';
+			img.removeAttribute('src');
+			img.style.display = 'none';
+			plain(true);
+			clear.style.display = 'none';
 		});
 	}
 })();
