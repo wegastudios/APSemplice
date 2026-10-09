@@ -1376,7 +1376,7 @@ ob_start();
 Admin\SettingsPage::render();
 $h_general = ob_get_clean();
 apse_ok( false !== strpos( $h, 'non è leggibile su questo sito' ) && false === strpos( $h, 'wp-config' ) && false === strpos( $h, 'sk_test_ALTRO' ), 'pannello: avviso sulla chiave illeggibile, nessun file da modificare' );
-apse_ok( false !== strpos( $h_general, 'Aspetto e messaggi del sito' ) && false !== strpos( $h_general, 'type="color"' ), 'pannello: sezione aspetto con selettore colore' );
+apse_ok( false !== strpos( $h_general, 'Aspetto e messaggi del sito' ) && false !== strpos( $h_general, 'page=apse-look' ), 'pannello: sezione aspetto con il collegamento alla scheda Aspetto' );
 Settings::clear_secret( 'stripe_secret_key' );
 Settings::clear_secret( 'stripe_webhook_secret' );
 Settings::update( array( 'payment_provider' => 'none', 'accent_color' => '', 'cancel_policy_default' => '48h' ) );
