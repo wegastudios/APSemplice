@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.14
+Stable tag: 1.1.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,6 +14,9 @@ Advanced features for APSemplice: online payments, accounts and funds, accountin
 APSemplice Pro adds to APSemplice (required) the features that go beyond the basics: online payments with Stripe and PayPal, several accounts and funds, accounting and reports, insurance and attendance registers, mass emails, installable app with notifications, Apple and Google Wallet cards, receipts in PDF, several member levels and VAT.
 
 == Changelog ==
+
+= 1.1.15 =
+* APSemplice and APSemplice Pro now update independently: they only need the same compatibility level, so no more "versions differ" notice.
 
 = 1.1.14 =
 * The APSemplice menu stays open on every plugin page; "Rubrica" is now "Rubrica soci" and "Soldi" is now "Cassa".
