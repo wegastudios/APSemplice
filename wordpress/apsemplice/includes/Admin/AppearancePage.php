@@ -33,7 +33,7 @@ final class AppearancePage {
 			. '<button type="button" class="button" id="apse-logo-pick">Scegli dalla libreria</button> '
 			. '<button type="button" class="button" id="apse-logo-clear"' . ( $own_id ? '' : ' style="display:none"' ) . '>Usa il logo del sito</button></div>'
 			. '<p class="description">' . ( $own_id ? 'Stai usando il logo scelto qui.' : 'Stai usando il logo del sito' . ( '' === $logo ? ' (non ne ho trovato uno: scegline uno tu).' : '.' ) )
-			. ' Compare sulla tessera e nelle pagine di verifica, su un riquadro chiaro così si legge su qualunque colore.</p></td></tr>';
+			. ' Compare sulla tessera e nelle pagine di verifica.</p></td></tr>';
 
 		echo '<tr><th>Colore principale</th><td><label><input type="checkbox" name="primary_custom" value="1"' . checked( $p_own, true, false ) . '> Personalizza</label> '
 			. '<input type="color" name="accent_color" value="' . esc_attr( $p_own ? (string) $s['accent_color'] : Assets::accent( '#2271b1' ) ) . '">'
@@ -41,16 +41,16 @@ final class AppearancePage {
 
 		echo '<tr><th>Colore secondario</th><td><label><input type="checkbox" name="secondary_custom" value="1"' . checked( $s_own, true, false ) . '> Personalizza</label> '
 			. '<input type="color" name="secondary_color" value="' . esc_attr( $s_own ? (string) $s['secondary_color'] : Assets::secondary( Assets::accent( '#2271b1' ) ) ) . '">'
-			. '<p class="description">Sfumatura della tessera e passaggio del mouse sui pulsanti. Senza spunta si usa il colore secondario del sito' . ( '' !== $site_s ? ' (ora: <code>' . esc_html( $site_s ) . '</code>)' : ' (non lo trovo: la tessera resta di un solo colore)' ) . '.</p></td></tr>';
+			. '<p class="description">Filetto in alto sulla tessera e passaggio del mouse sui pulsanti. Senza spunta si usa il colore secondario del sito' . ( '' !== $site_s ? ' (ora: <code>' . esc_html( $site_s ) . '</code>)' : ' (non lo trovo: il filetto ha il colore principale)' ) . '.</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
 
 		$acc = Assets::accent( '#2271b1' );
 		$sec = Assets::secondary( $acc );
-		echo '<h2>Anteprima</h2><div style="max-width:380px;border-radius:16px;padding:20px 24px;color:' . esc_attr( \ApSemplice\Color::text_on( $acc ) ) . ';background:linear-gradient(135deg,' . esc_attr( $acc ) . ',' . esc_attr( $sec ) . ')">'
-			. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="display:block;max-height:44px;max-width:170px;margin:0 0 10px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.92)">' : '' )
-			. '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">' . esc_html( (string) Settings::get( 'association_name' ) ) . '</div>'
+		echo '<h2>Anteprima della tessera</h2><div style="max-width:380px;border-radius:14px;padding:20px 24px;background:#fff;color:' . esc_attr( $acc ) . ';border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . '">'
+			. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="display:block;max-height:52px;max-width:190px;margin:0 0 10px">' : '' )
+			. '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase">' . esc_html( (string) Settings::get( 'association_name' ) ) . '</div>'
 			. '<div style="font-size:24px;font-weight:700;margin-top:6px">Nome Cognome</div><div style="opacity:.9">Socio ordinario</div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<script>(function(){var pick=document.getElementById("apse-logo-pick"),clr=document.getElementById("apse-logo-clear"),id=document.getElementById("apse-logo-id"),pv=document.getElementById("apse-logo-preview"),f;'
 			. 'if(!pick||!window.wp||!wp.media){return;}'

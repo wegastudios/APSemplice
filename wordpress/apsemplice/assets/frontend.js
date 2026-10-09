@@ -125,3 +125,16 @@
 		}).catch(function () { msg.textContent = 'Non riesco ad aprire la fotocamera: controlla il permesso del browser.'; });
 	});
 })();
+
+/* Stampa della tessera: si stampa solo la tessera (il resto della pagina resta nascosto dallo stile di stampa) */
+(function () {
+	document.addEventListener('click', function (e) {
+		var b = e.target && e.target.closest ? e.target.closest('.apsf-print-card') : null;
+		if (!b) { return; }
+		e.preventDefault();
+		document.body.classList.add('apsf-printing');
+		var done = function () { document.body.classList.remove('apsf-printing'); window.removeEventListener('afterprint', done); };
+		window.addEventListener('afterprint', done);
+		window.print();
+	});
+})();
