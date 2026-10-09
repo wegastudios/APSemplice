@@ -456,6 +456,9 @@ final class Docs {
 				case 'statement':
 					$doc = self::statement( (int) ( $g['year'] ?? 0 ) );
 					break;
+				case 'privacy':
+					$doc = PrivacyNotice::pdf();
+					break;
 				default:
 					wp_die( 'Documento non valido.', 400 );
 			}

@@ -52,6 +52,7 @@ final class Settings {
 			'rules_version'           => '1',   // cambiandola, tutti devono accettare di nuovo
 			'rules_block_booking'     => 1,     // senza accettazione non si prenota
 			'privacy_url'             => '',    // pagina con l'informativa privacy: se c'è, chi attiva l'accesso deve accettarla
+			'privacy_email'           => '',    // indirizzo email per le richieste sulla privacy (vuoto = si usa la PEC)
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
 			'receipt_footer'          => '',    // riga in fondo alle ricevute (es. riferimento normativo): la decide l'associazione
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
@@ -192,6 +193,7 @@ final class Settings {
 		}
 		$clean['reminders_membership_days'] = max( 1, min( 120, (int) $clean['reminders_membership_days'] ) );
 		$clean['privacy_url']             = esc_url_raw( trim( (string) $clean['privacy_url'] ) );
+		$clean['privacy_email']           = is_email( trim( (string) $clean['privacy_email'] ) ) ? strtolower( trim( (string) $clean['privacy_email'] ) ) : '';
 		$clean['rules_enabled']           = empty( $clean['rules_enabled'] ) ? 0 : 1;
 		$clean['rules_block_booking']     = empty( $clean['rules_block_booking'] ) ? 0 : 1;
 		$clean['rules_title']             = mb_substr( trim( (string) $clean['rules_title'] ), 0, 80 );

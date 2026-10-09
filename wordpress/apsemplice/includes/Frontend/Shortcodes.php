@@ -39,6 +39,7 @@ final class Shortcodes {
 		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
 		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
 		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
+		'privacy'         => 'Informativa privacy (pubblico, compilata con i dati dell\'ente)',
 		'accesso'         => 'Accesso / login',
 	);
 
@@ -104,6 +105,8 @@ final class Shortcodes {
 				return Views::bank_public();
 			case 'donazioni':
 				return Views::donate();
+			case 'privacy':
+				return Views::privacy_notice();
 			case 'accesso':
 				return is_user_logged_in() ? '' : Views::login_prompt();
 		}

@@ -24,7 +24,7 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
-		'apse_save_look', 'apse_save_donate', 'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
+		'apse_save_look', 'apse_save_donate', 'apse_create_privacy_page', 'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
 		'apse_delete_activity', 'apse_delete_booking', 'apse_purge_enrollments', 'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
 	);
@@ -66,6 +66,7 @@ final class Actions {
 			'apse_rules_record'       => 'rules_record',
 			'apse_privacy_anonymize'  => 'privacy_anonymize',
 			'apse_save_comms'         => 'save_comms',
+			'apse_create_privacy_page' => 'create_privacy_page',
 			'apse_reminders_run'      => 'reminders_run',
 			'apse_receipt_email'      => 'receipt_email',
 			'apse_set_board_role'     => 'set_board_role',
@@ -336,6 +337,7 @@ final class Actions {
 				'reminders_dues'            => ! empty( $p['reminders_dues'] ) ? 1 : 0,
 				'reminders_events'          => ! empty( $p['reminders_events'] ) ? 1 : 0,
 				'privacy_url'               => $txt( 'privacy_url' ),
+				'privacy_email'             => $txt( 'privacy_email' ),
 				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
 				'rules_enabled'             => ! empty( $p['rules_enabled'] ) ? 1 : 0,
 				'rules_title'               => $txt( 'rules_title' ),
@@ -1223,6 +1225,16 @@ final class Actions {
 	private static function transfer_booking( array $p ): array {
 		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );
 		return array( Ui::url( 'apse-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Nominativo cambiato: il pagamento già fatto passa alla nuova persona.' );
+	}
+
+	/** Crea la pagina del sito con l'informativa privacy (si compila da sola con i dati dell'ente) e la collega alle impostazioni. */
+	private static function create_privacy_page( array $p ): array {
+		$made = \ApSemplice\Pages::create( array( 'privacy' ) );
+		$id   = (int) ( \ApSemplice\Pages::existing()['privacy'] ?? 0 );
+		if ( $id > 0 && '' === (string) Settings::get( 'privacy_url' ) ) {
+			Settings::update( array( 'privacy_url' => (string) get_permalink( $id ) ) );
+		}
+		return array( Ui::url( 'apse-comms' ), $made ? 'Pagina «Informativa privacy» creata e collegata alle impostazioni.' : 'La pagina «Informativa privacy» esiste già.' );
 	}
 
 	/** Crea le pagine standard (area soci, area volontari, attività) se non esistono già. */
