@@ -11,7 +11,7 @@ use ApSemplice\Settings;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Contabilità: per anno solare e per gli adempimenti. Usa la stessa prima nota di «Soldi»: qui si guarda il periodo,
+ * Contabilità: per anno solare e per gli adempimenti. Usa la stessa prima nota di «Cassa»: qui si guarda il periodo,
  * si chiude l'anno, si preparano rendiconto e adempimenti (5x1000, e con la partita IVA l'esportazione per il commercialista).
  */
 final class AccountingPage {
@@ -25,7 +25,7 @@ final class AccountingPage {
 		echo '<p><a href="' . esc_url( Ui::url( 'apse-ledger', array( 'year' => $cur ) ) ) . '">Prima nota dell\'anno →</a><br>'
 			. ( Modules::on( 'reports' ) ? '<a href="' . esc_url( Ui::url( 'apse-statement' ) ) . '">Rendiconto →</a><br><a href="' . esc_url( Ui::url( 'apse-reports' ) ) . '">Report →</a><br>' : '' )
 			. '<a href="' . esc_url( Ui::url( 'apse-years' ) ) . '">Apertura e chiusura degli anni solari →</a></p>';
-		echo '<p class="description">È la stessa prima nota di «Soldi»: qui si legge per anno solare, per chiudere l\'anno e preparare i documenti.</p></div>';
+		echo '<p class="description">È la stessa prima nota di «Cassa»: qui si legge per anno solare, per chiudere l\'anno e preparare i documenti.</p></div>';
 
 		echo '<div class="apse-card"><h2>Adempimenti</h2>';
 		$any = false;

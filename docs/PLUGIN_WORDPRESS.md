@@ -575,13 +575,13 @@ Solo se l'ente ha la partita IVA (e non è in regime forfettario); altrimenti no
 - **Ricevute**: mostrano la partita IVA dell'ente e, per ogni aliquota, imponibile e IVA contenuta.
 - **Prima nota**: l'importo di ogni riga resta quello lordo, con la nota «di cui IVA»; l'esportazione CSV aggiunge aliquota, imponibile e IVA, per il commercialista.
 
-## Soldi e Contabilità
+## Cassa e Contabilità
 
 Due voci di menu separate sulla **stessa prima nota** (che è unica e si usa in modo diverso):
-- **Soldi** — la cassa di tutti i giorni, per cassa e per anno sociale: scheda *Cassa* (disponibilità reale = saldi dei conti meno i fondi accantonati, entrate e uscite dell'anno sociale, ultimi movimenti), *Prima nota*, *Nuovo incasso*, *Cassa per più persone*, *Nuova spesa*, *Giroconto*, *Conti e fondi*.
+- **Cassa** — la cassa di tutti i giorni, per cassa e per anno sociale: scheda *Cassa* (disponibilità reale = saldi dei conti meno i fondi accantonati, entrate e uscite dell'anno sociale, ultimi movimenti), *Prima nota*, *Nuovo incasso*, *Cassa per più persone*, *Nuova spesa*, *Giroconto*, *Conti e fondi*.
 - **Contabilità** — per anno solare e per gli adempimenti: *Anno solare* (stato dell'anno, prima nota dell'anno, rendiconto e report), *Anni solari* (apertura e chiusura), *Report*, *Rendiconto*, *Adempimenti* (5x1000; con la partita IVA anche l'indicazione per esportare la prima nota con aliquota e IVA per il commercialista).
 
-Nella configurazione guidata le parti sono indipendenti: «Soldi e prima nota», «Conti e fondi», «Contabilità» (dipende dalla prima nota) e «Bilanci e rendiconto» (dipende dalla contabilità). Se la contabilità la tiene un altro, si risponde no e resta solo la prima nota con incassi, spese e conti: il resto non si vede e non si configura. Spegnere una parte non cancella nulla.
+Nella configurazione guidata le parti sono indipendenti: «Cassa e prima nota», «Conti e fondi», «Contabilità» (dipende dalla prima nota) e «Bilanci e rendiconto» (dipende dalla contabilità). Se la contabilità la tiene un altro, si risponde no e resta solo la prima nota con incassi, spese e conti: il resto non si vede e non si configura. Spegnere una parte non cancella nulla.
 
 ## Ruoli e permessi
 

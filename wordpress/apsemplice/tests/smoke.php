@@ -2945,11 +2945,11 @@ wp_set_current_user( 1 );
 apse_ok( 'apse-money' === Admin\Admin::menu_item_of( 'apse-income' ) && 'apse-money' === Admin\Admin::menu_item_of( 'apse-ledger' ) && 'apse-money' === Admin\Admin::menu_item_of( 'apse-accounts' ) && 'apse-accounting' === Admin\Admin::menu_item_of( 'apse-years' ) && 'apse-accounting' === Admin\Admin::menu_item_of( 'apse-fivepm' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-payments' ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-card' ) && 'apse-people' === Admin\Admin::menu_item_of( 'apse-person' ) && 'apse-activities' === Admin\Admin::menu_item_of( 'apse-activity' ) && 'apse' === Admin\Admin::menu_item_of( 'apse' ), 'menu: ogni pagina appartiene a una delle voci principali' );
 $tabs = Admin\Admin::tabs( 'apse-income' );
 apse_ok( false !== strpos( $tabs, 'Prima nota' ) && false !== strpos( $tabs, 'Conti e fondi' ) && false !== strpos( $tabs, 'nav-tab-active' ) && '' === Admin\Admin::tabs( 'apse' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Calendari' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Importa da Excel/CSV' ) && false !== strpos( Admin\Admin::tabs( 'apse-tools' ), 'Esporta' ), 'menu: la Contabilità ha le sue schede, gli Strumenti raccolgono importazioni, esportazioni e calendari, la Bacheca nessuna' );
-apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Soldi' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Sistema' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
+apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Cassa' ) && false !== strpos( Admin\Admin::tabs( 'apse-audit' ), 'Registro azioni' ) && false !== strpos( Admin\Admin::tabs( 'apse-settings' ), 'Sistema' ), 'menu: pagamenti, tessera/wallet e registro stanno nelle Impostazioni' );
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
-apse_ok( array( 'Bacheca', 'Rubrica', 'Corsi ed eventi', 'Soldi', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo otto voci (' . implode( ', ', $visible ) . ')' );
+apse_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo otto voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
@@ -4749,7 +4749,7 @@ apse_ok( ! isset( \ApSemplice\Languages::available()['fr'] ) && 'it' === \ApSemp
 wp_set_current_user( 1 );
 $st_tabs = Admin\Admin::tabs( 'apse-settings' );
 $tc_tabs = Admin\Admin::tabs( 'apse-tech' );
-apse_ok( false !== strpos( $st_tabs, 'Ente e fiscalità' ) && false !== strpos( $st_tabs, 'Soci e identità' ) && false !== strpos( $st_tabs, 'Soldi' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $st_tabs, 'Sistema' ) && false !== strpos( Admin\Admin::tabs( 'apse-roles' ), 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: sezioni per ambito (ente e fiscalità, soci e identità, soldi, contabilità, comunicazioni, sistema) con le loro schede' );
+apse_ok( false !== strpos( $st_tabs, 'Ente e fiscalità' ) && false !== strpos( $st_tabs, 'Soci e identità' ) && false !== strpos( $st_tabs, 'Cassa' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $st_tabs, 'Sistema' ) && false !== strpos( Admin\Admin::tabs( 'apse-roles' ), 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: sezioni per ambito (ente e fiscalità, soci e identità, soldi, contabilità, comunicazioni, sistema) con le loro schede' );
 foreach ( array( 'apse-tech', 'apse-roles', 'apse-acct' ) as $pg ) {
 	apse_ok( in_array( $pg, Admin\Admin::ADMIN_ONLY, true ), 'impostazioni: ' . $pg . ' è riservata agli amministratori' );
 }

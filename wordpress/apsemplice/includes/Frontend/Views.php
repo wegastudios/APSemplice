@@ -396,7 +396,7 @@ final class Views {
 			return esc_url( admin_url( 'admin.php?page=' . $page ) );
 		};
 		$pend  = count( \ApSemplice\AccessRequests::pending() );
-		$links = array( array( 'apse-people', 'Soci e ospiti', true ), array( 'apse-person', 'Nuovo socio', true ), array( 'apse-messages', 'Comunicazioni', \ApSemplice\Modules::on( 'messages' ) ), array( 'apse-activities', 'Corsi ed eventi', \ApSemplice\Modules::on( 'activities' ) ), array( 'apse-money', 'Soldi', \ApSemplice\Modules::on( 'ledger' ) ), array( 'apse-book', 'Libro soci e registri', \ApSemplice\Modules::on( 'book' ) ), array( 'apse', 'Bacheca', true ) );
+		$links = array( array( 'apse-people', 'Soci e ospiti', true ), array( 'apse-person', 'Nuovo socio', true ), array( 'apse-messages', 'Comunicazioni', \ApSemplice\Modules::on( 'messages' ) ), array( 'apse-activities', 'Corsi ed eventi', \ApSemplice\Modules::on( 'activities' ) ), array( 'apse-money', 'Cassa', \ApSemplice\Modules::on( 'ledger' ) ), array( 'apse-book', 'Libro soci e registri', \ApSemplice\Modules::on( 'book' ) ), array( 'apse', 'Bacheca', true ) );
 		$html  = '<section class="apsf-section apsf-secretary"><h3>Segreteria</h3>';
 		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da evadere: si evadono dalla <a href="' . $url( 'apse' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da evadere.' ) . '</p><p class="apsf-small apsf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="apsf-actions">';
 		foreach ( $links as $l ) {

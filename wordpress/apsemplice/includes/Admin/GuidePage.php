@@ -9,11 +9,11 @@ defined( 'ABSPATH' ) || exit;
 final class GuidePage {
 
 	const FAQ = array(
-		'Come iscrivo un nuovo socio?'           => 'Rubrica → Soci e ospiti → «Nuovo socio». Con l\'email il socio ha subito l\'accesso all\'area riservata; senza email si attiva dopo, con un link da mandargli su WhatsApp. Per molti soci insieme usa «Importa da Excel/CSV».',
-		'Come incasso una quota o un contributo?' => 'Soldi → Nuovo incasso (o la cassa rapida in Bacheca). Scegli la persona: il plugin propone la quota associativa, le mensilità dei corsi dovute e gli eventi. Per più persone insieme usa «Cassa per più persone».',
+		'Come iscrivo un nuovo socio?'           => 'Rubrica soci → Soci e ospiti → «Nuovo socio». Con l\'email il socio ha subito l\'accesso all\'area riservata; senza email si attiva dopo, con un link da mandargli su WhatsApp. Per molti soci insieme usa «Importa da Excel/CSV».',
+		'Come incasso una quota o un contributo?' => 'Cassa → Nuovo incasso (o la cassa rapida in Bacheca). Scegli la persona: il plugin propone la quota associativa, le mensilità dei corsi dovute e gli eventi. Per più persone insieme usa «Cassa per più persone».',
 		'Come creo un corso o un evento?'        => 'Corsi ed eventi → «Nuova attività». Il programma si compone a righe: date uniche o giorni che si ripetono ogni settimana. I corsi si rinnovano ogni mese; gli eventi si prenotano a una data.',
 		'Come registro le presenze?'             => 'Registri → Presenze: scegli il corso, il mese e la lezione, spunta chi era presente e salva. Il riepilogo si scarica in PDF o CSV.',
-		'Come invio un messaggio ai soci?'       => 'Rubrica → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.',
+		'Come invio un messaggio ai soci?'       => 'Rubrica soci → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.',
 		'Dove trovo ricevute e rendiconto?'      => 'Le ricevute si scaricano dalla prima nota e dall\'area soci. Il rendiconto per cassa è in Contabilità → Rendiconto, in PDF con le firme.',
 		'Come cambio i testi o i termini?'       => 'Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.',
 		'Come faccio una copia dei dati?'        => 'Impostazioni → Copia di sicurezza: scarichi un file con tutti i dati; da lì puoi anche ripristinarlo.',

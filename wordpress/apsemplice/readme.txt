@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.13
+Stable tag: 1.1.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
+= 1.1.14 =
+* The APSemplice menu stays open on every plugin page; "Rubrica" is now "Rubrica soci" and "Soldi" is now "Cassa".
+
 = 1.1.13 =
 * Membership card on your own image: upload the card design and drag name, number, expiry date and QR onto it.
 
@@ -80,7 +83,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 * Card and buttons take their colour from Elementor or the theme when no colour is chosen.
 
 = 1.1.5 =
-* Bank transfer details can be set in the free edition (Settings → Money → Bank transfer); lists no longer offer views that need Pro features.
+* Bank transfer details can be set in the free edition (Settings → Cash → Bank transfer); lists no longer offer views that need Pro features.
 
 = 1.1.4 =
 * The free edition no longer shows links to features it does not include.
