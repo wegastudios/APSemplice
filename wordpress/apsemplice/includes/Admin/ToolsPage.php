@@ -21,7 +21,7 @@ final class ToolsPage {
 				array( 'apse-wpai', 'WP All Import', 'Importazione continua da WP All Import (soci e pagamenti).', true, 'import' ),
 			),
 			'Esportare' => array(
-				array( 'apse-exports', 'Esportazioni CSV', 'Soci, prima nota, rendiconto per cassa e report delle attività, per il commercialista o per i tuoi archivi.', false, '' ),
+				array( 'apse-exports', 'Esportazioni CSV', 'Libro soci e prima nota in CSV, per il commercialista o per i tuoi archivi (con le funzioni avanzate anche rendiconto e report).', false, '' ),
 			),
 			'Calendari' => array(
 				array( 'apse-calendar', 'Calendario di corsi ed eventi', 'Calendario interno di tutte le attività e indirizzo del calendario pubblicato (Google Calendar e simili).', false, 'activities' ),
@@ -31,7 +31,7 @@ final class ToolsPage {
 			),
 			'Copie e collegamenti' => array(
 				array( 'apse-backup', 'Copia di sicurezza', 'Scarica una copia dei dati e ripristinala.', true, '' ),
-				array( 'apse-tech', 'Integrazioni', 'WooCommerce, Stripe, PayPal, Wallet, WP All Import, Elementor e Gutenberg.', true, '' ),
+				array( 'apse-tech', 'Integrazioni', 'WP All Import, Elementor e Gutenberg (con le funzioni avanzate anche WooCommerce, Stripe, PayPal e Wallet).', true, '' ),
 			),
 		);
 	}

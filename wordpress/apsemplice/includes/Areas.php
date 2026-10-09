@@ -55,13 +55,13 @@ final class Areas {
 		$out = array();
 		foreach ( self::GROUPS as $g ) {
 			foreach ( $g[1] as $view ) {
-				if ( isset( Shortcodes::VIEWS[ $view ] ) ) {
+				if ( isset( Shortcodes::VIEWS[ $view ] ) && Shortcodes::available( $view ) ) {
 					$out[ $view ] = $g[0] . ' · ' . Shortcodes::VIEWS[ $view ];
 				}
 			}
 		}
 		foreach ( self::ALIASES as $old => $new ) { // il nome precedente resta selezionabile, in fondo, per le pagine già fatte
-			if ( isset( Shortcodes::VIEWS[ $old ] ) ) {
+			if ( isset( Shortcodes::VIEWS[ $old ] ) && Shortcodes::available( $old ) ) {
 				$out[ $old ] = ( self::GROUPS[ self::area_of( $old ) ][0] ?? '' ) . ' · ' . Shortcodes::VIEWS[ $old ];
 			}
 		}

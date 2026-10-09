@@ -37,14 +37,14 @@ final class Admin {
 	const SETTINGS_SECTIONS = array(
 		'Ente e fiscalità' => array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua' ),
 		'Soci e identità'  => array( 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi' ),
-		'Soldi'            => array( 'apse-payments' => 'Pagamenti online', 'apse-donate' => 'Donazioni' ),
+		'Soldi'            => array( 'apse-payments' => 'Pagamenti online', 'apse-bank' => 'Bonifico', 'apse-donate' => 'Donazioni' ),
 		'Contabilità'      => array( 'apse-acct' => 'Opzioni contabili' ),
 		'Comunicazioni'    => array( 'apse-app' => 'App e notifiche' ),
 		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale', 'apse-reset' => 'Azzeramento dati' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-donate', 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
+	const ADMIN_ONLY = array( 'apse-bank', 'apse-donate', 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities', 'apse-activity-delete' => 'apse-activities', 'apse-booking-delete' => 'apse-activities' );
@@ -111,6 +111,7 @@ final class Admin {
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'apse-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),
+			array( 'apse-bank', 'Bonifico bancario', array( BankPage::class, 'render' ) ),
 			array( 'apse-donate', 'Donazioni con PayPal', array( DonatePage::class, 'render' ) ),
 			array( 'apse-messages', 'Comunicazioni', array( MessagesPage::class, 'render' ) ),
 			array( 'apse-backup', 'Copia di sicurezza', array( BackupPage::class, 'render' ) ),
