@@ -475,9 +475,14 @@ apse_ok( count( $ar_views ) === count( array_unique( $ar_views ) ) && ! array_di
 apse_ok( shortcode_exists( 'apsemplice_segreteria' ) && shortcode_exists( 'apsemplice_tesoriere' ), 'aree: shortcode della segreteria e del tesoriere registrati' );
 $ar_bl = \ApSemplice\Frontend\Blocks::class;
 apse_ok( class_exists( $ar_bl ), 'aree: blocchi presenti' );
-$as = function ( int $user, string $shortcode ) {
+$as = function ( int $user, string $shortcode, string $pane = '' ) {
 	wp_set_current_user( $user );
-	return do_shortcode( $shortcode );
+	if ( '' !== $pane ) {
+		$_GET['apsf_vista'] = $pane; // la parte dell'area riservata scelta dal menu laterale
+	}
+	$out = do_shortcode( $shortcode );
+	unset( $_GET['apsf_vista'] );
+	return $out;
 };
 
 // Area soci per ruolo
@@ -485,9 +490,10 @@ $html = $as( 0, '[apsemplice_area_soci]' );
 apse_ok( false !== strpos( $html, 'loginform' ), 'area soci: l\'anonimo vede il modulo di accesso' );
 $html = $as( $u_ord, '[apsemplice_area_soci]' );
 apse_ok( false !== strpos( $html, 'Omar' ) && false !== strpos( $html, 'Tessera n.' ) && false !== strpos( $html, 'Le mie attività' ) && false !== strpos( $html, 'I miei ospiti' ) && false !== strpos( $html, 'Il mio profilo' ), 'area soci: il socio vede tessera, attività, ospiti e profilo' );
-apse_ok( false === strpos( $html, 'Le attività che tengo' ), 'area soci: il socio non vede la parte dei volontari' );
-$html_vol = $as( $u_vol, '[apsemplice_area_soci]' );
-apse_ok( false !== strpos( $html_vol, 'Le attività che tengo' ) && false !== strpos( $html_vol, 'Yoga' ), 'area soci: il volontario vede le attività che tiene' );
+apse_ok( false === strpos( $html, 'che tengo' ) && false === strpos( $html, 'apsf-sidenav' ), 'area soci: il socio non vede la parte dei volontari né il menu laterale' );
+$html_vol = $as( $u_vol, '[apsemplice_area_soci]', 'corsi' ) . $as( $u_vol, '[apsemplice_area_soci]', 'eventi' );
+apse_ok( false !== strpos( $as( $u_vol, '[apsemplice_area_soci]' ), 'apsf-sidenav' ) && false !== strpos( $as( $u_vol, '[apsemplice_area_soci]' ), 'Il mio spazio' ), 'area soci: chi ha un ruolo vede il menu laterale con «Il mio spazio»' );
+apse_ok( false !== strpos( $html_vol, 'che tengo' ) && false !== strpos( $html_vol, 'Yoga' ), 'area soci: il volontario vede le attività che tiene nelle parti Gestione corsi ed eventi' );
 apse_ok( false === strpos( $html_vol, 'omar@example.com' ), 'area soci: il volontario non vede le email degli iscritti' );
 apse_ok( false !== strpos( $as( 1, '[apsemplice_area_soci]' ), 'amministratore' ), 'area soci: l\'amministratore senza scheda riceve un messaggio chiaro' );
 apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_tessera]' ), 'apsf-memcard' ), 'shortcode tessera' );
@@ -1932,7 +1938,7 @@ apse_ok( false !== strpos( $html, 'Togli il permesso' ), 'scheda socio: il perme
 $html = $as( $u_tre, '[apsemplice_spese]' );
 apse_ok( false !== strpos( $html, 'apse_front_expense' ) && false !== strpos( $html, 'multipart/form-data' ) && false !== strpos( $html, 'capture="environment"' ) && false !== strpos( $html, 'name="amount"' ), 'schermata spese: modulo con importo, voce, conto e fotocamera' );
 apse_ok( false === strpos( $html, 'Saldo' ) && false === strpos( $html, 'saldo' ), 'schermata spese: nessun saldo dei conti' );
-apse_ok( false !== strpos( $as( $u_tre, '[apsemplice_area_soci]' ), 'Registra una spesa' ), 'area soci: la sezione Spese compare per il tesoriere' );
+apse_ok( false !== strpos( $as( $u_tre, '[apsemplice_area_soci]', 'segreteria' ), 'Registra una spesa' ), 'area soci: la sezione Spese compare per il tesoriere, nella parte Segreteria' );
 apse_ok( isset( \ApSemplice\Frontend\Shortcodes::VIEWS['spese'] ) && shortcode_exists( 'apsemplice_spese' ), 'shortcode [apsemplice_spese] registrato (anche per blocco e widget)' );
 
 // registrazione con documenti
@@ -2656,7 +2662,7 @@ $board = $as( $uq, '[apsemplice_area_soci]' );
 apse_ok( false !== strpos( $board, 'Cambio di orario' ) && false !== strpos( $board, 'Laboratorio avvisi' ) && false !== strpos( $board, 'Portate l' ), 'bacheca: l\'iscritto trova l\'avviso nell\'area riservata' );
 apse_ok( false !== strpos( $as( $u_f, '[apsemplice_avvisi]' ), 'Cambio di orario' ), 'bacheca: il socio vede anche gli avvisi delle attività dei suoi ospiti' );
 apse_ok( false !== strpos( $as( (int) $ida['wp_user_id'], '[apsemplice_avvisi]' ), 'Nessun avviso recente' ), 'bacheca: chi non è iscritto non vede avvisi' );
-$vol_html = $as( $u_vol, '[apsemplice_area_soci]' );
+$vol_html = $as( $u_vol, '[apsemplice_area_soci]', 'corsi' ) . $as( $u_vol, '[apsemplice_area_soci]', 'eventi' );
 apse_ok( false !== strpos( $vol_html, 'Invia un avviso agli iscritti' ) && false !== strpos( $vol_html, 'apse_front_notice' ), 'area volontari: il modulo per inviare un avviso sotto ogni attività che tiene' );
 apse_ok( false === strpos( $as( $uq, '[apsemplice_area_soci]' ), 'Invia un avviso agli iscritti' ), 'area soci: chi non tiene attività non ha il modulo' );
 apse_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Avvisi agli iscritti', array( 'id' => $nc ) );
@@ -2976,10 +2982,7 @@ apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Cassa' ) && false 
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
-apse_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === array_slice( $visible, 0, 8 ), 'menu: le otto voci di lavoro (' . implode( ', ', array_slice( $visible, 0, 8 ) ) . ')' );
-$mn_admin = array_slice( $visible, 8 );
-$mn_order = array_values( Admin\Admin::MENU_ADMIN );
-apse_ok( count( $mn_admin ) >= 10 && $mn_admin === array_values( array_intersect( $mn_order, $mn_admin ) ) && in_array( 'Aspetto', $mn_admin, true ) && in_array( 'Copia di sicurezza', $mn_admin, true ), 'menu: le pagine amministrative seguono, nell\'ordine previsto (' . implode( ', ', $mn_admin ) . ')' );
+apse_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo otto voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );

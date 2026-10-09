@@ -64,6 +64,7 @@
 	body.apsf-printing .apsf-memcard { position: fixed; left: 0; top: 0; width: 90mm; max-width: none; margin: 0; box-shadow: none; }
 	body.apsf-printing .apsf-memcard-img { width: 100mm; }
 	body.apsf-printing .apsf-memcard .apsf-btn { display: none !important; }
+	body.apsf-printing .apsf-memcard-qr .apsf-small { display: none !important; } /* sulla tessera stampata resta solo il codice, senza le istruzioni */
 }
 
 /* Elenchi e tabelle */
@@ -154,3 +155,19 @@
 .apsf-card-f { position: absolute; white-space: nowrap; font-weight: 600; }
 .apsf-card-qr { line-height: 0; background: #fff; padding: .4cqw; border-radius: 1cqw; }
 .apsf-card-qr svg { width: 100%; height: auto; background: #fff; border-radius: 0; max-width: none; }
+
+/* Area riservata con menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria e gestione di corsi ed eventi */
+.apsf-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.apsf-layout.apsf-nonav { grid-template-columns: minmax(0, 1fr); }
+.apsf-sidenav { position: sticky; top: 1rem; }
+.apsf-sidenav ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--apsf-line); border-radius: var(--apsf-radius); overflow: hidden; }
+.apsf-sidenav li + li { border-top: 1px solid var(--apsf-line); }
+.apsf-sidenav a { display: block; padding: .6rem .9rem; text-decoration: none; color: inherit; }
+.apsf-sidenav a:hover { background: var(--apsf-soft); }
+.apsf-sidenav a.is-active { background: var(--apsf-accent); color: #fff; font-weight: 600; }
+@media (max-width: 700px) {
+	.apsf-layout { grid-template-columns: minmax(0, 1fr); }
+	.apsf-sidenav { position: static; }
+	.apsf-sidenav ul { display: flex; flex-wrap: wrap; }
+	.apsf-sidenav li + li { border-top: 0; border-left: 1px solid var(--apsf-line); }
+}

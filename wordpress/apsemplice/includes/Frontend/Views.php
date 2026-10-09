@@ -147,7 +147,7 @@ final class Views {
 			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
 			return '<section class="apsf-section">'
 				. \ApSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ) )
-				. '<p><span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span></p>'
+				. ( $active ? '' : '<p><span class="apsf-badge apsf-badge-bad">Tessera scaduta</span></p>' ) // sulla tessera stampabile compare solo se non è in regola
 				. ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
 				. '<p class="apsf-print-wrap"><button type="button" class="apsf-btn apsf-print-card">Stampa la tessera</button></p></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
@@ -159,7 +159,7 @@ final class Views {
 			. '<div class="apsf-memcard-type">' . esc_html( \ApSemplice\Levels::label( $p ) ) . '</div>'
 			. '<dl class="apsf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'
+			. ( $active ? '' : '<span class="apsf-badge apsf-badge-bad">Tessera scaduta</span>' )
 			. self::card_qr( $p ) . ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
 			. '</div><p class="apsf-print-wrap"><button type="button" class="apsf-btn apsf-print-card">Stampa la tessera</button></p></section>';
 	}
@@ -966,16 +966,21 @@ final class Views {
 		);
 	}
 
-	public static function section_volunteer( array $p ): string {
+	/** Le attività che il socio tiene, con prenotati e invio avvisi. $only: 'course' solo corsi, 'event' solo eventi, '' tutte. */
+	public static function section_volunteer( array $p, string $only = '' ): string {
 		if ( ! MemberType::can_teach( $p['type'] ) ) {
 			return '';
 		}
 		$svc   = Plugin::activities();
-		$html  = '<section class="apsf-section"><h3>Le attività che tengo</h3>';
+		$title = array( 'course' => 'I corsi che tengo', 'event' => 'Gli eventi che tengo' )[ $only ] ?? 'Le attività che tengo';
+		$html  = '<section class="apsf-section"><h3>' . esc_html( $title ) . '</h3>';
 		$found = false;
 		foreach ( $svc->taught_activity_ids( (int) $p['id'] ) as $aid ) {
 			$a = $svc->get( $aid );
 			if ( ! $a || ! current_user_can( 'apse_view_participants', $aid ) || $a['social_year'] !== Settings::social_year()->label() ) {
+				continue;
+			}
+			if ( ( 'course' === $only && ActivityKind::COURSE !== $a['kind'] ) || ( 'event' === $only && ActivityKind::COURSE === $a['kind'] ) ) {
 				continue;
 			}
 			$found = true;
@@ -1017,8 +1022,100 @@ final class Views {
 
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
+	/** Le parti dell'area riservata: chiave => titolo. La prima è quella del socio; le altre compaiono solo a chi ha quel ruolo. */
+	const PANES = array(
+		'mio'         => 'Il mio spazio',
+		'segreteria'  => 'Segreteria',
+		'corsi'       => 'Gestione corsi',
+		'eventi'      => 'Gestione eventi',
+	);
+
+	/** Sezioni della parte «Il mio spazio»: tutto ciò che riguarda il socio come persona. */
+	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'profilo', 'ricevute', 'app' );
+
+	/** @return array<string,string> le parti che questa persona può usare (chiave => titolo), sempre con «Il mio spazio» per prima */
+	public static function panes_for( array $p ): array {
+		$out = array( 'mio' => self::PANES['mio'] );
+		if ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'apse_add_expense', 0 ) ) {
+			$out['segreteria'] = self::PANES['segreteria'];
+		}
+		if ( ( MemberType::can_teach( $p['type'] ) || Access::is_admin_user( get_current_user_id() ) ) && self::has_managed( $p, 'course' ) ) {
+			$out['corsi'] = self::PANES['corsi'];
+		}
+		if ( self::has_managed( $p, 'event' ) ) { // anche lo staff e chi gestisce un solo evento
+			$out['eventi'] = self::PANES['eventi'];
+		}
+		return $out;
+	}
+
+	/** La persona gestisce almeno un corso (kind «course») o un evento (kind «event»: anche i ricorrenti)? */
+	private static function has_managed( array $p, string $kind ): bool {
+		if ( 'event' === $kind ) {
+			return (bool) self::managed_events();
+		}
+		$svc = Plugin::activities();
+		if ( Access::is_admin_user( get_current_user_id() ) ) {
+			foreach ( $svc->for_year( Settings::social_year()->label() ) as $a ) {
+				if ( ActivityKind::COURSE === $a['kind'] ) {
+					return true;
+				}
+			}
+			return false;
+		}
+		foreach ( $svc->taught_activity_ids( (int) $p['id'] ) as $aid ) {
+			$a = $svc->get( $aid );
+			if ( $a && ActivityKind::COURSE === $a['kind'] && current_user_can( 'apse_view_participants', $aid ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Contenuto di una parte dell'area. */
+	private static function pane_html( string $pane, array $p ): string {
+		switch ( $pane ) {
+			case 'segreteria':
+				$html = current_user_can( Plugin::CAP_OPS ) ? self::secretary() : '';
+				return $html . self::section_expenses( $p );
+			case 'corsi':
+				return self::section_volunteer( $p, 'course' );
+			case 'eventi':
+				return self::section_volunteer( $p, 'event' ) . self::section_checkin( $p );
+		}
+		$html = self::section_complete( $p );
+		foreach ( self::MY_SECTIONS as $s ) {
+			$fn    = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'avvisi' => 'section_notices' )[ $s ];
+			$html .= self::$fn( $p );
+		}
+		return $html;
+	}
+
+	/** L'area riservata con il piccolo menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria, Gestione corsi e Gestione eventi. */
+	private static function area_with_menu( array $p ): string {
+		$panes = self::panes_for( $p );
+		$pane  = isset( $_GET['apsf_vista'] ) ? sanitize_key( wp_unslash( $_GET['apsf_vista'] ) ) : 'mio'; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! isset( $panes[ $pane ] ) ) {
+			$pane = 'mio';
+		}
+		$base = remove_query_arg( array( 'apsf_vista', 'apse_session', 'apsf_ok', 'apsf_err', 'apsf_sig' ), Restrict::current_url() );
+		$nav  = '';
+		if ( count( $panes ) > 1 ) {
+			$nav = '<nav class="apsf-sidenav" aria-label="Area riservata"><ul>';
+			foreach ( $panes as $key => $title ) {
+				$nav .= '<li><a href="' . esc_url( 'mio' === $key ? $base : add_query_arg( 'apsf_vista', $key, $base ) ) . '"' . ( $key === $pane ? ' class="is-active" aria-current="page"' : '' ) . '>' . esc_html( $title ) . '</a></li>';
+			}
+			$nav .= '</ul></nav>';
+		}
+		return '<div class="apsf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="apsf-layout' . ( '' === $nav ? ' apsf-nonav' : '' ) . '">' . $nav
+			. '<div class="apsf-area apsf-pane-' . esc_attr( $pane ) . '">' . self::pane_html( $pane, $p ) . '</div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
 	public static function area( array $atts = array() ): string {
-		$sections = array_filter( array_map( 'trim', explode( ',', (string) ( $atts['sezioni'] ?? 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese,app' ) ) ) );
+		$custom = isset( $atts['sezioni'] ) ? trim( (string) $atts['sezioni'] ) : '';
+		if ( '' === $custom ) { // l'area standard, con il menu laterale
+			return self::with_person( array( __CLASS__, 'area_with_menu' ), 'apsf-area-wrap' );
+		}
+		$sections = array_filter( array_map( 'trim', explode( ',', $custom ) ) );
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(

@@ -64,7 +64,7 @@ final class Shortcodes {
 	public static function render_view( string $view, array $atts = array() ): string {
 		switch ( $view ) {
 			case 'area_soci':
-				return Views::area( shortcode_atts( array( 'sezioni' => 'regolamento,tessera,attivita,calendario,avvisi,pagamenti,ospiti,profilo,ricevute,volontario,ingressi,spese,app' ), $atts ) );
+				return Views::area( shortcode_atts( array( 'sezioni' => '' ), $atts ) );
 			case 'tessera':
 				return Views::card();
 			case 'calendario':
