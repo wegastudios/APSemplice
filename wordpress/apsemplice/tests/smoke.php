@@ -286,10 +286,10 @@ $lic_notice = Admin\LicenseNotice::html();
 apse_ok( false !== strpos( $lic_notice, 'notice-warning' ) && false === strpos( $lic_notice, 'overlay' ), 'licenza scaduta: un avviso in cima alle pagine, non un popup che copre i dati' );
 // quote diverse: spariscono, resta la quota sola
 $lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
-\ApSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : ApSempliceMoney::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \ApSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Sostenitore', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
+\ApSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : ApSempliceMoney::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \ApSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
 $lv_id = 0;
 foreach ( \ApSemplice\Levels::all() as $l ) {
-	if ( 'Sostenitore' === $l['name'] ) {
+	if ( 'Livello con quota propria' === $l['name'] ) {
 		$lv_id = (int) $l['id'];
 	}
 }
