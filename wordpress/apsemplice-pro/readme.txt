@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.18
+Stable tag: 1.1.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,6 +14,9 @@ Advanced features for APSemplice: online payments, accounts and funds, accountin
 APSemplice Pro adds to APSemplice (required) the features that go beyond the basics: online payments with Stripe and PayPal, several accounts and funds, accounting and reports, insurance and attendance registers, mass emails, installable app with notifications, Apple and Google Wallet cards, receipts in PDF, several member levels and VAT.
 
 == Changelog ==
+
+= 1.1.19 =
+* Link to Google's guide for getting the Maps API key, next to the place search setting.
 
 = 1.1.18 =
 * Optional place search with Google in the "Location" fields of courses and events (off by default, needs your own Google Maps key).

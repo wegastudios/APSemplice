@@ -70,7 +70,8 @@ final class TechPage {
 		}
 		echo '<h2>Ricerca dei luoghi con Google</h2>';
 		echo '<p class="description">Nei campi «Luogo» di corsi ed eventi compaiono i suggerimenti di Google mentre si scrive. Spenta di default. Serve una chiave API di Google Maps dell\'ente (Google Cloud, servizio «Places API»): '
-			. 'limitala ai siti autorizzati dal pannello di Google, perché è visibile nel codice della pagina. Il collegamento con Google avviene solo nelle pagine di amministrazione, dal browser di chi compila il campo; nessun dato dei soci viene inviato.</p>';
+			. 'limitala ai siti autorizzati dal pannello di Google, perché è visibile nel codice della pagina. Il collegamento con Google avviene solo nelle pagine di amministrazione, dal browser di chi compila il campo; nessun dato dei soci viene inviato.</p>'
+			. '<p><a href="https://developers.google.com/maps/documentation/javascript/get-api-key" target="_blank" rel="noopener noreferrer">Come ottenere la chiave API di Google Maps (guida di Google, si apre in una nuova finestra) ↗</a></p>';
 		Ui::form_open( 'apse_save_places', Ui::url( 'apse-tech' ) );
 		echo '<table class="form-table"><tbody><tr><th>Ricerca dei luoghi</th><td><label><input type="checkbox" name="places_enabled" value="1"' . checked( ! empty( Settings::get( 'places_enabled' ) ), true, false ) . '> Accendi i suggerimenti di Google</label></td></tr>'
 			. '<tr><th>Chiave API di Google Maps</th><td><input type="text" name="places_key" value="' . esc_attr( (string) Settings::get( 'places_key' ) ) . '" class="regular-text" autocomplete="off" maxlength="100"></td></tr></tbody></table>';

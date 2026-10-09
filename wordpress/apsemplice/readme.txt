@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.18
+Stable tag: 1.1.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.19 =
+* Link to Google's guide for getting the Maps API key, next to the place search setting.
 
 = 1.1.18 =
 * Optional place search with Google in the "Location" fields of courses and events (off by default, needs your own Google Maps key).
