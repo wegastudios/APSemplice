@@ -166,7 +166,7 @@ final class Actions {
 		}
 		$sid = (int) ( $post['session_id'] ?? 0 );
 		\ApSemplice\Waitlist::join( $sid, $person_id, (int) $actor['id'] );
-		return 'Sei in lista d\'attesa (posizione ' . (int) \ApSemplice\Waitlist::position( $sid, $person_id ) . '): se si libera un posto vieni prenotato automaticamente e ricevi un'email.';
+		return 'Sei in lista d\'attesa (posizione ' . (int) \ApSemplice\Waitlist::position( $sid, $person_id ) . '): se si libera un posto vieni prenotato automaticamente e ricevi un\'email.';
 	}
 
 	public static function do_waitlist_leave( array $post ): string {
@@ -174,7 +174,7 @@ final class Actions {
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::require_cap( 'apse_book_for', $person_id );
 		\ApSemplice\Waitlist::leave( (int) ( $post['session_id'] ?? 0 ), $person_id );
-		return 'Sei uscito dalla lista d\'attesa.';
+		return 'Hai lasciato la lista d\'attesa.';
 	}
 
 	/** Il socio accetta il regolamento in vigore. */

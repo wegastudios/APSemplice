@@ -16,7 +16,7 @@ final class Texts {
 	const OPT           = 'apse_texts';
 	const MAX_LEN       = 600;
 	const MIN_LEN       = 3;
-	const CATALOG_VERSION = 4; // da aumentare quando cambiano i criteri dell'elenco (invalida la copia in memoria)
+	const CATALOG_VERSION = 5; // da aumentare quando cambiano i criteri dell'elenco (invalida la copia in memoria)
 	const GROUP_MANUAL  = 'Aggiunte a mano';
 	const GROUP_ORDER   = array(
 		'Area soci e pagine pubbliche',
@@ -271,7 +271,7 @@ final class Texts {
 			$s    = "'" === $raw[0] ? strtr( $body, array( '\\\\' => '\\', "\\'" => "'" ) ) : stripcslashes( $body );
 			$parts = false !== strpos( $s, '<' ) ? preg_split( '/<[^>]*>/', $s ) : array( $s );
 			foreach ( (array) $parts as $p ) {
-				$p = trim( (string) $p );
+				$p = trim( (string) preg_replace( '/^[\s,.;:!?)\]»…–—-]+/u', '', trim( (string) $p ) ) ); // un testo non comincia con la punteggiatura che lo separa da ciò che precede
 				if ( '' !== $p && self::is_text( $p ) ) {
 					$out[ $p ] = true;
 				}
