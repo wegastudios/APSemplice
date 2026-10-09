@@ -273,32 +273,35 @@ $inst2 = License::installation();
 apse_ok( $inst2['moved'] && $inst2['id'] !== $inst1['id'], 'licenza: una copia su un altro indirizzo diventa una nuova installazione' );
 apse_ok( $inst2['id'] === License::installation()['id'], 'licenza: il nuovo id poi resta stabile' );
 
-// ---------- Licenza non in regola: popup e blocchi ----------
-apse_ok( License::allows( 'export' ) && License::allows( 'member_area' ) && '' === Admin\LicenseNotice::html(), 'licenza in standby: nessun blocco e nessun popup' );
+// ---------- Licenza non in regola: si torna alle funzioni di base ----------
+apse_ok( ! \ApSemplice\Edition::degraded() && \ApSemplice\Edition::has( 'payments' ) && \ApSemplice\Edition::has( 'levels' ) && '' === Admin\LicenseNotice::html(), 'licenza in standby: tutto disponibile e nessun avviso' );
 License::set_state( 'unpaid', $today );
-$pol = License::policy();
-apse_ok( 'closable' === $pol['popup'] && 7 === $pol['days_left'], 'licenza non pagata: popup chiudibile per 7 giorni' );
-apse_ok( ! License::allows( 'export' ) && ! License::allows( 'member_area' ), 'licenza non pagata: export e accesso soci bloccati subito' );
-Settings::update( array( 'pwa_enabled' => 1, 'push_enabled' => 1 ) );
-apse_ok( ! \ApSemplice\Pwa::enabled() && ! \ApSemplice\Push::enabled(), 'licenza non pagata: l\'app installabile e le notifiche push sono bloccate' );
-apse_ok( false !== strpos( (string) apse_throws( function () use ( $yoga ) { \ApSemplice\Notices::send( $yoga, null, 'Titolo', 'Testo' ); } ), 'licenza' ) && false !== strpos( (string) apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', 'Testo', 'members_all' ); } ), 'licenza' ), 'licenza non pagata: avvisi e comunicazioni sono sospesi' );
-Settings::update( array( 'pwa_enabled' => 0, 'push_enabled' => 0 ) );
-apse_ok( false !== strpos( Admin\LicenseNotice::html(), 'apse-overlay-close' ), 'popup con pulsante di chiusura' );
-apse_ok( false !== strpos( Admin\Exports::link( 'people', array(), 'Esporta' ), 'disabled' ), 'pulsanti di esportazione disattivati' );
-apse_ok( user_can( 1, 'apse_view_participants', $yoga ), 'amministratore: i permessi restano' );
-apse_ok( ! user_can( $u_vol, 'apse_view_participants', $yoga ) && ! user_can( $u_ord, 'apse_view_person', $ord ), 'volontari e soci: nessun permesso' );
-$r = apse_rest( $u_ord, '/apsemplice/v1/me' );
-apse_ok( 403 === $r->get_status() && 'apse_license_required' === $r->get_data()['code'], 'REST: i soci ricevono "servizio sospeso"' );
-apse_ok( 403 === apse_rest( $u_vol, "/apsemplice/v1/activities/$yoga/participants" )->get_status(), 'REST: il volontario è sospeso' );
-apse_ok( 200 === apse_rest( 1, '/apsemplice/v1/me' )->get_status(), 'REST: l\'amministratore resta operativo' );
-License::set_state( 'unpaid', gmdate( 'Y-m-d', strtotime( $today . ' -7 days' ) ) );
-apse_ok( 'locked' === License::policy()['popup'] && false === strpos( Admin\LicenseNotice::html(), 'apse-overlay-close' ), 'dopo una settimana il popup non si chiude più' );
-License::set_state( 'unpaid', gmdate( 'Y-m-d', strtotime( $today . ' -6 days' ) ) );
-apse_ok( 'closable' === License::policy()['popup'] && 1 === License::policy()['days_left'], 'al sesto giorno è ancora chiudibile' );
-License::set_state( 'unlicensed', $today );
-apse_ok( false !== strpos( Admin\LicenseNotice::html(), 'non risulta più associato' ), 'dominio non più associato: messaggio dedicato' );
+apse_ok( \ApSemplice\Edition::degraded() && ! \ApSemplice\Edition::has( 'payments' ) && ! \ApSemplice\Edition::has( 'levels' ) && ! \ApSemplice\Edition::has( 'reports' ) && ! \ApSemplice\Edition::has( 'vat' ) && ! \ApSemplice\Edition::has( 'broadcasts' ) && ! \ApSemplice\Edition::has( 'pwa' ), 'licenza scaduta: le funzioni avanzate spariscono' );
+apse_ok( \ApSemplice\Edition::has( 'license' ) && \ApSemplice\Edition::installed( 'payments' ), 'licenza scaduta: la licenza si può ancora correggere e i file restano' );
+apse_ok( \ApSemplice\Edition::allows( 'export' ) && \ApSemplice\Edition::allows( 'member_area' ) && user_can( $u_vol, 'apse_view_participants', $yoga ) && 200 === apse_rest( $u_ord, '/apsemplice/v1/me' )->get_status(), 'licenza scaduta: soci, volontari ed esportazioni non si bloccano' );
+apse_ok( false !== strpos( Admin\Exports::link( 'people', array(), 'Esporta' ), 'href=' ), 'licenza scaduta: i pulsanti di esportazione restano attivi' );
+apse_ok( get_class( Plugin::payments() ) === 'ApSemplice\OfflinePayments' && ! Plugin::payments()->enabled(), 'licenza scaduta: niente nuovi pagamenti online (restano le voci da pagare)' );
+apse_ok( false !== strpos( (string) apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', 'Testo', 'members_all' ); } ), 'licenza' ), 'licenza scaduta: le comunicazioni di massa dicono perché sono sospese' );
+$lic_notice = Admin\LicenseNotice::html();
+apse_ok( false !== strpos( $lic_notice, 'notice-warning' ) && false === strpos( $lic_notice, 'overlay' ), 'licenza scaduta: un avviso in cima alle pagine, non un popup che copre i dati' );
+// quote diverse: spariscono, resta la quota sola
+$lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
+\ApSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : ApSempliceMoney::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \ApSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Sostenitore', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
+$lv_id = 0;
+foreach ( \ApSemplice\Levels::all() as $l ) {
+	if ( 'Sostenitore' === $l['name'] ) {
+		$lv_id = (int) $l['id'];
+	}
+}
+$wpdb->update( Db::t( 'people' ), array( 'level_id' => $lv_id ), array( 'id' => $lv_fee ) );
+delete_option( License::OPT_STATE );
+apse_ok( 7700 === \ApSemplice\Levels::base_fee( Plugin::people()->get( $lv_fee ) ), 'quote diverse: con la licenza in regola vale la quota del livello' );
+License::set_state( 'unpaid', $today );
+$lv_quota = (int) Settings::get( 'membership_fee_cents' );
+apse_ok( $lv_quota === \ApSemplice\Levels::base_fee( Plugin::people()->get( $lv_fee ) ) && 1 === count( \ApSemplice\Levels::choices( 'ordinary' ) ), 'quote diverse: con la licenza scaduta c\'è una quota sola e non si sceglie il tipo di socio' );
 License::set_state( 'active' );
-apse_ok( License::allows( 'export' ) && '' === Admin\LicenseNotice::html() && 200 === apse_rest( $u_ord, '/apsemplice/v1/me' )->get_status(), 'licenza regolarizzata: tutto torna disponibile' );
+apse_ok( \ApSemplice\Edition::has( 'payments' ) && \ApSemplice\Edition::has( 'levels' ) && '' === Admin\LicenseNotice::html() && count( \ApSemplice\Levels::choices( 'ordinary' ) ) >= 2, 'licenza regolarizzata: tutto torna disponibile' );
+$wpdb->update( Db::t( 'people' ), array( 'level_id' => null ), array( 'id' => $lv_fee ) );
 delete_option( License::OPT_STATE );
 wp_set_current_user( 1 );
 
@@ -507,10 +510,6 @@ $msg = (string) apse_throws( function () use ( $front, $s3, $g_id ) { $front::do
 apse_ok( false !== strpos( $msg, 'non è cancellabile' ) && $acts->has_active_booking( $s3, $g_id ), 'sito: la prenotazione a pagamento dell\'ospite non si annulla' );
 $front::do_profile( array( 'phone' => '3331112222', 'tax_code' => 'vrdgpp75b10f205b', 'address' => 'Via Verdi 9', 'zip' => '00100', 'city' => 'Roma' ) );
 apse_ok( '3331112222' === $people->get( $founder )['phone'] && 'VRDGPP75B10F205B' === $people->get( $founder )['tax_code'] && 'Via Verdi 9' === $people->get( $founder )['address'], 'sito: il socio aggiorna il proprio profilo' );
-License::set_state( 'unpaid', $today );
-apse_ok( null !== apse_throws( function () use ( $front, $s3, $founder ) { $front::do_book( array( 'session_id' => $s3, 'person_id' => $founder ) ); } ), 'licenza non in regola: le azioni dei soci sono sospese' );
-apse_ok( false !== strpos( $as( $u_f, '[apsemplice_area_soci]' ), 'sospeso' ), 'licenza non in regola: l\'area soci mostra "servizio sospeso"' );
-delete_option( License::OPT_STATE );
 
 // Contenuti riservati: pagine e articoli
 wp_set_current_user( 1 );
@@ -549,9 +548,6 @@ apse_ok( $sees( $p_vol, 1 ) && $sees( $p_teat, 1 ) && $sees( $p_yoga, 1 ), 'rise
 $people->set_membership( $ord, $sy_label, false );
 apse_ok( ! $sees( $p_mem, $u_ord ) && $sees( $p_yoga, $u_ord ), 'riservati: tessera scaduta = niente "solo soci", ma resta il programma dell\'attività a cui è iscritto' );
 $people->set_membership( $ord, $sy_label, true );
-License::set_state( 'unpaid', $today );
-apse_ok( ! $sees( $p_mem, $u_ord ) && $sees( $p_pub, $u_ord ) && $sees( $p_mem, 1 ), 'riservati: licenza non in regola = i soci non vedono i contenuti riservati' );
-delete_option( License::OPT_STATE );
 
 wp_set_current_user( 0 );
 $rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/posts/' . $p_mem ) )->get_data();
@@ -1927,9 +1923,6 @@ apse_ok( null !== apse_throws( function () use ( $front, $tx ) { $front::do_expe
 $_FILES = array();
 
 // licenza sospesa e revoca
-License::set_state( 'unpaid', $today );
-apse_ok( ! user_can( $u_tre, 'apse_add_expense', 0 ), 'licenza non in regola: il tesoriere è sospeso come i soci' );
-delete_option( License::OPT_STATE );
 wp_set_current_user( 1 );
 $set_tre->invoke( null, array( 'id' => $tre_p ) );
 apse_ok( ! Access::is_treasurer( $u_tre ) && ! user_can( $u_tre, 'apse_add_expense', 0 ), 'tesoriere: permesso revocato' );
@@ -2212,10 +2205,6 @@ apse_ok( 'invalid' === \ApSemplice\Frontend\CardVerify::result( \ApSemplice\Card
 $page = \ApSemplice\Frontend\CardVerify::page( $qm[1] );
 apse_ok( false !== strpos( $page, 'Tessera valida' ) && false !== strpos( $page, 'Fulvia' ) && false === strpos( $page, 'example.com' ) && false !== strpos( $page, 'noindex' ), 'pagina di verifica: stato, nome e validità; nessuna email; non indicizzata' );
 apse_ok( false !== strpos( \ApSemplice\Frontend\CardVerify::page( 'boh' ), 'QR non valido' ), 'pagina di verifica: codice non valido' );
-License::set_state( 'unpaid', $today );
-$page = \ApSemplice\Frontend\CardVerify::page( $qm[1] );
-apse_ok( false !== strpos( $page, 'Servizio sospeso' ) && false === strpos( $page, 'Fulvia' ), 'licenza non in regola: la verifica è sospesa e non mostra dati' );
-delete_option( License::OPT_STATE );
 // ---------- Biglietto QR delle prenotazioni (per singolo evento) ----------
 wp_set_current_user( 1 );
 $tev   = $mkev( 'Concerto con QR', 500, null, array( 'booking_qr' => 1 ) );
@@ -2248,9 +2237,6 @@ $wpdb->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', st
 apse_ok( 'past' === \ApSemplice\Frontend\TicketVerify::result( $gt )['status'] && false !== strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'Evento già svolto' ) && false === strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'Gia Ospite' ), 'biglietto: evento già svolto, e un vecchio QR non mostra più il nome di chi era' );
 $wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'id' => $tev_s ) );
 apse_ok( true === \ApSemplice\Frontend\TicketVerify::result( $gt )['today'] && false === strpos( \ApSemplice\Frontend\TicketVerify::page( $gt ), 'altra data' ), 'biglietto: nel giorno dell\'evento nessun avviso' );
-License::set_state( 'unpaid', $today );
-apse_ok( 'suspended' === \ApSemplice\Frontend\TicketVerify::result( $gt )['status'], 'licenza non in regola: anche i biglietti sono sospesi' );
-delete_option( License::OPT_STATE );
 // ---------- Gestori dell'evento, lista prenotati e registrazione degli ingressi ----------
 wp_set_current_user( 1 );
 $guest_row = $people->get( $g_id );
@@ -2262,9 +2248,6 @@ apse_ok( null !== apse_throws( function () use ( $acts, $tev, $tre_p ) { $acts->
 apse_ok( ! user_can( $u_vol, 'apse_manage_event', $tev ), 'un volontario qualsiasi non gestisce un evento che non tiene' );
 $acts->update( $tev, array( 'instructor_person_id' => $vol ) );
 apse_ok( user_can( $u_vol, 'apse_manage_event', $tev ) && null !== apse_throws( function () use ( $acts, $tev, $vol ) { $acts->add_staff( $tev, $vol ); } ), 'l\'istruttore gestisce l\'evento per definizione' );
-License::set_state( 'unpaid', $today );
-apse_ok( ! user_can( $u_tre, 'apse_manage_event', $tev ) && user_can( 1, 'apse_manage_event', $tev ), 'licenza non in regola: i gestori sono sospesi come i soci, gli amministratori restano' );
-delete_option( License::OPT_STATE );
 
 // area riservata: elenco degli eventi e lista dei prenotati
 $list = $as( $u_tre, '[apsemplice_ingressi]' );
@@ -2609,10 +2592,6 @@ wp_set_current_user( $uq );
 apse_ok( ! Notices::can_send( $nc ) && null !== apse_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'x', 'body' => 'y' ) ); } ), 'avvisi: un socio qualunque non può inviarne' );
 wp_set_current_user( $u_tre );
 apse_ok( ! Notices::can_send( $nc ), 'avvisi: un gestore di un altro evento non può inviarne per un corso' );
-License::set_state( 'unpaid', $today );
-wp_set_current_user( $u_vol );
-apse_ok( ! Notices::can_send( $nc ), 'avvisi: con la licenza non in regola i volontari sono sospesi' );
-delete_option( License::OPT_STATE );
 wp_set_current_user( 1 );
 apse_ok( Notices::can_send( $nc ), 'avvisi: l\'amministratore può sempre' );
 
@@ -2670,9 +2649,6 @@ $param = (string) $q_act['apse_activate'];
 apse_ok( 'ok' === $Act::resolve( $param )['status'] && false !== strpos( $Act::page( $param ), 'Ciao Nora' ) && false !== strpos( $Act::page( $param ), 'name="password2"' ) && false !== strpos( $Act::page( $param ), '334 1234567' ), 'link di attivazione: pagina con email, cellulare (già compilato) e password' );
 apse_ok( 'expired' === $Act::resolve( $param, time() + 40 * DAY_IN_SECONDS )['status'] && 'invalid' === $Act::resolve( 'boh' )['status'] && 'invalid' === $Act::resolve( preg_replace( '/^\d+\./', ( $nm + 1 ) . '.', $param ) )['status'], 'link: scaduto dopo 30 giorni, falso o di un altro socio = non vale' );
 apse_ok( false !== strpos( $Act::page( 'boh' ), 'Attivazione non disponibile' ), 'link non valido: pagina di errore' );
-License::set_state( 'unpaid', $today );
-apse_ok( 'suspended' === $Act::resolve( $param )['status'], 'licenza non in regola: l\'attivazione è sospesa' );
-delete_option( License::OPT_STATE );
 
 // l'attivazione: controlli
 $ok_post = array( 'email' => 'Nora.Senzamail@Example.com', 'phone' => '334 1234567', 'password' => 'Segreta123!', 'password2' => 'Segreta123!', 'tax_code' => 'RSSMRA80A01H501U', 'address' => 'Via Dante 4', 'zip' => '40100', 'city' => 'Bologna' );
@@ -2745,9 +2721,6 @@ $n = count( $fa_ml );
 $admin_mail = (string) get_userdata( 1 )->user_email;
 $plain_id   = wp_create_user( 'soloutente', 'x-Pass-123456', 'solo.utente@example.com' );
 apse_ok( false === $FA::request( 'sconosciuta@example.com' ) && false === $FA::request( 'non-una-email' ) && false === $FA::request( '' ) && false === $FA::request( $admin_mail ) && false === $FA::request( 'solo.utente@example.com' ) && count( $fa_ml ) === $n, 'primo accesso: email sconosciute, amministratori e utenti che non sono soci non ricevono nulla' );
-License::set_state( 'unpaid', $today );
-apse_ok( false === $FA::request( $q_mail ) && count( $fa_ml ) === $n, 'primo accesso: con la licenza non in regola è sospeso' );
-delete_option( License::OPT_STATE );
 apse_ok( false !== strpos( $FA::page( \ApSemplice\Frontend\FirstAccess::MESSAGE ), 'Richiesta ricevuta' ) && false !== strpos( $FA::page(), 'Mandami il link' ) && false !== strpos( $FA::page(), 'name="phone"' ) && false !== strpos( $FA::page(), 'name="email"' ) && false !== strpos( $FA::page(), 'name="name"' ), 'primo accesso: pagina con nome, email e cellulare e la risposta uguale per tutti' );
 
 // primo accesso: email conosciuta -> link; cellulare conosciuto -> si crea/aggiorna l'utente; altrimenti la segreteria
@@ -2777,9 +2750,6 @@ $dup1 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dup', 'la
 $dup2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dup', 'last_name' => 'Due', 'phone' => '337 0000001' ) );
 apse_ok( 'unknown_queued' === $FA::submit( 'Dup', 'dup@example.com', '337 0000001' ) && 'unknown_queued' === $FA::submit( 'Ospite', 'og@example.com', (string) $people->get( $g_id )['phone'] ) && empty( $people->get( $dup1 )['wp_user_id'] ), 'primo accesso: cellulare di più soci o di un ospite -> mai indovinare, va alla segreteria' );
 apse_ok( 'unknown_queued' === $FA::submit( 'Admin', $admin_mail, '339 1112222' ) && count( $fa_ml ) === $n_ml, 'primo accesso: l\'email di un amministratore non riceve nulla' );
-License::set_state( 'unpaid', $today );
-apse_ok( 'none' === $FA::submit( 'Quinto', $q_mail, '338 5550101' ) && count( $fa_ml ) === $n_ml, 'primo accesso: sospeso con la licenza non in regola' );
-delete_option( License::OPT_STATE );
 
 // primo accesso: chi si attiva dal sito deve completare il profilo; finché manca non prenota né paga online
 apse_ok( 1 === (int) $people->get( $q )['profile_due'] && $people->profile_blocks( $people->get( $q ) ), 'primo accesso: il socio senza indirizzo e codice fiscale risulta da completare e bloccato' );

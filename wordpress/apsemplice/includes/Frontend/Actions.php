@@ -116,7 +116,7 @@ final class Actions {
 	/** Le azioni delle funzioni avanzate si rifiutano se la funzione non c'è in questa edizione. */
 	private static function require_feature( string $feature ): void {
 		if ( ! \ApSemplice\Edition::has( $feature ) ) {
-			throw new \InvalidArgumentException( 'Questa funzione non è disponibile in questa edizione.' );
+			throw new \InvalidArgumentException( \ApSemplice\Edition::missing_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -257,9 +257,7 @@ final class Actions {
 	}
 
 	public static function do_pay( array $post ): string {
-		if ( ! \ApSemplice\Edition::has( 'payments' ) ) {
-			throw new \InvalidArgumentException( 'I pagamenti online non sono disponibili in questa edizione.' );
-		}
+		self::require_feature( 'payments' );
 		$actor = self::actor();
 		self::assert_profile( $actor );
 		self::require_cap( 'apse_view_payments', (int) $actor['id'] );
@@ -355,6 +353,10 @@ final class Actions {
 			throw new \InvalidArgumentException( 'L\'email non è valida.' );
 		}
 		$level = \ApSemplice\Levels::get( (int) ( $post['level_id'] ?? 0 ) );
+		if ( ! \ApSemplice\Edition::has( 'levels' ) ) { // una quota sola: il tipo di socio non si sceglie
+			$only  = \ApSemplice\Levels::choices( MemberType::ORDINARY );
+			$level = $only ? $only[0] : null;
+		}
 		if ( ! $level || empty( $level['active'] ) || MemberType::ORDINARY !== $level['base_type'] ) {
 			throw new \InvalidArgumentException( 'Scegli il tipo di socio.' );
 		}

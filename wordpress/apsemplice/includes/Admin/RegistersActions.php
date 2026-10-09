@@ -50,6 +50,7 @@ final class RegistersActions {
 		}
 		foreach ( self::ACTIONS as $action => $method ) {
 			if ( in_array( $action, $skip, true ) ) {
+				\ApSemplice\Edition::block_action( $action );
 				continue;
 			}
 			add_action(

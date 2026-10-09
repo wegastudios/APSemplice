@@ -35,7 +35,7 @@ final class Plugin {
 		if ( Edition::has( 'pwa' ) && Settings::get( 'pwa_enabled' ) ) {
 			Pwa::register(); // app installabile e notifiche
 		}
-		if ( Edition::has( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
+		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
 			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
 		}
 		if ( is_admin() ) {
@@ -56,7 +56,7 @@ final class Plugin {
 			'apse_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
 		);
 		foreach ( $jobs as $hook => $j ) {
-			if ( '' !== $j[4] && ! Edition::has( $j[4] ) ) {
+			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {
 				continue;
 			}
 			add_action( $hook, array( __NAMESPACE__ . '\\' . $j[2], $j[3] ) );
@@ -127,6 +127,14 @@ final class Plugin {
 	}
 
 	/** Servizio dei pagamenti: quello online delle funzioni avanzate se c'è, altrimenti solo l'elenco di ciò che c'è da pagare. */
+	/**
+	 * Il motore dei pagamenti online per chiudere quelli già avviati (webhook, ritorno dal gateway, controllo periodico), anche se la licenza è
+	 * scaduta: i soldi in arrivo vanno registrati comunque. Nuovi pagamenti no (vedi {@see Plugin::payments()}).
+	 */
+	public static function payments_engine(): PaymentService {
+		return self::$services['payments_engine'] ?? ( self::$services['payments_engine'] = new PaymentService() );
+	}
+
 	public static function payments(): OfflinePayments {
 		return self::$services['payments'] ?? ( self::$services['payments'] = Edition::has( 'payments' ) ? new PaymentService() : new OfflinePayments() );
 	}

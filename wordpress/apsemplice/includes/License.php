@@ -62,6 +62,11 @@ final class License {
 		return ! in_array( $feature, self::policy()['blocked'], true );
 	}
 
+	/** La licenza non è in regola (pagamento mancante o dominio non più associato)? Allora APSemplice Pro torna alle funzioni di base. */
+	public static function degraded(): bool {
+		return in_array( self::policy()['status'], LicensePolicy::penalized_statuses(), true );
+	}
+
 	/**
 	 * Identità di QUESTA installazione: un id casuale che resta finché il sito non cambia indirizzo.
 	 * Se il sito viene copiato altrove (es. produzione -> staging) la copia porta con sé il database, quindi lo

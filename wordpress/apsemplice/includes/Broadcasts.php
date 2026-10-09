@@ -176,8 +176,8 @@ final class Broadcasts {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function create( string $subject, string $body, string $audience, int $ref = 0 ): int {
-		if ( ! Edition::allows( 'official_notices' ) ) {
-			throw new \InvalidArgumentException( 'L\'invio delle comunicazioni è sospeso perché la licenza di APSemplice non risulta in regola.' );
+		if ( ! Edition::has( 'broadcasts' ) ) {
+			throw new \InvalidArgumentException( Edition::missing_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$subject = trim( (string) preg_replace( '/\s+/', ' ', $subject ) ); // una sola riga: niente a capo nell'oggetto
 		$body    = trim( str_replace( "\r\n", "\n", $body ) );
@@ -217,7 +217,7 @@ final class Broadcasts {
 		$batch = $batch ?: Limits::get( 'broadcast_batch' );
 		$db = self::db();
 		$b  = self::get( $id );
-		if ( ! $b || 'sending' !== $b['status'] || ! Edition::allows( 'official_notices' ) ) {
+		if ( ! $b || 'sending' !== $b['status'] || ! Edition::has( 'broadcasts' ) ) {
 			return 0; // con la licenza non in regola l'invio resta fermo: riprende da solo quando torna in regola
 		}
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array();
@@ -244,6 +244,9 @@ final class Broadcasts {
 
 	/** Chiamata da WP-Cron: avanza tutte le comunicazioni in corso. */
 	public static function process_all(): void {
+		if ( ! Edition::has( 'broadcasts' ) ) { // licenza scaduta: gli invii in coda restano fermi
+			return;
+		}
 		$ids = self::db()->get_col( 'SELECT id FROM ' . Db::t( 'broadcasts' ) . " WHERE status = 'sending' ORDER BY id LIMIT 5" ) ?: array();
 		foreach ( $ids as $id ) {
 			self::process( (int) $id );

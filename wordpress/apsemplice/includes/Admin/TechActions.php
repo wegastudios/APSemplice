@@ -31,10 +31,9 @@ final class TechActions {
 
 	public static function register(): void {
 		foreach ( self::ACTIONS as $action => $method ) {
-			if ( 'apse_save_woo' === $action && ! \ApSemplice\Edition::has( 'payments' ) ) { // il collegamento con WooCommerce è dei pagamenti online
-				continue;
-			}
-			if ( in_array( $action, array( 'apse_push_test', 'apse_push_reset', 'apse_save_app' ), true ) && ! \ApSemplice\Edition::has( 'pwa' ) ) { // app e notifiche
+			if ( ( 'apse_save_woo' === $action && ! \ApSemplice\Edition::has( 'payments' ) ) // il collegamento con WooCommerce è dei pagamenti online
+				|| ( in_array( $action, array( 'apse_push_test', 'apse_push_reset', 'apse_save_app' ), true ) && ! \ApSemplice\Edition::has( 'pwa' ) ) ) { // app e notifiche
+				\ApSemplice\Edition::block_action( $action );
 				continue;
 			}
 			add_action(
