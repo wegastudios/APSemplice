@@ -13,7 +13,17 @@ final class Settings {
 
 	const DEFAULT_PAYMENT_HINT = 'Il pagamento si effettua in sede presso la segreteria.';
 
+	/** @var array|null valori predefiniti, costruiti una sola volta per richiesta (non dipendono da nulla che cambi) */
+	private static $defaults_cache = null;
+
 	public static function defaults(): array {
+		if ( null === self::$defaults_cache ) {
+			self::$defaults_cache = self::build_defaults();
+		}
+		return self::$defaults_cache;
+	}
+
+	private static function build_defaults(): array {
 		return array(
 			'association_name'        => '',
 			'tax_code'                => '',
