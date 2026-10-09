@@ -40,7 +40,7 @@ final class AppearancePage {
 			. '<p><button type="button" class="button" id="apse-cardbg-pick">Scegli un\'immagine di sfondo</button> <button type="button" class="button" id="apse-cardbg-clear"' . ( '' !== $bg ? '' : ' style="display:none"' ) . '>Usa la tessera generata dal sito</button> '
 			. '<span class="description">Facoltativa: senza immagine la tessera è quella generata dal sito (bianca, con i colori scelti sopra). Con un\'immagine, meglio con le stesse proporzioni delle misure e con uno spazio libero dove vanno i dati. Trascina le scritte dove vuoi, poi regola dimensione e colore.</span></p>';
 		$max = (int) round( min( 640, $dims['w'] * 74.8 ) );
-		echo '<div id="apse-cardedit" class="' . ( '' === $bg ? 'apse-plain' : '' ) . '" data-acc="' . esc_attr( $acc ) . '" data-sec="' . esc_attr( $sec ) . '" style="position:relative;width:100%;max-width:' . $max . 'px;container-type:inline-size;aspect-ratio:' . (float) $dims['w'] . '/' . (float) $dims['h'] . ';border:1px solid #c3c4c7;background:#fff;box-sizing:border-box;border-radius:14px;overflow:hidden;' . ( '' === $bg ? 'border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . ';' : '' ) . '">';
+		echo '<div id="apse-cardedit" class="' . ( '' === $bg ? 'apse-plain' : '' ) . '" data-acc="' . esc_attr( $acc ) . '" data-sec="' . esc_attr( $sec ) . '" style="position:relative;width:100%;max-width:' . absint( $max ) . 'px;container-type:inline-size;aspect-ratio:' . (float) $dims['w'] . '/' . (float) $dims['h'] . ';border:1px solid #c3c4c7;background:#fff;box-sizing:border-box;border-radius:14px;overflow:hidden;' . ( '' === $bg ? 'border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . ';' : '' ) . '">';
 		echo '<img id="apse-cardedit-img" src="' . esc_url( $bg ) . '" alt="" style="display:' . ( '' !== $bg ? 'block' : 'none' ) . ';position:absolute;inset:0;width:100%;height:100%;object-fit:cover">';
 		foreach ( CardLayout::FIELDS as $k => $label ) {
 			$f = $layout[ $k ];
@@ -105,12 +105,23 @@ final class AppearancePage {
 
 		$acc = Assets::accent( '#2271b1' );
 		$sec = Assets::secondary( $acc );
+		if ( CardLayout::active() ) { // la tessera personalizzata come l'hanno salvata: misure, sfondo, logo e posizioni
+			wp_enqueue_style( 'apse-frontend', APSE_URL . 'assets/frontend.css', array(), \ApSemplice\Plugin::asset_version( 'frontend.css' ) );
+			$vars = Assets::inline_css();
+			if ( '' !== $vars ) {
+				wp_add_inline_style( 'apse-frontend', $vars );
+			}
+			$samples = CardLayout::samples();
+			echo '<h2>Anteprima della tessera</h2><p class="description">È la tessera salvata: ' . esc_html( (string) CardLayout::dims()['w'] ) . ' × ' . esc_html( (string) CardLayout::dims()['h'] ) . ' cm. I soci la vedono così e la stampano con queste misure.</p>'
+				. CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], '<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="#fff"/><path d="M0 0h4v4H0zM6 0h4v4H6zM0 6h4v4H0zM6 6h2v2H6z" fill="#000"/></svg>' ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da CardLayout
+		} else {
 		echo '<h2>Anteprima della tessera</h2><div style="max-width:380px;border-radius:14px;padding:20px 24px;background:#fff;color:' . esc_attr( $acc ) . ';border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . '">'
 			. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="display:block;max-height:52px;max-width:190px;margin:0 0 10px">' : '' )
 			. '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase">' . esc_html( (string) Settings::get( 'association_name' ) ) . '</div>'
 			. '<div style="font-size:24px;font-weight:700;margin-top:6px">Nome Cognome</div><div style="opacity:.9">Socio ordinario</div>'
 			. '<div style="display:flex;gap:32px;margin-top:14px"><div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Tessera n.</div><div style="font-size:20px;font-weight:600">123</div></div>'
 			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">31/12/' . ( (int) current_time( 'Y' ) + 1 ) . '</div></div></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
 		echo '<script>(function(){var pick=document.getElementById("apse-logo-pick"),clr=document.getElementById("apse-logo-clear"),id=document.getElementById("apse-logo-id"),pv=document.getElementById("apse-logo-preview"),f;'
 			. 'if(!pick){return;}'
 			. 'pick.addEventListener("click",function(e){e.preventDefault();if(!window.wp||!wp.media){window.alert("La libreria media non è disponibile: ricarica la pagina.");return;}if(!f){f=wp.media({title:"Logo dell\'ente",button:{text:"Usa questo logo"},library:{type:"image"},multiple:false});'

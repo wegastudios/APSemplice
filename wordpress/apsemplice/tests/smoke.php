@@ -5257,7 +5257,7 @@ $cl_l = \ApSemplice\CardLayout::layout();
 apse_ok( 'image' === Settings::get( 'card_mode' ) && (int) Settings::get( 'card_bg_id' ) === $cl_att && 10.0 === $cl_l['name']['x'] && 55.5 === $cl_l['name']['y'] && '#112233' === $cl_l['name']['color'] && 0 === $cl_l['qr']['show'] && 100.0 === $cl_l['qr']['x'] && 0.0 === $cl_l['qr']['y'] && 100.0 === $cl_l['qr']['size'] && 1 === $cl_l['number']['show'], 'tessera su immagine: posizioni, colori e dimensioni si salvano e restano nei limiti' );
 $cl_img = \ApSemplice\CardLayout::html( 'Mario Rossi', 'N. 7', 'Valida fino al 31/12/2027', '<svg></svg>' );
 apse_ok( false !== strpos( $cl_img, 'apsf-memcard-img' ) && false !== strpos( $cl_img, 'Mario Rossi' ) && false !== strpos( $cl_img, 'N. 7' ) && false !== strpos( $cl_img, 'left:10%;top:55.5%;font-size:6cqw;color:#112233' ) && false === strpos( $cl_img, '<svg>' ), 'tessera su immagine: i dati sono posizionati sopra l\'immagine, il QR nascosto non compare' );
-apse_render( array( Admin\AppearancePage::class, 'render' ), 'Tessera su un\'immagine mia' );
+apse_render( array( Admin\AppearancePage::class, 'render' ), 'Tessera personalizzata' );
 $lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'standard', 'card_bg_id' => '0' ) );
 apse_ok( ! \ApSemplice\CardLayout::active(), 'tessera: si torna alla tessera standard' );
 wp_delete_attachment( $cl_att, true );
