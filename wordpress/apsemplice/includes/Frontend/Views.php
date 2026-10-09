@@ -1211,6 +1211,12 @@ final class Views {
 		return '<section class="apsf-section apsf-bankpub">' . Bank::html_accounts() . '</section>';
 	}
 
+	/** Informativa sul trattamento dei dati personali, compilata con i dati dell'ente (pubblica, per chiunque). */
+	public static function privacy_notice(): string {
+		Assets::enqueue();
+		return '<section class="apsf-section apsf-privacy-wrap">' . \ApSemplice\PrivacyNotice::html() . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da PrivacyNotice
+	}
+
 	/** Modulo di donazione: porta il donatore alla pagina di PayPal già compilata (spento finché non si imposta il conto PayPal). */
 	public static function donate(): string {
 		if ( ! \ApSemplice\Donations::enabled() ) {

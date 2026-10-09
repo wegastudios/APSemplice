@@ -4104,6 +4104,49 @@ list( $sec_p, $sec_u ) = $mkmem( 'Sara', 'Segreteria' );
 $set_sec = new ReflectionMethod( Admin\Actions::class, 'set_secretary' );
 $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 apse_ok( in_array( Plugin::ROLE_SECRETARY, (array) get_userdata( $sec_u )->roles, true ) && user_can( $sec_u, Plugin::CAP_OPS ) && ! user_can( $sec_u, Plugin::CAP ) && Access::is_admin_user( $sec_u ), 'segreteria: opera sul plugin ma non è amministratore' );
+// informativa privacy: compilata con i dati dell'ente; responsabile = presidente, altrimenti la segreteria
+Settings::update( array( 'association_name' => 'Circolo Prova', 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1', 'legal_zip' => '80100', 'legal_city' => 'Napoli', 'legal_province' => 'NA', 'pec' => 'circolo@pec.example.org', 'privacy_email' => '' ) );
+$pn_saved = array();
+foreach ( $people->board() as $pn_b ) { // si parte da un consiglio senza cariche (poi si ripristinano)
+	$pn_saved[] = array( (int) $pn_b['id'], (string) $pn_b['board_role'] );
+	$people->set_board_role( (int) $pn_b['id'], null );
+}
+list( $pn_pid ) = $mkmem( 'Pia', 'Presidente' );
+$people->set_board_role( $pn_pid, 'president' );
+$pn_pres = $people->get( $pn_pid );
+$pn_resp = \ApSemplice\PrivacyNotice::responsible();
+apse_ok( 'Presidente' === $pn_resp['role'] && trim( $pn_pres['first_name'] . ' ' . $pn_pres['last_name'] ) === $pn_resp['name'], 'informativa privacy: il responsabile è il presidente' );
+$people->set_board_role( $pn_pid, null );
+$pn_resp2 = \ApSemplice\PrivacyNotice::responsible();
+$pn_sec   = $people->get( $sec_p );
+apse_ok( 'Segreteria' === $pn_resp2['role'] && trim( $pn_sec['first_name'] . ' ' . $pn_sec['last_name'] ) === $pn_resp2['name'], 'informativa privacy: senza presidente il responsabile è il socio con il ruolo di segreteria' );
+$people->set_board_role( $pn_pid, 'president' );
+$pn_html = \ApSemplice\PrivacyNotice::html();
+apse_ok( false !== strpos( $pn_html, 'Circolo Prova' ) && false !== strpos( $pn_html, '12345678903' ) && false !== strpos( $pn_html, 'Via Roma 1, 80100 Napoli (NA)' ) && false !== strpos( $pn_html, 'circolo@pec.example.org' ), 'informativa privacy: si compila con i dati dell\'ente' );
+apse_ok( false !== strpos( $pn_html, 'esclusivamente per le finalità connesse agli eventi' ) && false !== strpos( $pn_html, 'non sono ceduti né venduti' ) && false !== strpos( $pn_html, 'Non è svolta alcuna profilazione per finalità commerciali' ) && false !== strpos( $pn_html, 'strumenti informatici' ), 'informativa privacy: dichiara comunicazione solo per gli eventi, nessuna cessione commerciale, strumenti informatici e nessuna profilazione commerciale' );
+apse_ok( array() === \ApSemplice\PrivacyNotice::missing(), 'informativa privacy: con i dati dell\'ente non manca nulla' );
+Settings::update( array( 'association_name' => '', 'pec' => '' ) );
+apse_ok( in_array( 'denominazione', \ApSemplice\PrivacyNotice::missing(), true ) && in_array( 'indirizzo email o PEC', \ApSemplice\PrivacyNotice::missing(), true ), 'informativa privacy: segnala ciò che manca' );
+Settings::update( array( 'association_name' => 'Circolo Prova', 'pec' => 'circolo@pec.example.org' ) );
+$people->set_board_role( $pn_pid, null ); // si ripristina il consiglio com'era
+foreach ( $pn_saved as $pn_s ) {
+	try {
+		$people->set_board_role( $pn_s[0], $pn_s[1] );
+	} catch ( \Throwable $pn_e ) { // una carica non più assegnabile resta vuota
+		unset( $pn_e );
+	}
+}
+$pn_pdf = \ApSemplice\PrivacyNotice::pdf();
+apse_ok( 0 === strpos( $pn_pdf['body'], '%PDF' ) && 'application/pdf' === $pn_pdf['mime'], 'informativa privacy: PDF con lo spazio per la firma' );
+apse_ok( false !== strpos( do_shortcode( '[apsemplice_privacy]' ), 'Informativa sul trattamento dei dati personali' ), 'informativa privacy: shortcode pubblico' );
+wp_set_current_user( 1 );
+apse_render( array( Admin\CommsPage::class, 'render' ), 'Informativa privacy' );
+$pn_pg = new ReflectionMethod( Admin\Actions::class, 'create_privacy_page' );
+Settings::update( array( 'privacy_url' => '' ) );
+$pn_pg->invoke( null, array() );
+$pn_id = (int) ( \ApSemplice\Pages::existing()['privacy'] ?? 0 );
+apse_ok( $pn_id > 0 && false !== strpos( get_post( $pn_id )->post_content, '[apsemplice_privacy]' ) && (string) get_permalink( $pn_id ) === (string) Settings::get( 'privacy_url' ), 'informativa privacy: la pagina si crea e diventa quella richiesta a chi attiva l\'accesso' );
+Settings::update( array( 'privacy_url' => '' ) );
 apse_ok( Plugin::CAP === Admin\Actions::required_cap( 'apse_save_settings' ) && Plugin::CAP === Admin\Actions::required_cap( 'apse_privacy_anonymize' ) && Plugin::CAP === Admin\Actions::required_cap( 'apse_save_texts' ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'apse_save_person' ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'apse_save_income' ), 'segreteria: impostazioni, privacy e testi solo agli amministratori; soci e incassi anche alla segreteria' );
 wp_set_current_user( $sec_u );
 $tabs_sec = Admin\Admin::tabs( 'apse-accounting' );

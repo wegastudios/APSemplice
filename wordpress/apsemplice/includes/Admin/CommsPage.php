@@ -27,6 +27,8 @@ final class CommsPage {
 		echo '<h2>Privacy</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Pagina dell\'informativa</th><td><input type="url" name="privacy_url" value="' . esc_attr( (string) $s['privacy_url'] ) . '" class="regular-text" placeholder="https://…/privacy">'
 			. '<p class="description">Se la indichi, chi attiva il proprio accesso deve accettarla e il consenso viene registrato. Per gli altri soci registri il consenso dalla loro scheda (modulo cartaceo, a voce…).</p></td></tr>';
+		echo '<tr><th>Email per la privacy</th><td><input type="email" name="privacy_email" value="' . esc_attr( (string) $s['privacy_email'] ) . '" class="regular-text" placeholder="privacy@…">'
+			. '<p class="description">L\'indirizzo a cui scrivere per esercitare i diritti: compare nell\'informativa. Se lo lasci vuoto si usa la PEC dell\'ente.</p></td></tr>';
 		echo '<tr><th>Ex soci da anonimizzare</th><td>dopo <input type="number" min="1" max="30" name="privacy_retention_years" value="' . (int) $s['privacy_retention_years'] . '" style="width:70px"> anni di inattività<p class="description">Tempo oltre il quale proponi di togliere i dati personali di chi non partecipa più. Decidi tu caso per caso: i movimenti contabili restano.</p></td></tr>';
 		echo '</tbody></table>';
 
@@ -45,6 +47,20 @@ final class CommsPage {
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
+
+		// Informativa privacy compilata con i dati dell'ente
+		$pn_missing = \ApSemplice\PrivacyNotice::missing();
+		$pn_resp    = \ApSemplice\PrivacyNotice::responsible();
+		echo '<h2>Informativa privacy</h2><p class="description">Il modello dell\'informativa (artt. 13 e 14 GDPR) si compila da solo con i dati dell\'ente e con le funzioni che usi: dichiara che i dati si comunicano a terzi solo per le finalità degli eventi cui si partecipa, che non vengono ceduti per scopi commerciali e che il trattamento avviene con strumenti informatici, senza profilazione commerciale. Responsabile del trattamento è il presidente; in mancanza, il socio con il ruolo di segreteria. È un modello: fallo leggere al tuo consulente prima di pubblicarlo.</p>';
+		echo '<p><strong>Responsabile del trattamento:</strong> ' . esc_html( $pn_resp['name'] ) . ( $pn_resp['found'] ? ' (' . esc_html( $pn_resp['role'] ) . ')' : '' ) . '</p>';
+		if ( $pn_missing ) {
+			echo '<div class="notice notice-warning inline"><p>Da completare per avere un\'informativa precisa: <strong>' . esc_html( implode( ', ', $pn_missing ) ) . '</strong>. I dati dell\'ente si inseriscono in <a href="' . esc_url( Ui::url( 'apse-entity' ) ) . '">Dati e fiscalità</a> (e il presidente dalla scheda del socio, riquadro «Consiglio direttivo»).</p></div>';
+		}
+		echo '<p><a class="button button-primary" href="' . esc_url( \ApSemplice\Docs::url( 'privacy' ) ) . '" target="_blank" rel="noopener">Scarica il PDF (con la firma di presa visione)</a> ';
+		Ui::form_open( 'apse_create_privacy_page', Ui::url( 'apse-comms' ), false, 'apse-inline' );
+		echo '<button class="button">Crea la pagina «Informativa privacy» sul sito</button>';
+		Ui::form_close();
+		echo '</p><details><summary><strong>Anteprima dell\'informativa</strong></summary><div style="max-width:820px;background:#fff;padding:12px 20px;border:1px solid #c3c4c7">' . \ApSemplice\PrivacyNotice::html() . '</div></details>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da PrivacyNotice
 
 		// Promemoria: anteprima e invio manuale
 		echo '<h2>Promemoria di oggi</h2>';

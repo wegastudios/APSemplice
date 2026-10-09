@@ -21,7 +21,7 @@ final class Areas {
 		'segreteria' => array( 'Segreteria', array( 'segreteria' ) ),
 		'tesoriere'  => array( 'Tesoriere', array( 'tesoriere' ) ),
 		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi' ) ),
-		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'donazioni', 'cinquepermille', 'accesso' ) ),
+		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'donazioni', 'privacy', 'cinquepermille', 'accesso' ) ),
 	);
 
 	/** Viste che funzionano ma non si propongono più negli elenchi (nome vecchio di una vista). */

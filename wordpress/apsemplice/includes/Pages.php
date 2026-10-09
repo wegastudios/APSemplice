@@ -11,7 +11,7 @@ final class Pages {
 	/** Area di ogni pagina (vedi Areas). */
 	const AREA = array(
 		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico',
-		'bonifico' => 'pubblico', 'cinquemille' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
+		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'cinquemille' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
 	);
 
 	/** @return array<string,array> area => [chiave pagina => definizione], nell'ordine delle aree */
@@ -34,6 +34,7 @@ final class Pages {
 			'volontari' => array( 'title' => 'Area volontari', 'content' => '[apsemplice_area_volontari]', 'access' => 'volunteers', 'hint' => 'Le attività di cui i volontari sono referenti (visibile solo a loro).', 'default' => true ),
 			'attivita'  => array( 'title' => 'Attività ed eventi', 'content' => '[apsemplice_attivita]', 'access' => '', 'hint' => 'L\'elenco pubblico di corsi ed eventi, con la prenotazione.', 'default' => true ),
 			'calendario' => array( 'title' => 'Calendario', 'content' => '[apsemplice_calendario]', 'access' => 'members', 'hint' => 'Il calendario di corsi ed eventi per i soli soci.', 'default' => false ),
+			'privacy'   => array( 'title' => 'Informativa privacy', 'content' => '[apsemplice_privacy]', 'access' => '', 'hint' => 'L\'informativa sul trattamento dei dati personali, compilata con i dati dell\'ente (si aggiorna da sola).', 'default' => true ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[apsemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
 			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[apsemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e collegamenti alla gestione.', 'default' => false ),
 			'tesoriere' => array( 'title' => 'Area tesoriere', 'content' => '[apsemplice_tesoriere]', 'access' => '', 'hint' => 'Per il tesoriere: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.', 'default' => false ),
@@ -82,6 +83,9 @@ final class Pages {
 		$have = self::existing();
 		if ( ! empty( $have['area'] ) && 0 === (int) Settings::get( 'member_area_page_id' ) ) {
 			Settings::update( array( 'member_area_page_id' => (int) $have['area'] ) );
+		}
+		if ( ! empty( $have['privacy'] ) && '' === (string) Settings::get( 'privacy_url' ) ) {
+			Settings::update( array( 'privacy_url' => (string) get_permalink( (int) $have['privacy'] ) ) ); // l'informativa creata diventa quella richiesta a chi attiva l'accesso
 		}
 		if ( in_array( 'Area soci', $made, true ) ) {
 			self::add_to_menu( (int) $have['area'] ); // la voce «Area riservata» compare nel menu del sito
