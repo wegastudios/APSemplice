@@ -23,11 +23,11 @@ final class ProPage {
 				array( 'pwa', 'App e notifiche', 'L\'area soci come app installabile sul telefono, con notifiche per avvisi, promemoria e posti liberati.' ),
 				array( 'wallet', 'Tessera nel telefono', 'La tessera in Apple Wallet e Google Wallet.' ),
 				array( 'door_sales', 'Incasso sul posto', 'Chi gestisce un evento incassa all\'ingresso e registra subito la presenza.' ),
+				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate (per gli eventi valgono anche da biglietto) e attestazione annuale dei versamenti per soci e donatori.' ),
 				array( 'insurance', 'Assicurazioni e presenze', 'Registro delle polizze di volontari e associazione, con scadenze, e registro delle presenze ai corsi.' ),
 			),
 			'Pro Fiscale (include tutto il Pro)' => array(
 				array( 'vat', 'IVA', 'Aliquote su quote, attività e incassi, importi con IVA compresa o esclusa e IVA contenuta in ogni movimento.' ),
-				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate e attestazione annuale dei versamenti per soci e donatori.' ),
 				array( 'fivepm', '5 per mille', 'Messaggio con il codice fiscale, contributi ricevuti e scadenze del rendiconto sull\'utilizzo.' ),
 				array( 'fiscal', 'Anni solari e rendiconto', 'Apertura e chiusura degli anni contabili, rendiconto per cassa e prima nota per il commercialista.' ),
 			),
@@ -58,7 +58,7 @@ final class ProPage {
 			echo '</tbody></table></div>';
 		}
 		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri APSemplice Pro</a> <span class="description">Si apre il sito di Wega Studios.</span></p>';
-		echo '<p class="description">Il livello contabile comprende conti, pagamenti, report e comunicazioni; il livello fiscale aggiunge IVA, ricevute e attestazioni, 5 per mille e gli anni solari per il commercialista.</p>';
+		echo '<p class="description">Il livello contabile comprende conti, pagamenti, report e comunicazioni; il livello fiscale aggiunge IVA, 5 per mille e gli anni solari per il commercialista.</p>';
 		Ui::footer();
 	}
 }
