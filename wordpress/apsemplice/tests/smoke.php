@@ -1347,20 +1347,20 @@ $form = array(
 	'association_name' => 'APS Prova', 'social_year_start_month' => '9', 'membership_fee' => '12,00', 'founder_years' => '99',
 	'member_area_page_id' => (string) Settings::get( 'member_area_page_id' ), 'cancel_policy_default' => '24h',
 	'payment_hint' => 'Ciao', 'gate_message' => '',
-	'accent_custom' => '1', 'accent_color' => '#336699',
+	'accent_custom' => '1', 'accent_color' => '#336699', // non più nel modulo: l'aspetto ha la sua scheda
 );
 $ps = new ReflectionMethod( Admin\Actions::class, 'save_payment_settings' );
 $ps->setAccessible( true );
 $pform = array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Zzz', 'stripe_secret_key' => 'sk_test_51Zzz', 'stripe_webhook_secret' => 'whsec_zzz' );
 $ss->invoke( null, $form );
 $ps->invoke( null, $pform );
-apse_ok( '#336699' === Settings::get( 'accent_color' ) && 'Ciao' === Settings::payment_hint() && '24h' === Settings::get( 'cancel_policy_default' ) && 1200 === (int) Settings::get( 'membership_fee_cents' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo impostazioni: salva aspetto, messaggi, termini e chiavi' );
+apse_ok( 'Ciao' === Settings::payment_hint() && '24h' === Settings::get( 'cancel_policy_default' ) && 1200 === (int) Settings::get( 'membership_fee_cents' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo impostazioni: salva messaggi, termini e chiavi' );
 $form2 = $form;
 unset( $form2['accent_custom'] );
 $pform2 = array_merge( $pform, array( 'stripe_secret_key' => '', 'stripe_webhook_secret' => '' ) );
 $ss->invoke( null, $form2 );
 $ps->invoke( null, $pform2 );
-apse_ok( '' === Settings::get( 'accent_color' ) && 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'modulo senza la spunta del colore: torna al tema; chiave lasciata vuota: resta quella salvata' );
+apse_ok( 'sk_test_51Zzz' === Settings::secret( 'stripe_secret_key' ), 'chiave lasciata vuota: resta quella salvata' );
 $ps->invoke( null, array_merge( $pform2, array( 'clear_stripe_secret_key' => '1' ) ) );
 apse_ok( ! Settings::has_secret( 'stripe_secret_key' ) && Settings::has_secret( 'stripe_webhook_secret' ), 'modulo: la spunta "rimuovi" toglie solo quella chiave' );
 
@@ -1376,7 +1376,7 @@ ob_start();
 Admin\SettingsPage::render();
 $h_general = ob_get_clean();
 apse_ok( false !== strpos( $h, 'non è leggibile su questo sito' ) && false === strpos( $h, 'wp-config' ) && false === strpos( $h, 'sk_test_ALTRO' ), 'pannello: avviso sulla chiave illeggibile, nessun file da modificare' );
-apse_ok( false !== strpos( $h_general, 'Aspetto e messaggi del sito' ) && false !== strpos( $h_general, 'type="color"' ), 'pannello: sezione aspetto con selettore colore' );
+apse_ok( false !== strpos( $h_general, 'Aspetto e messaggi del sito' ) && false !== strpos( $h_general, 'page=apse-look' ), 'pannello: sezione aspetto con il collegamento alla scheda Aspetto' );
 Settings::clear_secret( 'stripe_secret_key' );
 Settings::clear_secret( 'stripe_webhook_secret' );
 Settings::update( array( 'payment_provider' => 'none', 'accent_color' => '', 'cancel_policy_default' => '48h' ) );
@@ -5180,6 +5180,21 @@ $_GET = array();
 apse_ok( false !== strpos( $rs_p1, 'Operazione definitiva' ) && false !== strpos( $rs_p1, 'Ripristino di fabbrica' ) && false !== strpos( $rs_p1, 'Solo i dati' ) && false === strpos( $rs_p1, 'name="password"' ), 'azzeramento: primo passaggio con le due scelte e nessun campo di conferma' );
 apse_ok( false !== strpos( $rs_p2, 'AZZERA TUTTO' ) && false !== strpos( $rs_p2, 'name="password"' ) && false !== strpos( $rs_p2, 'name="phrase"' ) && false !== strpos( $rs_p2, 'name="confirm"' ) && false !== strpos( $rs_p2, 'tutta la prima nota' ) && false !== strpos( $rs_p2, 'copia completa' ), 'azzeramento: secondo passaggio con il messaggio chiaro, la frase, la password e la spunta' );
 apse_ok( in_array( 'apse-reset', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_reset_all'] ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
+// aspetto: logo e colori, di default quelli del sito, personalizzabili
+$lk_save = new ReflectionMethod( Admin\Actions::class, 'save_look' );
+$lk_save->setAccessible( true );
+Settings::update( array( 'accent_color' => '', 'secondary_color' => '', 'logo_id' => 0 ) );
+apse_ok( \ApSemplice\Frontend\Assets::accent( '#111111' ) === ( '' !== \ApSemplice\Frontend\Assets::theme_accent() ? \ApSemplice\Frontend\Assets::theme_accent() : '#111111' ) && \ApSemplice\Frontend\Assets::secondary( '#222222' ) === ( '' !== \ApSemplice\Frontend\Assets::theme_color( 'secondary' ) ? \ApSemplice\Frontend\Assets::theme_color( 'secondary' ) : '#222222' ), 'aspetto: senza scelte si usano i colori del sito' );
+$lk_att = wp_insert_attachment( array( 'post_title' => 'logo-test', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), 'logo-test.png' );
+$lk_save->invoke( null, array( 'logo_id' => (string) $lk_att, 'primary_custom' => '1', 'accent_color' => '#336699', 'secondary_custom' => '1', 'secondary_color' => '#cc6600' ) );
+apse_ok( '#336699' === Settings::get( 'accent_color' ) && '#cc6600' === Settings::get( 'secondary_color' ) && $lk_att === (int) Settings::get( 'logo_id' ), 'aspetto: colori e logo personalizzati si salvano' );
+$lk_css = \ApSemplice\Frontend\Assets::inline_css();
+apse_ok( false !== strpos( $lk_css, '--apsf-accent:#336699' ) && false !== strpos( $lk_css, '--apsf-accent-2:#cc6600' ), 'aspetto: i colori scelti diventano lo stile del front-end' );
+$lk_save->invoke( null, array( 'logo_id' => '0', 'accent_color' => '#336699' ) );
+apse_ok( '' === Settings::get( 'accent_color' ) && '' === Settings::get( 'secondary_color' ) && 0 === (int) Settings::get( 'logo_id' ), 'aspetto: senza la spunta si torna ai colori e al logo del sito' );
+apse_ok( null !== apse_throws( function () use ( $lk_save ) { $lk_save->invoke( null, array( 'primary_custom' => '1', 'accent_color' => 'rosso' ) ); } ) && null !== apse_throws( function () use ( $lk_save ) { $lk_save->invoke( null, array( 'logo_id' => '999999' ) ); } ), 'aspetto: colore non valido e logo che non è un\'immagine sono rifiutati' );
+apse_render( array( Admin\AppearancePage::class, 'render' ), 'Colore principale' );
+wp_delete_attachment( $lk_att, true );
 // donazioni con PayPal
 apse_ok( '' === \ApSemplice\Donations::clean_account( 'non una mail' ) && 'abc@example.com' === \ApSemplice\Donations::clean_account( ' ABC@Example.com ' ) && 'AB12CD34EF56G' === \ApSemplice\Donations::clean_account( 'AB12CD34EF56G' ), 'donazioni: conto PayPal valido solo se email o ID commerciante' );
 apse_ok( '5;7,50;10' === \ApSemplice\Donations::clean_amounts( '10; 5 7,50;0;abc;10' ) && '' === \ApSemplice\Donations::clean_amounts( 'niente' ), 'donazioni: gli importi si ripuliscono, ordinano e senza doppioni' );

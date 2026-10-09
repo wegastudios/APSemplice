@@ -143,7 +143,9 @@ final class Views {
 		$active = MemberType::GUEST !== $p['type'] && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
 		$assoc  = (string) Settings::get( 'association_name' );
 		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? self::d( $until ) : '—' );
+		$logo = Assets::logo_url();
 		return '<section class="apsf-section"><div class="apsf-memcard">'
+			. ( '' !== $logo ? '<img class="apsf-memcard-logo" src="' . esc_url( $logo ) . '" alt="' . esc_attr( $assoc ) . '">' : '' )
 			. ( '' !== $assoc ? '<div class="apsf-memcard-assoc">' . esc_html( $assoc ) . '</div>' : '' )
 			. '<div class="apsf-memcard-name">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div>'
 			. '<div class="apsf-memcard-type">' . esc_html( \ApSemplice\Levels::label( $p ) ) . '</div>'

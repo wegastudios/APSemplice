@@ -660,3 +660,5 @@ APSemplice (gratuito) contiene il nucleo; **APSemplice Pro** è un plugin a part
 ## Colori
 
 Il colore d'accento (tessera, pulsanti) è quello scelto in Impostazioni → Aspetto; se non è scelto si prende dal sito: il colore «Primario» di Elementor (kit attivo), poi il «primary» dei temi a blocchi, poi un blu neutro.
+
+**Aspetto** (Impostazioni → Soci e identità → Aspetto): logo (dalla libreria media), colore principale e colore secondario. Di default si prendono dal sito: logo di Elementor, poi del tema, poi l'icona del sito; colori «Primario» e «Secondario» del kit di Elementor, poi la tavolozza dei temi a blocchi. Ogni voce si può personalizzare con la spunta «Personalizza» e si torna al sito togliendola. Valgono per tessera (con sfumatura dal principale al secondario), pulsanti e pagine di verifica/attivazione.
