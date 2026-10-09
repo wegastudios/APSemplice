@@ -24,7 +24,7 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
-		'apse_save_donate', 'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
+		'apse_save_look', 'apse_save_donate', 'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
 		'apse_delete_activity', 'apse_delete_booking', 'apse_purge_enrollments', 'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
 	);
@@ -129,6 +129,7 @@ final class Actions {
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_quick_cash'         => 'quick_cash',
+			'apse_save_look'          => 'save_look',
 			'apse_save_donate'        => 'save_donate',
 			'apse_save_ical'          => 'save_ical',
 			'apse_regen_ical'         => 'regen_ical',
@@ -1148,7 +1149,6 @@ final class Actions {
 				'member_area_page_id'     => (int) ( $p['member_area_page_id'] ?? 0 ),
 				'license_key'             => $txt( 'license_key' ),
 				'cancel_policy_default'   => $txt( 'cancel_policy_default' ),
-				'accent_color'            => ! empty( $p['accent_custom'] ) ? $txt( 'accent_color' ) : '',
 				'payment_hint'            => sanitize_textarea_field( $p['payment_hint'] ?? '' ),
 				'gate_message'            => $txt( 'gate_message' ),
 			)
@@ -1258,6 +1258,31 @@ final class Actions {
 	private static function regen_ical( array $p ): array {
 		\ApSemplice\Calendar::regenerate_token();
 		return array( Ui::url( 'apse-calendar' ), 'Nuovo indirizzo del calendario: aggiorna il collegamento in Google Calendar.' );
+	}
+
+	private static function save_look( array $p ): array {
+		$logo = (int) ( $p['logo_id'] ?? 0 );
+		if ( $logo > 0 && ! wp_attachment_is_image( $logo ) ) {
+			throw new \InvalidArgumentException( 'Il logo deve essere un\'immagine della libreria media.' );
+		}
+		$color = function ( string $custom, string $field ) use ( $p ): string {
+			if ( empty( $p[ $custom ] ) ) {
+				return ''; // senza spunta si usa il colore del sito
+			}
+			$c = \ApSemplice\Color::normalize( (string) ( $p[ $field ] ?? '' ) );
+			if ( '' === $c ) {
+				throw new \InvalidArgumentException( 'Scegli un colore valido oppure togli la spunta «Personalizza».' );
+			}
+			return $c;
+		};
+		Settings::update(
+			array(
+				'logo_id'         => max( 0, $logo ),
+				'accent_color'    => $color( 'primary_custom', 'accent_color' ),
+				'secondary_color' => $color( 'secondary_custom', 'secondary_color' ),
+			)
+		);
+		return array( Ui::url( 'apse-look' ), 'Aspetto salvato.' );
 	}
 
 	private static function save_donate( array $p ): array {

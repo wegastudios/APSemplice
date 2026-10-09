@@ -7,6 +7,7 @@
 .apsf {
 	--apsf-accent: var(--e-global-color-primary, var(--wp--preset--color--primary, #2271b1));
 	--apsf-accent-text: var(--wp--preset--color--base, #fff);
+	--apsf-accent-2: var(--e-global-color-secondary, var(--apsf-accent));
 	--apsf-line: rgba(127, 127, 127, .28);
 	--apsf-soft: rgba(127, 127, 127, .08);
 	--apsf-radius: 10px;
@@ -43,7 +44,8 @@
 .apsf-badge-bad { color: var(--apsf-bad); border-color: currentColor; }
 
 /* Tessera digitale */
-.apsf-memcard { border-radius: 16px; padding: 1.25rem 1.5rem; max-width: 420px; color: var(--apsf-accent-text); background: var(--apsf-accent); position: relative; }
+.apsf-memcard { border-radius: 16px; padding: 1.25rem 1.5rem; max-width: 420px; color: var(--apsf-accent-text); background: var(--apsf-accent); background-image: linear-gradient(135deg, var(--apsf-accent), var(--apsf-accent-2)); position: relative; }
+.apsf-memcard-logo { display: block; max-height: 44px; max-width: 170px; width: auto; height: auto; margin: 0 0 .6rem; padding: 4px 8px; border-radius: 6px; background: rgba(255, 255, 255, .92); }
 .apsf-memcard-assoc { font-size: .85em; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
 .apsf-memcard-name { font-size: 1.5em; font-weight: 700; margin-top: .35em; }
 .apsf-memcard-type { opacity: .9; }
