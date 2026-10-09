@@ -153,7 +153,7 @@ final class Views {
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'
 			. self::card_qr( $p ) . ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
-			. '</div></section>';
+			. '</div><p class="apsf-print-wrap"><button type="button" class="apsf-btn apsf-print-card">Stampa la tessera</button></p></section>';
 	}
 
 	/** QR della tessera (si verifica al momento, anche se la tessera nel frattempo scade o si rinnova). */

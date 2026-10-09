@@ -44,17 +44,26 @@
 .apsf-badge-bad { color: var(--apsf-bad); border-color: currentColor; }
 
 /* Tessera digitale */
-.apsf-memcard { border-radius: 16px; padding: 1.25rem 1.5rem; max-width: 420px; color: var(--apsf-accent-text); background: var(--apsf-accent); background-image: linear-gradient(135deg, var(--apsf-accent), var(--apsf-accent-2)); position: relative; }
-.apsf-memcard-logo { display: block; max-height: 44px; max-width: 170px; width: auto; height: auto; margin: 0 0 .6rem; padding: 4px 8px; border-radius: 6px; background: rgba(255, 255, 255, .92); }
-.apsf-memcard-assoc { font-size: .85em; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+.apsf-memcard { border-radius: 14px; padding: 1.25rem 1.5rem; max-width: 420px; color: var(--apsf-accent); background: #fff; border: 2px solid var(--apsf-accent); border-top: 8px solid var(--apsf-accent-2); position: relative; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.apsf-memcard-logo { display: block; max-height: 52px; max-width: 190px; width: auto; height: auto; margin: 0 0 .6rem; }
+.apsf-memcard-assoc { font-size: .85em; text-transform: uppercase; letter-spacing: .08em; }
 .apsf-memcard-name { font-size: 1.5em; font-weight: 700; margin-top: .35em; }
 .apsf-memcard-type { opacity: .9; }
 .apsf-memcard-data { display: flex; gap: 2rem; margin: 1rem 0 .75rem; }
 .apsf-memcard-data dt { font-size: .75em; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
 .apsf-memcard-data dd { margin: 0; font-size: 1.25em; font-weight: 600; }
-.apsf-memcard .apsf-badge { background: rgba(255, 255, 255, .92); border-color: transparent; }
+.apsf-memcard .apsf-badge { background: #fff; }
 .apsf-memcard .apsf-badge-ok { color: var(--apsf-ok); }
 .apsf-memcard .apsf-badge-bad { color: var(--apsf-bad); }
+.apsf-memcard .apsf-small { color: var(--apsf-accent); opacity: .8; }
+.apsf-print-wrap { margin: .6rem 0 0; }
+/* Stampa della tessera: solo la tessera, in alto a sinistra, larga come una tessera */
+@media print {
+	body.apsf-printing * { visibility: hidden !important; }
+	body.apsf-printing .apsf-memcard, body.apsf-printing .apsf-memcard * { visibility: visible !important; }
+	body.apsf-printing .apsf-memcard { position: fixed; left: 0; top: 0; width: 90mm; max-width: none; margin: 0; box-shadow: none; }
+	body.apsf-printing .apsf-memcard .apsf-btn { display: none !important; }
+}
 
 /* Elenchi e tabelle */
 .apsf-list { list-style: none; margin: .5rem 0; padding: 0; }

@@ -491,6 +491,7 @@ apse_ok( false !== strpos( $html_vol, 'Le attività che tengo' ) && false !== st
 apse_ok( false === strpos( $html_vol, 'omar@example.com' ), 'area soci: il volontario non vede le email degli iscritti' );
 apse_ok( false !== strpos( $as( 1, '[apsemplice_area_soci]' ), 'amministratore' ), 'area soci: l\'amministratore senza scheda riceve un messaggio chiaro' );
 apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_tessera]' ), 'apsf-memcard' ), 'shortcode tessera' );
+apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_tessera]' ), 'apsf-print-card' ), 'tessera: pulsante per stamparla' );
 apse_ok( false !== strpos( $as( $u_vol, '[apsemplice_area_volontari]' ), 'Yoga' ), 'shortcode area volontari (volontario)' );
 apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_volontari]' ), 'riservata ai soci e volontari' ), 'shortcode area volontari (socio semplice)' );
 
