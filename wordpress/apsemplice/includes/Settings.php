@@ -60,6 +60,9 @@ final class Settings {
 			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
 			'secondary_color'         => '',    // colore secondario; vuoto = quello del sito (Elementor o tema)
 			'logo_id'                 => 0,     // logo dell'ente (allegato della libreria media); 0 = il logo del sito
+			'card_mode'               => 'standard', // tessera: 'standard' (bianca) oppure 'image' (su un'immagine propria)
+			'card_bg_id'              => 0,     // immagine della tessera (libreria media)
+			'card_layout'             => array(), // posizione di nome, numero, scadenza e QR sull'immagine (vedi CardLayout)
 			'payment_hint'            => self::DEFAULT_PAYMENT_HINT, // testo mostrato ai soci che hanno importi da pagare
 			'gate_message'            => '',    // messaggio sui contenuti riservati; vuoto = automatico
 			'payment_provider'        => PaymentConfig::NONE,
@@ -198,6 +201,9 @@ final class Settings {
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
 		$clean['secondary_color']         = Color::normalize( (string) $clean['secondary_color'] );
 		$clean['logo_id']                 = max( 0, (int) $clean['logo_id'] );
+		$clean['card_mode']               = CardLayout::MODE_IMAGE === (string) $clean['card_mode'] ? CardLayout::MODE_IMAGE : CardLayout::MODE_STANDARD;
+		$clean['card_bg_id']              = max( 0, (int) $clean['card_bg_id'] );
+		$clean['card_layout']             = CardLayout::clean( $clean['card_layout'] );
 		$clean['payment_hint']            = '' === trim( (string) $clean['payment_hint'] ) ? self::DEFAULT_PAYMENT_HINT : mb_substr( trim( (string) $clean['payment_hint'] ), 0, 300 );
 		$clean['gate_message']            = mb_substr( trim( (string) $clean['gate_message'] ), 0, 200 );
 		$clean['payment_provider']        = PaymentConfig::is_valid( (string) $clean['payment_provider'] ) ? (string) $clean['payment_provider'] : PaymentConfig::NONE;

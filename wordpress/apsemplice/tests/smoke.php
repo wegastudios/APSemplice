@@ -5209,6 +5209,19 @@ $lk_save->invoke( null, array( 'logo_id' => '0', 'accent_color' => '#336699' ) )
 apse_ok( '' === Settings::get( 'accent_color' ) && '' === Settings::get( 'secondary_color' ) && 0 === (int) Settings::get( 'logo_id' ), 'aspetto: senza la spunta si torna ai colori e al logo del sito' );
 apse_ok( null !== apse_throws( function () use ( $lk_save ) { $lk_save->invoke( null, array( 'primary_custom' => '1', 'accent_color' => 'rosso' ) ); } ) && null !== apse_throws( function () use ( $lk_save ) { $lk_save->invoke( null, array( 'logo_id' => '999999' ) ); } ), 'aspetto: colore non valido e logo che non è un\'immagine sono rifiutati' );
 apse_render( array( Admin\AppearancePage::class, 'render' ), 'Colore principale' );
+// tessera su immagine propria
+$cl_att = wp_insert_attachment( array( 'post_title' => 'tessera-test', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), 'tessera-test.png' );
+update_attached_file( $cl_att, 'tessera-test.png' );
+apse_ok( null !== apse_throws( function () use ( $lk_save ) { $lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'image', 'card_bg_id' => '0' ) ); } ), 'tessera su immagine: senza immagine non si può attivare' );
+$lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'image', 'card_bg_id' => (string) $cl_att, 'layout' => array( 'name' => array( 'show' => '1', 'x' => '10', 'y' => '55.5', 'size' => '6', 'color' => '#112233' ), 'qr' => array( 'show' => '0', 'x' => '150', 'y' => '-5', 'size' => '999' ) ) ) );
+$cl_l = \ApSemplice\CardLayout::layout();
+apse_ok( 'image' === Settings::get( 'card_mode' ) && (int) Settings::get( 'card_bg_id' ) === $cl_att && 10.0 === $cl_l['name']['x'] && 55.5 === $cl_l['name']['y'] && '#112233' === $cl_l['name']['color'] && 0 === $cl_l['qr']['show'] && 100.0 === $cl_l['qr']['x'] && 0.0 === $cl_l['qr']['y'] && 40.0 === $cl_l['qr']['size'] && 1 === $cl_l['number']['show'], 'tessera su immagine: posizioni, colori e dimensioni si salvano e restano nei limiti' );
+$cl_img = \ApSemplice\CardLayout::html( 'Mario Rossi', 'N. 7', 'Valida fino al 31/12/2027', '<svg></svg>' );
+apse_ok( false !== strpos( $cl_img, 'apsf-memcard-img' ) && false !== strpos( $cl_img, 'Mario Rossi' ) && false !== strpos( $cl_img, 'N. 7' ) && false !== strpos( $cl_img, 'left:10%;top:55.5%;font-size:6cqw;color:#112233' ) && false === strpos( $cl_img, '<svg>' ), 'tessera su immagine: i dati sono posizionati sopra l\'immagine, il QR nascosto non compare' );
+apse_render( array( Admin\AppearancePage::class, 'render' ), 'Tessera su un\'immagine mia' );
+$lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'standard', 'card_bg_id' => '0' ) );
+apse_ok( ! \ApSemplice\CardLayout::active(), 'tessera: si torna alla tessera standard' );
+wp_delete_attachment( $cl_att, true );
 wp_delete_attachment( $lk_att, true );
 // donazioni con PayPal
 apse_ok( '' === \ApSemplice\Donations::clean_account( 'non una mail' ) && 'abc@example.com' === \ApSemplice\Donations::clean_account( ' ABC@Example.com ' ) && 'AB12CD34EF56G' === \ApSemplice\Donations::clean_account( 'AB12CD34EF56G' ), 'donazioni: conto PayPal valido solo se email o ID commerciante' );
