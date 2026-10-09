@@ -36,6 +36,20 @@
 		if (e.target && e.target.id === 'apse-overlay-close') { var o = $('#apse-license-overlay'); if (o) { o.parentNode.removeChild(o); } }
 	});
 
+	/* Avvisi chiudibili (Bacheca): la X li chiude e il server li ricorda per qualche giorno */
+	document.addEventListener('click', function (e) {
+		var btn = e.target && e.target.closest ? e.target.closest('.apse-dismissible .notice-dismiss') : null;
+		if (!btn) { return; }
+		var box = btn.closest('.apse-dismissible');
+		if (!box || !window.ajaxurl) { return; }
+		var body = new URLSearchParams();
+		body.set('action', 'apse_dismiss_notice');
+		body.set('key', box.getAttribute('data-apse-key') || '');
+		body.set('days', box.getAttribute('data-apse-days') || '30');
+		body.set('nonce', box.getAttribute('data-apse-nonce') || '');
+		fetch(window.ajaxurl, { method: 'POST', credentials: 'same-origin', body: body });
+	});
+
 	/* Conferma prima di azioni distruttive */
 	document.addEventListener('click', function (e) {
 		var t = e.target.closest ? e.target.closest('[data-confirm]') : null;
