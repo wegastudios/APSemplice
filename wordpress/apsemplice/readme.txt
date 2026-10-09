@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.6
+Stable tag: 1.1.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.7 =
+* Text customisation, languages, entity type and terms are now part of APSemplice Pro; the free edition shows the original texts.
 
 = 1.1.6 =
 * Card preview in Appearance: it now has the card border and colours and a real sample QR code.

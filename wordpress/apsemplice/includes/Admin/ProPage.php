@@ -24,6 +24,7 @@ final class ProPage {
 				array( 'wallet', 'Tessera nel telefono', 'La tessera in Apple Wallet e Google Wallet.' ),
 				array( 'door_sales', 'Incasso sul posto', 'Chi gestisce un evento incassa all\'ingresso e registra subito la presenza.' ),
 				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate (per gli eventi valgono anche da biglietto) e attestazione annuale dei versamenti per soci e donatori.' ),
+				array( 'texts', 'Personalizzazione dei testi', 'Ogni frase che i soci vedono, nelle email e nei PDF si può cambiare; più lingue, tipo di ente e termini (associazione o comitato, socio o tesserato) con gli articoli giusti.' ),
 				array( 'insurance', 'Assicurazioni e presenze', 'Registro delle polizze di volontari e associazione, con scadenze, e registro delle presenze ai corsi.' ),
 			),
 			'Pro Fiscale (include tutto il Pro)' => array(

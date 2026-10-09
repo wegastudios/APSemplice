@@ -1,7 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
-use ApSemplice\Texts;
+use ApSemplice\TextsEngine;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -38,7 +38,7 @@ final class TextsPage {
 	}
 
 	public static function render(): void {
-		$all    = Texts::rows();
+		$all    = TextsEngine::rows();
 		$groups = array();
 		foreach ( $all as $r ) {
 			$groups[ $r['group'] ] = ( $groups[ $r['group'] ] ?? 0 ) + 1;
@@ -61,7 +61,7 @@ final class TextsPage {
 		$paged  = max( 1, min( $pages, Ui::get_int( 'paged', 1 ) ) );
 		$slice  = array_slice( $rows, ( $paged - 1 ) * self::PER_PAGE, self::PER_PAGE );
 		$here   = Ui::url( 'apse-texts', array_filter( array( 'g' => $g, 'q' => $q, 'custom' => $custom ? '1' : '', 'paged' => $paged > 1 ? $paged : '' ) ) );
-		$n_cust = count( Texts::overrides() );
+		$n_cust = count( TextsEngine::overrides() );
 
 		Ui::header( 'Testi personalizzati' );
 		self::language_section();
@@ -107,8 +107,8 @@ final class TextsPage {
 		echo '<p class="description">La sostituzione vale ovunque compaia quel testo (anche dentro frasi più lunghe che lo contengono). Testi con nomi, date e importi variabili sono fatti di più pezzi: ogni pezzo si cambia a parte. '
 			. 'Nelle email e nei PDF il testo è semplice (niente formattazione). Se un pezzo non è nell\'elenco, aggiungilo in fondo con «Aggiungi una sostituzione».</p>';
 
-		echo '<p><a class="button button-primary" href="' . esc_url( Texts::export_url() ) . '">Esporta tutti i testi (CSV)</a> '
-			. '<a class="button" href="' . esc_url( Texts::export_url( true ) ) . '">Esporta solo i personalizzati (' . (int) $n_cust . ')</a></p>';
+		echo '<p><a class="button button-primary" href="' . esc_url( TextsEngine::export_url() ) . '">Esporta tutti i testi (CSV)</a> '
+			. '<a class="button" href="' . esc_url( TextsEngine::export_url( true ) ) . '">Esporta solo i personalizzati (' . (int) $n_cust . ')</a></p>';
 		Ui::form_open( 'apse_import_texts', $here, true, 'apse-inline' );
 		echo '<p><strong>Importa:</strong> <input type="file" name="texts_file" accept=".csv,.xlsx" required> <button class="button">Importa il file</button> '
 			. '<span class="description">Il file è quello esportato (CSV o Excel): vale la colonna «Personalizzato». Una riga con Personalizzato vuoto toglie la sostituzione.</span></p>';
@@ -130,7 +130,7 @@ final class TextsPage {
 			echo '<table class="widefat striped apse-texts"><thead><tr><th style="width:12%">Gruppo</th><th style="width:26%">Originale</th><th style="width:26%">Versione in uso</th><th>Personalizzato</th></tr></thead><tbody>';
 			foreach ( $slice as $r ) {
 				echo '<tr><td class="description">' . esc_html( $r['group'] ) . '</td><td>' . esc_html( $r['text'] ) . '</td><td>' . esc_html( \ApSemplice\Terms::apply( $r['text'] ) ) . '</td>'
-					. '<td><textarea name="t[' . esc_attr( md5( $r['text'] ) ) . ']" rows="' . ( strlen( $r['text'] ) > 70 ? 3 : 1 ) . '" class="large-text" maxlength="' . (int) Texts::MAX_LEN . '">' . esc_textarea( $r['custom'] ) . '</textarea></td></tr>';
+					. '<td><textarea name="t[' . esc_attr( md5( $r['text'] ) ) . ']" rows="' . ( strlen( $r['text'] ) > 70 ? 3 : 1 ) . '" class="large-text" maxlength="' . (int) TextsEngine::MAX_LEN . '">' . esc_textarea( $r['custom'] ) . '</textarea></td></tr>';
 			}
 			echo '</tbody></table>';
 			submit_button( 'Salva i testi di questa pagina' );

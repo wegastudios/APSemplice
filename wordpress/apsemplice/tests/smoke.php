@@ -3953,8 +3953,8 @@ remove_all_filters( 'pre_wp_mail' );
 
 // ---------- Testi personalizzabili ----------
 wp_set_current_user( 1 );
-\ApSemplice\Texts::save_overrides( array() );
-$tx_cat   = \ApSemplice\Texts::catalog();
+\ApSemplice\TextsEngine::save_overrides( array() );
+$tx_cat   = \ApSemplice\TextsEngine::catalog();
 $tx_texts = array_column( $tx_cat, 'text' );
 $tx_by    = array_column( $tx_cat, 'group', 'text' );
 $tx_groups = array_count_values( array_column( $tx_cat, 'group' ) );
@@ -3982,7 +3982,7 @@ foreach ( $tx_texts as $t ) {
 apse_ok( array() === $tx_bad, 'testi: nel catalogo niente codice, query o classi' . ( $tx_bad ? ' (' . implode( ' | ', array_slice( $tx_bad, 0, 5 ) ) . ')' : '' ) );
 
 // sostituzione nell'area soci, nei messaggi, nelle email e nei PDF
-\ApSemplice\Texts::save_overrides( array( 'Il mio profilo' => 'La mia scheda', 'Ospite aggiunto.' => 'Fatto: ospite inserito', 'RICEVUTA DI PAGAMENTO' => 'RICEVUTA N. TEST' ) );
+\ApSemplice\TextsEngine::save_overrides( array( 'Il mio profilo' => 'La mia scheda', 'Ospite aggiunto.' => 'Fatto: ospite inserito', 'RICEVUTA DI PAGAMENTO' => 'RICEVUTA N. TEST' ) );
 $tx_front = $as( $u_f, '[apsemplice_profilo]' );
 apse_ok( false !== strpos( $tx_front, 'La mia scheda' ) && false === strpos( $tx_front, 'Il mio profilo' ), 'testi: la sostituzione compare nell\'area soci' );
 parse_str( (string) wp_parse_url( \ApSemplice\Flash::url( 'https://example.org/a/', 'apsf', 'Ospite aggiunto.' ), PHP_URL_QUERY ), $tx_q );
@@ -4001,7 +4001,7 @@ add_filter(
 	10,
 	2
 );
-\ApSemplice\Texts::save_overrides( array_merge( \ApSemplice\Texts::overrides(), array( 'Promemoria di prova' => 'Promemoria cambiato' ) ) );
+\ApSemplice\TextsEngine::save_overrides( array_merge( \ApSemplice\TextsEngine::overrides(), array( 'Promemoria di prova' => 'Promemoria cambiato' ) ) );
 \ApSemplice\Texts::mail( 'a@example.com', 'Promemoria di prova', 'Corpo: Promemoria di prova.' );
 apse_ok( 1 === count( $tx_mail ) && 'Promemoria cambiato' === $tx_mail[0]['subject'] && 'Corpo: Promemoria cambiato.' === $tx_mail[0]['message'], 'testi: la sostituzione vale nelle email (oggetto e testo)' );
 remove_all_filters( 'pre_wp_mail' );
@@ -4010,40 +4010,40 @@ apse_ok( false !== strpos( $tx_pdf['pdf'], 'RICEVUTA N. TEST' ) && false === str
 apse_ok( false !== strpos( \ApSemplice\Texts::html( '<h3>Il mio profilo</h3><input placeholder="Il mio profilo">' ), '<h3>La mia scheda</h3><input placeholder="La mia scheda">' ), 'testi: in amministrazione la pagina passa dalla stessa sostituzione' );
 
 // esportazione e importazione
-$tx_csv = \ApSemplice\Texts::export_csv( true );
+$tx_csv = \ApSemplice\TextsEngine::export_csv( true );
 apse_ok( 0 === strpos( $tx_csv, "\xEF\xBB\xBFGruppo;Originale;Versione in uso;Personalizzato" ) && false !== strpos( $tx_csv, 'Il mio profilo;Il mio profilo;La mia scheda' ) && false !== strpos( $tx_csv, 'Aggiunte a mano;Promemoria di prova;Promemoria di prova;Promemoria cambiato' ), 'testi: esportazione CSV con i soli personalizzati' );
-$tx_all = \ApSemplice\Texts::export_csv();
+$tx_all = \ApSemplice\TextsEngine::export_csv();
 apse_ok( substr_count( $tx_all, "\r\n" ) > count( $tx_cat ), 'testi: esportazione CSV di tutti i testi' );
 $tx_file = wp_tempnam( 'apse-testi' );
 file_put_contents( $tx_file, str_replace( 'Il mio profilo;La mia scheda', 'Il mio profilo;La mia area personale', $tx_csv ) );
 $tx_sheets = \ApSemplice\SheetReader::read( $tx_file, 'testi.csv' );
 unlink( $tx_file );
-$tx_res = \ApSemplice\Texts::import_rows( $tx_sheets[0]['rows'] );
-$tx_ov  = \ApSemplice\Texts::overrides();
+$tx_res = \ApSemplice\TextsEngine::import_rows( $tx_sheets[0]['rows'] );
+$tx_ov  = \ApSemplice\TextsEngine::overrides();
 apse_ok( 'La mia area personale' === $tx_ov['Il mio profilo'] && 1 === $tx_res['set'] && 'Promemoria cambiato' === $tx_ov['Promemoria di prova'], 'testi: importazione del file modificato (CSV con BOM e punto e virgola)' );
-$tx_res2 = \ApSemplice\Texts::import_rows( array( array( 'Gruppo', 'Originale', 'Personalizzato' ), array( 'x', 'Il mio profilo', '' ), array( 'x', 'Frase inventata dal test', 'Frase nuova' ), array( 'x', 'ab', 'xx' ) ) );
-$tx_ov2 = \ApSemplice\Texts::overrides();
+$tx_res2 = \ApSemplice\TextsEngine::import_rows( array( array( 'Gruppo', 'Originale', 'Personalizzato' ), array( 'x', 'Il mio profilo', '' ), array( 'x', 'Frase inventata dal test', 'Frase nuova' ), array( 'x', 'ab', 'xx' ) ) );
+$tx_ov2 = \ApSemplice\TextsEngine::overrides();
 apse_ok( ! isset( $tx_ov2['Il mio profilo'] ) && 'Frase nuova' === $tx_ov2['Frase inventata dal test'] && 1 === $tx_res2['removed'] && 1 === $tx_res2['manual'] && 1 === $tx_res2['ignored'], 'testi: Personalizzato vuoto ripristina, una frase nuova diventa aggiunta a mano, righe troppo corte ignorate' );
-apse_ok( null !== apse_throws( function () { \ApSemplice\Texts::import_rows( array( array( 'a', 'b' ), array( '1', '2' ) ) ); } ), 'testi: un file senza le colonne giuste viene rifiutato' );
+apse_ok( null !== apse_throws( function () { \ApSemplice\TextsEngine::import_rows( array( array( 'a', 'b' ), array( '1', '2' ) ) ); } ), 'testi: un file senza le colonne giuste viene rifiutato' );
 
 // pagina e azioni dell'amministrazione
 $tx_save = new ReflectionMethod( Admin\Actions::class, 'save_texts' );
 $tx_save->invoke( null, array( 't' => array( md5( 'Il mio profilo' ) => 'Nuova area', md5( 'testo che non esiste nel catalogo' ) => 'x' ) ) );
-apse_ok( 'Nuova area' === \ApSemplice\Texts::overrides()['Il mio profilo'] && ! isset( \ApSemplice\Texts::overrides()['testo che non esiste nel catalogo'] ), 'testi: salvataggio dalla pagina (solo testi veri)' );
+apse_ok( 'Nuova area' === \ApSemplice\TextsEngine::overrides()['Il mio profilo'] && ! isset( \ApSemplice\TextsEngine::overrides()['testo che non esiste nel catalogo'] ), 'testi: salvataggio dalla pagina (solo testi veri)' );
 $tx_add = new ReflectionMethod( Admin\Actions::class, 'add_text' );
 $tx_add->invoke( null, array( 'original' => 'Pezzo mancante', 'custom' => 'Pezzo nuovo' ) );
-apse_ok( 'Pezzo nuovo' === \ApSemplice\Texts::overrides()['Pezzo mancante'] && null !== apse_throws( function () use ( $tx_add ) { $tx_add->invoke( null, array( 'original' => 'ab', 'custom' => 'x' ) ); } ), 'testi: aggiunta di una sostituzione a mano' );
+apse_ok( 'Pezzo nuovo' === \ApSemplice\TextsEngine::overrides()['Pezzo mancante'] && null !== apse_throws( function () use ( $tx_add ) { $tx_add->invoke( null, array( 'original' => 'ab', 'custom' => 'x' ) ); } ), 'testi: aggiunta di una sostituzione a mano' );
 $tx_html = apse_render( array( Admin\TextsPage::class, 'render' ), 'Esporta tutti i testi', array( 'page' => 'apse-texts', 'q' => 'Il mio profilo' ) );
 apse_ok( false !== strpos( $tx_html, 'Il mio profilo' ) && false !== strpos( $tx_html, 'Nuova area' ) && false !== strpos( $tx_html, 'apse_import_texts' ), 'testi: la pagina elenca originali e personalizzati e permette l\'importazione' );
 apse_render( array( Admin\TextsPage::class, 'render' ), 'Nessun testo con questi filtri', array( 'page' => 'apse-texts', 'q' => 'zzzzqqqq' ) );
 $tx_reset = new ReflectionMethod( Admin\Actions::class, 'reset_texts' );
 $tx_reset->invoke( null, array() );
-apse_ok( array() === \ApSemplice\Texts::overrides(), 'testi: ripristino di tutti i testi originali' );
+apse_ok( array() === \ApSemplice\TextsEngine::overrides(), 'testi: ripristino di tutti i testi originali' );
 apse_ok( ( \ApSemplice\Plugin::load_for_action( 'apse_export_texts' ) && has_action( 'admin_post_apse_export_texts' ) ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
 
 // ---------- Tipo di ente e termini ----------
 wp_set_current_user( 1 );
-\ApSemplice\Texts::save_overrides( array() );
+\ApSemplice\TextsEngine::save_overrides( array() );
 $tm_mail = array();
 add_filter(
 	'pre_wp_mail',
@@ -4084,10 +4084,10 @@ apse_ok( 'comitato' === Settings::get( 'entity_type' ) && 'socio' === Settings::
 apse_ok( null !== apse_throws( function () use ( $tm_save ) { $tm_save->invoke( null, array( 'preset' => 'neutra' ) ); } ), 'versione base: una versione inesistente viene rifiutata' );
 // la personalizzazione lavora sulla versione in uso: il testo scelto non viene adattato una seconda volta
 Settings::update( array( 'member_term' => 'iscritto' ) );
-\ApSemplice\Texts::save_overrides( array( 'Il mio profilo' => 'La scheda del socio' ) );
+\ApSemplice\TextsEngine::save_overrides( array( 'Il mio profilo' => 'La scheda del socio' ) );
 $tm_cust = $as( $u_f, '[apsemplice_profilo]' );
 apse_ok( false !== strpos( $tm_cust, 'La scheda del socio' ) && false === strpos( $tm_cust, 'La scheda dell&#039;iscritto' ), 'testi: il testo personalizzato resta com\'è scritto (non viene adattato di nuovo)' );
-\ApSemplice\Texts::save_overrides( array() );
+\ApSemplice\TextsEngine::save_overrides( array() );
 Settings::update( array( 'entity_type' => 'associazione', 'entity_types_custom' => '', 'member_term' => 'socio', 'member_terms_custom' => '' ) );
 remove_all_filters( 'pre_wp_mail' );
 
@@ -4760,9 +4760,9 @@ Settings::update( array( 'language' => 'en' ) );
 apse_ok( 'en' === \ApSemplice\Languages::current() && 'Membership fee' === \ApSemplice\Texts::plain( 'Quota associativa' ), 'lingue: i testi passano all\'inglese' );
 apse_ok( '<p>Save</p>' === \ApSemplice\Texts::html( '<p>Salva</p>' ) && '<p>Salvare il file</p>' === \ApSemplice\Texts::html( '<p>Salvare il file</p>' ) && '<p>Salvataggio</p>' === \ApSemplice\Texts::html( '<p>Salvataggio</p>' ), 'lingue: le parole brevi si traducono solo se sono il testo intero' );
 apse_ok( 'Membership fee: 10' === \ApSemplice\Texts::plain( 'Quota associativa: 10' ) && false !== strpos( \ApSemplice\Texts::html( '<a title="Salva">Quota associativa</a>' ), 'title="Save">Membership fee' ), 'lingue: le frasi si traducono anche dentro altro testo e negli attributi' );
-\ApSemplice\Texts::save_overrides( array( 'Quota associativa' => 'Annual dues' ) );
+\ApSemplice\TextsEngine::save_overrides( array( 'Quota associativa' => 'Annual dues' ) );
 apse_ok( 'Annual dues' === \ApSemplice\Texts::plain( 'Quota associativa' ), 'lingue: le personalizzazioni vincono sulla traduzione' );
-\ApSemplice\Texts::save_overrides( array() );
+\ApSemplice\TextsEngine::save_overrides( array() );
 apse_render( array( Admin\TextsPage::class, 'render' ), 'Usa questa lingua' );
 Settings::update( array( 'language' => 'it' ) );
 \ApSemplice\Texts::flush();
@@ -5144,13 +5144,13 @@ $victim_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id 
 $wpdb->delete( Db::t( 'people' ), array( 'id' => $victim ) );
 $wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => $today, 'type' => 'income', 'amount_cents' => 777, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => (int) $ledger->category_id_of_kind( 'other_income' ), 'description' => 'riga di prova da cancellare', 'created_at' => Db::now() ) );
 Settings::update( array( 'association_name' => 'Nome cambiato dopo la copia' ) );
-\ApSemplice\Texts::save_overrides( array( 'Frase di prova' => 'Frase cambiata' ) );
+\ApSemplice\TextsEngine::save_overrides( array( 'Frase di prova' => 'Frase cambiata' ) );
 unlink( $bk_file );
 Settings::update( array( 'stripe_secret_key' => 'sk_test_0123456789abcdef' ) );
 $res = \ApSemplice\Backup::restore( $bk_zip );
 $back_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = $victim", ARRAY_A );
 apse_ok( $ppl === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $txn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && $back_row === $victim_row && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga di prova da cancellare'" ), 'ripristino: i dati tornano esattamente come nella copia (anche i record cancellati e identici campo per campo)' );
-apse_ok( 'Associazione di prova' === Settings::get( 'association_name' ) && array() === \ApSemplice\Texts::overrides() && Settings::has_secret( 'stripe_secret_key' ), 'ripristino: impostazioni e testi tornano come nella copia; le chiavi segrete del sito restano' );
+apse_ok( 'Associazione di prova' === Settings::get( 'association_name' ) && array() === \ApSemplice\TextsEngine::overrides() && Settings::has_secret( 'stripe_secret_key' ), 'ripristino: impostazioni e testi tornano come nella copia; le chiavi segrete del sito restano' );
 apse_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_file ) && $res['files'] >= 1 && $res['rows'] > 0 && $res['tables'] === count( $man['tables'] ), 'ripristino: gli allegati tornano al loro posto' );
 $saved = \ApSemplice\Backup::saved();
 apse_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
