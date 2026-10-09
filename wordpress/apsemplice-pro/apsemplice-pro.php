@@ -17,6 +17,17 @@ defined( 'ABSPATH' ) || exit;
 define( 'APSE_PRO_VERSION', '1.1.1' );
 define( 'APSE_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
+// All'attivazione di Pro mancano ancora i dati di partenza delle funzioni avanzate (ad esempio il conto corrente accanto alla cassa).
+register_activation_hook(
+	__FILE__,
+	function () {
+		if ( class_exists( 'ApSemplice\\Edition' ) ) {
+			\ApSemplice\Edition::add_dir( plugin_dir_path( __FILE__ ) . 'includes' );
+			\ApSemplice\Install::seed();
+		}
+	}
+);
+
 /**
  * Le funzioni avanzate sono le stesse classi di APSemplice (stesso spazio dei nomi) messe in una cartella a parte: il plugin gratuito
  * le trova da solo appena questa cartella gli viene indicata. Senza APSemplice attivo non si fa niente e si avvisa.
