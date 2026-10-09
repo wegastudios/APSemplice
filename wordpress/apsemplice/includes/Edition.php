@@ -64,23 +64,26 @@ final class Edition {
 		return self::$dirs;
 	}
 
-	/** @var string versione di APSemplice Pro rifiutata perché diversa da quella di APSemplice ('' = nessun problema) */
+	/** @var string livello di compatibilità di APSemplice Pro rifiutato perché diverso da quello di APSemplice ('' = nessun problema) */
 	private static $mismatch = '';
 
-	/** Le due parti si usano solo insieme alla stessa versione: una Pro più vecchia o più nuova non si carica. */
-	public static function compatible( string $pro_version, string $free_version ): bool {
-		return $pro_version === $free_version;
+	/**
+	 * APSemplice e APSemplice Pro hanno versioni indipendenti (si aggiorna uno o l'altro, in qualunque ordine); si parlano finché hanno lo
+	 * stesso «livello di compatibilità», un numero che cambia solo quando cambia ciò che si scambiano.
+	 */
+	public static function compatible( int $pro_api, int $free_api ): bool {
+		return $pro_api === $free_api;
 	}
 
-	/** La versione di APSemplice Pro che è stata rifiutata perché non corrisponde (vuoto se tutto a posto). */
+	/** Il livello di compatibilità di APSemplice Pro rifiutato perché non corrisponde (vuoto se tutto a posto). */
 	public static function mismatch(): string {
 		return self::$mismatch;
 	}
 
-	/** Il plugin Pro dichiara qui la propria cartella `includes/`. Se la sua versione non è quella di APSemplice non si carica niente. */
+	/** Il plugin Pro dichiara qui la propria cartella `includes/`. Se il suo livello di compatibilità non è quello di APSemplice non si carica niente. */
 	public static function add_dir( string $dir ): void {
-		if ( defined( 'APSE_PRO_VERSION' ) && defined( 'APSE_VERSION' ) && ! self::compatible( (string) APSE_PRO_VERSION, (string) APSE_VERSION ) ) {
-			self::$mismatch = (string) APSE_PRO_VERSION;
+		if ( defined( 'APSE_PRO_API' ) && defined( 'APSE_API' ) && ! self::compatible( (int) APSE_PRO_API, (int) APSE_API ) ) {
+			self::$mismatch = (string) APSE_PRO_API;
 			return;
 		}
 		$dir = rtrim( $dir, '/\\' ) . '/';

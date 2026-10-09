@@ -31,15 +31,18 @@ final class VersionTest extends TestCase {
 		}
 	}
 
-	public function test_pro_plugin_has_the_same_version(): void {
-		preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $this->main_file(), $h );
+	/** Il Pro ha una versione sua (si aggiorna da solo), ma header, costante e readme dicono la stessa cosa e il livello di compatibilità coincide. */
+	public function test_pro_plugin_is_consistent_and_compatible(): void {
 		$pro = (string) file_get_contents( dirname( __DIR__, 3 ) . '/apsemplice-pro/apsemplice-pro.php' );
 		preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $pro, $v );
 		preg_match( "/define\( 'APSE_PRO_VERSION', '([^']+)' \)/", $pro, $c );
-		$this->assertSame( $h[1], $v[1] ?? '' );
-		$this->assertSame( $h[1], $c[1] ?? '' );
+		$this->assertSame( $v[1], $c[1] ?? '' );
 		$readme = (string) file_get_contents( dirname( __DIR__, 3 ) . '/apsemplice-pro/readme.txt' );
 		preg_match( '/^Stable tag:\s*(\S+)/m', $readme, $s );
-		$this->assertSame( $h[1], $s[1] ?? '' );
+		$this->assertSame( $v[1], $s[1] ?? '' );
+		preg_match( "/define\( 'APSE_PRO_API', (\d+) \)/", $pro, $pa );
+		preg_match( "/define\( 'APSE_API', (\d+) \)/", $this->main_file(), $fa );
+		$this->assertNotEmpty( $pa[1] ?? '' );
+		$this->assertSame( $fa[1] ?? '', $pa[1] ?? 'x', 'APSE_API e APSE_PRO_API coincidono' );
 	}
 }

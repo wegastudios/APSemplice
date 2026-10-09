@@ -15,6 +15,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'APSE_VERSION', '1.1.14' );
+define( 'APSE_API', 1 ); // livello di compatibilità con APSemplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'APSE_FILE', __FILE__ );
 define( 'APSE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'APSE_URL', plugin_dir_url( __FILE__ ) );
