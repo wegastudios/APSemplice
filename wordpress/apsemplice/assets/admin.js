@@ -653,3 +653,69 @@
 	fillBookings();
 	render();
 })();
+
+/* Tessera su immagine: scelta dell'immagine e posizionamento di nome, numero, scadenza e QR trascinando */
+(function () {
+	var box = document.getElementById('apse-cardedit');
+	if (!box) { return; }
+	var img = document.getElementById('apse-cardedit-img');
+	var empty = document.getElementById('apse-cardedit-empty');
+	var idField = document.getElementById('apse-card-bg-id');
+	var pick = document.getElementById('apse-cardbg-pick');
+	var frame;
+	function field(f, n) { return document.querySelector('[name="layout[' + f + '][' + n + ']"]:not([type=hidden])') || document.querySelector('[name="layout[' + f + '][' + n + ']"]'); }
+	function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+	function applyChip(chip) {
+		var f = chip.getAttribute('data-f');
+		chip.style.left = field(f, 'x').value + '%';
+		chip.style.top = field(f, 'y').value + '%';
+		if (f === 'qr') { chip.style.width = field(f, 'size').value + '%'; }
+		else { chip.style.fontSize = field(f, 'size').value + 'cqw'; var c = field(f, 'color'); if (c) { chip.style.color = c.value; } }
+		var sh = field(f, 'show');
+		chip.style.opacity = sh && sh.checked ? '1' : '.3';
+	}
+	var chips = box.querySelectorAll('.apse-chip');
+	Array.prototype.forEach.call(chips, function (chip) {
+		var f = chip.getAttribute('data-f');
+		['x', 'y', 'size', 'color', 'show'].forEach(function (n) {
+			var el = field(f, n);
+			if (el) { el.addEventListener('input', function () { applyChip(chip); }); el.addEventListener('change', function () { applyChip(chip); }); }
+		});
+		chip.addEventListener('pointerdown', function (e) {
+			e.preventDefault();
+			chip.setPointerCapture(e.pointerId);
+			var r = box.getBoundingClientRect();
+			var startX = e.clientX, startY = e.clientY;
+			var x0 = parseFloat(field(f, 'x').value), y0 = parseFloat(field(f, 'y').value);
+			function move(ev) {
+				var nx = clamp(x0 + (ev.clientX - startX) / r.width * 100, 0, 100);
+				var ny = clamp(y0 + (ev.clientY - startY) / r.height * 100, 0, 100);
+				field(f, 'x').value = nx.toFixed(1);
+				field(f, 'y').value = ny.toFixed(1);
+				applyChip(chip);
+			}
+			function up() { chip.removeEventListener('pointermove', move); chip.removeEventListener('pointerup', up); }
+			chip.addEventListener('pointermove', move);
+			chip.addEventListener('pointerup', up);
+		});
+		applyChip(chip);
+	});
+	if (pick && window.wp && wp.media) {
+		pick.addEventListener('click', function (e) {
+			e.preventDefault();
+			if (!frame) {
+				frame = wp.media({ title: 'Immagine della tessera', button: { text: 'Usa questa immagine' }, library: { type: 'image' }, multiple: false });
+				frame.on('select', function () {
+					var a = frame.state().get('selection').first().toJSON();
+					idField.value = a.id;
+					img.src = (a.sizes && a.sizes.large) ? a.sizes.large.url : a.url;
+					img.style.display = 'block';
+					if (empty) { empty.style.display = 'none'; }
+					var im = document.querySelector('input[name="card_mode"][value="image"]');
+					if (im) { im.checked = true; }
+				});
+			}
+			frame.open();
+		});
+	}
+})();

@@ -1275,13 +1275,25 @@ final class Actions {
 			}
 			return $c;
 		};
-		Settings::update(
-			array(
-				'logo_id'         => max( 0, $logo ),
-				'accent_color'    => $color( 'primary_custom', 'accent_color' ),
-				'secondary_color' => $color( 'secondary_custom', 'secondary_color' ),
-			)
+		$upd = array(
+			'logo_id'         => max( 0, $logo ),
+			'accent_color'    => $color( 'primary_custom', 'accent_color' ),
+			'secondary_color' => $color( 'secondary_custom', 'secondary_color' ),
 		);
+		if ( ! empty( $p['card_present'] ) ) { // sezione «Tessera»: standard oppure su un'immagine propria
+			$bg = (int) ( $p['card_bg_id'] ?? 0 );
+			if ( $bg > 0 && ! wp_attachment_is_image( $bg ) ) {
+				throw new \InvalidArgumentException( 'L\'immagine della tessera deve essere un\'immagine della libreria media.' );
+			}
+			$mode = \ApSemplice\CardLayout::MODE_IMAGE === (string) ( $p['card_mode'] ?? '' ) ? \ApSemplice\CardLayout::MODE_IMAGE : \ApSemplice\CardLayout::MODE_STANDARD;
+			if ( \ApSemplice\CardLayout::MODE_IMAGE === $mode && $bg <= 0 ) {
+				throw new \InvalidArgumentException( 'Per la tessera su immagine scegli prima l\'immagine, oppure torna alla tessera standard.' );
+			}
+			$upd['card_mode']   = $mode;
+			$upd['card_bg_id']  = max( 0, $bg );
+			$upd['card_layout'] = \ApSemplice\CardLayout::clean( $p['layout'] ?? array() );
+		}
+		Settings::update( $upd );
 		return array( Ui::url( 'apse-look' ), 'Aspetto salvato.' );
 	}
 

@@ -143,6 +143,14 @@ final class Views {
 		$active = MemberType::GUEST !== $p['type'] && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
 		$assoc  = (string) Settings::get( 'association_name' );
 		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? self::d( $until ) : '—' );
+		if ( \ApSemplice\CardLayout::active() ) { // tessera su un'immagine dell'associazione, con i dati posizionati sopra
+			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
+			return '<section class="apsf-section">'
+				. \ApSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ) )
+				. '<p><span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span></p>'
+				. ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
+				. '<p class="apsf-print-wrap"><button type="button" class="apsf-btn apsf-print-card">Stampa la tessera</button></p></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
 		$logo = Assets::logo_url();
 		return '<section class="apsf-section"><div class="apsf-memcard">'
 			. ( '' !== $logo ? '<img class="apsf-memcard-logo" src="' . esc_url( $logo ) . '" alt="' . esc_attr( $assoc ) . '">' : '' )
@@ -154,6 +162,18 @@ final class Views {
 			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'
 			. self::card_qr( $p ) . ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
 			. '</div><p class="apsf-print-wrap"><button type="button" class="apsf-btn apsf-print-card">Stampa la tessera</button></p></section>';
+	}
+
+	/** Solo il disegno del QR della tessera (vuoto se il QR è spento o il socio non è un socio). */
+	private static function card_qr_svg( array $p ): string {
+		if ( ! Settings::card_qr_enabled() || ! MemberType::is_member( $p['type'] ) ) {
+			return '';
+		}
+		try {
+			return \ApSemplice\QrCode::svg( Settings::card_url( (int) $p['id'] ), 4, 'QR della tessera di ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) );
+		} catch ( \InvalidArgumentException $e ) {
+			return '';
+		}
 	}
 
 	/** QR della tessera (si verifica al momento, anche se la tessera nel frattempo scade o si rinnova). */
