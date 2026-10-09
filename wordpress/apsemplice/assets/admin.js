@@ -719,3 +719,14 @@
 		});
 	}
 })();
+
+/* Il menu APSemplice resta aperto su tutte le pagine del plugin (anche quelle di dettaglio e le schede nascoste) */
+(function () {
+	if (!/[?&]page=apse/.test(window.location.search)) { return; }
+	var li = document.getElementById('toplevel_page_apse');
+	if (!li) { return; }
+	li.classList.remove('wp-not-current-submenu');
+	li.classList.add('wp-has-current-submenu', 'wp-menu-open', 'current');
+	var a = li.querySelector('a.menu-top');
+	if (a) { a.classList.remove('wp-not-current-submenu'); a.classList.add('wp-has-current-submenu', 'wp-menu-open'); }
+})();

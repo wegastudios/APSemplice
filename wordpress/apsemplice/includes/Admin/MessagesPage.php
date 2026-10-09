@@ -6,7 +6,7 @@ use ApSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Rubrica → Comunicazioni: email a gruppi di persone. */
+/** Rubrica soci → Comunicazioni: email a gruppi di persone. */
 final class MessagesPage {
 
 	/** Gruppo scelto nel modulo ("members_active" oppure "activity:12" / "session:34") => [gruppo, id]. */

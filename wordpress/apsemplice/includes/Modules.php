@@ -31,7 +31,7 @@ final class Modules {
 	private static function all_defs(): array {
 		return array(
 			'activities' => array( 'label' => 'Corsi ed eventi', 'ask' => 'Organizzi corsi, eventi o attività con iscrizioni e presenze?', 'pages' => array( 'apse-activities', 'apse-calendar', 'apse-attendance' ), 'needs' => '' ),
-			'ledger'     => array( 'label' => 'Soldi e prima nota', 'ask' => 'Ti serve registrare incassi e spese (la prima nota)?', 'pages' => array( 'apse-money', 'apse-ledger', 'apse-income', 'apse-group', 'apse-expense' ), 'needs' => '' ),
+			'ledger'     => array( 'label' => 'Cassa e prima nota', 'ask' => 'Ti serve registrare incassi e spese (la prima nota)?', 'pages' => array( 'apse-money', 'apse-ledger', 'apse-income', 'apse-group', 'apse-expense' ), 'needs' => '' ),
 			'accounts'   => array( 'label' => 'Conti e fondi', 'ask' => 'Ti serve gestire altri conti oltre alla cassa contanti (banca, PayPal, fondi)?', 'pages' => array( 'apse-accounts', 'apse-transfer' ), 'needs' => 'ledger' ),
 			'accounting' => array( 'label' => 'Contabilità', 'ask' => 'Tieni la contabilità qui (anni solari, adempimenti, 5x1000)? Se la tiene un altro, resta solo la prima nota.', 'pages' => array( 'apse-accounting', 'apse-years', 'apse-fivepm' ), 'needs' => 'ledger' ),
 			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'apse-reports', 'apse-statement' ), 'needs' => 'accounting' ),

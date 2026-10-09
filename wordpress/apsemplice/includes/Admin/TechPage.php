@@ -120,7 +120,7 @@ final class TechPage {
 		}
 		echo '</tbody></table><p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
-		echo '<p class="description">Per dare l\'accesso a una sola persona, crea o assegna il ruolo «Segreteria APS» dalla sua scheda in Rubrica.</p>';
+		echo '<p class="description">Per dare l\'accesso a una sola persona, crea o assegna il ruolo «Segreteria APS» dalla sua scheda in Rubrica soci.</p>';
 		self::roles_matrix();
 		self::roles_people();
 		Ui::footer();
@@ -195,7 +195,7 @@ final class TechPage {
 		$rows = self::role_holders();
 		echo '<h2>Chi ha un ruolo</h2>';
 		if ( ! $rows ) {
-			echo '<p class="description">Nessuno ha ancora un ruolo con permessi particolari. Si assegnano dalla scheda della persona in Rubrica.</p>';
+			echo '<p class="description">Nessuno ha ancora un ruolo con permessi particolari. Si assegnano dalla scheda della persona in Rubrica soci.</p>';
 			return;
 		}
 		echo '<table class="widefat striped" style="max-width:700px"><thead><tr><th>Persona</th><th>Ruolo</th></tr></thead><tbody>';

@@ -10,13 +10,13 @@ use ApSemplice\Settings;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Soldi: la cassa di tutti i giorni, per anno sociale. Incassi, spese, liquidità reale (conti e fondi) e gli ultimi movimenti.
+ * Cassa: la cassa di tutti i giorni, per anno sociale. Incassi, spese, liquidità reale (conti e fondi) e gli ultimi movimenti.
  * La prima nota è una sola: qui si usa per cassa, in Contabilità per anno solare e adempimenti.
  */
 final class MoneyPage {
 
 	public static function render(): void {
-		Ui::header( 'Soldi' );
+		Ui::header( 'Cassa' );
 		$year = Settings::social_year();
 		$r    = Plugin::reports()->social_year( $year );
 		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Nuovo incasso</a> '

@@ -25,10 +25,10 @@ final class Admin {
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */
 	const GROUPS = array(
-		'apse-people'     => array( 'Rubrica', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni' ) ),
+		'apse-people'     => array( 'Rubrica soci', array( 'apse-people' => 'Soci e ospiti', 'apse-messages' => 'Comunicazioni' ) ),
 		'apse-activities' => array( 'Corsi ed eventi', array( 'apse-activities' => 'Elenco' ) ),
 		'apse-tools'      => array( 'Strumenti', array( 'apse-tools' => 'Panoramica', 'apse-import' => 'Importa da Excel/CSV', 'apse-wpai' => 'WP All Import', 'apse-exports' => 'Esporta', 'apse-calendar' => 'Calendari', 'apse-backup' => 'Copia di sicurezza', 'apse-tech' => 'Integrazioni' ) ),
-		'apse-money'      => array( 'Soldi', array( 'apse-money' => 'Cassa', 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi' ) ),
+		'apse-money'      => array( 'Cassa', array( 'apse-money' => 'Cassa', 'apse-ledger' => 'Prima nota', 'apse-income' => 'Nuovo incasso', 'apse-group' => 'Cassa per più persone', 'apse-expense' => 'Nuova spesa', 'apse-transfer' => 'Giroconto', 'apse-accounts' => 'Conti e fondi' ) ),
 		'apse-accounting' => array( 'Contabilità', array( 'apse-accounting' => 'Anno solare', 'apse-years' => 'Anni solari', 'apse-reports' => 'Report', 'apse-statement' => 'Rendiconto', 'apse-fivepm' => 'Adempimenti (5x1000)' ) ),
 		'apse-book'       => array( 'Registri', array( 'apse-book' => 'Libro soci', 'apse-minutes' => 'Verbali', 'apse-volunteers' => 'Assicurazioni', 'apse-attendance' => 'Presenze' ) ),
 		'apse-settings'   => array( 'Impostazioni', array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua', 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi', 'apse-payments' => 'Pagamenti online', 'apse-acct' => 'Opzioni contabili', 'apse-app' => 'App e notifiche', 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale', 'apse-reset' => 'Azzeramento dati' ) ),
@@ -38,7 +38,7 @@ final class Admin {
 	const SETTINGS_SECTIONS = array(
 		'Ente e fiscalità' => array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua' ),
 		'Soci e identità'  => array( 'apse-settings' => 'Soci e quote', 'apse-look' => 'Aspetto', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi' ),
-		'Soldi'            => array( 'apse-payments' => 'Pagamenti online', 'apse-bank' => 'Bonifico', 'apse-donate' => 'Donazioni' ),
+		'Cassa'            => array( 'apse-payments' => 'Pagamenti online', 'apse-bank' => 'Bonifico', 'apse-donate' => 'Donazioni' ),
 		'Contabilità'      => array( 'apse-acct' => 'Opzioni contabili' ),
 		'Comunicazioni'    => array( 'apse-app' => 'App e notifiche' ),
 		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale', 'apse-reset' => 'Azzeramento dati' ),
@@ -68,9 +68,9 @@ final class Admin {
 		add_menu_page( 'APSemplice', 'APSemplice', $cap, 'apse', self::guard( 'apse', array( DashboardPage::class, 'render' ) ), 'dashicons-groups', 30 );
 		$visible = array(
 			array( 'apse', 'Bacheca', array( DashboardPage::class, 'render' ) ),
-			array( 'apse-people', 'Rubrica', array( PeoplePage::class, 'render_list' ) ),
+			array( 'apse-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
 			array( 'apse-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
-			array( 'apse-money', 'Soldi', array( MoneyPage::class, 'render' ) ),
+			array( 'apse-money', 'Cassa', array( MoneyPage::class, 'render' ) ),
 			array( 'apse-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
 			array( 'apse-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
 			array( 'apse-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
