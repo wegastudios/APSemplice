@@ -59,6 +59,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 = 1.1.2 =
 * Card editor: the empty preview keeps the card proportions, so the fields no longer overlap before an image is chosen.
+* The administration menu ends with Settings again; the administrative pages are reached from the Settings tabs.
 
 = 1.1.1 =
 * First release.

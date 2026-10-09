@@ -2976,10 +2976,7 @@ apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-card' ), 'Cassa' ) && false 
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['apse'] ?? array(), 0 );
-apse_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === array_slice( $visible, 0, 8 ), 'menu: le otto voci di lavoro (' . implode( ', ', array_slice( $visible, 0, 8 ) ) . ')' );
-$mn_admin = array_slice( $visible, 8 );
-$mn_order = array_values( Admin\Admin::MENU_ADMIN );
-apse_ok( count( $mn_admin ) >= 10 && $mn_admin === array_values( array_intersect( $mn_order, $mn_admin ) ) && in_array( 'Aspetto', $mn_admin, true ) && in_array( 'Copia di sicurezza', $mn_admin, true ), 'menu: le pagine amministrative seguono, nell\'ordine previsto (' . implode( ', ', $mn_admin ) . ')' );
+apse_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo otto voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
