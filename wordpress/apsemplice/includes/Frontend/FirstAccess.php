@@ -137,7 +137,7 @@ final class FirstAccess {
 	}
 
 	public static function page( string $message = '', array $post = array(), string $error = '' ): string {
-		$accent = (string) Settings::get( 'accent_color' ) ?: '#2271b1';
+		$accent = Assets::accent( '#2271b1' ); // colore scelto, altrimenti quello del sito (Elementor o tema)
 		$input  = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
 		$field  = function ( string $label, string $name, string $type, string $auto ) use ( $input, $post ) {
 			return '<label>' . esc_html( $label ) . '<input style="' . $input . '" type="' . $type . '" name="' . $name . '" value="' . esc_attr( (string) ( $post[ $name ] ?? '' ) ) . '" required autocomplete="' . $auto . '"></label>';

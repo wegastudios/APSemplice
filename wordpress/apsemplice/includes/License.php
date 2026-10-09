@@ -27,6 +27,16 @@ final class License {
 		'pwa',               // app installabile
 	);
 
+	/** Livelli di licenza: contabile (conti, pagamenti, report, comunicazioni…) e fiscale (in più IVA, 5 per mille, ricevute e anni solari). */
+	const PLAN_ACCOUNTING = 'accounting';
+	const PLAN_FISCAL     = 'fiscal';
+
+	/** Livello della licenza: lo comunica il servizio delle licenze; finché la verifica non c'è (standby) valgono tutte le funzioni. */
+	public static function plan(): string {
+		$p = (string) ( self::state()['plan'] ?? '' );
+		return self::PLAN_ACCOUNTING === $p ? self::PLAN_ACCOUNTING : self::PLAN_FISCAL;
+	}
+
 	public static function key(): string {
 		return (string) Settings::get( 'license_key' );
 	}
@@ -40,12 +50,13 @@ final class License {
 			'since'      => $s['since'] ?? null,
 			'checked_at' => $s['checked_at'] ?? null,
 			'url'        => $s['url'] ?? null,
+			'plan'       => $s['plan'] ?? null,
 		);
 	}
 
 	/** Lo scrive il client del server delle licenze (e i test). */
-	public static function set_state( string $status, ?string $since = null, ?string $payment_url = null ): void {
-		update_option( self::OPT_STATE, array( 'status' => $status, 'since' => $since, 'checked_at' => Db::now(), 'url' => $payment_url ) );
+	public static function set_state( string $status, ?string $since = null, ?string $payment_url = null, ?string $plan = null ): void {
+		update_option( self::OPT_STATE, array( 'status' => $status, 'since' => $since, 'checked_at' => Db::now(), 'url' => $payment_url, 'plan' => $plan ) );
 	}
 
 	/** Indirizzo per regolarizzare il pagamento: lo comunica il servizio delle licenze insieme allo stato. */

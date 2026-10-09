@@ -19,7 +19,8 @@ final class Edition {
 		'levels'     => 'Admin/LevelsEditor.php',  // più livelli di socio, ognuno con la sua quota
 		'payments'   => 'PaymentService.php',      // pagamenti online
 		'funds'      => 'Admin/AccountsPage.php',  // conti multipli, giroconti, fondi e cassa per più persone
-		'reports'    => 'Admin/ReportsPage.php',   // report, rendiconto, anni solari e contabilità
+		'reports'    => 'Admin/ReportsPage.php',   // report di gestione (saldi, attività)
+		'fiscal'     => 'Admin/YearsPage.php',     // anni solari, contabilità e rendiconto per il commercialista
 		'fivepm'     => 'FivePerMille.php',        // 5 per mille
 		'insurance'  => 'Insurance.php',           // assicurazioni e presenze
 		'broadcasts' => 'Broadcasts.php',          // comunicazioni di massa
@@ -33,7 +34,8 @@ final class Edition {
 	const PAGES = array(
 		'payments'   => array( 'apse-payments' ),
 		'funds'      => array( 'apse-accounts', 'apse-transfer', 'apse-group' ),
-		'reports'    => array( 'apse-accounting', 'apse-years', 'apse-reports', 'apse-statement', 'apse-acct' ),
+		'reports'    => array( 'apse-reports' ),
+		'fiscal'     => array( 'apse-accounting', 'apse-years', 'apse-statement', 'apse-acct' ),
 		'fivepm'     => array( 'apse-fivepm' ),
 		'insurance'  => array( 'apse-volunteers', 'apse-attendance' ),
 		'broadcasts' => array( 'apse-messages' ),
@@ -95,7 +97,15 @@ final class Edition {
 	 * tutte le funzioni avanzate spariscono e resta il comportamento dell'edizione gratuita; la licenza stessa si può sempre correggere.
 	 */
 	public static function has( string $feature ): bool {
-		return self::installed( $feature ) && ( 'license' === $feature || ! self::degraded() );
+		return self::installed( $feature ) && ( 'license' === $feature || ( ! self::degraded() && ! self::plan_blocks( $feature ) ) );
+	}
+
+	/** Funzioni fiscali: solo con la licenza «Pro Fiscale» (IVA, 5 per mille, ricevute e attestazioni, anni solari e rendiconto). */
+	const FISCAL = array( 'vat', 'fivepm', 'receipts', 'fiscal' );
+
+	/** La licenza è di livello contabile e la funzione è fiscale? Senza licenza (verifica non attiva) tutto è disponibile. */
+	public static function plan_blocks( string $feature ): bool {
+		return in_array( $feature, self::FISCAL, true ) && self::installed( 'license' ) && function_exists( 'get_option' ) && License::PLAN_FISCAL !== License::plan();
 	}
 
 	/**
@@ -106,16 +116,27 @@ final class Edition {
 	}
 
 	/** Perché una funzione avanzata non è disponibile (da mostrare a chi prova a usarla). */
-	public static function missing_message(): string {
+	public static function missing_message( string $feature = '' ): string {
+		if ( '' !== $feature && self::installed( $feature ) && ! self::degraded() && self::plan_blocks( $feature ) ) {
+			return 'Questa funzione fa parte della licenza APSemplice Pro Fiscale: la tua licenza è di livello contabile.';
+		}
 		if ( self::degraded() ) {
 			return 'La licenza di APSemplice Pro non è in regola: questa funzione è sospesa. Regolarizza la licenza e torna disponibile; intanto resta tutto il resto, con i tuoi dati.';
 		}
 		return 'Questa funzione fa parte di APSemplice Pro e non è inclusa in questa edizione.';
 	}
 
+	/** Indirizzo del sito dove si presenta e si acquista APSemplice Pro (modificabile con il filtro `apse_pro_url`). */
+	public static function pro_url(): string {
+		return (string) apply_filters( 'apse_pro_url', 'https://www.wegastudios.com' );
+	}
+
 	/** Come {@see Edition::missing_message()}, con il collegamento per regolarizzare quando la licenza è scaduta (HTML già pronto). */
 	public static function missing_html(): string {
 		$html = '<p>' . esc_html( self::missing_message() ) . '</p>';
+		if ( ! self::degraded() && function_exists( 'admin_url' ) ) {
+			$html .= '<p><a href="' . esc_url( admin_url( 'admin.php?page=apse-pro' ) ) . '">Scopri cosa comprende APSemplice Pro →</a></p>';
+		}
 		if ( self::degraded() ) {
 			$url   = License::payment_url();
 			$html .= $url

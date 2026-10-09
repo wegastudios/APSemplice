@@ -44,7 +44,7 @@ final class Admin {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-bank', 'apse-donate', 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
+	const ADMIN_ONLY = array( 'apse-pro', 'apse-bank', 'apse-donate', 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities', 'apse-activity-delete' => 'apse-activities', 'apse-booking-delete' => 'apse-activities' );
@@ -75,6 +75,9 @@ final class Admin {
 			array( 'apse-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
 			array( 'apse-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
+		if ( ProPage::needed() ) { // c'è qualcosa che questa installazione non ha: una pagina informativa, senza funzioni finte
+			$visible[] = array( 'apse-pro', 'Scopri il Pro', array( ProPage::class, 'render' ) );
+		}
 		foreach ( $visible as $s ) {
 			if ( self::group_off( $s[0] ) ) {
 				$s[1] = null; // la pagina resta raggiungibile (con l'avviso), ma non compare nel menu

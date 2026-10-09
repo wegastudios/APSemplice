@@ -59,7 +59,7 @@ final class Exports {
 			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di APSemplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
 		$what =isset( $_GET['what'] ) ? sanitize_key( wp_unslash( $_GET['what'] ) ) : '';
-		if ( in_array( $what, array( 'period', 'social' ), true ) && ! Edition::has( 'reports' ) ) { // in questa edizione si esportano solo soci e prima nota
+		if ( ( ( 'period' === $what && ! Edition::has( 'fiscal' ) ) || ( 'social' === $what && ! Edition::has( 'reports' ) ) ) ) { // in questa edizione si esportano solo soci e prima nota
 			wp_die( 'Questa esportazione non è disponibile in questa edizione.', 403 );
 		}
 		switch ( $what ) {

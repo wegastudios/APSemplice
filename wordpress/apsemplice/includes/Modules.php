@@ -21,7 +21,7 @@ final class Modules {
 	}
 
 	/** Parte => funzione avanzata che la contiene (senza di lei la parte non esiste). */
-	const FEATURE = array( 'accounts' => 'funds', 'accounting' => 'reports', 'reports' => 'reports', 'messages' => 'broadcasts' );
+	const FEATURE = array( 'accounts' => 'funds', 'accounting' => 'fiscal', 'reports' => 'reports', 'messages' => 'broadcasts' );
 
 	private static function all_defs(): array {
 		return array(
@@ -29,7 +29,7 @@ final class Modules {
 			'ledger'     => array( 'label' => 'Soldi e prima nota', 'ask' => 'Ti serve registrare incassi e spese (la prima nota)?', 'pages' => array( 'apse-money', 'apse-ledger', 'apse-income', 'apse-group', 'apse-expense' ), 'needs' => '' ),
 			'accounts'   => array( 'label' => 'Conti e fondi', 'ask' => 'Ti serve gestire altri conti oltre alla cassa contanti (banca, PayPal, fondi)?', 'pages' => array( 'apse-accounts', 'apse-transfer' ), 'needs' => 'ledger' ),
 			'accounting' => array( 'label' => 'Contabilità', 'ask' => 'Tieni la contabilità qui (anni solari, adempimenti, 5x1000)? Se la tiene un altro, resta solo la prima nota.', 'pages' => array( 'apse-accounting', 'apse-years', 'apse-fivepm' ), 'needs' => 'ledger' ),
-			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'apse-reports', 'apse-statement' ), 'needs' => 'accounting' ),
+			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'apse-reports', 'apse-statement' ), 'needs' => 'ledger' ),
 			'book'       => array( 'label' => 'Libro soci e verbali', 'ask' => 'Ti serve il libro soci (con i verbali)?', 'pages' => array( 'apse-book', 'apse-minutes' ), 'needs' => '' ),
 			'messages'   => array( 'label' => 'Comunicazioni', 'ask' => 'Vuoi scrivere ai soci dal gestionale, via email?', 'pages' => array( 'apse-messages' ), 'needs' => '' ),
 			'import'     => array( 'label' => 'Importazioni', 'ask' => 'Devi importare soci da Excel, CSV o da WP All Import?', 'pages' => array( 'apse-import', 'apse-wpai' ), 'needs' => '' ),

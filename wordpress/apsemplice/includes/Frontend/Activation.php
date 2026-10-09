@@ -141,7 +141,7 @@ final class Activation {
 
 	public static function page( string $param, array $post = array(), string $error = '' ): string {
 		$r      = self::resolve( $param );
-		$accent = (string) Settings::get( 'accent_color' ) ?: '#2271b1';
+		$accent = Assets::accent( '#2271b1' ); // colore scelto, altrimenti quello del sito (Elementor o tema)
 		if ( 'ok' !== $r['status'] ) {
 			return CardVerify::layout( 'Attivazione non disponibile', '#b32d2e', '<p>' . esc_html( self::message( $r['status'] ) ) . '</p>' );
 		}
