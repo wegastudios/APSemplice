@@ -83,7 +83,7 @@ final class Plugin {
 		'apse_receipt'         => 'Receipts',
 		'apse_statement'       => 'Receipts',
 		'apse_privacy_export'  => 'Privacy',
-		'apse_export_texts'    => 'Texts',
+		'apse_export_texts'    => 'TextsEngine',
 		'apse_wallet_apple'    => 'Wallet',
 		'apse_doc'             => 'Docs',
 	);

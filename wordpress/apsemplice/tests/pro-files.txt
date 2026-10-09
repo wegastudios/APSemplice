@@ -40,3 +40,7 @@ GoogleWallet.php
 WalletCredentials.php
 Receipts.php
 DoorSales.php
+TextsEngine.php
+Terms.php
+Languages.php
+Admin/TextsPage.php

@@ -28,6 +28,7 @@ final class Edition {
 		'wallet'     => 'Wallet.php',              // tessera in Apple e Google Wallet
 		'receipts'   => 'Receipts.php',            // ricevute PDF
 		'door_sales' => 'DoorSales.php',           // incasso sul posto
+		'texts'      => 'TextsEngine.php',         // personalizzazione dei testi, lingue, tipo di ente e termini
 	);
 
 	/** Pagine di amministrazione di ogni funzione avanzata: se la funzione non c'è, spariscono dal menu e dalle schede. */
@@ -40,6 +41,7 @@ final class Edition {
 		'insurance'  => array( 'apse-volunteers', 'apse-attendance' ),
 		'broadcasts' => array( 'apse-messages' ),
 		'pwa'        => array( 'apse-app' ),
+		'texts'      => array( 'apse-texts' ),
 	);
 
 	/** @return string[] pagine di amministrazione delle funzioni che questa installazione non ha */

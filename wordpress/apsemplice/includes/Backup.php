@@ -327,7 +327,6 @@ final class Backup {
 		}
 		$zip->close();
 		Texts::flush();
-		Terms::flush();
 		Audit::log( 'backup.restored', 'settings', 0, array( 'rows' => $rows_total, 'attachments' => $files ) );
 		return array( 'tables' => count( $m['tables'] ), 'rows' => $rows_total, 'files' => $files, 'safety' => basename( $safety ) );
 	}

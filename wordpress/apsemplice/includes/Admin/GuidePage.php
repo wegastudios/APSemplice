@@ -15,7 +15,7 @@ final class GuidePage {
 		'Come registro le presenze?'             => 'Registri → Presenze: scegli il corso, il mese e la lezione, spunta chi era presente e salva. Il riepilogo si scarica in PDF o CSV.',
 		'Come invio un messaggio ai soci?'       => 'Rubrica soci → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.',
 		'Dove trovo ricevute e rendiconto?'      => 'Le ricevute si scaricano dalla prima nota e dall\'area soci. Il rendiconto per cassa è in Contabilità → Rendiconto, in PDF con le firme.',
-		'Come cambio i testi o i termini?'       => 'Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.',
+		'Come cambio i testi o i termini?'       => 'Con APSemplice Pro, in Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.',
 		'Come faccio una copia dei dati?'        => 'Impostazioni → Copia di sicurezza: scarichi un file con tutti i dati; da lì puoi anche ripristinarlo.',
 	);
 

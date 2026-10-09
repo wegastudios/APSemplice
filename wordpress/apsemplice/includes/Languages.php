@@ -85,7 +85,7 @@ final class Languages {
 			}
 			$o = trim( (string) $o );
 			$t = trim( (string) $t );
-			if ( '' === $t || $t === $o || strlen( $o ) < Texts::MIN_LEN || strlen( $o ) > Texts::MAX_LEN || strlen( $t ) > Texts::MAX_LEN ) {
+			if ( '' === $t || $t === $o || strlen( $o ) < TextsEngine::MIN_LEN || strlen( $o ) > TextsEngine::MAX_LEN || strlen( $t ) > TextsEngine::MAX_LEN ) {
 				continue;
 			}
 			$out[ $o ] = $t;

@@ -102,14 +102,17 @@ final class WizardPage {
 	echo self::stepper(); // phpcs:ignore WordPress.Security.EscapeOutput
 
 		// 1. Ente, ospiti e iscrizione
-		$ents = array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) );
-		$mems = array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) );
+		$texts = \ApSemplice\Edition::has( 'texts' ); // tipo di ente e termini adattano i testi: funzione di APSemplice Pro
+		$ents  = $texts ? array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) ) : array();
+		$mems  = $texts ? array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) ) : array();
 		$jm   = (string) $s['join_mode'];
-		self::step( 'Il tuo ente', 'Poche righe per cominciare: tipo di ente e come chiami chi partecipa adattano da soli tutti i testi.', '', 'ente' );
+		self::step( 'Il tuo ente', 'Poche righe per cominciare' . ( $texts ? ': tipo di ente e come chiami chi partecipa adattano da soli tutti i testi.' : '.' ), '', 'ente' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
-		echo '<tr><th>Di che tipo è</th><td><select name="entity_type">' . Ui::options( array_combine( $ents, $ents ), (string) $s['entity_type'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( $texts ) {
+			echo '<tr><th>Di che tipo è</th><td><select name="entity_type">' . Ui::options( array_combine( $ents, $ents ), (string) $s['entity_type'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Chi partecipa si chiama</th><td><select name="member_term">' . Ui::options( array_combine( $mems, $mems ), (string) $s['member_term'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
 		echo '</tbody></table>';
 		echo self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="apse-wiz-q"><strong>Chi può iscriversi</strong><br>'

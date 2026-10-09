@@ -38,6 +38,7 @@ final class Actions {
 		'door_sales' => array( 'apse_walk_in' ),
 		'broadcasts' => array( 'apse_broadcast_send', 'apse_broadcast_test', 'apse_broadcast_retry' ),
 		'wallet'     => array( 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear' ),
+		'texts'      => array( 'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_save_language', 'apse_import_language', 'apse_delete_language' ),
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
@@ -387,9 +388,9 @@ final class Actions {
 	}
 
 	private static function save_texts( array $p ): array {
-		$ov = \ApSemplice\Texts::overrides();
+		$ov = \ApSemplice\TextsEngine::overrides();
 		$by = array();
-		foreach ( \ApSemplice\Texts::rows() as $r ) {
+		foreach ( \ApSemplice\TextsEngine::rows() as $r ) {
 			$by[ md5( $r['text'] ) ] = $r['text'];
 		}
 		foreach ( (array) ( $p['t'] ?? array() ) as $hash => $custom ) {
@@ -403,7 +404,7 @@ final class Actions {
 				$ov[ $by[ $hash ] ] = $custom;
 			}
 		}
-		\ApSemplice\Texts::save_overrides( $ov );
+		\ApSemplice\TextsEngine::save_overrides( $ov );
 		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Testi salvati.' );
 	}
 
@@ -419,7 +420,7 @@ final class Actions {
 		$err    = null;
 		foreach ( $sheets as $s ) {
 			try {
-				$res = \ApSemplice\Texts::import_rows( $s['rows'] );
+				$res = \ApSemplice\TextsEngine::import_rows( $s['rows'] );
 				break;
 			} catch ( \InvalidArgumentException $e ) {
 				$err = $e;
@@ -432,19 +433,19 @@ final class Actions {
 	}
 
 	private static function reset_texts( array $p ): array {
-		\ApSemplice\Texts::save_overrides( array() );
+		\ApSemplice\TextsEngine::save_overrides( array() );
 		return array( Ui::url( 'apse-texts' ), 'Testi originali ripristinati.' );
 	}
 
 	private static function add_text( array $p ): array {
 		$o = trim( (string) ( $p['original'] ?? '' ) );
 		$c = trim( (string) ( $p['custom'] ?? '' ) );
-		if ( strlen( $o ) < \ApSemplice\Texts::MIN_LEN || '' === $c ) {
+		if ( strlen( $o ) < \ApSemplice\TextsEngine::MIN_LEN || '' === $c ) {
 			throw new \InvalidArgumentException( 'Scrivi il testo di oggi (almeno 3 caratteri) e quello nuovo.' );
 		}
-		$ov       = \ApSemplice\Texts::overrides();
+		$ov       = \ApSemplice\TextsEngine::overrides();
 		$ov[ $o ] = $c;
-		\ApSemplice\Texts::save_overrides( $ov );
+		\ApSemplice\TextsEngine::save_overrides( $ov );
 		return array( $p['_back'] ?? Ui::url( 'apse-texts' ), 'Sostituzione aggiunta.' );
 	}
 

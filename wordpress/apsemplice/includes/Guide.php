@@ -40,7 +40,7 @@ final class Guide {
 			array( 'title' => 'Regolamento da accettare', 'on' => (bool) Settings::get( 'rules_enabled' ), 'page' => 'apse-comms', 'hint' => 'I soci lo accettano all\'iscrizione e a ogni aggiornamento.' ),
 			array( 'title' => 'Assicurazioni', 'on' => Settings::insurance_volunteers() || Settings::insurance_association(), 'page' => 'apse-volunteers', 'hint' => 'Polizze dell\'associazione e dei volontari, con le scadenze.' ),
 			array( 'title' => '5x1000', 'on' => Edition::has( 'fivepm' ) && FivePerMille::enabled(), 'page' => 'apse-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' ),
-			array( 'title' => 'Lingua del sito', 'on' => Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'apse-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' ),
+			array( 'title' => 'Lingua del sito', 'on' => Edition::has( 'texts' ) && Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'apse-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' ),
 		);
 		return array_values( array_filter( $list, function ( $o ) { // le funzioni che questa edizione non ha non si propongono
 			return ! in_array( $o['page'], Edition::missing_pages(), true );
