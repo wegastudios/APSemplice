@@ -100,8 +100,8 @@ final class Edition {
 		return self::installed( $feature ) && ( 'license' === $feature || ( ! self::degraded() && ! self::plan_blocks( $feature ) ) );
 	}
 
-	/** Funzioni fiscali: solo con la licenza «Pro Fiscale» (IVA, 5 per mille, ricevute e attestazioni, anni solari e rendiconto). */
-	const FISCAL = array( 'vat', 'fivepm', 'receipts', 'fiscal' );
+	/** Funzioni fiscali: solo con la licenza «Pro Fiscale» (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
+	const FISCAL = array( 'vat', 'fivepm', 'fiscal' );
 
 	/** La licenza è di livello contabile e la funzione è fiscale? Senza licenza (verifica non attiva) tutto è disponibile. */
 	public static function plan_blocks( string $feature ): bool {

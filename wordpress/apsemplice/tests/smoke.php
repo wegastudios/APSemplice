@@ -285,7 +285,7 @@ apse_ok( false !== strpos( (string) apse_throws( function () { \ApSemplice\Broad
 $lic_notice = Admin\LicenseNotice::html();
 apse_ok( false !== strpos( $lic_notice, 'notice-warning' ) && false === strpos( $lic_notice, 'overlay' ), 'licenza scaduta: un avviso in cima alle pagine, non un popup che copre i dati' );
 // livelli di licenza: contabile (senza le funzioni fiscali) e fiscale
-$pl_fiscal = array( 'vat', 'fivepm', 'receipts', 'fiscal' );
+$pl_fiscal = array( 'vat', 'fivepm', 'fiscal' );
 \ApSemplice\License::set_state( 'active', null, null, 'fiscal' );
 apse_ok( 'fiscal' === License::plan() && \ApSemplice\Edition::has( 'vat' ) && \ApSemplice\Edition::has( 'fivepm' ) && \ApSemplice\Edition::has( 'receipts' ) && \ApSemplice\Edition::has( 'fiscal' ) && \ApSemplice\Edition::has( 'payments' ), 'licenza fiscale: tutte le funzioni, anche IVA, 5x1000, ricevute e anni solari' );
 \ApSemplice\License::set_state( 'active', null, null, 'accounting' );
@@ -294,7 +294,7 @@ $pl_off = true;
 foreach ( $pl_fiscal as $pf ) {
 	$pl_off = $pl_off && ! \ApSemplice\Edition::has( $pf );
 }
-apse_ok( $pl_off && \ApSemplice\Edition::has( 'payments' ) && \ApSemplice\Edition::has( 'funds' ) && \ApSemplice\Edition::has( 'reports' ) && \ApSemplice\Edition::has( 'levels' ) && \ApSemplice\Edition::has( 'broadcasts' ), 'licenza contabile: niente IVA, 5x1000, ricevute e anni solari; il resto del Pro resta' );
+apse_ok( $pl_off && \ApSemplice\Edition::has( 'payments' ) && \ApSemplice\Edition::has( 'funds' ) && \ApSemplice\Edition::has( 'reports' ) && \ApSemplice\Edition::has( 'levels' ) && \ApSemplice\Edition::has( 'broadcasts' ), 'licenza contabile: niente IVA, 5x1000 e anni solari; ricevute e il resto del Pro restano' );
 apse_ok( ! \ApSemplice\Fiscal::vat_applies() && false !== strpos( \ApSemplice\Edition::missing_message( 'vat' ), 'Pro Fiscale' ), 'licenza contabile: l\'IVA non si applica e il messaggio spiega il livello' );
 apse_ok( in_array( 'apse-fivepm', \ApSemplice\Edition::missing_pages(), true ) && in_array( 'apse-years', \ApSemplice\Edition::missing_pages(), true ) && ! in_array( 'apse-reports', \ApSemplice\Edition::missing_pages(), true ), 'licenza contabile: le pagine fiscali spariscono, i report restano' );
 apse_ok( Admin\ProPage::needed(), 'licenza contabile: la pagina che presenta il livello fiscale è disponibile' );
