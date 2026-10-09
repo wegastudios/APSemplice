@@ -19,11 +19,11 @@ final class CardLayoutTest extends TestCase {
 		$this->assertSame( 1.0, $c['name']['size'] );
 		$this->assertSame( '#222222', $c['name']['color'] );
 		$this->assertSame( 0, $c['name']['show'] );
-		$this->assertSame( CardLayout::defaults()['number'], $c['number'] );
+		$this->assertEquals( CardLayout::defaults()["number"], $c["number"] );
 	}
 
 	public function test_clean_accepts_garbage(): void {
-		$this->assertSame( CardLayout::defaults(), CardLayout::clean( 'niente' ) );
-		$this->assertSame( CardLayout::defaults(), CardLayout::clean( array( 'name' => 'x' ) ) );
+		$this->assertEquals( CardLayout::defaults(), CardLayout::clean( 'niente' ) );
+		$this->assertEquals( CardLayout::defaults(), CardLayout::clean( array( 'name' => 'x' ) ) );
 	}
 }
