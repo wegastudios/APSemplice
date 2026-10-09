@@ -112,8 +112,13 @@ final class AppearancePage {
 				wp_add_inline_style( 'apse-frontend', $vars );
 			}
 			$samples = CardLayout::samples();
+			try {
+				$qr = \ApSemplice\QrCode::svg( home_url( '/' ), 4, 'QR di esempio' );
+			} catch ( \InvalidArgumentException $e ) {
+				$qr = '';
+			}
 			echo '<h2>Anteprima della tessera</h2><p class="description">È la tessera salvata: ' . esc_html( (string) CardLayout::dims()['w'] ) . ' × ' . esc_html( (string) CardLayout::dims()['h'] ) . ' cm. I soci la vedono così e la stampano con queste misure.</p>'
-				. CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], '<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="#fff"/><path d="M0 0h4v4H0zM6 0h4v4H6zM0 6h4v4H0zM6 6h2v2H6z" fill="#000"/></svg>' ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da CardLayout
+				. '<div style="--apsf-accent:' . esc_attr( $acc ) . ';--apsf-accent-2:' . esc_attr( $sec ) . '">' . CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], $qr ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da CardLayout
 		} else {
 		echo '<h2>Anteprima della tessera</h2><div style="max-width:380px;border-radius:14px;padding:20px 24px;background:#fff;color:' . esc_attr( $acc ) . ';border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . '">'
 			. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="display:block;max-height:52px;max-width:190px;margin:0 0 10px">' : '' )
