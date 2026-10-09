@@ -62,7 +62,7 @@ class PaymentService extends OfflinePayments {
 	}
 
 	public function enabled(): bool {
-		return array() !== $this->providers() && Edition::allows( 'online_payments' );
+		return array() !== $this->providers() && Edition::has( 'payments' );
 	}
 
 
@@ -117,7 +117,7 @@ class PaymentService extends OfflinePayments {
 	 */
 	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url, string $provider = '' ): string {
 		$available = $this->providers();
-		if ( ! $available || ! Edition::allows( 'online_payments' ) ) {
+		if ( ! $available || ! Edition::has( 'payments' ) ) {
 			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi.' );
 		}
 		if ( '' === $provider ) {
@@ -284,7 +284,7 @@ class PaymentService extends OfflinePayments {
 
 	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
 	public static function check_pending_job(): void {
-		Plugin::payments()->check_pending();
+		Plugin::payments_engine()->check_pending();
 	}
 
 	/** Ricontrolla i pagamenti rimasti in sospeso (chiamato ogni ora da WP-Cron e dal pulsante in amministrazione). */

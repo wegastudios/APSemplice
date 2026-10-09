@@ -195,7 +195,7 @@ final class WooBridge {
 		}
 		$euro = 'EUR' === strtoupper( (string) $order->get_currency() );
 		foreach ( self::paid_by_payment( $order ) as $public => $cents ) {
-			Plugin::payments()->finalize_external( (string) $public, $euro ? $cents : 0, 'woo-' . (int) $order_id ); // altra valuta: da controllare, non si conta come euro
+			Plugin::payments_engine()->finalize_external( (string) $public, $euro ? $cents : 0, 'woo-' . (int) $order_id ); // altra valuta: da controllare, non si conta come euro
 		}
 	}
 
@@ -206,7 +206,7 @@ final class WooBridge {
 			return;
 		}
 		foreach ( array_keys( self::paid_by_payment( $order ) ) as $public ) {
-			Plugin::payments()->cancel_external( (string) $public );
+			Plugin::payments_engine()->cancel_external( (string) $public );
 		}
 	}
 }

@@ -391,10 +391,8 @@ final class Views {
 			return '';
 		}
 		$opts = '';
-		foreach ( \ApSemplice\Levels::all( true ) as $lv ) {
-			if ( MemberType::ORDINARY === $lv['base_type'] ) {
-				$opts .= '<option value="' . (int) $lv['id'] . '">' . esc_html( $lv['name'] ) . '</option>';
-			}
+		foreach ( \ApSemplice\Levels::choices( MemberType::ORDINARY ) as $lv ) {
+			$opts .= '<option value="' . (int) $lv['id'] . '">' . esc_html( $lv['name'] ) . '</option>';
 		}
 		if ( '' === $opts ) {
 			return '';

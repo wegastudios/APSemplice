@@ -80,16 +80,58 @@ final class Edition {
 		return null;
 	}
 
-	/** La funzione avanzata è presente in questa installazione? */
-	public static function has( string $feature ): bool {
+	/** Il file della funzione c'è, a prescindere dalla licenza? */
+	public static function installed( string $feature ): bool {
 		return isset( self::FEATURES[ $feature ] ) && null !== self::locate( self::FEATURES[ $feature ] );
 	}
 
+	/** Con APSemplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
+	public static function degraded(): bool {
+		return self::installed( 'license' ) && function_exists( 'get_option' ) && License::degraded();
+	}
+
 	/**
-	 * La funzione è consentita? Senza il sistema di licenza (plugin gratuito) tutto ciò che è presente è consentito; con la licenza
-	 * decide {@see License::allows()}.
+	 * La funzione avanzata si può usare? C'è nella cartella e, se c'è il sistema di licenza, la licenza è in regola. Con la licenza scaduta
+	 * tutte le funzioni avanzate spariscono e resta il comportamento dell'edizione gratuita; la licenza stessa si può sempre correggere.
+	 */
+	public static function has( string $feature ): bool {
+		return self::installed( $feature ) && ( 'license' === $feature || ! self::degraded() );
+	}
+
+	/**
+	 * Le funzioni di base non dipendono più dalla licenza: tutto ciò che c'è si può usare. Resta per i controlli già scritti.
 	 */
 	public static function allows( string $feature ): bool {
-		return ! self::has( 'license' ) || License::allows( $feature );
+		return true;
+	}
+
+	/** Perché una funzione avanzata non è disponibile (da mostrare a chi prova a usarla). */
+	public static function missing_message(): string {
+		if ( self::degraded() ) {
+			return 'La licenza di APSemplice Pro non è in regola: questa funzione è sospesa. Regolarizza la licenza e torna disponibile; intanto resta tutto il resto, con i tuoi dati.';
+		}
+		return 'Questa funzione fa parte di APSemplice Pro e non è inclusa in questa edizione.';
+	}
+
+	/** Come {@see Edition::missing_message()}, con il collegamento per regolarizzare quando la licenza è scaduta (HTML già pronto). */
+	public static function missing_html(): string {
+		$html = '<p>' . esc_html( self::missing_message() ) . '</p>';
+		if ( self::degraded() ) {
+			$url   = License::payment_url();
+			$html .= $url
+				? '<p><a class="button button-primary" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza la licenza</a></p>'
+				: '<p>Contatta il fornitore del servizio per regolarizzare la licenza, poi inseriscila in Impostazioni → Soci e quote.</p>';
+		}
+		return $html;
+	}
+
+	/** Azione di una funzione avanzata che non c'è (o è sospesa): chi ci arriva legge perché, invece di una pagina vuota. */
+	public static function block_action( string $action ): void {
+		add_action(
+			'admin_post_' . $action,
+			function () {
+				wp_die( self::missing_html(), 'Funzione non disponibile', array( 'response' => 403, 'back_link' => true ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+		);
 	}
 }

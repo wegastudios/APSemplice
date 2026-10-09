@@ -51,9 +51,23 @@ final class Levels {
 		return MemberType::label( (string) $person['type'] );
 	}
 
+	/** Livelli proponibili a un nuovo socio di quella base: tutti, oppure solo il primo se le quote diverse non ci sono (edizione gratuita o licenza scaduta). */
+	public static function choices( string $base ): array {
+		$out = array();
+		foreach ( self::all( true ) as $lv ) {
+			if ( $lv['base_type'] === $base ) {
+				$out[] = $lv;
+			}
+		}
+		return Edition::has( 'levels' ) ? $out : array_slice( $out, 0, 1 );
+	}
+
 	/** Quota associativa piena del livello (centesimi): quella del livello o, se vuota, la quota predefinita di Impostazioni. */
 	public static function base_fee( ?array $person ): int {
 		$default = (int) Settings::get( 'membership_fee_cents' );
+		if ( ! Edition::has( 'levels' ) ) {
+			return $default; // senza le quote diverse (edizione gratuita o licenza scaduta) c'è una quota sola
+		}
 		if ( ! $person || empty( $person['level_id'] ) ) {
 			return $default;
 		}

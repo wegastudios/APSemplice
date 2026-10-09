@@ -10,7 +10,7 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
-		if ( \ApSemplice\Edition::has( 'payments' ) ) {
+		if ( \ApSemplice\Edition::installed( 'payments' ) ) {
 			PayReturn::register();
 		}
 		CardVerify::register();

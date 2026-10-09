@@ -219,8 +219,8 @@ final class Admin {
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
 			if ( in_array( $slug, \ApSemplice\Edition::missing_pages(), true ) ) {
-				Ui::header( 'Funzione non inclusa' );
-				echo '<p>Questa funzione fa parte di APSemplice Pro e non è inclusa in questa edizione.</p>';
+				Ui::header( \ApSemplice\Edition::degraded() ? 'Funzione sospesa' : 'Funzione non inclusa' );
+				echo \ApSemplice\Edition::missing_html(); // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::footer();
 				return;
 			}

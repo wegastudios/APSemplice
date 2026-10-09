@@ -146,6 +146,9 @@ final class Actions {
 		foreach ( self::FEATURE_ACTIONS as $feature => $actions ) { // le azioni delle funzioni avanzate esistono solo se la funzione c'è
 			if ( ! \ApSemplice\Edition::has( $feature ) ) {
 				$map = array_diff_key( $map, array_flip( $actions ) );
+				foreach ( $actions as $blocked ) {
+					\ApSemplice\Edition::block_action( $blocked );
+				}
 			}
 		}
 		add_action( 'admin_post_apse_attachment', array( Attachments::class, 'handle_download' ) );

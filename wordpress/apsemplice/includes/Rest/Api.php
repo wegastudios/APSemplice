@@ -29,7 +29,7 @@ final class Api {
 			return self::guard();
 		};
 		self::event_routes( $logged_in );
-		if ( Edition::has( 'payments' ) ) {
+		if ( Edition::installed( 'payments' ) ) {
 			register_rest_route( self::NS, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
 		}
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'me' ), 'permission_callback' => $logged_in ) );
@@ -165,7 +165,7 @@ final class Api {
 		if ( ! is_array( $event ) ) {
 			return new \WP_Error( 'apse_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
 		}
-		return rest_ensure_response( array( 'received' => true, 'result' => Plugin::payments()->handle_stripe_event( $event ) ) );
+		return rest_ensure_response( array( 'received' => true, 'result' => Plugin::payments_engine()->handle_stripe_event( $event ) ) );
 	}
 
 	// ---------- Forme di output ----------

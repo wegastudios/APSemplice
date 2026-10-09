@@ -30,7 +30,7 @@ final class PayReturn {
 		}
 		$clean = remove_query_arg( self::PARAMS, $url );
 		try {
-			$msg = Plugin::payments()->handle_return( $public, $ret, get_current_user_id() );
+			$msg = Plugin::payments_engine()->handle_return( $public, $ret, get_current_user_id() );
 			wp_safe_redirect( \ApSemplice\Flash::url( $clean, 'apsf', $msg ) );
 		} catch ( \InvalidArgumentException $e ) {
 			wp_safe_redirect( \ApSemplice\Flash::url( $clean, 'apsf', '', $e->getMessage() ) );
