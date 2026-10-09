@@ -156,7 +156,7 @@ final class Wallet {
 			'until_text'  => MemberType::is_auto_renewed( $person['type'] ) ? 'Sempre rinnovata' : ( $until ? ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '—' ),
 			'expires_iso' => $exp,
 			'org'         => '' !== $org ? $org : 'Associazione',
-			'color'       => (string) ( Settings::get( 'accent_color' ) ?: '#2271b1' ),
+			'color'       => Frontend\Assets::accent( '#2271b1' ),
 			'url'         => Settings::card_qr_enabled() ? Settings::card_url( (int) $person['id'] ) : '',
 			'description' => 'Tessera associativa',
 		);

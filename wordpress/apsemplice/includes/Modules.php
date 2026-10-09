@@ -17,11 +17,16 @@ final class Modules {
 				unset( $all[ $key ] );
 			}
 		}
+		foreach ( $all as $key => $d ) { // una parte che dipendeva da una parte assente (ad esempio i report senza la contabilità) resta indipendente
+			if ( '' !== $d['needs'] && ! isset( $all[ $d['needs'] ] ) ) {
+				$all[ $key ]['needs'] = '';
+			}
+		}
 		return $all;
 	}
 
 	/** Parte => funzione avanzata che la contiene (senza di lei la parte non esiste). */
-	const FEATURE = array( 'accounts' => 'funds', 'accounting' => 'reports', 'reports' => 'reports', 'messages' => 'broadcasts' );
+	const FEATURE = array( 'accounts' => 'funds', 'accounting' => 'fiscal', 'reports' => 'reports', 'messages' => 'broadcasts' );
 
 	private static function all_defs(): array {
 		return array(

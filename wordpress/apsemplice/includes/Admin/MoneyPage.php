@@ -59,6 +59,9 @@ final class MoneyPage {
 			echo '</tbody></table>';
 		}
 		echo '<p><a href="' . esc_url( Ui::url( 'apse-ledger' ) ) . '">Apri la prima nota →</a></p>';
+		if ( ! \ApSemplice\Edition::has( 'funds' ) ) { // un solo promemoria, discreto, dove serve davvero
+			echo '<p class="description">Più conti, pagamenti online, ricevute e report sono in APSemplice Pro: <a href="' . esc_url( Ui::url( 'apse-pro' ) ) . '">scopri cosa comprende</a>.</p>';
+		}
 		Ui::footer();
 	}
 }

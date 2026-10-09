@@ -93,8 +93,7 @@ final class Pwa {
 	// ---------- Contenuti ----------
 
 	public static function theme_color(): string {
-		$c = Color::normalize( (string) Settings::get( 'accent_color' ) );
-		return '' !== $c ? $c : '#2271b1';
+		return Frontend\Assets::accent( '#2271b1' ); // colore scelto, altrimenti quello del sito (Elementor o tema)
 	}
 
 	public static function app_name(): string {

@@ -37,7 +37,7 @@ final class RegistersActions {
 	/** Azioni che appartengono a una funzione avanzata: senza la funzione non si registrano. */
 	const FEATURE_ACTIONS = array(
 		'insurance' => array( 'apse_insurance_add', 'apse_insurance_delete', 'apse_attendance_save', 'apse_policy_add', 'apse_policy_delete' ),
-		'reports'   => array( 'apse_statement_notes' ),
+		'fiscal'    => array( 'apse_statement_notes' ),
 		'fivepm'    => array( 'apse_fivepm_settings', 'apse_fivepm_add', 'apse_fivepm_report', 'apse_fivepm_delete' ),
 	);
 

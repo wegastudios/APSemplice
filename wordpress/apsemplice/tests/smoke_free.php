@@ -146,6 +146,12 @@ $threw = null !== ( function () use ( $actor ) {
 	return null;
 } )();
 free_ok( $threw, 'il pagamento online è rifiutato' );
+// pagina informativa sul Pro: c'è, spiega i livelli e non ha funzioni finte
+free_ok( \ApSemplice\Admin\ProPage::needed(), 'nel gratuito la pagina «Scopri il Pro» è disponibile' );
+ob_start();
+\ApSemplice\Admin\ProPage::render();
+$pro_page = (string) ob_get_clean();
+free_ok( false !== strpos( $pro_page, 'Pagamenti online' ) && false !== strpos( $pro_page, 'Pro Fiscale' ) && false !== strpos( $pro_page, 'IVA' ) && false === strpos( $pro_page, 'attiva</span>' ), 'pagina Pro: mostra le funzioni dei due livelli, nessuna già attiva' );
 
 // ---------- Il salvataggio dei livelli è rifiutato ----------
 $threw = false;

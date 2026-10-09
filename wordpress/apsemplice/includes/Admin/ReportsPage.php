@@ -15,9 +15,10 @@ final class ReportsPage {
 			return;
 		}
 		$mode = Ui::get_str( 'mode' );
-		$mode = in_array( $mode, array( 'social', 'solar' ), true ) ? $mode : 'liquidity';
+		$fiscal = \ApSemplice\Edition::has( 'fiscal' ); // l'anno solare per il commercialista è della licenza fiscale
+		$mode   = in_array( $mode, array( 'social', 'solar' ), true ) && ( $fiscal || 'solar' !== $mode ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );
-		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno sociale (attività)', 'solar' => 'Anno solare (commercialista)' );
+		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno sociale (attività)' ) + ( $fiscal ? array( 'solar' => 'Anno solare (commercialista)' ) : array() );
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( $tabs as $key => $label ) {
 			echo '<a class="nav-tab ' . ( $key === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'apse-reports', array( 'mode' => $key ) ) ) . '">' . esc_html( $label ) . '</a>';

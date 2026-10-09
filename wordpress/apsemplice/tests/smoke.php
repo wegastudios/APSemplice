@@ -284,6 +284,26 @@ apse_ok( get_class( Plugin::payments() ) === 'ApSemplice\OfflinePayments' && ! P
 apse_ok( false !== strpos( (string) apse_throws( function () { \ApSemplice\Broadcasts::create( 'Oggetto', 'Testo', 'members_all' ); } ), 'licenza' ), 'licenza scaduta: le comunicazioni di massa dicono perché sono sospese' );
 $lic_notice = Admin\LicenseNotice::html();
 apse_ok( false !== strpos( $lic_notice, 'notice-warning' ) && false === strpos( $lic_notice, 'overlay' ), 'licenza scaduta: un avviso in cima alle pagine, non un popup che copre i dati' );
+// livelli di licenza: contabile (senza le funzioni fiscali) e fiscale
+$pl_fiscal = array( 'vat', 'fivepm', 'receipts', 'fiscal' );
+\ApSemplice\License::set_state( 'active', null, null, 'fiscal' );
+apse_ok( 'fiscal' === License::plan() && \ApSemplice\Edition::has( 'vat' ) && \ApSemplice\Edition::has( 'fivepm' ) && \ApSemplice\Edition::has( 'receipts' ) && \ApSemplice\Edition::has( 'fiscal' ) && \ApSemplice\Edition::has( 'payments' ), 'licenza fiscale: tutte le funzioni, anche IVA, 5x1000, ricevute e anni solari' );
+\ApSemplice\License::set_state( 'active', null, null, 'accounting' );
+apse_ok( 'accounting' === License::plan(), 'licenza contabile: il livello viene letto' );
+$pl_off = true;
+foreach ( $pl_fiscal as $pf ) {
+	$pl_off = $pl_off && ! \ApSemplice\Edition::has( $pf );
+}
+apse_ok( $pl_off && \ApSemplice\Edition::has( 'payments' ) && \ApSemplice\Edition::has( 'funds' ) && \ApSemplice\Edition::has( 'reports' ) && \ApSemplice\Edition::has( 'levels' ) && \ApSemplice\Edition::has( 'broadcasts' ), 'licenza contabile: niente IVA, 5x1000, ricevute e anni solari; il resto del Pro resta' );
+apse_ok( ! \ApSemplice\Fiscal::vat_applies() && false !== strpos( \ApSemplice\Edition::missing_message( 'vat' ), 'Pro Fiscale' ), 'licenza contabile: l\'IVA non si applica e il messaggio spiega il livello' );
+apse_ok( in_array( 'apse-fivepm', \ApSemplice\Edition::missing_pages(), true ) && in_array( 'apse-years', \ApSemplice\Edition::missing_pages(), true ) && ! in_array( 'apse-reports', \ApSemplice\Edition::missing_pages(), true ), 'licenza contabile: le pagine fiscali spariscono, i report restano' );
+apse_ok( Admin\ProPage::needed(), 'licenza contabile: la pagina che presenta il livello fiscale è disponibile' );
+ob_start();
+Admin\ProPage::render();
+$pl_page = (string) ob_get_clean();
+apse_ok( false !== strpos( $pl_page, 'Pro Fiscale' ) && false !== strpos( $pl_page, 'IVA' ) && false !== strpos( $pl_page, 'attiva' ), 'pagina Pro: elenca i due livelli e le funzioni già attive' );
+delete_option( License::OPT_STATE );
+apse_ok( \ApSemplice\Edition::has( 'vat' ) && \ApSemplice\Edition::has( 'fiscal' ) && ! Admin\ProPage::needed(), 'licenza in standby: tutto disponibile come Pro completo, nessuna promozione' );
 // quote diverse: spariscono, resta la quota sola
 $lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
 \ApSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : ApSempliceMoney::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \ApSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
@@ -1303,7 +1323,7 @@ apse_ok( '#c0392b' === Settings::get( 'accent_color' ), 'colore d\'accento: salv
 $css = \ApSemplice\Frontend\Assets::inline_css();
 apse_ok( false !== strpos( $css, '--apsf-accent:#c0392b' ) && false !== strpos( $css, '--apsf-accent-text:#ffffff' ), 'colore d\'accento: diventa lo stile del front-end, con testo leggibile' );
 Settings::update( array( 'accent_color' => 'rosso' ) );
-apse_ok( '' === Settings::get( 'accent_color' ) && '' === \ApSemplice\Frontend\Assets::inline_css(), 'colore non valido: si torna al colore del tema' );
+apse_ok( '' === Settings::get( 'accent_color' ) && \ApSemplice\Frontend\Assets::accent( '#123456' ) === ( '' !== \ApSemplice\Frontend\Assets::theme_accent() ? \ApSemplice\Frontend\Assets::theme_accent() : '#123456' ), 'colore non valido: si torna al colore del sito (Elementor o tema)' );
 
 Settings::update( array( 'payment_hint' => 'Paga con bonifico a IT00X.' ) );
 apse_ok( false !== strpos( $as( $u_ord, '[apsemplice_area_soci]' ), 'Paga con bonifico a IT00X.' ), 'invito al pagamento: testo scelto nelle impostazioni' );

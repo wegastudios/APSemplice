@@ -93,7 +93,7 @@ final class CardVerify {
 	/** Pagina completa (senza il tema del sito) con la fascia di stato e il riquadro dei dettagli. */
 	public static function layout( string $title, string $color, string $body ): string {
 		$assoc  = (string) Settings::get( 'association_name' );
-		$accent = (string) Settings::get( 'accent_color' ) ?: '#2271b1';
+		$accent = Assets::accent( '#2271b1' ); // colore scelto, altrimenti quello del sito (Elementor o tema)
 		return \ApSemplice\Texts::html( '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'
 			. '<title>' . esc_html( $title ) . '</title><style>body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4f5f7;color:#1d2327}'
 			. '.c{max-width:420px;margin:0 auto;padding:24px 16px}.s{background:' . esc_attr( $color ) . ';color:#fff;border-radius:14px;padding:22px;text-align:center;font-size:26px;font-weight:700}'
