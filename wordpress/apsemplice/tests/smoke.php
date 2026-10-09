@@ -645,6 +645,14 @@ apse_ok( count( \ApSemplice\Pages::existing() ) === count( $wz_pages ), 'configu
 \ApSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'segreteria', 'tesoriere', 'ingressi' ) ) );
 $wz_p2 = \ApSemplice\Pages::existing();
 apse_ok( isset( $wz_p2['segreteria'], $wz_p2['tesoriere'], $wz_p2['ingressi'] ) && false !== strpos( get_post( $wz_p2['segreteria'] )->post_content, '[apsemplice_segreteria]' ) && false !== strpos( get_post( $wz_p2['tesoriere'] )->post_content, '[apsemplice_tesoriere]' ) && false !== strpos( get_post( $wz_p2['ingressi'] )->post_content, '[apsemplice_ingressi]' ), 'pagine: la procedura crea le pagine delle aree segreteria, tesoriere e ingressi' );
+$nm_id   = (int) wp_create_nav_menu( 'Menu prova area' );
+$nm_page = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Pagina area prova' ) );
+set_theme_mod( 'nav_menu_locations', array( 'primary' => $nm_id ) );
+apse_ok( \ApSemplice\Pages::add_to_menu( $nm_page ) && \ApSemplice\Pages::add_to_menu( $nm_page ), 'menu del sito: la voce «Area riservata» si aggiunge' );
+$nm_items = wp_get_nav_menu_items( $nm_id );
+apse_ok( 1 === count( $nm_items ) && 'Area riservata' === $nm_items[0]->title && (int) $nm_items[0]->object_id === $nm_page, 'menu del sito: una sola voce «Area riservata», verso la pagina dell\'area' );
+wp_delete_nav_menu( $nm_id );
+set_theme_mod( 'nav_menu_locations', array() );
 $wz_by = \ApSemplice\Pages::by_area();
 apse_ok( array( 'soci', 'segreteria', 'tesoriere', 'eventi', 'pubblico' ) === array_keys( $wz_by ) && isset( $wz_by['eventi']['ingressi'], $wz_by['soci']['area'], $wz_by['pubblico']['bonifico'] ), 'pagine: raggruppate per area (soci, segreteria, tesoriere, eventi, pubblico)' );
 $sg_adm  = $as( 1, '[apsemplice_segreteria]' );
