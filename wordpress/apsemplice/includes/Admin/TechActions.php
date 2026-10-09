@@ -171,7 +171,7 @@ final class TechActions {
 			)
 		);
 		\ApSemplice\Bank::notify_change( $old, $accounts );
-		return array( Ui::url( 'apse-payments' ), 'Coordinate bancarie salvate.' . ( \ApSemplice\Bank::signature( $old ) !== \ApSemplice\Bank::signature( $accounts ) ? ' Gli amministratori sono stati avvisati per email del cambio.' : '' ) );
+		return array( Ui::url( 'apse-bank' ), 'Coordinate bancarie salvate.' . ( \ApSemplice\Bank::signature( $old ) !== \ApSemplice\Bank::signature( $accounts ) ? ' Gli amministratori sono stati avvisati per email del cambio.' : '' ) );
 	}
 
 	/** Limiti e soglie: ogni valore resta entro i limiti di sicurezza della sua voce. */
@@ -232,7 +232,7 @@ final class TechActions {
 			$next = Ui::url( 'apse-payments' );
 			$more = ' Ora inserisci le chiavi del fornitore scelto.';
 		} elseif ( Settings::get( 'bank_enabled' ) && ! \ApSemplice\Bank::enabled() ) {
-			$next = Ui::url( 'apse-payments' );
+			$next = Ui::url( 'apse-bank' );
 			$more = ' Ora aggiungi almeno un IBAN per il bonifico.';
 		}
 		if ( ! empty( $p['go_import'] ) && \ApSemplice\Modules::on( 'import' ) && Ui::url( 'apse' ) === $next ) { // l'elenco si carica subito dopo (se non serve prima inserire chiavi o IBAN)

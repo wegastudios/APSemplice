@@ -21,7 +21,7 @@ final class Shortcodes {
 		'area_soci'       => 'Area soci (tessera, attività, ospiti, profilo)',
 		'tessera'         => 'Tessera digitale',
 		'mie_attivita'    => 'Le mie attività e prenotazioni',
-		'pagamenti'       => 'Pagamenti da fare (paga online)',
+		'pagamenti'       => 'Pagamenti da fare (e, se attivi, pagamento online)',
 		'ricevute'        => 'Le mie ricevute e attestazioni (PDF)',
 		'regolamento'     => 'Regolamento da accettare',
 		'segreteria'      => 'Area segreteria (richieste, soci, comunicazioni)',
@@ -41,6 +41,13 @@ final class Shortcodes {
 		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
 		'accesso'         => 'Accesso / login',
 	);
+
+	/** Vista => funzione avanzata che la rende utile: senza la funzione non si propone nei blocchi, nei widget e nell'elenco. */
+	const NEEDS = array( 'ricevute' => 'receipts', 'app' => 'pwa', 'cinquepermille' => 'fivepm' );
+
+	public static function available( string $view ): bool {
+		return ! isset( self::NEEDS[ $view ] ) || \ApSemplice\Edition::has( self::NEEDS[ $view ] );
+	}
 
 	public static function register(): void {
 		foreach ( array_keys( self::VIEWS ) as $view ) {
