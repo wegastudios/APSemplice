@@ -26,4 +26,10 @@ final class EditionTest extends TestCase {
 		rmdir( $dir . '/includes' );
 		rmdir( $dir );
 	}
+
+	public function test_pro_is_loaded_only_with_the_same_version(): void {
+		$this->assertTrue( Edition::compatible( '1.1.8', '1.1.8' ) );
+		$this->assertFalse( Edition::compatible( '1.1.5', '1.1.8' ) );
+		$this->assertFalse( Edition::compatible( '1.1.9', '1.1.8' ) );
+	}
 }

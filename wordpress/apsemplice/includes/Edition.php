@@ -64,9 +64,26 @@ final class Edition {
 		return self::$dirs;
 	}
 
-	/** Il plugin Pro dichiara qui la propria cartella `includes/`. */
+	/** @var string versione di APSemplice Pro rifiutata perché diversa da quella di APSemplice ('' = nessun problema) */
+	private static $mismatch = '';
+
+	/** Le due parti si usano solo insieme alla stessa versione: una Pro più vecchia o più nuova non si carica. */
+	public static function compatible( string $pro_version, string $free_version ): bool {
+		return $pro_version === $free_version;
+	}
+
+	/** La versione di APSemplice Pro che è stata rifiutata perché non corrisponde (vuoto se tutto a posto). */
+	public static function mismatch(): string {
+		return self::$mismatch;
+	}
+
+	/** Il plugin Pro dichiara qui la propria cartella `includes/`. Se la sua versione non è quella di APSemplice non si carica niente. */
 	public static function add_dir( string $dir ): void {
-		$dir = rtrim( $dir, '/\\' ) . '/';
+		if ( defined( 'APSE_PRO_VERSION' ) && defined( 'APSE_VERSION' ) && ! self::compatible( (string) APSE_PRO_VERSION, (string) APSE_VERSION ) ) {
+			self::$mismatch = (string) APSE_PRO_VERSION;
+			return;
+		}
+		$dir = rtrim( $dir, '/\' ) . '/';
 		if ( ! in_array( $dir, self::dirs(), true ) ) {
 			self::$dirs[] = $dir;
 		}
@@ -89,7 +106,7 @@ final class Edition {
 
 	/** Con APSemplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
 	public static function degraded(): bool {
-		return self::installed( 'license' ) && function_exists( 'get_option' ) && License::degraded();
+		return self::installed( 'license' ) && function_exists( 'get_option' ) && method_exists( License::class, 'degraded' ) && License::degraded();
 	}
 
 	/**
@@ -105,7 +122,7 @@ final class Edition {
 
 	/** La licenza è di livello contabile e la funzione è fiscale? Senza licenza (verifica non attiva) tutto è disponibile. */
 	public static function plan_blocks( string $feature ): bool {
-		return in_array( $feature, self::FISCAL, true ) && self::installed( 'license' ) && function_exists( 'get_option' ) && License::PLAN_FISCAL !== License::plan();
+		return in_array( $feature, self::FISCAL, true ) && self::installed( 'license' ) && function_exists( 'get_option' ) && method_exists( License::class, 'plan' ) && 'fiscal' !== License::plan();
 	}
 
 	/**
