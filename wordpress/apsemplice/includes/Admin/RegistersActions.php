@@ -34,8 +34,24 @@ final class RegistersActions {
 		'apse_fivepm_delete'    => 'fivepm_delete',
 	);
 
+	/** Azioni che appartengono a una funzione avanzata: senza la funzione non si registrano. */
+	const FEATURE_ACTIONS = array(
+		'insurance' => array( 'apse_insurance_add', 'apse_insurance_delete', 'apse_attendance_save', 'apse_policy_add', 'apse_policy_delete' ),
+		'reports'   => array( 'apse_statement_notes' ),
+		'fivepm'    => array( 'apse_fivepm_settings', 'apse_fivepm_add', 'apse_fivepm_report', 'apse_fivepm_delete' ),
+	);
+
 	public static function register(): void {
+		$skip = array();
+		foreach ( self::FEATURE_ACTIONS as $feature => $actions ) { // le azioni delle funzioni avanzate esistono solo se la funzione c'è
+			if ( ! \ApSemplice\Edition::has( $feature ) ) {
+				$skip = array_merge( $skip, $actions );
+			}
+		}
 		foreach ( self::ACTIONS as $action => $method ) {
+			if ( in_array( $action, $skip, true ) ) {
+				continue;
+			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {

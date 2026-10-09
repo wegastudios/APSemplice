@@ -76,7 +76,7 @@ final class Reset {
 	/**
 	 * Esegue l'azzeramento.
 	 *
-	 * @return array riepilogo: copia (nome del file), tabelle, utenti eliminati, file eliminati
+	 * @return array riepilogo: tabelle, utenti eliminati, file eliminati
 	 * @throws \InvalidArgumentException|\RuntimeException
 	 */
 	public static function run( string $mode, bool $delete_users ): array {
@@ -86,7 +86,9 @@ final class Reset {
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
-		$copy  = Backup::safety_copy(); // se non riesce, si ferma qui: non si cancella niente
+		if ( ! Backup::downloaded_recently() ) { // la copia non resta sul sito (conterrebbe i dati che si vogliono cancellare): va scaricata e conservata da chi azzera
+			throw new \InvalidArgumentException( 'Scarica prima una copia completa dei dati e conservala: non è stato cancellato nulla.' );
+		}
 		$users = $delete_users ? self::member_only_users() : array();
 		$db    = self::db();
 		$names = self::tables( $mode );
@@ -136,11 +138,13 @@ final class Reset {
 				}
 			}
 		}
+		Backup::delete_saved(); // anche le copie salvate sul sito: i dati azzerati non devono restare altrove
+		delete_user_meta( get_current_user_id(), Backup::META_DOWNLOADED );
 		Install::seed(); // conti, voci, livelli e anno solare predefiniti
 		if ( self::FACTORY === $mode ) {
 			Wizard::schedule_first_run();
 		}
-		Audit::log( 'system.reset', 'settings', 0, array( 'mode' => $mode, 'copy' => $copy, 'users' => $removed, 'files' => $files ) );
-		return array( 'copy' => $copy, 'tables' => count( $names ), 'users' => $removed, 'files' => $files, 'mode' => $mode );
+		Audit::log( 'system.reset', 'settings', 0, array( 'mode' => $mode, 'users' => $removed, 'files' => $files ) );
+		return array( 'tables' => count( $names ), 'users' => $removed, 'files' => $files, 'mode' => $mode );
 	}
 }

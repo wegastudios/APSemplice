@@ -11,6 +11,19 @@ final class Modules {
 
 	/** Chiave => etichetta, domanda, pagine amministrative, dipende da. */
 	public static function defs(): array {
+		$all = self::all_defs();
+		foreach ( self::FEATURE as $key => $feature ) { // le parti delle funzioni avanzate non ci sono se la funzione non è presente
+			if ( ! Edition::has( $feature ) ) {
+				unset( $all[ $key ] );
+			}
+		}
+		return $all;
+	}
+
+	/** Parte => funzione avanzata che la contiene (senza di lei la parte non esiste). */
+	const FEATURE = array( 'accounts' => 'funds', 'accounting' => 'reports', 'reports' => 'reports', 'messages' => 'broadcasts' );
+
+	private static function all_defs(): array {
 		return array(
 			'activities' => array( 'label' => 'Corsi ed eventi', 'ask' => 'Organizzi corsi, eventi o attività con iscrizioni e presenze?', 'pages' => array( 'apse-activities', 'apse-calendar', 'apse-attendance' ), 'needs' => '' ),
 			'ledger'     => array( 'label' => 'Soldi e prima nota', 'ask' => 'Ti serve registrare incassi e spese (la prima nota)?', 'pages' => array( 'apse-money', 'apse-ledger', 'apse-income', 'apse-group', 'apse-expense' ), 'needs' => '' ),
@@ -25,6 +38,9 @@ final class Modules {
 
 	/** Parte accesa? I bilanci seguono l'impostazione già esistente; le altre si spengono solo se scelto. */
 	public static function on( string $key ): bool {
+		if ( isset( self::FEATURE[ $key ] ) && ! Edition::has( self::FEATURE[ $key ] ) ) {
+			return false; // la funzione avanzata non c'è in questa edizione
+		}
 		$defs = self::defs();
 		if ( ! isset( $defs[ $key ] ) ) {
 			return true;

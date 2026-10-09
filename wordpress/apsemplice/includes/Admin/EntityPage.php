@@ -30,6 +30,7 @@ final class EntityPage {
 		echo '<tr><th>CAP, comune, provincia</th><td><input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
 		echo '<tr><th>PEC</th><td><input type="email" name="pec" value="' . esc_attr( (string) $s['pec'] ) . '" class="regular-text"></td></tr>';
 		echo '</tbody></table>';
+		if ( \ApSemplice\Edition::has( 'vat' ) ) {
 
 		echo '<h2>Partita IVA</h2><table class="form-table"><tbody>';
 		echo '<tr><th>L\'ente ha la partita IVA</th><td><label><input type="checkbox" name="has_vat" value="1" id="apse-has-vat"' . checked( ! empty( $s['has_vat'] ), true, false ) . '> Sì</label>'
@@ -47,9 +48,12 @@ final class EntityPage {
 		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( Fiscal::INCLUDED => 'IVA compresa', Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Vale come scelta iniziale: su ogni quota, attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"><p class="description">Facoltativo: serve se emetti fatture elettroniche.</p></td></tr>';
 		echo '</tbody></table></div>';
+		}
 		submit_button( 'Salva' );
 		Ui::form_close();
-		echo '<script>(function(){var c=document.getElementById("apse-has-vat"),b=document.getElementById("apse-vat-block");if(!c||!b)return;function s(){b.style.display=c.checked?"":"none";}c.addEventListener("change",s);s();})();</script>';
+		if ( \ApSemplice\Edition::has( 'vat' ) ) {
+			echo '<script>(function(){var c=document.getElementById("apse-has-vat"),b=document.getElementById("apse-vat-block");if(!c||!b)return;function s(){b.style.display=c.checked?"":"none";}c.addEventListener("change",s);s();})();</script>';
+		}
 		Ui::footer();
 	}
 }

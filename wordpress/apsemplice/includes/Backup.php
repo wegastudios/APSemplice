@@ -36,8 +36,22 @@ final class Backup {
 		return $dir;
 	}
 
+	/** Cancella le copie salvate sul sito da più di `backup_hours` ore (contengono dati personali). @return int copie cancellate */
+	public static function purge_old(): int {
+		$limit = time() - max( 1, (int) Limits::get( 'backup_hours' ) ) * HOUR_IN_SECONDS;
+		$n     = 0;
+		foreach ( glob( self::dir() . '/prima-del-ripristino-*.zip' ) ?: array() as $f ) {
+			if ( (int) filemtime( $f ) < $limit ) {
+				wp_delete_file( $f );
+				$n++;
+			}
+		}
+		return $n;
+	}
+
 	/** Copie salvate sul sito (quelle fatte prima di un ripristino), dalla più recente. @return array[] name, size, time */
 	public static function saved(): array {
+		self::purge_old();
 		$out = array();
 		foreach ( glob( self::dir() . '/*.zip' ) ?: array() as $f ) {
 			if ( preg_match( '/^prima-del-ripristino-(\d{8}-\d{6})\.zip$/', basename( $f ), $m ) ) { // copie fatte da versioni precedenti, con il nome prevedibile
@@ -52,25 +66,6 @@ final class Backup {
 			return $b['time'] <=> $a['time'];
 		} );
 		return $out;
-	}
-
-	/**
-	 * Copia completa (con gli allegati) salvata sul sito prima di un'operazione distruttiva; si conservano le ultime, come per i ripristini.
-	 *
-	 * @return string nome del file nella cartella delle copie
-	 * @throws \RuntimeException se la copia non riesce: in quel caso l'operazione non deve partire
-	 */
-	public static function safety_copy(): string {
-		$dir  = self::ensure_dir();
-		$file = 'prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip'; // nome non indovinabile
-		self::export( true, $dir . '/' . $file );
-		if ( ! is_file( $dir . '/' . $file ) ) {
-			throw new \RuntimeException( 'La copia di sicurezza non è stata creata.' );
-		}
-		foreach ( array_slice( self::saved(), max( 1, (int) Limits::get( 'backup_keep' ) ) ) as $o ) {
-			wp_delete_file( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
-		}
-		return $file;
 	}
 
 	public static function last(): ?int {
@@ -374,7 +369,31 @@ final class Backup {
 		} catch ( \RuntimeException $e ) {
 			wp_die( esc_html( $e->getMessage() ), 500 );
 		}
+		self::mark_downloaded();
 		self::send_zip( $path, 'copia-apsemplice-' . gmdate( 'Y-m-d-His' ) . '.zip', true );
+	}
+
+	const META_DOWNLOADED = 'apse_backup_downloaded';
+
+	/** L'utente ha appena scaricato una copia completa (serve prima di azzerare i dati). */
+	public static function mark_downloaded(): void {
+		update_user_meta( get_current_user_id(), self::META_DOWNLOADED, time() );
+	}
+
+	/** Ha scaricato una copia nell'ultima ora? */
+	public static function downloaded_recently( int $within = HOUR_IN_SECONDS ): bool {
+		$t = (int) get_user_meta( get_current_user_id(), self::META_DOWNLOADED, true );
+		return $t > 0 && time() - $t <= $within;
+	}
+
+	/** Cancella le copie salvate sul sito (contengono dati personali). @return int copie cancellate */
+	public static function delete_saved(): int {
+		$n = 0;
+		foreach ( self::saved() as $o ) {
+			wp_delete_file( self::dir() . '/' . $o['name'] );
+			$n++;
+		}
+		return $n;
 	}
 
 	public static function handle_saved(): void {

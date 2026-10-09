@@ -2432,7 +2432,7 @@ apse_ok( null !== apse_throws( function () use ( $guest ) { Wallet::apple_pass( 
 // pulsanti nell'area soci e permessi di scarico
 $html = $as( $u_f, '[apsemplice_tessera]' );
 apse_ok( false !== strpos( $html, 'Aggiungi ad Apple Wallet' ) && false !== strpos( $html, 'apse_wallet_apple' ) && false !== strpos( $html, '_wpnonce=' ), 'area soci: pulsante per Apple Wallet con controllo dei permessi' );
-apse_ok( user_can( $u_f, 'apse_view_person', $founder ) && ! user_can( $u_tre, 'apse_view_person', $founder ) && has_action( 'admin_post_apse_wallet_apple' ), 'la tessera Apple si scarica solo per sé stessi (o da amministratore)' );
+apse_ok( user_can( $u_f, 'apse_view_person', $founder ) && ! user_can( $u_tre, 'apse_view_person', $founder ) && ( \ApSemplice\Plugin::load_for_action( 'apse_wallet_apple' ) && has_action( 'admin_post_apse_wallet_apple' ) ), 'la tessera Apple si scarica solo per sé stessi (o da amministratore)' );
 
 // Google
 list( , $g_key ) = $mk_cert( 'google' );
@@ -4015,7 +4015,7 @@ apse_render( array( Admin\TextsPage::class, 'render' ), 'Nessun testo con questi
 $tx_reset = new ReflectionMethod( Admin\Actions::class, 'reset_texts' );
 $tx_reset->invoke( null, array() );
 apse_ok( array() === \ApSemplice\Texts::overrides(), 'testi: ripristino di tutti i testi originali' );
-apse_ok( has_action( 'admin_post_apse_export_texts' ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
+apse_ok( ( \ApSemplice\Plugin::load_for_action( 'apse_export_texts' ) && has_action( 'admin_post_apse_export_texts' ) ) && has_action( 'admin_post_apse_import_texts' ), 'testi: azioni registrate' );
 
 // ---------- Tipo di ente e termini ----------
 wp_set_current_user( 1 );
@@ -4689,7 +4689,7 @@ $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 wp_set_current_user( $sec_u );
 apse_ok( false !== strpos( Admin\Admin::tabs( 'apse-book' ), 'page=apse-minutes' ) && false !== strpos( Admin\Admin::tabs( 'apse-accounting' ), 'page=apse-statement' ) && Admin\Actions::required_cap( 'apse_save_levels' ) === Plugin::CAP && current_user_can( Plugin::CAP_OPS ), 'registri: la segreteria li vede' );
 wp_set_current_user( 1 );
-apse_ok( has_action( 'admin_post_apse_doc' ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
+apse_ok( ( \ApSemplice\Plugin::load_for_action( 'apse_doc' ) && has_action( 'admin_post_apse_doc' ) ) && has_action( 'admin_post_apse_minute_save' ) && has_action( 'admin_post_apse_attendance_save' ) && false !== strpos( \ApSemplice\Docs::url( 'book' ), 'action=apse_doc' ), 'registri: download e azioni registrati' );
 
 // ---------- 5x1000, guida iniziale, lingue ----------
 wp_set_current_user( 1 );
@@ -5131,6 +5131,14 @@ apse_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_
 $saved = \ApSemplice\Backup::saved();
 apse_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
 apse_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $saved[0]['name'] ), 'sicurezza: il nome della copia salvata non è indovinabile' );
+// le copie salvate sul sito scadono da sole
+$bk_old = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200102-000000-0123456789abcdef.zip';
+file_put_contents( $bk_old, 'x' );
+touch( $bk_old, time() - 25 * HOUR_IN_SECONDS );
+$bk_new = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200103-000000-fedcba9876543210.zip';
+file_put_contents( $bk_new, 'x' );
+apse_ok( 1 <= \ApSemplice\Backup::purge_old() && ! file_exists( $bk_old ) && file_exists( $bk_new ), 'copie di sicurezza: dopo 24 ore si cancellano da sole, quelle recenti restano' );
+wp_delete_file( $bk_new );
 $bk_legacy = \ApSemplice\Backup::dir() . '/prima-del-ripristino-20200101-000000.zip';
 copy( $bk_zip, $bk_legacy );
 $bk_names = array_column( \ApSemplice\Backup::saved(), 'name' );
@@ -5161,7 +5169,7 @@ unlink( $bk_zip );
 if ( is_file( $bk_file ) ) {
 	unlink( $bk_file );
 }
-apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=apse_backup' ) && has_action( 'admin_post_apse_backup' ) && Admin\Actions::required_cap( 'apse_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
+apse_ok( false !== strpos( \ApSemplice\Backup::download_url( true ), 'action=apse_backup' ) && ( \ApSemplice\Plugin::load_for_action( 'apse_backup' ) && has_action( 'admin_post_apse_backup' ) ) && Admin\Actions::required_cap( 'apse_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
 apse_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
 
 // ---------- Azzeramento dei dati (ultimo: cancella tutto) ----------
@@ -5182,6 +5190,20 @@ $_GET = array();
 apse_ok( false !== strpos( $rs_p1, 'Operazione definitiva' ) && false !== strpos( $rs_p1, 'Ripristino di fabbrica' ) && false !== strpos( $rs_p1, 'Solo i dati' ) && false === strpos( $rs_p1, 'name="password"' ), 'azzeramento: primo passaggio con le due scelte e nessun campo di conferma' );
 apse_ok( false !== strpos( $rs_p2, 'AZZERA TUTTO' ) && false !== strpos( $rs_p2, 'name="password"' ) && false !== strpos( $rs_p2, 'name="phrase"' ) && false !== strpos( $rs_p2, 'name="confirm"' ) && false !== strpos( $rs_p2, 'tutta la prima nota' ) && false !== strpos( $rs_p2, 'copia completa' ), 'azzeramento: secondo passaggio con il messaggio chiaro, la frase, la password e la spunta' );
 apse_ok( in_array( 'apse-reset', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['apse_reset_all'] ) && 'apse-settings' === Admin\Admin::menu_item_of( 'apse-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
+// donazioni con PayPal
+apse_ok( '' === \ApSemplice\Donations::clean_account( 'non una mail' ) && 'abc@example.com' === \ApSemplice\Donations::clean_account( ' ABC@Example.com ' ) && 'AB12CD34EF56G' === \ApSemplice\Donations::clean_account( 'AB12CD34EF56G' ), 'donazioni: conto PayPal valido solo se email o ID commerciante' );
+apse_ok( '5;7,50;10' === \ApSemplice\Donations::clean_amounts( '10; 5 7,50;0;abc;10' ) && '' === \ApSemplice\Donations::clean_amounts( 'niente' ), 'donazioni: gli importi si ripuliscono, ordinano e senza doppioni' );
+Settings::update( array( 'donate_enabled' => 1, 'donate_paypal' => '' ) );
+apse_ok( '' === \ApSemplice\Frontend\Views::donate(), 'donazioni: senza conto PayPal il modulo non compare' );
+$dn_save = new ReflectionMethod( Admin\Actions::class, 'save_donate' );
+$dn_save->setAccessible( true );
+apse_ok( null !== apse_throws( function () use ( $dn_save ) { $dn_save->invoke( null, array( 'donate_enabled' => '1', 'donate_paypal' => 'xx' ) ); } ), 'donazioni: non si accendono senza un conto valido' );
+$dn_save->invoke( null, array( 'donate_enabled' => '1', 'donate_paypal' => 'donazioni@example.org', 'donate_amounts' => '5;15', 'donate_purpose' => 'Per il tetto' ) );
+$dn_html = do_shortcode( '[apsemplice_donazioni]' );
+apse_ok( false !== strpos( $dn_html, 'https://www.paypal.com/donate' ) && false !== strpos( $dn_html, 'value="donazioni@example.org"' ) && false !== strpos( $dn_html, 'value="15.00"' ) && false !== strpos( $dn_html, 'Per il tetto' ) && false !== strpos( $dn_html, 'name="currency_code" value="EUR"' ), 'donazioni: il modulo porta a PayPal con conto, causale e importi' );
+apse_render( array( Admin\DonatePage::class, 'render' ), 'Conto PayPal' );
+$dn_save->invoke( null, array( 'donate_paypal' => 'donazioni@example.org' ) );
+apse_ok( '' === do_shortcode( '[apsemplice_donazioni]' ), 'donazioni: spente il modulo sparisce' );
 // tolleranza per il pagamento: il posto non versato si libera, chi ha pagato resta
 $hd_a = $acts->create( array( 'name' => 'Cena con tolleranza', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 1000, 'hold_hours' => 24, 'session' => array( 'session_date' => $today, 'capacity' => 2 ) ) );
 $hd_s = (int) $acts->sessions( $hd_a )[0]['id'];
@@ -5206,17 +5228,20 @@ Settings::update( array( 'association_name' => 'Associazione da azzerare' ) );
 $rs_audit0 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
 $rs_saved0 = count( \ApSemplice\Backup::saved() );
 $rs_mu  = \ApSemplice\Reset::member_only_users();
+apse_ok( null !== apse_throws( function () use ( $rs_ok ) { Admin\TechActions::reset_all( $rs_ok ); } ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) > 0, 'azzeramento: senza aver scaricato una copia non si cancella nulla' );
+\ApSemplice\Backup::mark_downloaded();
 $rs_msg = Admin\TechActions::reset_all( $rs_ok );
 apse_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) ), 'azzeramento dei dati: soci, attività, prima nota, prenotazioni e ricevute cancellati' );
 apse_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'accounts' ) ) >= 2 && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'categories' ) ) >= 8 && count( \ApSemplice\Levels::all() ) >= 2 && \ApSemplice\FiscalYears::is_open( \ApSemplice\FiscalYears::current() ), 'azzeramento dei dati: conti, voci, livelli e anno solare predefiniti ricreati' );
 apse_ok( 'Associazione da azzerare' === Settings::get( 'association_name' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) >= $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 5 ), 'action' ), true ), 'azzeramento dei dati: impostazioni e registro azioni restano, con la registrazione dell\'azzeramento' );
-apse_ok( count( \ApSemplice\Backup::saved() ) > $rs_saved0 || count( \ApSemplice\Backup::saved() ) >= (int) \ApSemplice\Limits::get( 'backup_keep' ), 'azzeramento: prima di cancellare è stata salvata una copia completa' );
+apse_ok( 0 === count( \ApSemplice\Backup::saved() ) && ! \ApSemplice\Backup::downloaded_recently(), 'azzeramento: sul sito non resta nessuna copia e il permesso di scarico si consuma' );
 apse_ok( false !== get_userdata( 1 ) && $rs_mu && ! array_filter( $rs_mu, function ( $uid ) { return false !== get_userdata( $uid ); } ) && false !== strpos( $rs_msg[1], 'Dati azzerati' ) && $rs_msg[0] === Admin\Ui::url( 'apse' ), 'azzeramento: gli amministratori restano, gli accessi dei soci (solo ruolo «Socio APS») sono eliminati' );
 $rs_new = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Primo', 'last_name' => 'Dopo' ) );
 apse_ok( 1 === (int) $rs_new, 'azzeramento: la numerazione riparte da 1' );
 // ripristino di fabbrica
 Settings::update( array( 'association_name' => 'Da cancellare del tutto', 'tax_code' => '12345678903' ) );
 update_option( 'apse_pages', array( 'area' => 1 ) );
+\ApSemplice\Backup::mark_downloaded();
 $rs_msg2 = Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'mode' => 'factory', 'users' => '' ) ) );
 apse_ok( '' === (string) Settings::get( 'association_name' ) && '' === (string) Settings::get( 'tax_code' ) && false === get_option( 'apse_pages', false ) && \ApSemplice\Wizard::pending() && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) < $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 10 ), 'action' ), true ) && false !== strpos( $rs_msg2[1], 'Ripristino di fabbrica completato' ) && false !== strpos( $rs_msg2[0], 'apse-wizard' ), 'ripristino di fabbrica: impostazioni, pagine, registro azioni cancellati e configurazione guidata riaperta' );
 apse_ok( ! $GLOBALS['apse_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['apse_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['apse_warnings'], 0, 5 ) ) : '' ) );

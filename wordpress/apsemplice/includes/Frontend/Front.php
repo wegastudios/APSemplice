@@ -10,13 +10,14 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
-		PayReturn::register();
+		if ( \ApSemplice\Edition::has( 'payments' ) ) {
+			PayReturn::register();
+		}
 		CardVerify::register();
 		TicketVerify::register();
 		Activation::register();
 		FirstAccess::register();
 		\ApSemplice\Calendar::register();
-		\ApSemplice\Wallet::register();
 		Blocks::register();
 		ElementorSupport::register();
 	}

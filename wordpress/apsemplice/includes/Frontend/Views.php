@@ -5,7 +5,7 @@ use ApSemplice\Access;
 use ApSemplice\ActivityKind;
 use ApSemplice\Bank;
 use ApSemplice\Labels;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\Limits;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
@@ -120,7 +120,7 @@ final class Views {
 		}
 		$uid      = get_current_user_id();
 		$is_admin = Access::is_admin_user( $uid );
-		if ( ! $is_admin && ! License::allows( 'member_area' ) ) {
+		if ( ! $is_admin && ! Edition::allows( 'member_area' ) ) {
 			return self::wrap( self::notice( 'Servizio temporaneamente sospeso. Contatta l\'associazione.', 'apsf-err' ) );
 		}
 		$person = Access::person_for_user( $uid );
@@ -150,7 +150,7 @@ final class Views {
 			. '<dl class="apsf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<span class="apsf-badge ' . ( $active ? 'apsf-badge-ok' : 'apsf-badge-bad' ) . '">' . ( $active ? 'Tessera valida' : 'Tessera non valida' ) . '</span>'
-			. self::card_qr( $p ) . \ApSemplice\Wallet::buttons( $p )
+			. self::card_qr( $p ) . ( \ApSemplice\Edition::has( 'wallet' ) ? \ApSemplice\Wallet::buttons( $p ) : '' )
 			. '</div></section>';
 	}
 
@@ -450,7 +450,7 @@ final class Views {
 
 	/** Cassa per più persone del tesoriere: chi paga salda quote, eventi e corsi per sé e per altri (anche nuovi ospiti). Importo vuoto = importo standard. */
 	private static function section_group(): string {
-		if ( ! current_user_can( 'apse_collect', 0 ) ) {
+		if ( ! \ApSemplice\Edition::has( 'funds' ) || ! current_user_can( 'apse_collect', 0 ) ) {
 			return '';
 		}
 		$ledger = Plugin::ledger();
@@ -713,7 +713,7 @@ final class Views {
 	}
 
 	private static function door_form( array $s, array $a ): string {
-		if ( ! current_user_can( 'apse_door_cash', (int) $a['id'] ) || ! empty( $s['cancelled_at'] ) ) {
+		if ( ! \ApSemplice\Edition::has( 'door_sales' ) || ! current_user_can( 'apse_door_cash', (int) $a['id'] ) || ! empty( $s['cancelled_at'] ) ) {
 			return '';
 		}
 		$seat = Plugin::activities()->seats( (int) $s['id'] );
@@ -1034,6 +1034,9 @@ final class Views {
 
 	/** Le mie ricevute: scarico dei PDF (anche per gli ospiti che ho pagato) e attestazione annuale. */
 	public static function section_receipts( array $p ): string {
+		if ( ! \ApSemplice\Edition::has( 'receipts' ) ) {
+			return '';
+		}
 		$pid   = (int) $p['id'];
 		$mine  = \ApSemplice\Receipts::list_for_payer( $pid, 15 );
 		$years = \ApSemplice\Receipts::years_for_payer( $pid );
@@ -1071,7 +1074,7 @@ final class Views {
 
 	/** Messaggio pubblico del 5x1000 con il codice fiscale dell'associazione (vuoto se spento o senza codice fiscale). */
 	public static function five_per_mille(): string {
-		if ( ! \ApSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
+		if ( ! \ApSemplice\Edition::has( 'fivepm' ) || ! \ApSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
 			return '';
 		}
 		$name = trim( (string) Settings::get( 'association_name' ) );
@@ -1088,9 +1091,30 @@ final class Views {
 		return '<section class="apsf-section apsf-bankpub">' . Bank::html_accounts() . '</section>';
 	}
 
+	/** Modulo di donazione: porta il donatore alla pagina di PayPal già compilata (spento finché non si imposta il conto PayPal). */
+	public static function donate(): string {
+		if ( ! \ApSemplice\Donations::enabled() ) {
+			return '';
+		}
+		Assets::enqueue();
+		$amounts = \ApSemplice\Donations::amounts();
+		$select  = '<label>Importo <select name="amount">';
+		foreach ( $amounts as $a ) {
+			$select .= '<option value="' . esc_attr( \ApSemplice\Donations::paypal_amount( $a ) ) . '">' . esc_html( $a ) . ' €</option>';
+		}
+		$select .= '<option value="">Un altro importo (lo scegli su PayPal)</option></select></label>';
+		return '<section class="apsf-section apsf-donate"><h3>' . esc_html( \ApSemplice\Donations::purpose() ) . '</h3>'
+			. '<form method="post" action="' . esc_url( \ApSemplice\Donations::URL ) . '" target="_blank" rel="noopener">'
+			. '<input type="hidden" name="business" value="' . esc_attr( \ApSemplice\Donations::account() ) . '">'
+			. '<input type="hidden" name="item_name" value="' . esc_attr( \ApSemplice\Donations::purpose() ) . '">'
+			. '<input type="hidden" name="currency_code" value="EUR"><input type="hidden" name="no_recurring" value="1">'
+			. '<p>' . $select . '</p><p><button type="submit" class="apsf-btn wp-element-button">Dona con PayPal</button></p>'
+			. '<p class="apsf-small apsf-muted">Il pagamento avviene sul sito di PayPal: qui non passa nessun dato di pagamento.</p></form></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
 	/** App installabile e notifiche: si vede solo se l'app è accesa nelle impostazioni. */
 	public static function section_app( array $p ): string {
-		if ( ! \ApSemplice\Pwa::enabled() ) {
+		if ( ! \ApSemplice\Edition::has( 'pwa' ) || ! \ApSemplice\Pwa::enabled() ) {
 			return '';
 		}
 		$push = \ApSemplice\Push::enabled();
@@ -1138,7 +1162,7 @@ final class Views {
 		if ( ! $ctx['logged'] ) {
 			return $ctx;
 		}
-		if ( ! Access::is_admin_user( get_current_user_id() ) && ! License::allows( 'member_area' ) ) {
+		if ( ! Access::is_admin_user( get_current_user_id() ) && ! Edition::allows( 'member_area' ) ) {
 			$ctx['suspended'] = true;
 			return $ctx;
 		}

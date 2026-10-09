@@ -17,10 +17,6 @@ final class Broadcasts {
 	const MAX_BODY   = 5000;
 	const MAX_PER_DAY = 20;
 
-	public static function register(): void {
-		add_action( self::HOOK, array( __CLASS__, 'process_all' ) );
-	}
-
 	private static function db(): \wpdb {
 		return Db::db();
 	}
@@ -180,7 +176,7 @@ final class Broadcasts {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function create( string $subject, string $body, string $audience, int $ref = 0 ): int {
-		if ( ! License::allows( 'official_notices' ) ) {
+		if ( ! Edition::allows( 'official_notices' ) ) {
 			throw new \InvalidArgumentException( 'L\'invio delle comunicazioni è sospeso perché la licenza di APSemplice non risulta in regola.' );
 		}
 		$subject = trim( (string) preg_replace( '/\s+/', ' ', $subject ) ); // una sola riga: niente a capo nell'oggetto
@@ -221,7 +217,7 @@ final class Broadcasts {
 		$batch = $batch ?: Limits::get( 'broadcast_batch' );
 		$db = self::db();
 		$b  = self::get( $id );
-		if ( ! $b || 'sending' !== $b['status'] || ! License::allows( 'official_notices' ) ) {
+		if ( ! $b || 'sending' !== $b['status'] || ! Edition::allows( 'official_notices' ) ) {
 			return 0; // con la licenza non in regola l'invio resta fermo: riprende da solo quando torna in regola
 		}
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array();

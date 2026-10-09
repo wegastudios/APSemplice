@@ -188,6 +188,12 @@ final class Limits {
 			'Se si fanno più ripristini ravvicinati, le copie più vecchie vengono eliminate e non si potrà tornare a quello stato.'
 		);
 
+		$add(
+			'backup_hours', 'dati', 'Per quanto tempo restano le copie fatte prima dei ripristini', 'ore', 24, 1, 168,
+			'Dopo questo tempo le copie salvate sul server vengono cancellate da sole.',
+			'La copia contiene tutti i dati personali dei soci: tenerla a lungo sul sito prolunga il rischio se qualcuno ne ottenesse l\'accesso.',
+			'Passato il tempo non si potrà più tornare indietro dal sito: se vuoi un ricordo più duraturo scarica la copia e conservala tu.'
+		);
 		// ---------- Soci ----------
 		$add(
 			'suspend_after_months', 'soci', 'Mesi di tessera scaduta prima di proporre la sospensione', 'mesi', 8, 1, 60,

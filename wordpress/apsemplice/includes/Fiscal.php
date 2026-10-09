@@ -70,7 +70,7 @@ final class Fiscal {
 
 	/** L'ente applica l'IVA? Solo con la partita IVA e fuori dal regime forfettario. */
 	public static function vat_applies(): bool {
-		return ! empty( Settings::get( 'has_vat' ) ) && self::FLAT !== (string) Settings::get( 'fiscal_regime' );
+		return Edition::has( 'vat' ) && ! empty( Settings::get( 'has_vat' ) ) && self::FLAT !== (string) Settings::get( 'fiscal_regime' );
 	}
 
 	public static function default_rate(): int {

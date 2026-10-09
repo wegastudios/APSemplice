@@ -15,7 +15,7 @@ final class Pwa {
 	const ROUTES = array( 'apse-manifest.webmanifest', 'apse-sw.js', 'apse-offline.html', 'apse-icon-192.png', 'apse-icon-512.png' );
 
 	public static function enabled(): bool {
-		return (bool) Settings::get( 'pwa_enabled' ) && License::allows( 'pwa' );
+		return (bool) Settings::get( 'pwa_enabled' ) && Edition::allows( 'pwa' );
 	}
 
 	public static function register(): void {

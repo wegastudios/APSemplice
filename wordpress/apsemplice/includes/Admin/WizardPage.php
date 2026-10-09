@@ -83,7 +83,7 @@ final class WizardPage {
 	private static function features_box( array $s ): string {
 		$conditional = array( 'card_qr_enabled' => 'card_enabled=1', 'wallet_enabled' => 'card_enabled=1' );
 		$html        = '<input type="hidden" name="features_present" value="1">';
-		foreach ( SettingsPage::FEATURES as $k => $label ) {
+		foreach ( SettingsPage::visible_features() as $k => $label ) {
 			if ( in_array( $k, \ApSemplice\Wizard::OWN_STEP, true ) ) {
 				continue;
 			}
@@ -94,7 +94,7 @@ final class WizardPage {
 
 	public static function render(): void {
 		$s    = Settings::all();
-		$woo  = WooBridge::active();
+		$woo  = \ApSemplice\Edition::has( 'payments' ) && WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
 		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 veloci sezioni i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
@@ -122,6 +122,7 @@ final class WizardPage {
 		echo '</tbody></table></details>';
 		self::end_step();
 
+		if ( \ApSemplice\Edition::has( 'vat' ) ) {
 		// 2. Partita IVA
 		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.', '', 'ente' );
 		echo self::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -140,6 +141,7 @@ final class WizardPage {
 		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"> <span class="description">facoltativo</span></td></tr>';
 		echo '</tbody></table></details></div>';
 		self::end_step();
+		}
 
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
 		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.', '', 'gestione' );
@@ -172,8 +174,10 @@ final class WizardPage {
 		foreach ( Levels::all( true ) as $lv ) {
 			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
 		}
+		if ( \ApSemplice\Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
 		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
 		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
+		}
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
 		echo '</tbody></table></details>';
 		self::end_step();
@@ -181,7 +185,11 @@ final class WizardPage {
 		// 8. Pagamenti
 		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1', 'pagamenti' );
 		$current = (string) $s['payment_provider'];
-		foreach ( Wizard::payment_choices() as $val => $c ) {
+		$pay_choices = \ApSemplice\Edition::has( 'payments' ) ? Wizard::payment_choices() : array(); // senza pagamenti online resta solo il bonifico
+		if ( ! $pay_choices ) {
+			echo '<input type="hidden" name="payment_choice" value="none">';
+		}
+		foreach ( $pay_choices as $val => $c ) {
 			$off  = PaymentConfig::WOOCOMMERCE === $val && ! $euro;
 			$note = '';
 			if ( PaymentConfig::WOOCOMMERCE === $val ) {

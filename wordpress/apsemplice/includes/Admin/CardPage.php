@@ -15,7 +15,7 @@ final class CardPage {
 	public static function render(): void {
 		Ui::header( 'Impostazioni: tessera, QR e Wallet' );
 		self::switches_card();
-		if ( Settings::wallet_enabled() ) {
+		if ( \ApSemplice\Edition::has( 'wallet' ) && Settings::wallet_enabled() ) {
 			echo '<div class="apse-cols"><div class="apse-col">';
 			self::apple_card();
 			echo '</div><div class="apse-col">';
@@ -34,7 +34,7 @@ final class CardPage {
 			. '<span class="description">Ogni socio trova nella sua area riservata un QR: chi lo scansiona (anche senza accedere al sito) vede subito se la tessera è <strong>valida in questo momento</strong>, con nome, tipo, numero e scadenza e nient\'altro. Il QR non cambia quando la tessera si rinnova. Gli ospiti non hanno tessera.</span></p>';
 		echo '<p><label><input type="checkbox" name="ticket_qr_enabled" value="1"' . checked( Settings::tickets_enabled(), true, false ) . '> <strong>Biglietti QR delle prenotazioni</strong></label><br>'
 			. '<span class="description">Rende disponibile, nella scheda di ogni evento, l\'opzione "Biglietto QR" (da attivare evento per evento) e la lettura dei QR all\'ingresso.</span></p>';
-		echo '<p><label><input type="checkbox" name="wallet_enabled" value="1"' . checked( Settings::wallet_enabled(), true, false ) . '> <strong>Apple Wallet e Google Wallet</strong></label><br>'
+		if ( \ApSemplice\Edition::has( 'wallet' ) ) echo '<p><label><input type="checkbox" name="wallet_enabled" value="1"' . checked( Settings::wallet_enabled(), true, false ) . '> <strong>Apple Wallet e Google Wallet</strong></label><br>'
 			. '<span class="description">Aggiunge i pulsanti per salvare la tessera nel telefono. Richiede le credenziali di Apple e/o Google, da inserire qui sotto dopo averlo attivato.</span></p>';
 		submit_button( 'Salva', 'primary', 'submit', false );
 		Ui::form_close();

@@ -24,9 +24,20 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 		'apse_save_settings', 'apse_save_payment_settings', 'apse_test_gateway', 'apse_save_card', 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear', 'apse_regen_qr',
-		'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
+		'apse_save_donate', 'apse_save_ical', 'apse_regen_ical', 'apse_create_pages', 'apse_save_wpai', 'apse_wpai_process', 'apse_wpai_retry', 'apse_wpai_clear', 'apse_privacy_anonymize', 'apse_save_comms',
 		'apse_save_terms', 'apse_save_texts', 'apse_import_texts', 'apse_reset_texts', 'apse_add_text', 'apse_create_year', 'apse_close_year', 'apse_reopen_year',
 		'apse_delete_activity', 'apse_delete_booking', 'apse_purge_enrollments', 'apse_set_treasurer', 'apse_set_secretary', 'apse_set_board_role', 'apse_backup_restore', 'apse_save_levels', 'apse_save_language', 'apse_import_language', 'apse_delete_language',
+	);
+
+	/** Azioni che appartengono a una funzione avanzata: senza la funzione non si registrano. */
+	const FEATURE_ACTIONS = array(
+		'payments'   => array( 'apse_save_payment_settings', 'apse_test_gateway', 'apse_check_payments', 'apse_payment_reviewed' ),
+		'funds'      => array( 'apse_save_group_cash', 'apse_save_transfer', 'apse_add_account', 'apse_update_account', 'apse_close_account', 'apse_reopen_account', 'apse_fund_create', 'apse_fund_deposit', 'apse_fund_release', 'apse_fund_settle' ),
+		'reports'    => array( 'apse_create_year', 'apse_close_year', 'apse_reopen_year' ),
+		'receipts'   => array( 'apse_receipt_email' ),
+		'door_sales' => array( 'apse_walk_in' ),
+		'broadcasts' => array( 'apse_broadcast_send', 'apse_broadcast_test', 'apse_broadcast_retry' ),
+		'wallet'     => array( 'apse_save_wallet_apple', 'apse_save_wallet_google', 'apse_wallet_clear' ),
 	);
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
@@ -118,6 +129,7 @@ final class Actions {
 			'apse_cash_count'         => 'cash_count',
 			'apse_save_settings'      => 'save_settings',
 			'apse_quick_cash'         => 'quick_cash',
+			'apse_save_donate'        => 'save_donate',
 			'apse_save_ical'          => 'save_ical',
 			'apse_regen_ical'         => 'regen_ical',
 			'apse_quick_enroll'       => 'quick_enroll',
@@ -131,6 +143,11 @@ final class Actions {
 			'apse_wpai_retry'         => 'wpai_retry',
 			'apse_wpai_clear'         => 'wpai_clear',
 		);
+		foreach ( self::FEATURE_ACTIONS as $feature => $actions ) { // le azioni delle funzioni avanzate esistono solo se la funzione c'è
+			if ( ! \ApSemplice\Edition::has( $feature ) ) {
+				$map = array_diff_key( $map, array_flip( $actions ) );
+			}
+		}
 		add_action( 'admin_post_apse_attachment', array( Attachments::class, 'handle_download' ) );
 		foreach ( $map as $action => $method ) {
 			add_action(
@@ -261,6 +278,9 @@ final class Actions {
 	}
 
 	private static function save_levels( array $p ): array {
+		if ( ! \ApSemplice\Edition::has( 'levels' ) ) {
+			throw new \InvalidArgumentException( 'Questa edizione ha un\'unica quota associativa.' );
+		}
 		$rows = array();
 		foreach ( (array) ( $p['level'] ?? array() ) as $r ) {
 			if ( is_array( $r ) ) {
@@ -1235,6 +1255,23 @@ final class Actions {
 	private static function regen_ical( array $p ): array {
 		\ApSemplice\Calendar::regenerate_token();
 		return array( Ui::url( 'apse-calendar' ), 'Nuovo indirizzo del calendario: aggiorna il collegamento in Google Calendar.' );
+	}
+
+	private static function save_donate( array $p ): array {
+		$account = \ApSemplice\Donations::clean_account( (string) ( $p['donate_paypal'] ?? '' ) );
+		$on      = ! empty( $p['donate_enabled'] );
+		if ( $on && '' === $account ) {
+			throw new \InvalidArgumentException( 'Per accendere le donazioni scrivi l\'email del conto PayPal oppure il suo ID commerciante.' );
+		}
+		Settings::update(
+			array(
+				'donate_enabled' => $on ? 1 : 0,
+				'donate_paypal'  => $account,
+				'donate_amounts' => (string) ( $p['donate_amounts'] ?? '' ),
+				'donate_purpose' => (string) ( $p['donate_purpose'] ?? '' ),
+			)
+		);
+		return array( Ui::url( 'apse-donate' ), $on ? 'Donazioni attive: inserisci [apsemplice_donazioni] dove vuoi il modulo.' : 'Impostazioni salvate: le donazioni sono spente.' );
 	}
 
 	private static function save_card( array $p ): array {

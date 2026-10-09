@@ -388,6 +388,9 @@ final class PeoplePage {
 
 	/** Ricevute e attestazioni annuali della persona. */
 	private static function panel_receipts( array $p ): void {
+		if ( ! \ApSemplice\Edition::has( 'receipts' ) ) {
+			return;
+		}
 		$id    = (int) $p['id'];
 		$years = \ApSemplice\Receipts::years_for_payer( $id );
 		if ( ! $years ) {

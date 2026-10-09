@@ -14,11 +14,12 @@ final class Admin {
 		Actions::register();
 		Exports::register();
 		IncomePage::register_ajax();
-		LicenseNotice::register();
+		if ( \ApSemplice\Edition::has( 'license' ) ) {
+			LicenseNotice::register();
+		}
 		RegistersActions::register();
 		TechActions::register();
 		\ApSemplice\Wizard::register();
-		\ApSemplice\Docs::register();
 	}
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */
@@ -36,14 +37,14 @@ final class Admin {
 	const SETTINGS_SECTIONS = array(
 		'Ente e fiscalità' => array( 'apse-entity' => 'Dati e fiscalità', 'apse-comms' => 'Privacy, regolamento e ricevute', 'apse-texts' => 'Testi e lingua' ),
 		'Soci e identità'  => array( 'apse-settings' => 'Soci e quote', 'apse-card' => 'Tessera, QR e Wallet', 'apse-roles' => 'Ruoli e accessi' ),
-		'Soldi'            => array( 'apse-payments' => 'Pagamenti online' ),
+		'Soldi'            => array( 'apse-payments' => 'Pagamenti online', 'apse-donate' => 'Donazioni' ),
 		'Contabilità'      => array( 'apse-acct' => 'Opzioni contabili' ),
 		'Comunicazioni'    => array( 'apse-app' => 'App e notifiche' ),
 		'Sistema'          => array( 'apse-limits' => 'Limiti e soglie', 'apse-audit' => 'Registro azioni', 'apse-guide' => 'Guida iniziale', 'apse-reset' => 'Azzeramento dati' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
+	const ADMIN_ONLY = array( 'apse-donate', 'apse-settings', 'apse-payments', 'apse-card', 'apse-comms', 'apse-texts', 'apse-backup', 'apse-audit', 'apse-wpai', 'apse-years', 'apse-tech', 'apse-roles', 'apse-acct', 'apse-app', 'apse-limits', 'apse-wizard', 'apse-entity', 'apse-activity-delete', 'apse-booking-delete', 'apse-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const PARENTS = array( 'apse-person' => 'apse-people', 'apse-activity' => 'apse-activities', 'apse-activity-delete' => 'apse-activities', 'apse-booking-delete' => 'apse-activities' );
@@ -110,6 +111,7 @@ final class Admin {
 			array( 'apse-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
 			array( 'apse-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
 			array( 'apse-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),
+			array( 'apse-donate', 'Donazioni con PayPal', array( DonatePage::class, 'render' ) ),
 			array( 'apse-messages', 'Comunicazioni', array( MessagesPage::class, 'render' ) ),
 			array( 'apse-backup', 'Copia di sicurezza', array( BackupPage::class, 'render' ) ),
 			array( 'apse-comms', 'Promemoria, privacy, regolamento e ricevute', array( CommsPage::class, 'render' ) ),
@@ -192,7 +194,7 @@ final class Admin {
 
 	/** Schede spente dalle impostazioni (report e rendiconto). @return string[] */
 	public static function disabled_pages(): array {
-		return \ApSemplice\Modules::off_pages();
+		return array_merge( \ApSemplice\Modules::off_pages(), \ApSemplice\Edition::missing_pages() );
 	}
 
 	/** Voce di menu da nascondere: tutte le sue pagine sono spente. */
@@ -210,12 +212,18 @@ final class Admin {
 	}
 
 	/** Una pagina di una parte spenta non mostra i suoi contenuti: dice come riaccenderla. */
-	public static function guard( string $slug, callable $render ): callable {
+	public static function guard( string $slug, $render ): callable { // $render può essere una classe che in questa edizione non c'è (la pagina mostra l'avviso)
 		static $made = array(); // lo stesso oggetto per la stessa pagina: se è registrata due volte (menu principale e prima voce) WordPress la disegna una volta sola
 		if ( isset( $made[ $slug ] ) ) {
 			return $made[ $slug ];
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
+			if ( in_array( $slug, \ApSemplice\Edition::missing_pages(), true ) ) {
+				Ui::header( 'Funzione non inclusa' );
+				echo '<p>Questa funzione fa parte di APSemplice Pro e non è inclusa in questa edizione.</p>';
+				Ui::footer();
+				return;
+			}
 			if ( in_array( $slug, self::disabled_pages(), true ) ) {
 				Ui::header( 'Parte non in uso' );
 				echo '<p>Questa parte del gestionale è spenta. I dati non sono stati toccati: si riaccende dalla <a href="' . esc_url( Ui::url( 'apse-wizard' ) ) . '">configurazione guidata</a>.</p>';

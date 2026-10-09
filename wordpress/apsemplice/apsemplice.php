@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       APSemplice
  * Description:       Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale (APS).
- * Version:           0.1.0
+ * Version:           1.1.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Wega Studios
@@ -14,20 +14,25 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'APSE_VERSION', '0.1.0' );
+define( 'APSE_VERSION', '1.1.2' );
 define( 'APSE_FILE', __FILE__ );
 define( 'APSE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'APSE_URL', plugin_dir_url( __FILE__ ) );
 
 // Autoload semplice: ApSemplice\Foo => includes/Foo.php, ApSemplice\Admin\Bar => includes/Admin/Bar.php
+// (il plugin Pro aggiunge la sua cartella con Edition::add_dir: le sue classi usano lo stesso spazio dei nomi)
 spl_autoload_register(
 	function ( $class ) {
 		$prefix = 'ApSemplice\\';
 		if ( 0 !== strpos( $class, $prefix ) ) {
 			return;
 		}
-		$file = APSE_DIR . 'includes/' . str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
-		if ( is_readable( $file ) ) {
+		$rel  = str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
+		$file = APSE_DIR . 'includes/' . $rel;
+		if ( ! is_readable( $file ) && class_exists( 'ApSemplice\\Edition', false ) ) {
+			$file = (string) \ApSemplice\Edition::locate( $rel );
+		}
+		if ( '' !== $file && is_readable( $file ) ) {
 			require $file;
 		}
 	}

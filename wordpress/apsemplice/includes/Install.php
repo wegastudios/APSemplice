@@ -656,8 +656,12 @@ final class Install {
 		Levels::seed();
 		FiscalYears::seed(); // l'anno solare in corso (e quelli con movimenti) esiste sempre
 		$acc = Db::t( 'accounts' );
-		if ( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ) ) { // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabelle del plugin, nessuna API di WordPress equivalente
-			$wpdb->insert( $acc, array( 'name' => 'Cassa contanti', 'type' => 'cash', 'sort_order' => 0 ) );
+		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabelle del plugin, nessuna API di WordPress equivalente
+		if ( 0 === $count ) {
+			$wpdb->insert( $acc, array( 'name' => 'Cassa contanti', 'type' => 'cash', 'sort_order' => 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- tabelle del plugin, nessuna API di WordPress equivalente
+			$count = 1;
+		}
+		if ( 1 === $count && Edition::has( 'funds' ) ) { // l'edizione gratuita ha una cassa unica; con le funzioni avanzate c'è anche il conto corrente
 			$wpdb->insert( $acc, array( 'name' => 'Conto corrente', 'type' => 'bank', 'sort_order' => 1 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- tabelle del plugin, nessuna API di WordPress equivalente
 		}
 	}

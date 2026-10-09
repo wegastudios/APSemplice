@@ -79,30 +79,86 @@ jobs:
         if: failure()
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
 
-  package:
-    name: Installable zip
-    needs: [unit, smoke]
+  free:
+    name: Free edition (without the advanced files)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wordpress
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Start WordPress (wp-env)
+        run: npx --yes @wordpress/env start
+      - name: Remove the advanced files
+        run: |
+          grep -v '^#' apsemplice/tests/pro-files.txt | grep -v '^$' | while read -r f; do rm -v "apsemplice/includes/$f"; done
+      - name: Run the free edition smoke test
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke_free.php
+      - name: Debug log
+        if: failure()
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+  split:
+    name: Free + Pro together behave like the full plugin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build zip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build the two packages
+        run: bash wordpress/build.sh wordpress/dist
+      - name: Run the full tests against free + Pro
+        working-directory: wordpress/dist
         run: |
-          cd wordpress
-          zip -r ../apsemplice.zip apsemplice -x "apsemplice/tests/*" "apsemplice/vendor/*" "apsemplice/composer.*" "apsemplice/phpunit.xml.dist"
+          cp -r ../apsemplice/tests free/apsemplice/tests
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [
+              "./free/apsemplice",
+              "./pro/apsemplice-pro",
+              "https://downloads.wordpress.org/plugin/elementor.latest-stable.zip",
+              "https://downloads.wordpress.org/plugin/wp-all-import.latest-stable.zip",
+              "https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip"
+            ],
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+          npx --yes @wordpress/env start
+          npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke.php
+      - name: Debug log
+        if: failure()
+        working-directory: wordpress/dist
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+  package:
+    name: Installable zips (free and Pro)
+    needs: [unit, smoke, free, split]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the packages
+        run: bash wordpress/build.sh wordpress/dist
       - uses: actions/upload-artifact@v4
         with:
-          name: apsemplice-plugin
-          path: apsemplice.zip
+          name: apsemplice-packages
+          path: |
+            wordpress/dist/apsemplice-free.zip
+            wordpress/dist/apsemplice-pro.zip
 
   plugincheck:
-    name: WordPress.org plugin check
+    name: WordPress.org plugin check (free package)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      - name: Build the free package
+        run: bash wordpress/build.sh wordpress/dist
       - name: Plugin check
         uses: WordPress/plugin-check-action@v1
         with:
-          build-dir: wordpress/apsemplice
-          exclude-directories: tests
-          exclude-files: phpunit.xml.dist
+          build-dir: wordpress/dist/free/apsemplice

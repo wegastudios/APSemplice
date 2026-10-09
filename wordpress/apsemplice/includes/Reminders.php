@@ -16,13 +16,6 @@ final class Reminders {
 	const OPT_LAST        = 'apse_reminders_last';
 	const EXPIRED_WINDOW  = 7; // giorni dopo la scadenza in cui si manda ancora il promemoria "scaduta"
 
-	public static function register(): void {
-		add_action( self::HOOK, array( __CLASS__, 'run' ) );
-		if ( ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_event( time() + 600, 'daily', self::HOOK );
-		}
-	}
-
 	public static function enabled(): bool {
 		return ! empty( Settings::get( 'reminders_enabled' ) );
 	}
@@ -89,7 +82,9 @@ final class Reminders {
 		}
 		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
 		$ok = (bool) \ApSemplice\Texts::mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
-		Push::notify_email( (string) $to['email'], $subject, $body );
+		if ( Edition::has( 'pwa' ) ) {
+			Push::notify_email( (string) $to['email'], $subject, $body );
+		}
 		return $ok;
 	}
 
@@ -103,7 +98,7 @@ final class Reminders {
 		if ( $send && ! self::enabled() ) {
 			return $out;
 		}
-		if ( $send && ! License::allows( 'official_notices' ) ) {
+		if ( $send && ! Edition::allows( 'official_notices' ) ) {
 			return $out;
 		}
 		$today = $today ?: current_time( 'Y-m-d' );
@@ -233,7 +228,7 @@ final class Reminders {
 	}
 
 	private static function month_name( string $ym ): string {
-		return ( Receipts::MONTHS[ (int) substr( $ym, 5, 2 ) ] ?? $ym ) . ' ' . substr( $ym, 0, 4 );
+		return ( Frontend\Views::MONTHS[ (int) substr( $ym, 5, 2 ) ] ?? $ym ) . ' ' . substr( $ym, 0, 4 );
 	}
 
 	private static function events( string $today, bool $send ): int {

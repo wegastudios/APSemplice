@@ -93,7 +93,7 @@ final class Access {
 
 	/** @return bool l'utente è collegato a un socio in regola con la carica di presidente o vicepresidente */
 	public static function is_board_operator( int $user_id ): bool {
-		if ( $user_id <= 0 || ! License::allows( 'member_area' ) ) {
+		if ( $user_id <= 0 || ! Edition::allows( 'member_area' ) ) {
 			return false;
 		}
 		$p = self::person_for_user( $user_id );
@@ -163,7 +163,7 @@ final class Access {
 			return true;
 		}
 		// Licenza non in regola: l'accesso di soci e volontari è sospeso (gli amministratori restano, coperti dal popup).
-		if ( ! License::allows( 'member_area' ) ) {
+		if ( ! Edition::allows( 'member_area' ) ) {
 			return false;
 		}
 		$actor = self::person_for_user( $user_id );

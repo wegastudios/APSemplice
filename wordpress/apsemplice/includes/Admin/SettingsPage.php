@@ -2,6 +2,7 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\CancelPolicy;
+use ApSemplice\Edition;
 use ApSemplice\License;
 use ApSemplice\Money;
 use ApSemplice\PaymentConfig;
@@ -28,30 +29,30 @@ final class SettingsPage {
 		'push_enabled'          => 'Notifiche push ai dispositivi dei soci',
 	);
 
+	/** Interruttori che si mostrano: quelli delle funzioni avanzate solo se la funzione c'è in questa edizione. */
+	public static function visible_features(): array {
+		$need = array(
+			'wallet_enabled' => 'wallet', 'insurance_volunteers' => 'insurance', 'insurance_association' => 'insurance',
+			'fivepm_enabled' => 'fivepm', 'pwa_enabled' => 'pwa', 'push_enabled' => 'pwa',
+		);
+		$out  = array();
+		foreach ( self::FEATURES as $k => $label ) {
+			if ( ! isset( $need[ $k ] ) || Edition::has( $need[ $k ] ) ) {
+				$out[ $k ] = $label;
+			}
+		}
+		return $out;
+	}
+
 	/** Caselle delle funzioni, lette e salvate dal modulo «Generale». */
 	private static function feature_boxes( array $s ): string {
 		$html = '<input type="hidden" name="features_present" value="1">';
-		foreach ( self::FEATURES as $k => $label ) {
+		foreach ( self::visible_features() as $k => $label ) {
 			$html .= '<label><input type="checkbox" name="' . esc_attr( $k ) . '" value="1"' . checked( ! empty( $s[ $k ] ), true, false ) . '> ' . esc_html( $label ) . '</label><br>';
 		}
 		return $html;
 	}
 
-	/** Livelli di socio: righe dinamiche (nome, base, quota, attivo), si aggiungono senza limiti. */
-	private static function levels_section(): void {
-		$rows = array();
-		foreach ( \ApSemplice\Levels::all() as $lv ) {
-			$rows[] = array( 'id' => (int) $lv['id'], 'name' => $lv['name'], 'base' => $lv['base_type'], 'fee' => null === $lv['fee_cents'] ? '' : Money::plain( (int) $lv['fee_cents'] ), 'active' => (bool) (int) $lv['active'], 'used' => \ApSemplice\Levels::in_use( (int) $lv['id'] ) );
-		}
-		echo '<h2>Livelli di socio</h2><p class="description">Ogni livello ha il suo nome (come appare sulla tessera e negli elenchi), una base che ne decide il comportamento e, se serve, una quota propria. '
-			. 'Lascia vuota la quota per usare quella proposta qui sopra: così puoi avere, ad esempio, soci ordinari, soci ridotti, sostenitori o soci onorari con quote diverse. '
-			. 'Un livello con dei soci non si cancella: se lo togli resta, ma non si può più assegnare.</p>';
-		Ui::form_open( 'apse_save_levels', Ui::url( 'apse-settings' ) );
-		echo '<div class="apse-levels" data-bases="' . esc_attr( wp_json_encode( \ApSemplice\Levels::bases() ) ) . '" data-rows="' . esc_attr( wp_json_encode( $rows ) ) . '"><div class="apse-levels-rows"></div>'
-			. '<p><button type="button" class="button" data-add="1">+ Aggiungi livello</button></p></div>';
-		echo '<p><button class="button button-primary">Salva i livelli</button></p>';
-		Ui::form_close();
-	}
 
 	public static function render(): void {
 		$s = Settings::all();
@@ -69,12 +70,14 @@ final class SettingsPage {
 		echo '<tr><th>Pagina area riservata</th><td>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput
 			array( 'name' => 'member_area_page_id', 'selected' => (int) $s['member_area_page_id'], 'show_option_none' => '— home del sito —', 'option_none_value' => '0', 'echo' => 0 )
 		) . '<p class="description">La pagina del sito dove soci e volontari accedono alla propria area (si crea dalla sezione «Pagine del sito e shortcode» qui sotto). Chi ha solo il ruolo "Socio APS" viene indirizzato qui al posto di wp-admin.</p></td></tr>';
+		if ( Edition::has( 'license' ) ) {
 		$lic = License::status();
 		echo '<tr><th>Chiave di licenza</th><td><input type="text" name="license_key" value="' . esc_attr( (string) $s['license_key'] ) . '" class="regular-text" autocomplete="off">'
 			. '<p class="description">Una licenza vale per un dominio (<code>' . esc_html( $lic['domain'] ) . '</code>, sottodomini compresi) e per al massimo '
 			. (int) $lic['max_installs'] . ' installazioni attive insieme su quel dominio, ad esempio il sito e il suo staging. '
 			. ( $lic['local'] ? 'Questo è un ambiente locale: non richiede licenza. ' : '' )
 			. esc_html( $lic['note'] ) . '</p><p class="description">ID di questa installazione: <code>' . esc_html( $lic['install_id'] ) . '</code></p></td></tr>';
+		}
 		echo '</tbody></table><h2>Eventi: cancellazioni</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>';
@@ -90,7 +93,9 @@ final class SettingsPage {
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		self::levels_section();
+		if ( Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
+			LevelsEditor::section();
+		}
 		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>APSemplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>APSemplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
 		Ui::form_open( 'apse_create_pages', Ui::url( 'apse-settings' ) );
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già inseriti. Puoi poi personalizzarne l\'impaginazione.</span></p>';

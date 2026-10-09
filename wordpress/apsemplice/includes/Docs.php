@@ -429,12 +429,16 @@ final class Docs {
 			wp_die( 'Non autorizzato.', 403 );
 		}
 		check_admin_referer( 'apse_doc' );
-		if ( ! License::allows( 'export' ) ) {
+		if ( ! Edition::allows( 'export' ) ) {
 			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di APSemplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
 		$g      = wp_unslash( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification
 		$what   = (string) ( $g['what'] ?? '' );
 		$format = 'csv' === ( $g['format'] ?? '' ) ? 'csv' : 'pdf';
+		$needs  = array( 'volunteers' => 'insurance', 'attendance' => 'insurance', 'statement' => 'reports' ); // documenti delle funzioni avanzate
+		if ( isset( $needs[ $what ] ) && ! Edition::has( $needs[ $what ] ) ) {
+			wp_die( 'Questo documento non è disponibile in questa edizione.', 403 );
+		}
 		try {
 			switch ( $what ) {
 				case 'book':

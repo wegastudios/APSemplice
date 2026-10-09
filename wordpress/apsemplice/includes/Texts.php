@@ -312,16 +312,18 @@ final class Texts {
 	 * @return array[] text, group
 	 */
 	public static function catalog(): array {
-		$dir   = rtrim( APSE_DIR, '/\\' ) . '/includes';
 		$files = array();
-		$it    = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) );
 		$sig   = APSE_VERSION . '|v' . self::CATALOG_VERSION;
-		foreach ( $it as $f ) {
-			if ( 'php' === strtolower( $f->getExtension() ) ) {
-				$rel = ltrim( str_replace( '\\', '/', substr( $f->getPathname(), strlen( $dir ) ) ), '/' );
-				if ( ! in_array( $rel, self::SKIP_FILES, true ) ) {
-					$files[ $rel ] = $f->getPathname();
-					$sig          .= '|' . $rel . $f->getMTime();
+		foreach ( Edition::dirs() as $base ) { // la cartella di APSemplice e, se c'è, quella delle funzioni avanzate
+			$dir = rtrim( $base, '/\\' );
+			$it  = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) );
+			foreach ( $it as $f ) {
+				if ( 'php' === strtolower( $f->getExtension() ) ) {
+					$rel = ltrim( str_replace( '\\', '/', substr( $f->getPathname(), strlen( $dir ) ) ), '/' );
+					if ( ! in_array( $rel, self::SKIP_FILES, true ) ) {
+						$files[ $rel ] = $f->getPathname();
+						$sig          .= '|' . $rel . $f->getMTime();
+					}
 				}
 			}
 		}

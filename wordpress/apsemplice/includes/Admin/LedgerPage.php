@@ -79,7 +79,7 @@ final class LedgerPage {
 			if ( ! Labels::is_transfer( $r['type'] ) ) {
 				self::attachments_cell( (int) $r['id'], $att[ (int) $r['id'] ] ?? array(), $here );
 			}
-			if ( 'income' === $r['type'] ) {
+			if ( 'income' === $r['type'] && \ApSemplice\Edition::has( 'receipts' ) ) {
 				$rkey = \ApSemplice\Receipts::key_of( $r );
 				echo '<a class="button button-small" target="_blank" href="' . esc_url( \ApSemplice\Receipts::url( $rkey ) ) . '">Ricevuta PDF</a> ';
 				Ui::form_open( 'apse_receipt_email', $here, false, 'apse-inline' );

@@ -2,7 +2,7 @@
 namespace ApSemplice\Frontend;
 
 use ApSemplice\Access;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\MemberType;
 use ApSemplice\Plugin;
 use ApSemplice\Settings;
@@ -67,7 +67,7 @@ final class Restrict {
 		$ctx    = array(
 			'is_admin'              => Access::is_admin_user( $uid ),
 			'logged_in'             => $uid > 0,
-			'member_area_allowed'   => License::allows( 'member_area' ),
+			'member_area_allowed'   => Edition::allows( 'member_area' ),
 			'active_member'         => false,
 			'person_type'           => $person ? $person['type'] : null,
 			'required_activity_ids' => $required_activity_ids,

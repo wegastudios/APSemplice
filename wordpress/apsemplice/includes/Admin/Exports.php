@@ -2,7 +2,7 @@
 namespace ApSemplice\Admin;
 
 use ApSemplice\Labels;
-use ApSemplice\License;
+use ApSemplice\Edition;
 use ApSemplice\MemberType;
 use ApSemplice\Money;
 use ApSemplice\Plugin;
@@ -19,7 +19,7 @@ final class Exports {
 	}
 
 	public static function link( string $what, array $args, string $label ): string {
-		if ( ! License::allows( 'export' ) ) {
+		if ( ! Edition::allows( 'export' ) ) {
 			return '<span class="button disabled" title="Esportazione sospesa: licenza non in regola">' . esc_html( $label ) . ' 🔒</span>';
 		}
 		$url =wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'apse_export', 'what' => $what ), $args ), admin_url( 'admin-post.php' ) ), 'apse_export' );
@@ -55,10 +55,13 @@ final class Exports {
 			wp_die( 'Non autorizzato.', 403 );
 		}
 		check_admin_referer( 'apse_export' );
-		if ( ! License::allows( 'export' ) ) {
+		if ( ! Edition::allows( 'export' ) ) {
 			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di APSemplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
 		$what =isset( $_GET['what'] ) ? sanitize_key( wp_unslash( $_GET['what'] ) ) : '';
+		if ( in_array( $what, array( 'period', 'social' ), true ) && ! Edition::has( 'reports' ) ) { // in questa edizione si esportano solo soci e prima nota
+			wp_die( 'Questa esportazione non è disponibile in questa edizione.', 403 );
+		}
 		switch ( $what ) {
 			case 'ledger':
 				list( $name, $csv ) = self::ledger( Ui::get_str( 'from' ), Ui::get_str( 'to' ) );

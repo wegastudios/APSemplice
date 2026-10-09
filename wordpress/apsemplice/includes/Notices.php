@@ -90,7 +90,7 @@ final class Notices {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function send( int $activity_id, ?int $session_id, string $subject, string $body ): array {
-		if ( ! License::allows( 'official_notices' ) ) {
+		if ( ! Edition::allows( 'official_notices' ) ) {
 			throw new \InvalidArgumentException( 'L\'invio degli avvisi è sospeso perché la licenza di APSemplice non risulta in regola.' );
 		}
 		$a = Plugin::activities()->get( $activity_id );
@@ -142,7 +142,9 @@ final class Notices {
 			if ( \ApSemplice\Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
 				$sent++;
 			}
-			\ApSemplice\Push::notify_email( (string) $r['email'], $a['name'] . ': ' . $subject, $body );
+			if ( Edition::has( 'pwa' ) ) { // notifica sul telefono, se l'app c'è
+				\ApSemplice\Push::notify_email( (string) $r['email'], $a['name'] . ': ' . $subject, $body );
+			}
 		}
 		$db->update( Db::t( 'notices' ), array( 'emailed' => $sent ), array( 'id' => $id ) );
 		Audit::log( 'notice.sent', 'activity', $activity_id, array( 'notice' => $id, 'recipients' => count( $rcpt ), 'emailed' => $sent ) ); // senza il testo

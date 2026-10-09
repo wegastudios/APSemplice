@@ -1,6 +1,7 @@
 <?php
 namespace ApSemplice\Admin;
 
+use ApSemplice\Backup;
 use ApSemplice\Reset;
 
 defined( 'ABSPATH' ) || exit;
@@ -11,7 +12,7 @@ final class ResetPage {
 	public static function render(): void {
 		Ui::header( 'Azzeramento dati' );
 		$p = Reset::preview();
-		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Cancella i dati dell\'associazione per poter ripartire da zero. Prima di cancellare il sito salva da solo una copia completa (con gli allegati) tra le <a href="' . esc_url( Ui::url( 'apse-backup' ) ) . '">copie di sicurezza</a>; se la copia non riesce non viene cancellato nulla.</p></div>';
+		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Cancella i dati dell\'associazione per poter ripartire da zero. Prima di cancellare dovrai scaricare una copia completa (con gli allegati) e conservarla tu: sul sito non ne resta nessuna.</p></div>';
 
 		echo '<h2>Cosa c\'è adesso</h2><ul style="list-style:disc;margin-left:20px">'
 			. '<li>' . (int) $p['people'] . ' soci e volontari, ' . (int) $p['guests'] . ' ospiti</li>'
@@ -48,7 +49,8 @@ final class ResetPage {
 			echo '<p><strong>Restano:</strong> impostazioni, testi personalizzati, pagine del sito e registro azioni (con la registrazione di questo azzeramento).</p>';
 		}
 		echo '<p>' . ( $users ? 'Vengono eliminati anche <strong>' . (int) $p['users'] . ' accessi di soci</strong> (utenti con il solo ruolo «Socio APS»).' : 'Gli accessi dei soci (utenti WordPress) non vengono toccati, ma resteranno senza una scheda collegata.' ) . '</p>';
-		echo '<p>Prima di cancellare il sito salva una <strong>copia completa</strong> tra le copie di sicurezza: da lì si può tornare indietro con il ripristino.</p></div>';
+		echo '<p><strong>Prima di cancellare scarica una copia completa dei dati e conservala in un posto sicuro</strong> (è un file con i dati personali di soci e ospiti: trattala come tale). Sul sito non ne resta nessuna: nemmeno le copie salvate in precedenza, che verranno eliminate insieme ai dati.</p>';
+		echo '<p><a class="button button-primary" href="' . esc_url( Backup::download_url( true ) ) . '">Scarica la copia completa</a> ' . ( Backup::downloaded_recently() ? '<span style="color:#1a7f37">✔ Copia scaricata: puoi procedere.</span>' : '<span style="color:#b32d2e">Senza questo passaggio l\'azzeramento non parte.</span>' ) . '</p></div>';
 
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'apse_reset_all', Ui::url( 'apse-reset', array( 'step' => 2, 'mode' => $mode, 'users' => $users ? 1 : 0 ) ) );
