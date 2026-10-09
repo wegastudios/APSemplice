@@ -21,7 +21,7 @@ final class DashboardPage {
 		Ui::header( 'APSemplice' . ( $name ? ' — ' . $name : '' ) );
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Nuovo incasso</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'apse-group' ) ) . '">Cassa per più persone</a> '
+			. ( \ApSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'apse-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Nuova spesa</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \ApSemplice\Modules::on( 'activities' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'apse-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
 
@@ -34,7 +34,7 @@ final class DashboardPage {
 		foreach ( $funds as $f ) {
 			echo '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '</table><p><a href="' . esc_url( Ui::url( 'apse-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p></div>';
+		echo '</table>' . ( \ApSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'apse-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		echo '<div class="apse-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="apse-kv">';
 		foreach ( MemberType::member_types() as $t ) {
