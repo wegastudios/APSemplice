@@ -730,3 +730,18 @@
 	var a = li.querySelector('a.menu-top');
 	if (a) { a.classList.remove('wp-not-current-submenu'); a.classList.add('wp-has-current-submenu', 'wp-menu-open'); }
 })();
+
+/* Ricerca dei luoghi: Google chiama questa funzione quando il suo script è pronto (solo se l'ente ha acceso la funzione) */
+window.apsePlacesInit = function () {
+	if (!window.google || !google.maps || !google.maps.places) { return; }
+	Array.prototype.slice.call(document.querySelectorAll('input[name="location"]')).forEach(function (el) {
+		if (el.getAttribute('data-apse-place')) { return; }
+		el.setAttribute('data-apse-place', '1');
+		var ac = new google.maps.places.Autocomplete(el, { fields: ['name', 'formatted_address'] });
+		el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && document.querySelector('.pac-container .pac-item-selected')) { e.preventDefault(); } });
+		ac.addListener('place_changed', function () {
+			var p = ac.getPlace();
+			if (p && p.name) { el.value = p.formatted_address && p.formatted_address.indexOf(p.name) !== 0 ? p.name + ', ' + p.formatted_address : (p.formatted_address || p.name); }
+		});
+	});
+};
