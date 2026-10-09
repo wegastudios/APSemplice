@@ -102,7 +102,7 @@ final class FiscalYears {
 		}
 		$funds = Plugin::funds()->unsettled_until_year( $year );
 		if ( $funds > 0 ) {
-			$out[] = 'ci sono fondi accantonati non ancora rimborsati (' . Money::format( $funds ) . '): rimborsali o liberali prima di chiudere l\'anno';
+			$out[] = 'ci sono fondi accantonati non ancora rimborsati (' . Money::format( $funds ) . '): rimborsali o libera le somme prima di chiudere l\'anno';
 		}
 		return $out;
 	}

@@ -70,7 +70,7 @@ final class PaymentConfig {
 			$warnings = array_merge( $warnings, $r['warnings'] );
 		}
 		if ( self::WOOCOMMERCE === $provider ) {
-			$warnings[] = 'WooCommerce: collega le quote ai prodotti in Impostazioni → Tecniche → Integrazioni; le voci senza prodotto non si possono pagare online. Il negozio deve usare l\'euro.';
+			$warnings[] = 'WooCommerce: collega le quote ai prodotti in Strumenti → Integrazioni; le voci senza prodotto non si possono pagare online. Il negozio deve usare l\'euro.';
 		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}
@@ -153,7 +153,7 @@ final class PaymentConfig {
 			case self::PAYPAL:
 				return 'Paghi su una pagina sicura di PayPal: i dati della carta non passano da questo sito.';
 			case self::WOOCOMMERCE:
-				return 'Completi il pagamento nel negozio del sito: appena risulta pagato lo registriamo.';
+				return 'Completi il pagamento nel negozio del sito: non appena risulta pagato, lo registriamo.';
 		}
 		return '';
 	}

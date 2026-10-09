@@ -154,7 +154,7 @@ final class ActivitiesPage {
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
 		echo Ui::vat_row( \ApSemplice\Fiscal::default_rate(), \ApSemplice\Fiscal::default_mode(), 'I contributi' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'apse-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p class="description">Le attività possono essere tenute solo da soci e volontari.</p></td></tr>';
+			. '<p class="description">Solo soci e volontari possono essere referenti di un\'attività.</p></td></tr>';
 		echo self::fund_row( null ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>';
 		submit_button( 'Crea attività' );

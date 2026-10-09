@@ -35,7 +35,7 @@ final class AppPage {
 
 		echo '<h2>Controlli</h2><ul>';
 		echo self::check( is_ssl() || 0 === strpos( home_url(), 'https://' ), 'Il sito è in https', 'L\'app e le notifiche funzionano solo con https (fa eccezione localhost).' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-		echo self::check( '' !== (string) get_option( 'permalink_structure' ), 'I permalink sono "carini"', 'Con i permalink semplici gli indirizzi dell\'app (manifest e service worker) potrebbero non essere raggiungibili: scegli un altro formato in Impostazioni → Permalink.' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+		echo self::check( '' !== (string) get_option( 'permalink_structure' ), 'I permalink non sono quelli «semplici»', 'Con i permalink semplici gli indirizzi dell\'app (manifest e service worker) potrebbero non essere raggiungibili: scegli un altro formato in Impostazioni → Permalink.' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo self::check( WebPush::supported(), 'Questo server sa cifrare le notifiche (openssl)', 'Senza openssl le notifiche non sono disponibili; l\'app installabile funziona lo stesso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo '</ul>';
 		if ( $on ) {

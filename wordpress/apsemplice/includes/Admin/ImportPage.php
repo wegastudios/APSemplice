@@ -148,7 +148,7 @@ final class ImportPage {
 				echo '<p><label><input type="checkbox" name="mark_members" value="1"> Segna i soci come iscritti all\'anno sociale ' . esc_html( Settings::social_year()->label() ) . ' (non vale per i fondatori, sempre in regola)</label></p>';
 			}
 			if ( $ledger ) {
-				echo '<p><label><input type="checkbox" name="keep_balances" value="1" checked> <strong>Non cambiare i saldi attuali dei conti</strong> (consigliato per le annualità passate): aggiusto il saldo iniziale dei conti già esistenti, così il saldo di oggi resta com\'è e la storia si completa. Toglila se il file contiene TUTTA la storia e vuoi che i saldi derivino dai movimenti.</label></p>';
+				echo '<p><label><input type="checkbox" name="keep_balances" value="1" checked> <strong>Non cambiare i saldi attuali dei conti</strong> (consigliato per le annualità passate): si aggiusta il saldo iniziale dei conti già esistenti, così il saldo di oggi resta com\'è e la storia si completa. Toglila se il file contiene TUTTA la storia e vuoi che i saldi derivino dai movimenti.</label></p>';
 			}
 			submit_button( 'Importa' );
 			Ui::form_close();

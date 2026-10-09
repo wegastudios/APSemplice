@@ -87,7 +87,7 @@ final class Rules {
 		}
 		if ( ! empty( $d['instructor_person_id'] ) ) {
 			if ( null === $instructor || ! MemberType::can_teach( (string) ( $instructor['type'] ?? '' ) ) ) {
-				$errors[] = 'Le attività possono essere tenute solo da soci e volontari.';
+				$errors[] = 'Solo soci e volontari possono essere referenti di un\'attività.';
 			}
 		}
 		return $errors;

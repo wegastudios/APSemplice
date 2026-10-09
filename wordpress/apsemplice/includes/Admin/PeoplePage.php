@@ -460,7 +460,7 @@ final class PeoplePage {
 		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>';
 		Ui::form_close();
-		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina "Spese" (shortcode <code>[apsemplice_spese]</code>): scatta lo scontrino e registra la spesa. Vede solo le spese che ha registrato lui e non i saldi dei conti.</p></div>';
+		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina "Spese" (shortcode <code>[apsemplice_spese]</code>): scatta lo scontrino e registra la spesa. Vede solo le spese che ha registrato personalmente e non i saldi dei conti.</p></div>';
 	}
 
 	/** Staff dell'ente: verifica gli accessi a tutti gli eventi. Per l'incasso sul posto serve inoltre l'abilitazione sul singolo evento. */

@@ -140,7 +140,7 @@ final class Reminders {
 			} elseif ( $until < $today && $until >= $ago ) {
 				$kind = 'membership_expired';
 				$subj = 'La tua tessera è scaduta';
-				$body = 'la tua tessera associativa è scaduta il ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) . '. Per prenotare eventi e corsi serve rinnovarla: rivolgiti alla segreteria.';
+				$body = 'la tua tessera associativa è scaduta il ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) . '. Per prenotare eventi e corsi occorre rinnovarla: rivolgiti alla segreteria.';
 			} else {
 				continue;
 			}

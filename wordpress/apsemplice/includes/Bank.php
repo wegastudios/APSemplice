@@ -16,7 +16,7 @@ final class Bank {
 	const MAX_ACCOUNTS = 5;
 
 	const DEFAULT_TITLE = 'Pagamento con bonifico';
-	const DEFAULT_NOTE  = 'Indica nella causale il tuo nome e cognome e il motivo del pagamento. Appena riceviamo il bonifico registriamo il pagamento.';
+	const DEFAULT_NOTE  = 'Indica nella causale il tuo nome e cognome e il motivo del pagamento. Non appena riceviamo il bonifico, registriamo il pagamento.';
 
 	// ---------- Conti ----------
 
