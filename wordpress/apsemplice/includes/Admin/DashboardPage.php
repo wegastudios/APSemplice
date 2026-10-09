@@ -74,7 +74,7 @@ final class DashboardPage {
 		}
 		$ins = \ApSemplice\Edition::has( 'insurance' ) && \ApSemplice\Settings::insurance_volunteers() ? \ApSemplice\Insurance::counts() : array( 'none' => 0, 'expired' => 0, 'expiring' => 0 );
 		if ( $ins['none'] + $ins['expired'] + $ins['expiring'] > 0 ) {
-			echo Dismiss::html( 'insurance-vol-' . ( $ins['none'] + $ins['expired'] ) . '-' . $ins['expiring'], 'warning', 'Assicurazione dei volontari: '
+			echo Dismiss::html( 'insurance-vol-' . ( $ins['none'] + $ins['expired'] ) . '-' . $ins['expiring'], 'warning', 'Assicurazione dei volontari: ' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 				. (int) ( $ins[ \ApSemplice\Insurance::NONE ] + $ins[ \ApSemplice\Insurance::EXPIRED ] ) . ' senza copertura valida, ' . (int) $ins[ \ApSemplice\Insurance::EXPIRING ] . ' in scadenza. '
 				. '<a href="' . esc_url( Ui::url( 'apse-volunteers' ) ) . '">Apri il registro</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
