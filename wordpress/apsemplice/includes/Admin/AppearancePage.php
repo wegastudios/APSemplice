@@ -24,9 +24,9 @@ final class AppearancePage {
 			. '<label><input type="radio" name="card_mode" value="image"' . checked( CardLayout::MODE_IMAGE === $mode, true, false ) . '> <strong>Tessera su un\'immagine mia</strong>: carichi il disegno della tessera e trascini sopra nome, numero, scadenza e QR.</label></p>';
 		echo '<div id="apse-card-image"><input type="hidden" name="card_bg_id" id="apse-card-bg-id" value="' . (int) $s['card_bg_id'] . '">'
 			. '<p><button type="button" class="button" id="apse-cardbg-pick">Scegli l\'immagine della tessera</button> <span class="description">Meglio un\'immagine orizzontale, con uno spazio libero dove vanno i dati (ad esempio 1011 × 638 pixel). Trascina le scritte dove vuoi, poi regola dimensione e colore.</span></p>';
-		echo '<div id="apse-cardedit" style="position:relative;max-width:640px;container-type:inline-size;border:1px solid #c3c4c7;background:#f0f0f1;min-height:80px">';
+		echo '<div id="apse-cardedit" style="position:relative;max-width:640px;container-type:inline-size;border:1px solid #c3c4c7;background:#f0f0f1;aspect-ratio:1011/638">';
 		echo '<img id="apse-cardedit-img" src="' . esc_url( $bg ) . '" alt="" style="display:' . ( '' !== $bg ? 'block' : 'none' ) . ';width:100%;height:auto">';
-		echo '<div id="apse-cardedit-empty" class="description" style="padding:24px;' . ( '' !== $bg ? 'display:none' : '' ) . '">Nessuna immagine scelta.</div>';
+		echo '<div id="apse-cardedit-empty" class="description" style="position:absolute;top:8px;left:12px;' . ( '' !== $bg ? 'display:none' : '' ) . '">Nessuna immagine scelta.</div>';
 		foreach ( CardLayout::FIELDS as $k => $label ) {
 			$f = $layout[ $k ];
 			if ( 'qr' === $k ) {
