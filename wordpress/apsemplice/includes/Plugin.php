@@ -136,7 +136,7 @@ final class Plugin {
 	}
 
 	public static function payments(): OfflinePayments {
-		return self::$services['payments'] ?? ( self::$services['payments'] = Edition::has( 'payments' ) ? new PaymentService() : new OfflinePayments() );
+		return Edition::has( 'payments' ) ? self::payments_engine() : ( self::$services['offline_payments'] ?? ( self::$services['offline_payments'] = new OfflinePayments() ) );
 	}
 
 	public static function reports(): ReportService {

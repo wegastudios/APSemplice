@@ -87,7 +87,7 @@ final class Edition {
 
 	/** Con APSemplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
 	public static function degraded(): bool {
-		return self::installed( 'license' ) && License::degraded();
+		return self::installed( 'license' ) && function_exists( 'get_option' ) && License::degraded();
 	}
 
 	/**
