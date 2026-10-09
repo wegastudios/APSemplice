@@ -17,6 +17,11 @@ final class Modules {
 				unset( $all[ $key ] );
 			}
 		}
+		foreach ( $all as $key => $d ) { // una parte che dipendeva da una parte assente (ad esempio i report senza la contabilità) resta indipendente
+			if ( '' !== $d['needs'] && ! isset( $all[ $d['needs'] ] ) ) {
+				$all[ $key ]['needs'] = '';
+			}
+		}
 		return $all;
 	}
 
@@ -29,7 +34,7 @@ final class Modules {
 			'ledger'     => array( 'label' => 'Soldi e prima nota', 'ask' => 'Ti serve registrare incassi e spese (la prima nota)?', 'pages' => array( 'apse-money', 'apse-ledger', 'apse-income', 'apse-group', 'apse-expense' ), 'needs' => '' ),
 			'accounts'   => array( 'label' => 'Conti e fondi', 'ask' => 'Ti serve gestire altri conti oltre alla cassa contanti (banca, PayPal, fondi)?', 'pages' => array( 'apse-accounts', 'apse-transfer' ), 'needs' => 'ledger' ),
 			'accounting' => array( 'label' => 'Contabilità', 'ask' => 'Tieni la contabilità qui (anni solari, adempimenti, 5x1000)? Se la tiene un altro, resta solo la prima nota.', 'pages' => array( 'apse-accounting', 'apse-years', 'apse-fivepm' ), 'needs' => 'ledger' ),
-			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'apse-reports', 'apse-statement' ), 'needs' => 'ledger' ),
+			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'apse-reports', 'apse-statement' ), 'needs' => 'accounting' ),
 			'book'       => array( 'label' => 'Libro soci e verbali', 'ask' => 'Ti serve il libro soci (con i verbali)?', 'pages' => array( 'apse-book', 'apse-minutes' ), 'needs' => '' ),
 			'messages'   => array( 'label' => 'Comunicazioni', 'ask' => 'Vuoi scrivere ai soci dal gestionale, via email?', 'pages' => array( 'apse-messages' ), 'needs' => '' ),
 			'import'     => array( 'label' => 'Importazioni', 'ask' => 'Devi importare soci da Excel, CSV o da WP All Import?', 'pages' => array( 'apse-import', 'apse-wpai' ), 'needs' => '' ),
