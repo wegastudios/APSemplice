@@ -20,7 +20,7 @@ final class MoneyPage {
 		$year = Settings::social_year();
 		$r    = Plugin::reports()->social_year( $year );
 		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'apse-income' ) ) . '">Nuovo incasso</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'apse-group' ) ) . '">Cassa per più persone</a> '
+			. ( \ApSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'apse-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'apse-expense' ) ) . '">Nuova spesa</a>'
 			. ( Modules::on( 'accounts' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'apse-transfer' ) ) . '">Giroconto</a>' : '' ) . '</p>';
 

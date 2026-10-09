@@ -73,6 +73,7 @@ $pages = array(
 	'Configurazione guidata' => array( array( \ApSemplice\Admin\WizardPage::class, 'render' ), array() ),
 	'Rubrica'               => array( array( \ApSemplice\Admin\PeoplePage::class, 'render_list' ), array() ),
 	'Corsi ed eventi'       => array( array( \ApSemplice\Admin\ActivitiesPage::class, 'render_list' ), array() ),
+	'Soldi'                 => array( array( \ApSemplice\Admin\MoneyPage::class, 'render' ), array() ),
 	'Prima nota'            => array( array( \ApSemplice\Admin\LedgerPage::class, 'render' ), array() ),
 	'Nuovo incasso'         => array( array( \ApSemplice\Admin\IncomePage::class, 'render' ), array() ),
 	'Nuova spesa'           => array( array( \ApSemplice\Admin\ExpensePage::class, 'render' ), array() ),
@@ -81,6 +82,12 @@ $html = array();
 foreach ( $pages as $name => $p ) {
 	$html[ $name ] = free_render( $p[0], $p[1] );
 	free_ok( '' !== $html[ $name ], "pagina: $name" );
+}
+// nessun collegamento a pagine che in questa edizione non ci sono
+foreach ( array( 'Bacheca', 'Soldi', 'Prima nota', 'Soci e quote' ) as $pn ) {
+	foreach ( Edition::missing_pages() as $slug ) {
+		free_ok( false === strpos( $html[ $pn ], 'page=' . $slug . '"' ) && false === strpos( $html[ $pn ], 'page=' . $slug . '&' ), "pagina $pn: nessun collegamento a $slug" );
+	}
 }
 free_ok( false === strpos( $html['Soci e quote'], 'Livelli di socio' ) && false === strpos( $html['Soci e quote'], 'Chiave di licenza' ), 'impostazioni: né livelli né licenza' );
 free_ok( false === strpos( $html['Dati dell\'ente'], 'Partita IVA' ), 'dati dell\'ente: niente partita IVA' );
