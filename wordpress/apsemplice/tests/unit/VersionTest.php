@@ -30,4 +30,16 @@ final class VersionTest extends TestCase {
 			$this->assertLessThanOrEqual( 20, (int) $m[1], 'dopo la 1.1.20 si passa alla 1.2' );
 		}
 	}
+
+	public function test_pro_plugin_has_the_same_version(): void {
+		preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $this->main_file(), $h );
+		$pro = (string) file_get_contents( dirname( __DIR__, 3 ) . '/apsemplice-pro/apsemplice-pro.php' );
+		preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $pro, $v );
+		preg_match( "/define\( 'APSE_PRO_VERSION', '([^']+)' \)/", $pro, $c );
+		$this->assertSame( $h[1], $v[1] ?? '' );
+		$this->assertSame( $h[1], $c[1] ?? '' );
+		$readme = (string) file_get_contents( dirname( __DIR__, 3 ) . '/apsemplice-pro/readme.txt' );
+		preg_match( '/^Stable tag:\s*(\S+)/m', $readme, $s );
+		$this->assertSame( $h[1], $s[1] ?? '' );
+	}
 }

@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,6 +53,11 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.2 =
+* Free and Pro editions: online payments, several accounts and funds, accounting and reports, mass emails, app, wallet cards, receipts, VAT and member levels now live in APSemplice Pro.
+* Donations with PayPal.
+* Resetting the data no longer keeps a copy on the site: you download one first.
 
 = 1.1.1 =
 * Guided setup, member register with QR cards and guests, courses and events with waiting list and payment grace period, cash book, privacy tools, backup and reset, donations with PayPal, and a members' area.
