@@ -1227,7 +1227,9 @@ final class Actions {
 	/** Crea le pagine standard (area soci, area volontari, attività) se non esistono già. */
 	private static function create_pages( array $p ): array {
 		$made = \ApSemplice\Pages::create( array( 'area', 'volontari', 'attivita' ) );
-		return array( Ui::url( 'apse-settings' ), $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' );
+		$have = \ApSemplice\Pages::existing();
+		$menu = ! empty( $have['area'] ) && \ApSemplice\Pages::add_to_menu( (int) $have['area'] );
+		return array( Ui::url( 'apse-settings' ), ( $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' ) . ( $menu ? ' La voce «Area riservata» è nel menu del sito.' : '' ) );
 	}
 
 	// ---------- Import (Excel / CSV) ----------

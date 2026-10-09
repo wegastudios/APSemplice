@@ -83,6 +83,56 @@ final class Pages {
 		if ( ! empty( $have['area'] ) && 0 === (int) Settings::get( 'member_area_page_id' ) ) {
 			Settings::update( array( 'member_area_page_id' => (int) $have['area'] ) );
 		}
+		if ( in_array( 'Area soci', $made, true ) ) {
+			self::add_to_menu( (int) $have['area'] ); // la voce «Area riservata» compare nel menu del sito
+		}
 		return $made;
+	}
+
+	/**
+	 * Aggiunge al menu di navigazione del sito la voce «Area riservata» che porta all'area soci (con le funzioni nella versione per il sito,
+	 * non quella di amministrazione). Sceglie il menu della posizione principale; non duplica la voce.
+	 *
+	 * @return bool true se la voce c'è (già presente o aggiunta), false se il sito non ha un menu a cui aggiungerla
+	 */
+	public static function add_to_menu( int $page_id ): bool {
+		if ( $page_id <= 0 || ! function_exists( 'wp_update_nav_menu_item' ) ) {
+			return false;
+		}
+		$menu_id = 0;
+		$locs    = (array) get_nav_menu_locations();
+		foreach ( array( 'primary', 'main', 'menu-1', 'header', 'main-menu' ) as $loc ) {
+			if ( ! empty( $locs[ $loc ] ) ) {
+				$menu_id = (int) $locs[ $loc ];
+				break;
+			}
+		}
+		if ( ! $menu_id && $locs ) {
+			$menu_id = (int) reset( $locs );
+		}
+		if ( ! $menu_id ) {
+			$menus   = wp_get_nav_menus();
+			$menu_id = $menus ? (int) $menus[0]->term_id : 0;
+		}
+		if ( ! $menu_id ) {
+			return false;
+		}
+		foreach ( (array) wp_get_nav_menu_items( $menu_id ) as $item ) {
+			if ( (int) $item->object_id === $page_id && 'page' === $item->object ) {
+				return true;
+			}
+		}
+		$id = wp_update_nav_menu_item(
+			$menu_id,
+			0,
+			array(
+				'menu-item-title'     => 'Area riservata',
+				'menu-item-object'    => 'page',
+				'menu-item-object-id' => $page_id,
+				'menu-item-type'      => 'post_type',
+				'menu-item-status'    => 'publish',
+			)
+		);
+		return ! is_wp_error( $id );
 	}
 }
