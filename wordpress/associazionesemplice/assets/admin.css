@@ -1,0 +1,37 @@
+.asem .asem-ok { color: #007017; }
+.asem .asem-neg { color: #b32d2e; }
+.asem .asem-warn { color: #996800; }
+.asem .asem-big { font-size: 26px; font-weight: 600; margin: 4px 0 10px; }
+.asem .asem-cols { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.asem .asem-col { flex: 1 1 420px; min-width: 300px; }
+.asem .asem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 12px 0; }
+.asem .asem-card { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 4px 16px 14px; margin: 12px 0; }
+.asem .asem-grid .asem-card { margin: 0; }
+.asem .asem-card h2, .asem .asem-card h3 { margin-top: 12px; }
+.asem .asem-kv { width: 100%; border-collapse: collapse; }
+.asem .asem-kv td { padding: 3px 0; }
+.asem .asem-kv td:last-child { text-align: right; }
+.asem .asem-filters { margin: 12px 0; }
+.asem .asem-detail { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 8px 12px; margin: 8px 0; }
+.asem .asem-detail summary { cursor: pointer; }
+.asem .asem-months { margin: 8px 0; max-width: 560px; }
+.asem .asem-filter-select .asem-filter { width: 130px; }
+.asem .asem-info { margin-top: 6px; }
+.asem .asem-info.asem-info-warn { color: #996800; font-weight: 600; }
+.asem .asem-line { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 8px 12px; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.asem .asem-line .asem-line-title { flex: 1 1 220px; font-weight: 600; }
+.asem .asem-total { font-size: 18px; }
+.asem .asem-change { font-size: 18px; font-weight: 600; }
+.asem .asem-quick button { margin-right: 6px; }
+.asem .asem-form th { width: 190px; }
+
+/* Popup di licenza non in regola */
+.asem-overlay { position: fixed; inset: 0; background: rgba(20, 20, 20, .78); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+.asem-overlay-box { background: #fff; border-radius: 6px; max-width: 520px; width: calc(100% - 32px); padding: 8px 28px 22px; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
+.asem-overlay-box h2 { margin-top: 18px; }
+.asem .asem-attach { margin: 4px 0; }
+.asem .asem-attach ul { margin: 6px 0; padding-left: 16px; list-style: disc; }
+.asem form.asem-inline { display: inline; }
+.asem .asem-shot { cursor: pointer; }
+.asem .asem-doc-info { margin-left: 8px; }
+.asem .asem-tabs { margin: 12px 0 16px; }

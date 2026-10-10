@@ -1,0 +1,175 @@
+/*
+ * AssociazioneSemplice — front-end.
+ * Eredita font, dimensioni e colori del tema. Il colore d'accento segue il colore Primario di Elementor o "primary" del tema a blocchi
+ * (--wp--preset--color--primary) e si può cambiare da CSS: .asemf { --asemf-accent: #c0392b; }
+ * Il layout esterno (colonne, spazi, sfondi) lo decide il builder (Gutenberg, Elementor).
+ */
+.asemf {
+	--asemf-accent: var(--e-global-color-primary, var(--wp--preset--color--primary, #2271b1));
+	--asemf-accent-text: var(--wp--preset--color--base, #fff);
+	--asemf-accent-2: var(--e-global-color-secondary, var(--asemf-accent));
+	--asemf-line: rgba(127, 127, 127, .28);
+	--asemf-soft: rgba(127, 127, 127, .08);
+	--asemf-radius: 10px;
+	--asemf-ok: #1e7b34;
+	--asemf-warn: #a56a00;
+	--asemf-bad: #b32d2e;
+	font: inherit;
+	color: inherit;
+	line-height: 1.5;
+	margin: 1.25em 0;
+}
+.asemf *, .asemf *::before, .asemf *::after { box-sizing: border-box; }
+.asemf h3, .asemf h4 { margin: 0 0 .5em; line-height: 1.25; }
+.asemf p { margin: .5em 0; }
+.asemf-small { font-size: .875em; }
+.asemf-muted { opacity: .72; }
+.asemf-good { color: var(--asemf-ok); font-weight: 600; }
+.asemf-warn { color: var(--asemf-warn); font-weight: 600; }
+.asemf-bad { color: var(--asemf-bad); font-weight: 600; }
+
+/* Struttura */
+.asemf-area { display: grid; gap: 1.5rem; }
+.asemf-hello { font-size: 1.1em; margin-bottom: .75rem; }
+.asemf-section { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; }
+.asemf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.asemf-card { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; background: var(--asemf-soft); }
+.asemf-card h3 { margin-top: .4em; }
+.asemf-details { margin-top: .75rem; }
+.asemf-details > summary { cursor: pointer; font-weight: 600; }
+
+/* Etichette */
+.asemf-badge { display: inline-block; font-size: .78em; padding: .1em .6em; border-radius: 999px; border: 1px solid var(--asemf-line); }
+.asemf-badge-ok { color: var(--asemf-ok); border-color: currentColor; }
+.asemf-badge-bad { color: var(--asemf-bad); border-color: currentColor; }
+
+/* Tessera digitale */
+.asemf-memcard { border-radius: 14px; padding: 1.25rem 1.5rem; max-width: 420px; color: var(--asemf-accent); background: #fff; border: 2px solid var(--asemf-accent); border-top: 8px solid var(--asemf-accent-2); position: relative; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.asemf-memcard-logo { display: block; max-height: 52px; max-width: 190px; width: auto; height: auto; margin: 0 0 .6rem; }
+.asemf-memcard-assoc { font-size: .85em; text-transform: uppercase; letter-spacing: .08em; }
+.asemf-memcard-name { font-size: 1.5em; font-weight: 700; margin-top: .35em; }
+.asemf-memcard-type { opacity: .9; }
+.asemf-memcard-data { display: flex; gap: 2rem; margin: 1rem 0 .75rem; }
+.asemf-memcard-data dt { font-size: .75em; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.asemf-memcard-data dd { margin: 0; font-size: 1.25em; font-weight: 600; }
+.asemf-memcard .asemf-badge { background: #fff; }
+.asemf-memcard .asemf-badge-ok { color: var(--asemf-ok); }
+.asemf-memcard .asemf-badge-bad { color: var(--asemf-bad); }
+.asemf-memcard .asemf-small { color: var(--asemf-accent); opacity: .8; }
+.asemf-print-wrap { margin: .6rem 0 0; }
+/* Stampa della tessera: solo la tessera, in alto a sinistra, larga come una tessera */
+@media print {
+	body.asemf-printing * { visibility: hidden !important; }
+	body.asemf-printing .asemf-memcard, body.asemf-printing .asemf-memcard * { visibility: visible !important; }
+	body.asemf-printing .asemf-memcard { position: fixed; left: 0; top: 0; width: 90mm; max-width: none; margin: 0; box-shadow: none; }
+	body.asemf-printing .asemf-memcard-img { width: var(--asemf-card-w, 8.56cm); max-width: none; }
+	body.asemf-printing .asemf-memcard .asemf-btn { display: none !important; }
+	body.asemf-printing .asemf-memcard-qr .asemf-small { display: none !important; } /* sulla tessera stampata resta solo il codice, senza le istruzioni */
+}
+
+/* Elenchi e tabelle */
+.asemf-list { list-style: none; margin: .5rem 0; padding: 0; }
+.asemf-list > li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; padding: .6rem 0; border-top: 1px solid var(--asemf-line); }
+.asemf-list > li:first-child { border-top: 0; }
+.asemf-evt { font-weight: 700; }
+.asemf-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.asemf-table-wrap { overflow-x: auto; }
+.asemf-table { width: 100%; border-collapse: collapse; }
+.asemf-table th, .asemf-table td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--asemf-line); vertical-align: top; }
+.asemf-dl { display: grid; gap: .25rem; margin: 0 0 .5rem; }
+.asemf-dl > div { display: flex; gap: .75rem; }
+.asemf-dl dt { font-weight: 600; min-width: 5em; }
+.asemf-dl dd { margin: 0; }
+
+/* Moduli e pulsanti (se il tema li stila già tramite .wp-element-button, resta quello) */
+.asemf-form { margin: .5rem 0; }
+.asemf-inline { display: inline-flex; gap: .4rem; align-items: center; margin: 0; flex-wrap: wrap; }
+.asemf-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem; margin-bottom: .75rem; }
+.asemf-fields label { display: grid; gap: .25rem; font-weight: 600; }
+.asemf input[type="text"], .asemf input[type="email"], .asemf input[type="password"], .asemf select {
+	width: 100%; font: inherit; color: inherit; padding: .45em .6em; border: 1px solid var(--asemf-line); border-radius: 6px; background: transparent;
+}
+.asemf-inline select { width: auto; }
+.asemf .asemf-btn { cursor: pointer; font: inherit; padding: .45em 1em; border-radius: 6px; border: 1px solid var(--asemf-accent); background: var(--asemf-accent); color: var(--asemf-accent-text); text-decoration: none; display: inline-block; }
+.asemf .asemf-btn.wp-element-button { font: inherit; }
+.asemf .asemf-btn:hover { filter: brightness(.92); }
+.asemf-inline .asemf-btn { padding: .25em .75em; font-size: .9em; }
+
+/* Avvisi e riquadro "contenuto riservato" */
+.asemf-notice { padding: .75rem 1rem; border-radius: 8px; border: 1px solid var(--asemf-line); margin-bottom: 1rem; }
+.asemf-notice.asemf-ok { border-color: var(--asemf-ok); color: var(--asemf-ok); }
+.asemf-notice.asemf-err { border-color: var(--asemf-bad); color: var(--asemf-bad); }
+.asemf-gate { border: 1px dashed var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; background: var(--asemf-soft); text-align: center; }
+.asemf-gate-text { font-weight: 600; margin-top: 0; }
+.asemf #loginform p { margin: .6em 0; }
+.asemf #loginform label { display: block; font-weight: 600; margin-bottom: .2em; }
+
+@media (max-width: 600px) {
+	.asemf-memcard-data { gap: 1rem; }
+	.asemf-list > li { align-items: flex-start; }
+}
+.asemf-manage { flex-basis: 100%; }
+
+/* Pagamenti online */
+.asemf-payrow { display: flex; gap: .6rem; align-items: flex-start; cursor: pointer; }
+.asemf-paytotal { font-size: 1.15em; margin: .75rem 0; }
+.asemf-paylist > li { align-items: flex-start; }
+.asemf-docs { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+.asemf-shot { cursor: pointer; display: inline-block; }
+.asemf-doc-info { margin-left: 4px; }
+.asemf-expenses h4 { margin: 18px 0 6px; }
+.asemf-memcard-qr { margin-top: 14px; text-align: center; }
+.asemf-memcard-qr svg { width: 170px; height: 170px; max-width: 100%; background: #fff; border-radius: 8px; }
+.asemf-wallet { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+.asemf-wallet .asemf-btn { text-decoration: none; }
+.asemf-checkin-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.asemf-search { flex: 1 1 180px; min-width: 0; }
+.asemf-chip { border: 1px solid currentColor; background: transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; opacity: .7; }
+.asemf-chip.is-on { opacity: 1; font-weight: 600; }
+.asemf-counts { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.asemf-scan-video { width: 100%; max-width: 360px; border-radius: 10px; display: block; margin: 8px 0; }
+.asemf-booked[hidden] { display: none; }
+.asemf-checkin-act { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.asemf-scan-form { display: none; }
+
+/* Ingresso sul posto e cassa per più soci (staff): un campo per riga */
+.asemf-door label, .asemf-door-group label { display: block; margin: 8px 0; }
+.asemf-door select, .asemf-door-group select { width: 100%; max-width: 100%; }
+.asemf-door details, .asemf-door-group { margin-top: 14px; }
+.asemf-door > summary, .asemf-door-group > summary { cursor: pointer; padding: 6px 0; }
+
+/* Pagamento con bonifico */
+.asemf-bank { margin-top: 1rem; padding: .9rem 1rem; border: 1px solid var(--asemf-line); border-radius: 10px; }
+.asemf-bank h4 { margin: 0 0 .5rem; }
+.asemf-bank-acc { margin: .5rem 0 .75rem; }
+.asemf-bank-data { display: flex; flex-wrap: wrap; gap: .5rem 2rem; margin: .35rem 0; }
+.asemf-bank-data dt { font-size: .75em; text-transform: uppercase; letter-spacing: .06em; opacity: .75; }
+.asemf-bank-data dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.asemf-iban { font-size: 1.05em; }
+.asemf-copy { margin-left: .4rem; padding: .1em .6em; font-size: .8em; border: 1px solid var(--asemf-line); border-radius: 999px; background: transparent; cursor: pointer; }
+.asemf-bank-form { margin-top: .5rem; }
+
+/* Tessera su immagine propria: i dati sono posizionati sopra l'immagine, in percentuale (si ridimensiona da sola, anche in stampa) */
+.asemf-memcard-img { padding: 0; border: 0; background: none; position: relative; width: 100%; max-width: calc(var(--asemf-card-px, 640) * 1px); container-type: inline-size; line-height: 1.15; overflow: hidden; border-radius: 14px; box-sizing: border-box; }
+.asemf-memcard-img.asemf-card-plain { background: #fff; border: 2px solid var(--asemf-accent); border-top: 8px solid var(--asemf-accent-2); }
+.asemf-card-logo { height: auto; display: block; }
+.asemf-card-bg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.asemf-card-f { position: absolute; white-space: nowrap; font-weight: 600; }
+.asemf-card-qr { line-height: 0; background: #fff; padding: .4cqw; border-radius: 1cqw; }
+.asemf-card-qr svg { width: 100%; height: auto; background: #fff; border-radius: 0; max-width: none; }
+
+/* Area riservata con menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria e gestione di corsi ed eventi */
+.asemf-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.asemf-layout.asemf-nonav { grid-template-columns: minmax(0, 1fr); }
+.asemf-sidenav { position: sticky; top: 1rem; }
+.asemf-sidenav ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); overflow: hidden; }
+.asemf-sidenav li + li { border-top: 1px solid var(--asemf-line); }
+.asemf-sidenav a { display: block; padding: .6rem .9rem; text-decoration: none; color: inherit; }
+.asemf-sidenav a:hover { background: var(--asemf-soft); }
+.asemf-sidenav a.is-active { background: var(--asemf-accent); color: #fff; font-weight: 600; }
+@media (max-width: 700px) {
+	.asemf-layout { grid-template-columns: minmax(0, 1fr); }
+	.asemf-sidenav { position: static; }
+	.asemf-sidenav ul { display: flex; flex-wrap: wrap; }
+	.asemf-sidenav li + li { border-top: 0; border-left: 1px solid var(--asemf-line); }
+}

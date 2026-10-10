@@ -5,8 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 case "${1:-}" in
-	free) dir=apsemplice;     file=apsemplice.php;     const=APSE_VERSION ;;
-	pro)  dir=apsemplice-pro; file=apsemplice-pro.php; const=APSE_PRO_VERSION ;;
+	free) dir=associazionesemplice;     file=associazionesemplice.php;     const=ASEM_VERSION ;;
+	pro)  dir=associazionesemplice-pro; file=associazionesemplice-pro.php; const=ASEM_PRO_VERSION ;;
 	*) echo "Uso: bump.sh free|pro VERSIONE \"changelog\"" >&2; exit 1 ;;
 esac
 ver="${2:?manca la versione}"; note="${3:?manca la voce di changelog}"

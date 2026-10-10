@@ -18,7 +18,7 @@ jobs:
         php: ["7.4", "8.1", "8.3"]
     defaults:
       run:
-        working-directory: wordpress/apsemplice
+        working-directory: wordpress/associazionesemplice
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -74,7 +74,7 @@ jobs:
       - name: Start WordPress (wp-env)
         run: npx --yes @wordpress/env start
       - name: Run smoke test
-        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke.php
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke.php
       - name: Debug log
         if: failure()
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
@@ -94,9 +94,9 @@ jobs:
         run: npx --yes @wordpress/env start
       - name: Remove the advanced files
         run: |
-          grep -v '^#' apsemplice/tests/pro-files.txt | grep -v '^$' | while read -r f; do rm -v "apsemplice/includes/$f"; done
+          grep -v '^#' associazionesemplice/tests/pro-files.txt | grep -v '^$' | while read -r f; do rm -v "associazionesemplice/includes/$f"; done
       - name: Run the free edition smoke test
-        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke_free.php
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke_free.php
       - name: Debug log
         if: failure()
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
@@ -114,13 +114,13 @@ jobs:
       - name: Run the full tests against free + Pro
         working-directory: wordpress/dist
         run: |
-          cp -r ../apsemplice/tests free/apsemplice/tests
+          cp -r ../associazionesemplice/tests free/associazionesemplice/tests
           cat > .wp-env.json <<'JSON'
           {
             "phpVersion": "8.1",
             "plugins": [
-              "./free/apsemplice",
-              "./pro/apsemplice-pro",
+              "./free/associazionesemplice",
+              "./pro/associazionesemplice-pro",
               "https://downloads.wordpress.org/plugin/elementor.latest-stable.zip",
               "https://downloads.wordpress.org/plugin/wp-all-import.latest-stable.zip",
               "https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip"
@@ -129,7 +129,7 @@ jobs:
           }
           JSON
           npx --yes @wordpress/env start
-          npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/apsemplice/tests/smoke.php
+          npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke.php
       - name: Debug log
         if: failure()
         working-directory: wordpress/dist
@@ -145,10 +145,10 @@ jobs:
         run: bash wordpress/build.sh wordpress/dist
       - uses: actions/upload-artifact@v4
         with:
-          name: apsemplice-packages
+          name: associazionesemplice-packages
           path: |
-            wordpress/dist/apsemplice-free.zip
-            wordpress/dist/apsemplice-pro.zip
+            wordpress/dist/associazionesemplice-free.zip
+            wordpress/dist/associazionesemplice-pro.zip
 
   plugincheck:
     name: WordPress.org plugin check (free package)
@@ -161,4 +161,4 @@ jobs:
       - name: Plugin check
         uses: WordPress/plugin-check-action@v1
         with:
-          build-dir: wordpress/dist/free/apsemplice
+          build-dir: wordpress/dist/free/associazionesemplice
