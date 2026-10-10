@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Soci e volontari lavorano nell'area riservata del sito, non in wp-admin: l'area di amministrazione
- * resta solo per gli amministratori. Vale per gli utenti che hanno SOLO il ruolo "Socio APS": chi ha anche
+ * resta solo per gli amministratori. Vale per gli utenti che hanno SOLO il ruolo "Socio": chi ha anche
  * altri ruoli (editor, amministratore…) non viene toccato.
  */
 final class Gatekeeper {

@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *    e registro azioni, e rilancia la configurazione guidata.
  *
  * Prima di cancellare si salva sul sito una copia completa (con gli allegati): se la copia non riesce non si cancella nulla.
- * Le tabelle si svuotano in un'unica transazione. Gli utenti WordPress non si toccano, tranne (a scelta) chi ha il solo ruolo «Socio APS».
+ * Le tabelle si svuotano in un'unica transazione. Gli utenti WordPress non si toccano, tranne (a scelta) chi ha il solo ruolo «Socio».
  */
 final class Reset {
 
@@ -36,7 +36,7 @@ final class Reset {
 		} ) );
 	}
 
-	/** Utenti WordPress che hanno soltanto il ruolo «Socio APS» e sono collegati a una persona (mai l'utente che sta operando). @return int[] */
+	/** Utenti WordPress che hanno soltanto il ruolo «Socio» e sono collegati a una persona (mai l'utente che sta operando). @return int[] */
 	public static function member_only_users(): array {
 		$out = array();
 		foreach ( self::db()->get_col( 'SELECT DISTINCT wp_user_id FROM ' . Db::t( 'people' ) . ' WHERE wp_user_id IS NOT NULL AND wp_user_id > 0' ) as $uid ) {

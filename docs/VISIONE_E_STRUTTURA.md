@@ -21,7 +21,7 @@ comunicazioni email/SMS/app, corsi ed eventi con presenze, contabilità, privacy
 | Ruoli sociali (presidente, consiglio…) | Fuori dal plugin: pagine statiche del sito. |
 
 **Passo 1 (fondamenta) — fatto:** `Access` (permessi dai dati, con capability meta WordPress), REST API `associazionesemplice/v1`
-(`/me`, `/me/activities`, `/people/{id}`, `/activities/{id}/participants`), registro delle azioni, i soci "solo ruolo Socio APS"
+(`/me`, `/me/activities`, `/people/{id}`, `/activities/{id}/participants`), registro delle azioni, i soci "solo ruolo Socio"
 tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), punto unico `License`.
 
 ## 1. Chi usa cosa
