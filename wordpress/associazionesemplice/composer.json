@@ -1,0 +1,15 @@
+{
+	"name": "wegastudios/associazionesemplice",
+	"description": "Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^9.6"
+	},
+	"scripts": {
+		"test": "phpunit"
+	}
+}

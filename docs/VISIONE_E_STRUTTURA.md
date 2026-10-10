@@ -20,7 +20,7 @@ comunicazioni email/SMS/app, corsi ed eventi con presenze, contabilità, privacy
 | Licenza | **Una licenza = un dominio (sottodomini compresi), al massimo 2 installazioni insieme** (vedi [LICENZE.md](LICENZE.md)): regole e identità dell'installazione già implementate, server di verifica in **standby**. Chiave salvata ma non verificata. Tutto passa da `License::allows()`: quando si attiverà l'autorizzazione dei domini si cambia solo quel punto. |
 | Ruoli sociali (presidente, consiglio…) | Fuori dal plugin: pagine statiche del sito. |
 
-**Passo 1 (fondamenta) — fatto:** `Access` (permessi dai dati, con capability meta WordPress), REST API `apsemplice/v1`
+**Passo 1 (fondamenta) — fatto:** `Access` (permessi dai dati, con capability meta WordPress), REST API `associazionesemplice/v1`
 (`/me`, `/me/activities`, `/people/{id}`, `/activities/{id}/participants`), registro delle azioni, i soci "solo ruolo Socio APS"
 tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), punto unico `License`.
 
@@ -28,7 +28,7 @@ tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), 
 
 | Chi | Dove | Cosa può fare |
 |---|---|---|
-| **Amministratore del sito** | wp-admin → menu APSemplice (già fatto) | tutto |
+| **Amministratore del sito** | wp-admin → menu AssociazioneSemplice (già fatto) | tutto |
 | **Socio e volontario** | area riservata sul sito (front-end) | solo le **sue attività**: vedere gli iscritti, comunicare con loro, segnare le presenze |
 | **Socio** (fondatore/ordinario/volontario) | area riservata sul sito | solo **i propri dati**: tessera digitale, profilo, attività e pagamenti, ospiti, rinnovo e pagamenti online |
 | **Ospite** | nessun accesso (per ora) | riceve comunicazioni; in futuro link personale |
@@ -37,7 +37,7 @@ tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), 
 Essere "volontario di Yoga" non è un ruolo WordPress: è il fatto che l'attività ha `instructor_person_id` = la mia persona.
 Quindi:
 
-- si usano **capability "meta"** di WordPress (`map_meta_cap`): `apse_message_activity` + id attività, `apse_edit_person` + id persona…
+- si usano **capability "meta"** di WordPress (`map_meta_cap`): `asem_message_activity` + id attività, `asem_edit_person` + id persona…
   La regola vive in **una sola classe** (`Access`): *amministratore → sì; volontario → solo se è il referente di quell'attività;
   socio → solo se la persona è la sua*.
 - Gli utenti non amministratori **non entrano in wp-admin**: lavorano solo nell'area riservata (admin bar nascosta,
@@ -51,21 +51,21 @@ Quindi:
             │                                   │                                   │
             └──────────────┬────────────────────┴───────────────┬───────────────────┘
                            ▼                                    ▼
-                   REST API  apsemplice/v1  (permission_callback → Access)   ← unico ingresso per tutto tranne wp-admin
+                   REST API  associazionesemplice/v1  (permission_callback → Access)   ← unico ingresso per tutto tranne wp-admin
                            │
                            ▼
         Servizi (People, Activity, Ledger, Report, + Messaging, Payments, Attendance, Consent…)
                            │                      ▲
-                           ▼                      │ eventi: do_action('apse_*')
-              Database (tabelle apse_*)      Integrazioni: email, gateway di pagamento, audit log
+                           ▼                      │ eventi: do_action('asem_*')
+              Database (tabelle asem_*)      Integrazioni: email, gateway di pagamento, audit log
 ```
 
 - I **servizi** restano la sola fonte di verità (già così). Non sanno nulla di HTML né di chi li chiama.
 - La **REST API** è nuova e centrale: la usano l'area riservata oggi e la PWA domani. Ogni rotta controlla `Access`.
   Le pagine wp-admin esistenti continuano a chiamare i servizi direttamente (nessuna riscrittura necessaria).
-- **Area riservata**: shortcode/blocchi (`[apsemplice_area_soci]`, `[apsemplice_area_volontari]`) che montano una piccola app JS
+- **Area riservata**: shortcode/blocchi (`[associazionesemplice_area_soci]`, `[associazionesemplice_area_volontari]`) che montano una piccola app JS
   senza build che parla con la REST. Il sito sceglie in che pagina metterli (pagine statiche dell'associazione).
-- **Eventi** (`apse_receipt_recorded`, `apse_member_enrolled`…): chi vuole reagire (ricevuta via email, log, notifiche) si aggancia
+- **Eventi** (`asem_receipt_recorded`, `asem_member_enrolled`…): chi vuole reagire (ricevuta via email, log, notifiche) si aggancia
   senza toccare i servizi.
 - **Audit log**: con più persone che operano serve sapere chi ha fatto cosa (oggi c'è solo `created_by` sui movimenti).
 

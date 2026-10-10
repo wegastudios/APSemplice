@@ -1,9 +1,9 @@
-# APSemplice per WordPress
+# AssociazioneSemplice per WordPress
 
-Plugin WordPress per la gestione di un'associazione (cartella `wordpress/apsemplice/`). La vecchia app Android è stata rimossa dal repository (resta nella cronologia di git).
+Plugin WordPress per la gestione di un'associazione (cartella `wordpress/associazionesemplice/`). La vecchia app Android è stata rimossa dal repository (resta nella cronologia di git).
 
 Obiettivo di lungo periodo: una PWA/area soci sopra lo stesso plugin, pagamenti online, ruoli diversi.
-Per ora il plugin è **solo per amministratori** (capability `apse_manage`, assegnata al ruolo Amministratore).
+Per ora il plugin è **solo per amministratori** (capability `asem_manage`, assegnata al ruolo Amministratore).
 
 ## Figure
 
@@ -73,7 +73,7 @@ Per ora è solo la **configurazione** e la verifica; l'incasso online vero è il
 
 ## Soci = utenti WordPress
 
-- Creando un socio si **crea l'utente WordPress** con la stessa email (ruolo `apse_member`, che ha solo `read`: nessun accesso alla gestione). Non parte nessuna email.
+- Creando un socio si **crea l'utente WordPress** con la stessa email (ruolo `asem_member`, che ha solo `read`: nessun accesso alla gestione). Non parte nessuna email.
 - Se esiste già un utente WordPress con quell'email lo si **collega** senza cambiargli ruolo (un amministratore resta amministratore).
 - Modificando nome/email del socio si aggiorna l'utente, **ma solo se è un utente "solo socio"**; gli altri non si toccano.
 - Eliminare una persona è logico (`deleted_at`): libera tessera ed email, **non cancella l'utente WordPress**.
@@ -90,7 +90,7 @@ giroconto = due righe collegate; resto in contanti = solo aiuto.
 ## Architettura
 
 ```
-apsemplice.php            intestazione plugin + autoload
+associazionesemplice.php            intestazione plugin + autoload
 includes/
   Money, SocialYear, MemberType, Rules, CashChange, PaymentCalc, PeopleCsv, Text, Labels   <- logica pura (testata con PHPUnit)
   Install, Settings, Db, Plugin                                                          <- schema (dbDelta), opzioni, contenitore servizi
@@ -101,15 +101,15 @@ tests/unit (PHPUnit senza WordPress) · tests/smoke.php (dentro WordPress reale,
 ```
 
 I **servizi** non sanno nulla dell'interfaccia: restituiscono array e lanciano `\InvalidArgumentException` con messaggi leggibili.
-Per questo la stessa logica potrà essere esposta da una **REST API** (`apsemplice/v1`) e usata da una PWA senza riscriverla.
+Per questo la stessa logica potrà essere esposta da una **REST API** (`associazionesemplice/v1`) e usata da una PWA senza riscriverla.
 
-Tabelle (`{prefisso}apse_*`): `people`, `memberships`, `accounts`, `categories`, `activities`, `enrollments`, `transactions`, `cash_counts`.
+Tabelle (`{prefisso}asem_*`): `people`, `memberships`, `accounts`, `categories`, `activities`, `enrollments`, `transactions`, `cash_counts`.
 
 ## Installare
 
-1. Scarica `apsemplice.zip` dall'artefatto `apsemplice-plugin` dell'ultima esecuzione di *WordPress plugin* in GitHub Actions.
+1. Scarica `associazionesemplice.zip` dall'artefatto `associazionesemplice-plugin` dell'ultima esecuzione di *WordPress plugin* in GitHub Actions.
 2. WordPress → Plugin → Aggiungi nuovo → Carica plugin → attiva.
-3. Menu **APSemplice** → Impostazioni (denominazione, mese di inizio dell'anno sociale, quota associativa).
+3. Menu **AssociazioneSemplice** → Impostazioni (denominazione, mese di inizio dell'anno sociale, quota associativa).
 
 I dati restano nelle tabelle anche se disattivi/elimini il plugin.
 
@@ -129,19 +129,19 @@ La direzione di prodotto (area soci, volontari, comunicazioni, pagamenti, PWA) �
 5. Modifica dei movimenti con storico, backup/export completo, PDF.
 
 ## Tutto dal pannello
-Ogni impostazione si cambia da **APSemplice → Impostazioni**, senza modificare file né scrivere codice:
+Ogni impostazione si cambia da **AssociazioneSemplice → Impostazioni**, senza modificare file né scrivere codice:
 denominazione, mese di inizio dell'anno sociale, quota associativa, durata della tessera del fondatore, pagina dell'area soci,
 chiave di licenza, termine predefinito di cancellazione, **colore d'accento** del sito (selettore colore), **testo dell'invito al pagamento**,
 **messaggio sui contenuti riservati**, gateway di pagamento e relative chiavi. Le pagine del sito si creano con un pulsante e si impaginano
-con Gutenberg o Elementor. I dati stanno nel database di WordPress (tabelle `apse_*` e l'opzione `apse_settings`).
+con Gutenberg o Elementor. I dati stanno nel database di WordPress (tabelle `asem_*` e l'opzione `asem_settings`).
 
 ## Pagamenti online (Stripe / PayPal, pagina ospitata)
 
 Dalle **Impostazioni** si sceglie il gateway e si incollano le chiavi (cifrate nel database, legate al sito). I dati della carta non passano mai dal sito: il socio paga su una pagina di Stripe Checkout o di PayPal.
 
-1. Nell'area soci, sezione **Pagamenti** (shortcode `[apsemplice_pagamenti]`), il socio vede cosa deve: quota associativa, mensilità dei corsi, contributi degli eventi, anche per i propri ospiti. Importi e voci sono **sempre ricalcolati dal server**.
+1. Nell'area soci, sezione **Pagamenti** (shortcode `[associazionesemplice_pagamenti]`), il socio vede cosa deve: quota associativa, mensilità dei corsi, contributi degli eventi, anche per i propri ospiti. Importi e voci sono **sempre ricalcolati dal server**.
 2. Il sito crea il pagamento sul gateway e porta il socio alla pagina ospitata.
-3. La conferma arriva da tre strade, tutte idempotenti: ritorno del socio sul sito (verifica diretta col gateway), **webhook di Stripe** (`/wp-json/apsemplice/v1/webhooks/stripe`, firma verificata) e controllo orario (WP-Cron o pulsante in *Pagamenti online*).
+3. La conferma arriva da tre strade, tutte idempotenti: ritorno del socio sul sito (verifica diretta col gateway), **webhook di Stripe** (`/wp-json/associazionesemplice/v1/webhooks/stripe`, firma verificata) e controllo orario (WP-Cron o pulsante in *Pagamenti online*).
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico), una ricevuta per persona, con metodo e riferimento del gateway; il socio riceve la ricevuta via email.
 5. Se qualcosa non torna (importo diverso, prenotazione annullata nel frattempo) i soldi entrano comunque come "pagamento online non abbinato" e il pagamento è segnato **da controllare** in *Pagamenti online*.
 
@@ -151,7 +151,7 @@ Commissioni, payout sul conto corrente e rimborsi si registrano a mano (spesa e 
 
 Nel modulo **Nuova spesa** si possono allegare uno o più PDF o foto (campo "Documenti"; dal telefono anche "Scatta una foto", che apre la fotocamera). Dalla **Prima nota** si aggiungono altri allegati a un movimento, si aprono e si tolgono dall'elenco.
 
-- **Non finiscono nella libreria media**: stanno in `wp-content/uploads/apsemplice-private/`, con nome casuale e senza estensione, più un `.htaccess` che nega l'accesso diretto. Si aprono solo da un indirizzo del plugin con controllo dei permessi (solo chi gestisce il plugin).
+- **Non finiscono nella libreria media**: stanno in `wp-content/uploads/associazionesemplice-private/`, con nome casuale e senza estensione, più un `.htaccess` che nega l'accesso diretto. Si aprono solo da un indirizzo del plugin con controllo dei permessi (solo chi gestisce il plugin).
 - Si accettano PDF, JPG, PNG, WebP e HEIC, fino a 10 MB ciascuno e 10 per movimento. Il tipo è letto dal contenuto, non dall'estensione; i doppioni (stesso contenuto) sono rifiutati.
 - Le foto vengono ridotte dal browser prima dell'invio (max 1600 px).
 - Se un file non è ammesso la spesa **non viene registrata** e il modulo resta com'era.
@@ -171,7 +171,7 @@ Nel modulo **Nuova spesa** si possono allegare uno o più PDF o foto (campo "Doc
 
 ## Import con WP All Import (alternativa)
 
-Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizione due "tipi di contenuto di appoggio" che WP All Import vede: **Movimenti APSemplice (import)** e **Soci e ospiti APSemplice (import)**. In WP All Import si sceglie uno dei due, e nei *Campi personalizzati* si trascinano i dati nei campi `apse_*` (elenco in *Soci → Import con WP All Import*). A importazione finita il plugin legge gli elementi, applica le stesse regole dell'import da file (compresi doppioni e saldi), li registra e toglie quelli riusciti; gli errori restano in elenco con il motivo, con i pulsanti *Riprova* ed *Elimina*. Funziona anche con le importazioni pianificate. Solo chi amministra il plugin può creare questi elementi.
+Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizione due "tipi di contenuto di appoggio" che WP All Import vede: **Movimenti AssociazioneSemplice (import)** e **Soci e ospiti AssociazioneSemplice (import)**. In WP All Import si sceglie uno dei due, e nei *Campi personalizzati* si trascinano i dati nei campi `asem_*` (elenco in *Soci → Import con WP All Import*). A importazione finita il plugin legge gli elementi, applica le stesse regole dell'import da file (compresi doppioni e saldi), li registra e toglie quelli riusciti; gli errori restano in elenco con il motivo, con i pulsanti *Riprova* ed *Elimina*. Funziona anche con le importazioni pianificate. Solo chi amministra il plugin può creare questi elementi.
 
 ## QR della tessera e biglietti QR degli eventi (facoltativi)
 
@@ -191,7 +191,7 @@ La tessera nel wallet mostra nome, tipo, numero e scadenza **al momento dell'emi
 
 ## Gestione degli eventi: gestori, lista prenotati e registrazione degli ingressi
 
-Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre al referente e agli amministratori) possono, dall'**area riservata** (shortcode `[apsemplice_ingressi]`, incluso in `[apsemplice_area_soci]`), solo per quell'evento:
+Per ogni evento o evento ricorrente, nella scheda in amministrazione c'è **Gestori dell'evento**: i soci o volontari indicati (oltre al referente e agli amministratori) possono, dall'**area riservata** (shortcode `[associazionesemplice_ingressi]`, incluso in `[associazionesemplice_area_soci]`), solo per quell'evento:
 - vedere l'elenco delle date e, aprendone una, la **lista dei prenotati** con tipo (socio/ospite e di chi), contributo (versato, da versare, gratuito), ora di ingresso e contatori (prenotati, presenti, da registrare, contributi da versare), con ricerca per nome e filtri. Non compaiono email o telefoni;
 - **registrare l'ingresso** di ogni persona (o annullare la registrazione), **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno, dalla scheda dell'evento in amministrazione (colonna "Ingresso");
 - **scansionare il QR del biglietto** (se per l'evento è attivo il biglietto QR): dal pulsante "Scansiona", nei browser che sanno leggere i QR; altrimenti con la fotocamera del telefono, che apre la pagina del biglietto, dove chi gestisce l'evento (con l'accesso effettuato) trova il pulsante "Registra ingresso". Il biglietto già usato risulta "Ingresso già registrato", così una copia del QR non entra due volte, e se il contributo non è versato lo si vede subito.
@@ -273,7 +273,7 @@ Un corso si **rinnova da solo ogni mese** finché l'iscritto non viene "disdetto
 
 La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti tranne i soci fondatori (tessera sempre rinnovata). Chi si iscrive a fine anno può pagare la tessera dell'anno dopo e avere gratis quella in corso.
 
-- **Calendario nel sito**: lo shortcode `[apsemplice_calendario]` (blocco/widget "Calendario") mostra ai soci il mese con lezioni ed eventi, evidenziando le loro attività; è anche una sezione dell'area soci. Se il collegamento calendario è acceso, ci sono i link per aggiungerlo a Google Calendar, Apple o Outlook.
+- **Calendario nel sito**: lo shortcode `[associazionesemplice_calendario]` (blocco/widget "Calendario") mostra ai soci il mese con lezioni ed eventi, evidenziando le loro attività; è anche una sezione dell'area soci. Se il collegamento calendario è acceso, ci sono i link per aggiungerlo a Google Calendar, Apple o Outlook.
 - **Fine anno**: "anno in corso gratis" vale solo quando si compra la tessera dell'anno prossimo e il socio non ha già quella in corso.
 
 ## Programma di eventi e corsi
@@ -317,7 +317,7 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 ## Staff (solo soci), tesoriere che incassa e consiglio direttivo
 
 - **Ingresso sul posto dello staff**: solo per **soci** (mai ospiti, nemmeno nuovi: li gestisce la segreteria) e solo in **contanti o POS** (si sceglie il conto tra quelli di quel tipo). Referente e amministratori da pagina evento restano senza questo limite.
-- **Tesoriere**: oltre alle spese può **incassare tutto** dall'area riservata (pagina `[apsemplice_spese]`, riquadro "Incassa"): persona, conto e fino a tre voci tra quota associativa (l'anno si calcola da solo), eventi e altre entrate. Capability `apse_collect`.
+- **Tesoriere**: oltre alle spese può **incassare tutto** dall'area riservata (pagina `[associazionesemplice_spese]`, riquadro "Incassa"): persona, conto e fino a tre voci tra quota associativa (l'anno si calcola da solo), eventi e altre entrate. Capability `asem_collect`.
 - **Consiglio direttivo**: tre cariche, assegnabili solo a soci **fondatori o ordinari in regola** con la tessera: **1 presidente**, **1 vicepresidente** e **consiglieri** (7 di default, il numero si cambia in Impostazioni → "Consiglio direttivo"). Si assegnano dalla scheda del socio; l'elenco compare in cima a "Soci e ospiti", con avviso se la tessera di qualcuno non è più in regola.
 
 ## Sicurezza: due correzioni
@@ -329,7 +329,7 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 
 Controllo di accessi, permessi, query, pagamenti, allegati, token dei QR, calendario condiviso, importazioni, output delle pagine e logica delle prenotazioni. Corretto:
 
-- **Messaggi di esito firmati** (`Flash`): una pagina mostra solo i messaggi scritti dal sito; un testo messo in un link (`?apsf_err=…`) non compare più come avviso ufficiale (phishing/inganno sul tuo dominio). Vale per area soci e amministrazione.
+- **Messaggi di esito firmati** (`Flash`): una pagina mostra solo i messaggi scritti dal sito; un testo messo in un link (`?asemf_err=…`) non compare più come avviso ufficiale (phishing/inganno sul tuo dominio). Vale per area soci e amministrazione.
 - **Ingresso sul posto e incassi del tesoriere**: un socio con la tessera scaduta non si prenota più da qui (come dal sito): deve rinnovare (il tesoriere può farlo nello stesso incasso).
 - **Posti degli eventi**: il controllo della capienza e la prenotazione avvengono sotto blocco; due richieste insieme non superano più i posti né creano doppie prenotazioni.
 - **Cambio di nominativo**: usa la stessa transazione della prima nota (prima, dentro un'operazione unica, poteva confermarla a metà).
@@ -363,7 +363,7 @@ Chi non ha email (un ospite) riceve il messaggio tramite il socio che lo ospita 
 **Ricevute in PDF**
 - Ogni incasso ha una **ricevuta** (Prima nota → "Ricevuta PDF", "invia per email" a chi ha pagato). Numero progressivo **N/AAAA** assegnato alla prima emissione e fisso; titolo "Ricevuta di erogazione liberale" se sono solo donazioni; firma "Per l'associazione" con il nome del Presidente (se assegnato) e una riga finale a tua scelta (es. riferimento normativo). Un incasso annullato non ha ricevuta.
 - **Attestazione annuale** dei versamenti di una persona (quote, contributi, erogazioni liberali con i totali): scheda persona e area soci.
-- Nell'area soci: shortcode `[apsemplice_ricevute]` (incluso in `[apsemplice_area_soci]`) con l'elenco e i download. Le vede solo chi ha pagato (o il socio che ospita chi ha pagato) e gli amministratori.
+- Nell'area soci: shortcode `[associazionesemplice_ricevute]` (incluso in `[associazionesemplice_area_soci]`) con l'elenco e i download. Le vede solo chi ha pagato (o il socio che ospita chi ha pagato) e gli amministratori.
 - Il PDF è generato dal plugin senza librerie esterne; in CI si controlla con `pdfinfo`/`pdftotext`.
 
 ## Testi personalizzati (Impostazioni → Testi personalizzati)
@@ -384,7 +384,7 @@ Tutti i testi che il plugin mostra si possono cambiare: pagine dei soci, email e
 ## Segreteria, regolamento e lista d'attesa
 
 - **Segreteria** (ruolo WordPress «Segreteria APS»): un socio con accesso al sito che lavora nell'amministrazione senza essere amministratore del sito. Si assegna dalla scheda del socio (riquadro «Segreteria», solo amministratori). Può gestire soci e ospiti, corsi ed eventi, prima nota (incassi, spese, giroconti, conti e fondi), importazioni e report, ricevute ed esportazioni. **Non** vede Impostazioni (pagamenti online, tessera e QR, promemoria/privacy/regolamento, testi personalizzati, registro azioni), gli anni solari, né i comandi per tesoriere, cariche e anonimizzazione.
-- **Regolamento** (Impostazioni → Promemoria, privacy, regolamento e ricevute): testo e/o pagina, titolo, versione. Se attivo, chi attiva il proprio accesso deve accettarlo; i soci già iscritti lo trovano in cima alla loro area e finché non lo accettano non possono prenotare (si può disattivare il blocco). Si registra data, versione e modalità (sito, modulo cartaceo, a voce); l'amministrazione lo registra dalla scheda del socio. Cambiando la **versione** tutti devono accettare di nuovo. Filtro «Regolamento non accettato» nella Rubrica. Shortcode `[apsemplice_regolamento]`.
+- **Regolamento** (Impostazioni → Promemoria, privacy, regolamento e ricevute): testo e/o pagina, titolo, versione. Se attivo, chi attiva il proprio accesso deve accettarlo; i soci già iscritti lo trovano in cima alla loro area e finché non lo accettano non possono prenotare (si può disattivare il blocco). Si registra data, versione e modalità (sito, modulo cartaceo, a voce); l'amministrazione lo registra dalla scheda del socio. Cambiando la **versione** tutti devono accettare di nuovo. Filtro «Regolamento non accettato» nella Rubrica. Shortcode `[associazionesemplice_regolamento]`.
 - **Lista d'attesa**: a posti finiti il socio (o chi ospita) mette sé stesso o un ospite in coda dall'elenco eventi, con la posizione e il pulsante per uscire. Se qualcuno annulla, o si aumentano i posti, entra automaticamente il primo della lista e riceve una email (agli ospiti senza email arriva al socio che li ospita). Chi nel frattempo ha la tessera scaduta, è sospeso o non ha accettato il regolamento viene saltato. La coda è visibile e modificabile nella scheda dell'evento.
 
 ## Comunicazioni a gruppi e copia di sicurezza
@@ -423,7 +423,7 @@ Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Reg
 
 ## 5x1000, guida iniziale e lingue
 
-- **5x1000** (Contabilità → Adempimenti, spento di default; lo attiva un amministratore): il messaggio per chiedere la firma ai soci con il codice fiscale dell'associazione (testo standard o personalizzato con `{associazione}` e `{codice_fiscale}`), visibile dove inserisci lo shortcode `[apsemplice_cinquepermille]` o il blocco omonimo; un pulsante prepara il promemoria ai soci nelle Comunicazioni, già scritto. Il registro dei **contributi ricevuti** (anno di imposta, importo, scelte, data di accredito) calcola la scadenza del **rendiconto sull'utilizzo** a 12 mesi dall'accredito e avvisa in Bacheca quando è scaduto o sta per scadere (60 giorni); il rendiconto si registra con data e descrizione dell'uso.
+- **5x1000** (Contabilità → Adempimenti, spento di default; lo attiva un amministratore): il messaggio per chiedere la firma ai soci con il codice fiscale dell'associazione (testo standard o personalizzato con `{associazione}` e `{codice_fiscale}`), visibile dove inserisci lo shortcode `[associazionesemplice_cinquepermille]` o il blocco omonimo; un pulsante prepara il promemoria ai soci nelle Comunicazioni, già scritto. Il registro dei **contributi ricevuti** (anno di imposta, importo, scelte, data di accredito) calcola la scadenza del **rendiconto sull'utilizzo** a 12 mesi dall'accredito e avvisa in Bacheca quando è scaduto o sta per scadere (60 giorni); il rendiconto si registra con data e descrizione dell'uso.
 - **Guida iniziale** (Impostazioni → Guida iniziale): sette passi controllati sullo stato reale dei dati (denominazione e codice fiscale, quota, soci, presidente, area riservata, primo corso o evento, copia di sicurezza), le funzioni facoltative con il loro stato (attive/spente) e le risposte alle domande più comuni. In Bacheca compare un avviso finché mancano passi; si può nascondere (per utente).
 - **Lingue** (Impostazioni → Testi personalizzati, in cima): i testi sono scritti in italiano; un **pacchetto di traduzione** è una tabella «testo italiano → traduzione» applicata a pagine, email e PDF prima delle personalizzazioni (che hanno sempre la precedenza). Il pacchetto **inglese** è incluso (`languages/en.json`). Si possono caricare altre lingue (CSV, Excel o JSON con colonne «Originale» e «Traduzione», partendo dall'esportazione dei testi) con un codice (`fr`, `de`, `es`…) e un nome. Le parole singole e brevi («Salva», «Data») si traducono solo se sono il testo intero. Le frasi senza traduzione restano in italiano; la pagina dei testi resta sempre in italiano.
 - Database v30: tabella `fivepm`; impostazioni `fivepm_enabled`, `fivepm_text`, `language`.
@@ -436,19 +436,19 @@ Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Reg
 - **Tecniche** (solo amministratori): Integrazioni (WooCommerce, collegamenti con gli altri servizi), Pagamenti online (Stripe e PayPal), Tessera/QR/Wallet (credenziali e rigenerazione), **Ruoli e accessi**, Copia di sicurezza, Registro azioni.
 - **Contabilità**: opzioni contabili (interruttore per **Report e rendiconto**: spento, le schede spariscono ma la prima nota resta) con i rimandi a quota, anni solari, conti e fondi, ricevute.
 
-**Ruoli e accessi**: oltre ad amministratori e «Segreteria APS» (assegnata dalla scheda del socio) si può dare l'accesso operativo — lo stesso della segreteria, senza impostazioni, pagamenti, copia e testi — a qualunque altro ruolo di WordPress (capability `apse_operate`). Tesoriere e staff degli eventi restano ruoli sulle persone.
+**Ruoli e accessi**: oltre ad amministratori e «Segreteria APS» (assegnata dalla scheda del socio) si può dare l'accesso operativo — lo stesso della segreteria, senza impostazioni, pagamenti, copia e testi — a qualunque altro ruolo di WordPress (capability `asem_operate`). Tesoriere e staff degli eventi restano ruoli sulle persone.
 
 **WooCommerce** (Impostazioni → Tecniche → Integrazioni, spento di default): la compatibilità si attiva con «Usa WooCommerce per i pagamenti online» e sostituisce Stripe e PayPal come gateway.
 - Ogni **quota associativa** (per livello di socio) e ogni **corso o evento** si collega a un prodotto semplice (meglio se virtuale); un **prodotto generico** copre le voci senza un prodotto proprio, come le mensilità.
 - Il socio sceglie le voci da «Pagamenti» nell'area soci e va al checkout del negozio: nel carrello il **prezzo è quello calcolato dal server** (quota del livello, sconto familiare, mensilità dovute), non quello di listino.
-- Quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota (conto «WooCommerce», ricevuta e tessera rinnovata) **una sola volta**; se l'importo pagato è diverso da quello atteso entra come «non abbinato» e il pagamento va controllato. Ordini annullati o falliti chiudono il pagamento in attesa. Gli ordini senza voci APSemplice non vengono toccati; i rimborsi si registrano a mano.
+- Quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota (conto «WooCommerce», ricevuta e tessera rinnovata) **una sola volta**; se l'importo pagato è diverso da quello atteso entra come «non abbinato» e il pagamento va controllato. Ordini annullati o falliti chiudono il pagamento in attesa. Gli ordini senza voci AssociazioneSemplice non vengono toccati; i rimborsi si registrano a mano.
 - Database v31: tabella `woo_links`; impostazioni `woo_default_product`, `card_enabled`, `reports_enabled`.
 
 ## App installabile (PWA) e notifiche push
 
 Impostazioni → Tecniche → **App e notifiche** (spenta di default; gli interruttori sono anche nell'elenco delle funzioni di «Generale»).
 
-- **App installabile**: manifest, service worker e icone sono serviti dalla radice del sito (`/apse-manifest.webmanifest`, `/apse-sw.js`, `/apse-offline.html`, `/apse-icon-192.png`) senza regole di riscrittura; il sito aggiunge ai suoi `<head>` manifest, colore del tema (colore d'accento) e icona per iPhone. Nome e nome breve si scelgono qui (vuoto = denominazione); l'icona è un PNG quadrato (≥192 px, meglio 512) caricato nella libreria media, altrimenti l'icona del sito o un quadrato del colore d'accento. La sezione «App e notifiche» dell'area soci (anche shortcode `[apsemplice_app]`) mostra «Installa l'app» e, su iPhone, le istruzioni per la schermata Home.
+- **App installabile**: manifest, service worker e icone sono serviti dalla radice del sito (`/asem-manifest.webmanifest`, `/asem-sw.js`, `/asem-offline.html`, `/asem-icon-192.png`) senza regole di riscrittura; il sito aggiunge ai suoi `<head>` manifest, colore del tema (colore d'accento) e icona per iPhone. Nome e nome breve si scelgono qui (vuoto = denominazione); l'icona è un PNG quadrato (≥192 px, meglio 512) caricato nella libreria media, altrimenti l'icona del sito o un quadrato del colore d'accento. La sezione «App e notifiche» dell'area soci (anche shortcode `[associazionesemplice_app]`) mostra «Installa l'app» e, su iPhone, le istruzioni per la schermata Home.
 - Il **service worker non salva mai le pagine**: i dati personali restano solo in rete. Offre soltanto una pagina «Sei offline», la cache degli stili e degli script del plugin e le notifiche. Spegnendo l'app il service worker si rimuove da solo dai dispositivi.
 - **Notifiche push** (Web Push, RFC 8291 con cifratura aes128gcm e firma VAPID ES256, in puro PHP con openssl): il socio le attiva con un tocco dall'area soci su ogni dispositivo (al massimo 10 per utente). Partono insieme alle email per: **comunicazioni a gruppi**, **avvisi dei volontari** agli iscritti, **promemoria** e **posti liberati dalla lista d'attesa**; chi non le ha attivate riceve solo l'email. Gli indirizzi delle sottoscrizioni devono essere https e di un servizio di push noto (Google, Mozilla, Apple, Microsoft): niente richieste verso indirizzi arbitrari. Le sottoscrizioni scadute (404/410) o con 5 errori di seguito vengono tolte. Le chiavi VAPID sono create alla prima accensione (la privata è cifrata nel database) e si possono rigenerare.
 - Requisiti: sito in https, permalink «carini», estensione openssl di PHP per le notifiche. Su iPhone servono iOS 16.4+ e l'app aggiunta alla Home.
@@ -528,7 +528,7 @@ Tutti i limiti operativi mantengono il valore predefinito di sempre ma si posson
 
 - **Stripe e PayPal insieme**: nuova scelta «Stripe e PayPal insieme». Nell'area soci compare un pulsante per metodo, con la **dicitura** e la **nota** che scegli (ad esempio «Paga a rate con PayPal»); se la configurazione di uno dei due è incompleta resta attivo l'altro. WooCommerce resta alternativo. Anche le diciture del negozio si personalizzano.
 - **Pagamenti online disattivabili**: con «Nessuno» i soci vedono cosa devono e l'invito a pagare in sede, oppure il bonifico.
-- **Bonifico** (spento di default): uno o più IBAN (fino a 5, controllati con la cifra di controllo) mostrati nell'area soci accanto a ciò che si deve pagare, con la causale già pronta («Cognome Nome - voci») e il pulsante «Copia»; il socio se li fa mandare per email (sempre e solo al suo indirizzo, con un limite all'ora); si possono aggiungere ai promemoria di pagamento; lo shortcode `[apsemplice_bonifico]` li mostra anche a chi non è socio (donazioni). Le coordinate si modificano solo da Impostazioni → Pagamenti online (amministratori): ogni cambio finisce nel registro azioni con l'IBAN mascherato e avvisa per email tutti gli amministratori.
+- **Bonifico** (spento di default): uno o più IBAN (fino a 5, controllati con la cifra di controllo) mostrati nell'area soci accanto a ciò che si deve pagare, con la causale già pronta («Cognome Nome - voci») e il pulsante «Copia»; il socio se li fa mandare per email (sempre e solo al suo indirizzo, con un limite all'ora); si possono aggiungere ai promemoria di pagamento; lo shortcode `[associazionesemplice_bonifico]` li mostra anche a chi non è socio (donazioni). Le coordinate si modificano solo da Impostazioni → Pagamenti online (amministratori): ogni cambio finisce nel registro azioni con l'IBAN mascherato e avvisa per email tutti gli amministratori.
 
 ## Configurazione guidata
 
@@ -599,10 +599,10 @@ La pagina Impostazioni → Ruoli e accessi riporta la matrice «chi può fare co
 
 ## Aree del sito, blocchi e widget
 
-Le viste (shortcode, blocco Gutenberg «APSemplice», widget Elementor «APSemplice») sono raggruppate per area e nei selettori compaiono nominate e ordinate così («Soci · Tessera digitale»):
+Le viste (shortcode, blocco Gutenberg «AssociazioneSemplice», widget Elementor «AssociazioneSemplice») sono raggruppate per area e nei selettori compaiono nominate e ordinate così («Soci · Tessera digitale»):
 - **Soci**: area soci, tessera, le mie attività, pagamenti, ricevute, regolamento, ospiti, profilo, avvisi, calendario, app.
-- **Segreteria**: `[apsemplice_segreteria]` — richieste di accesso da evadere e collegamenti alla gestione (visibile a segreteria, presidente e vicepresidente; agli altri compare un avviso).
-- **Tesoriere**: `[apsemplice_tesoriere]` — incassi, cassa per più persone, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi (il vecchio `[apsemplice_spese]` continua a funzionare).
+- **Segreteria**: `[associazionesemplice_segreteria]` — richieste di accesso da evadere e collegamenti alla gestione (visibile a segreteria, presidente e vicepresidente; agli altri compare un avviso).
+- **Tesoriere**: `[associazionesemplice_tesoriere]` — incassi, cassa per più persone, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi (il vecchio `[associazionesemplice_spese]` continua a funzionare).
 - **Eventi**: area volontari (le attività che gestisci, avvisi, iscritti) e ingressi agli eventi (prenotati, QR, registrazione per responsabili e staff).
 - **Pubblico**: elenco attività, prossimi eventi, coordinate per il bonifico, 5x1000, accesso.
 
@@ -643,19 +643,19 @@ Non si libera mai il posto di chi ha già versato (anche in parte), di chi sta p
 
 ## Edizioni: gratuita e Pro, e licenza scaduta
 
-APSemplice (gratuito) contiene il nucleo; **APSemplice Pro** è un plugin a parte che si aggiunge e richiede l'altro attivo. Le due edizioni condividono dati e classi: una funzione avanzata esiste se il suo file è presente (`Edition::has`).
+AssociazioneSemplice (gratuito) contiene il nucleo; **AssociazioneSemplice Pro** è un plugin a parte che si aggiunge e richiede l'altro attivo. Le due edizioni condividono dati e classi: una funzione avanzata esiste se il suo file è presente (`Edition::has`).
 
 - **Nel gratuito**: libro soci con una sola quota (più l'opzione socio fondatore), tessera con QR, ospiti, eventi e corsi, prima nota con una cassa unica, privacy, verbali, copia di sicurezza, area soci minima, ruoli, configurazione guidata, donazioni con PayPal, WP All Import ed Elementor. Esportazioni: solo libro soci e prima nota.
 - **Nel Pro**: pagamenti online, conti multipli e fondi, contabilità e report, 5 per mille, assicurazioni e presenze, comunicazioni di massa, app e notifiche, Wallet, ricevute PDF, incasso sul posto, IVA, più livelli di socio, personalizzazione dei testi (testi, lingue, tipo di ente e termini), licenza.
-- **Licenza non in regola** (pagamento mancante o dominio non più associato): APSemplice Pro **torna alle funzioni di base**. Le funzioni avanzate spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata (con il collegamento per farlo); in cima alle pagine c'è un avviso, ma niente copre i dati. Le quote diverse dei soci non si applicano più (vale la quota sola), la scelta del tipo di socio sparisce e i soci con un livello proprio pagano la quota generale. Soci, volontari ed esportazioni di base non si bloccano mai. I pagamenti online già avviati si chiudono comunque (webhook, ritorno dal gateway, controllo periodico), così gli incassi in arrivo si registrano. Regolarizzata la licenza, tutto torna come prima: i dati non si toccano.
-- I pacchetti si costruiscono con `wordpress/build.sh`; l'elenco dei file avanzati è in `apsemplice/tests/pro-files.txt`.
+- **Licenza non in regola** (pagamento mancante o dominio non più associato): AssociazioneSemplice Pro **torna alle funzioni di base**. Le funzioni avanzate spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata (con il collegamento per farlo); in cima alle pagine c'è un avviso, ma niente copre i dati. Le quote diverse dei soci non si applicano più (vale la quota sola), la scelta del tipo di socio sparisce e i soci con un livello proprio pagano la quota generale. Soci, volontari ed esportazioni di base non si bloccano mai. I pagamenti online già avviati si chiudono comunque (webhook, ritorno dal gateway, controllo periodico), così gli incassi in arrivo si registrano. Regolarizzata la licenza, tutto torna come prima: i dati non si toccano.
+- I pacchetti si costruiscono con `wordpress/build.sh`; l'elenco dei file avanzati è in `associazionesemplice/tests/pro-files.txt`.
 
 ## Livelli di licenza del Pro e pagina «Scopri il Pro»
 
 - **Pro (contabile)**: pagamenti online, conti e fondi, report di gestione, quote diverse, comunicazioni, app e Wallet, incasso sul posto, assicurazioni e presenze.
 - **Pro Fiscale**: in più IVA, 5 per mille, anni solari e rendiconto per il commercialista (più avanti la fatturazione elettronica) (`Edition::FISCAL`).
 - Il livello lo comunica il servizio delle licenze (`License::set_state( stato, dal, indirizzo, livello )`). Finché la verifica non è attiva (standby) il Pro vale come **completo**, fiscale compreso. Con la licenza scaduta si torna alle funzioni di base, con livello contabile spariscono solo le funzioni fiscali.
-- Nel gratuito (e col livello contabile) la voce di menu **Scopri il Pro** apre una pagina solo informativa con le funzioni dei due livelli (nessuna funzione finta); in Soldi c'è un'unica riga discreta. L'indirizzo del sito è modificabile con il filtro `apse_pro_url`.
+- Nel gratuito (e col livello contabile) la voce di menu **Scopri il Pro** apre una pagina solo informativa con le funzioni dei due livelli (nessuna funzione finta); in Soldi c'è un'unica riga discreta. L'indirizzo del sito è modificabile con il filtro `asem_pro_url`.
 
 ## Colori
 
@@ -667,15 +667,15 @@ Il colore d'accento (tessera, pulsanti) è quello scelto in Impostazioni → Asp
 
 ## Personalizzazione dei testi (Pro)
 
-Testi modificabili, lingue aggiuntive e tipo di ente con i termini («associazione/comitato», «socio/tesserato») sono una funzione di **APSemplice Pro** (`TextsEngine.php`, `Terms.php`, `Languages.php`, `Admin/TextsPage.php`). Nel gratuito resta `Texts.php`, una facciata (`mail`, `plain`, `html`, `flush`) che lascia i testi originali. Con la licenza scaduta tornano i testi originali; le personalizzazioni restano salvate. L'elenco dei testi non comincia mai con la punteggiatura che separa un frammento da ciò che lo precede.
+Testi modificabili, lingue aggiuntive e tipo di ente con i termini («associazione/comitato», «socio/tesserato») sono una funzione di **AssociazioneSemplice Pro** (`TextsEngine.php`, `Terms.php`, `Languages.php`, `Admin/TextsPage.php`). Nel gratuito resta `Texts.php`, una facciata (`mail`, `plain`, `html`, `flush`) che lascia i testi originali. Con la licenza scaduta tornano i testi originali; le personalizzazioni restano salvate. L'elenco dei testi non comincia mai con la punteggiatura che separa un frammento da ciò che lo precede.
 
 ## Informativa privacy (GDPR)
 
-`PrivacyNotice.php` compila da sola l'informativa (artt. 13 e 14 GDPR) con i dati dell'ente (Dati e fiscalità: denominazione, codice fiscale, sede, PEC; Impostazioni → Privacy: email per la privacy). Il **responsabile del trattamento** è il presidente (Consiglio direttivo); in mancanza, il socio con il ruolo di segreteria. Dichiara: comunicazione a terzi solo per le finalità connesse agli eventi cui si partecipa, nessuna cessione per scopi commerciali, trattamento con strumenti informatici e nessuna profilazione commerciale. Cita Stripe/PayPal, Wallet e notifiche solo se attivi. Si vede in anteprima nelle impostazioni, si scarica in PDF (con la firma di presa visione) e diventa una pagina del sito (shortcode `[apsemplice_privacy]`), collegata all'informativa richiesta a chi attiva l'accesso se non ne c'era una. È un modello: va fatto verificare dal consulente.
+`PrivacyNotice.php` compila da sola l'informativa (artt. 13 e 14 GDPR) con i dati dell'ente (Dati e fiscalità: denominazione, codice fiscale, sede, PEC; Impostazioni → Privacy: email per la privacy). Il **responsabile del trattamento** è il presidente (Consiglio direttivo); in mancanza, il socio con il ruolo di segreteria. Dichiara: comunicazione a terzi solo per le finalità connesse agli eventi cui si partecipa, nessuna cessione per scopi commerciali, trattamento con strumenti informatici e nessuna profilazione commerciale. Cita Stripe/PayPal, Wallet e notifiche solo se attivi. Si vede in anteprima nelle impostazioni, si scarica in PDF (con la firma di presa visione) e diventa una pagina del sito (shortcode `[associazionesemplice_privacy]`), collegata all'informativa richiesta a chi attiva l'accesso se non ne c'era una. È un modello: va fatto verificare dal consulente.
 
 ## Area riservata con menu laterale
 
-`[apsemplice_area_soci]` mostra «Il mio spazio» (tessera, attività, pagamenti, ospiti, profilo, avvisi, calendario) e, a chi ha il ruolo, un piccolo menu laterale con **Segreteria**, **Gestione corsi** e **Gestione eventi** (`?apsf_vista=`). Con l'attributo `sezioni` si torna all'elenco piatto. La voce «Area riservata» si aggiunge al menu di navigazione del sito quando si crea la pagina «Area soci».
+`[associazionesemplice_area_soci]` mostra «Il mio spazio» (tessera, attività, pagamenti, ospiti, profilo, avvisi, calendario) e, a chi ha il ruolo, un piccolo menu laterale con **Segreteria**, **Gestione corsi** e **Gestione eventi** (`?asemf_vista=`). Con l'attributo `sezioni` si torna all'elenco piatto. La voce «Area riservata» si aggiunge al menu di navigazione del sito quando si crea la pagina «Area soci».
 
 ## Tessera personalizzata
 
@@ -687,4 +687,4 @@ Strumenti → Integrazioni: con la chiave API di Google Maps dell'ente (spenta d
 
 ## Versioni
 
-APSemplice e APSemplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`APSE_API` / `APSE_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.
+AssociazioneSemplice e AssociazioneSemplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`ASEM_API` / `ASEM_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.

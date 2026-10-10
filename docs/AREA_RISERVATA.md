@@ -7,8 +7,8 @@ il builder decide colonne, spazi e sfondi. Lo stile (`assets/frontend.css`) ered
 
 | Builder | Come |
 |---|---|
-| **Gutenberg** | blocco **APSemplice** (scegli la vista dalla barra laterale) e blocco **Contenuto riservato** (contenitore: i blocchi dentro li vedono solo gli aventi diritto) |
-| **Elementor** | widget **APSemplice** e widget **Contenuto riservato (APSemplice)**, categoria "APSemplice" |
+| **Gutenberg** | blocco **AssociazioneSemplice** (scegli la vista dalla barra laterale) e blocco **Contenuto riservato** (contenitore: i blocchi dentro li vedono solo gli aventi diritto) |
+| **Elementor** | widget **AssociazioneSemplice** e widget **Contenuto riservato (AssociazioneSemplice)**, categoria "AssociazioneSemplice" |
 | **Qualunque editor** | shortcode (sotto); funzionano anche nei blocchi/widget "Shortcode" |
 
 Da *Impostazioni → Crea le pagine standard* nascono: **Area soci**, **Area volontari** (riservata ai volontari) e **Attività ed eventi**,
@@ -18,12 +18,12 @@ già con gli shortcode dentro. L'Area soci diventa la pagina di arrivo dopo il l
 
 | Shortcode | Cosa mostra | Chi |
 |---|---|---|
-| `[apsemplice_area_soci]` | tessera, le mie attività, ospiti, profilo (e le attività che gestisci, se volontario). Opzione `sezioni="tessera,attivita,ospiti,profilo,volontario"` | soci |
-| `[apsemplice_tessera]` `[apsemplice_mie_attivita]` `[apsemplice_ospiti]` `[apsemplice_profilo]` | le singole sezioni, da disporre come vuoi | soci |
-| `[apsemplice_area_volontari]` | le attività che gestisci: iscritti (solo nomi) e prenotati per data | volontari |
-| `[apsemplice_attivita]` | elenco pubblico di corsi ed eventi con contributi e prossime date; filtri `tipo="corso\|evento\|ricorrente"`, `anno="2025/2026"`, `id="12"`, `date="5"` | tutti (prenota chi ha tessera valida) |
-| `[apsemplice_prossimi_eventi limite="5" prenotazione="si\|no"]` | le prossime date | tutti |
-| `[apsemplice_accesso]` | modulo di accesso (sparisce se sei già dentro) | tutti |
+| `[associazionesemplice_area_soci]` | tessera, le mie attività, ospiti, profilo (e le attività che gestisci, se volontario). Opzione `sezioni="tessera,attivita,ospiti,profilo,volontario"` | soci |
+| `[associazionesemplice_tessera]` `[associazionesemplice_mie_attivita]` `[associazionesemplice_ospiti]` `[associazionesemplice_profilo]` | le singole sezioni, da disporre come vuoi | soci |
+| `[associazionesemplice_area_volontari]` | le attività che gestisci: iscritti (solo nomi) e prenotati per data | volontari |
+| `[associazionesemplice_attivita]` | elenco pubblico di corsi ed eventi con contributi e prossime date; filtri `tipo="corso\|evento\|ricorrente"`, `anno="2025/2026"`, `id="12"`, `date="5"` | tutti (prenota chi ha tessera valida) |
+| `[associazionesemplice_prossimi_eventi limite="5" prenotazione="si\|no"]` | le prossime date | tutti |
+| `[associazionesemplice_accesso]` | modulo di accesso (sparisce se sei già dentro) | tutti |
 
 **Dal sito i soci possono**: prenotarsi a un evento (anche per i propri ospiti, con il contributo ospiti), annullare una prenotazione di un evento non ancora passato,
 aggiungere un ospite, aggiornare telefono e codice fiscale. Per prenotare serve la **tessera valida**. Nome ed email li cambia solo l'associazione.
@@ -34,7 +34,7 @@ I volontari **non vedono i contatti** degli iscritti, solo i nomi.
 ## Contenuti riservati
 
 ### Pagine e articoli interi
-Nell'editor compare il riquadro **«Accesso (APSemplice)»**. Chi può leggere:
+Nell'editor compare il riquadro **«Accesso (AssociazioneSemplice)»**. Chi può leggere:
 
 - **Pubblico** (default);
 - **Solo soci** (tessera valida);
@@ -48,7 +48,7 @@ Cosa vede chi non ha diritto: titolo visibile, al posto del testo un riquadro «
 Il contenuto è protetto anche in **riassunti, feed e API REST** (`content.rendered` vuoto e `protected: true`).
 
 ### Parti di pagina
-`[apsemplice_riservato accesso="soci|volontari|attivita" attivita="12,13" messaggio="…"]testo[/apsemplice_riservato]`, il blocco **Contenuto riservato**
+`[associazionesemplice_riservato accesso="soci|volontari|attivita" attivita="12,13" messaggio="…"]testo[/associazionesemplice_riservato]`, il blocco **Contenuto riservato**
 o il widget Elementor omonimo.
 
 ### Con la licenza non in regola
@@ -66,11 +66,11 @@ e il **messaggio sui contenuti riservati**. Il CSS si carica solo nelle pagine c
 
 ## Pagamenti
 
-`[apsemplice_pagamenti]` (incluso in `[apsemplice_area_soci]`, sezione `pagamenti`): elenco di ciò che il socio e i suoi ospiti devono, con totale che si aggiorna selezionando le voci e pulsante "Paga con carta" / "Paga con PayPal". Senza gateway attivo mostra l'elenco e le istruzioni per pagare all'associazione.
+`[associazionesemplice_pagamenti]` (incluso in `[associazionesemplice_area_soci]`, sezione `pagamenti`): elenco di ciò che il socio e i suoi ospiti devono, con totale che si aggiorna selezionando le voci e pulsante "Paga con carta" / "Paga con PayPal". Senza gateway attivo mostra l'elenco e le istruzioni per pagare all'associazione.
 
 ## Spese del tesoriere
 
-`[apsemplice_spese]` (incluso in `[apsemplice_area_soci]`, sezione `spese`, e disponibile come blocco/widget): modulo per registrare una spesa dal telefono, con importo, voce, conto, attività, descrizione e **documenti** (scelti dal telefono o scattati con la fotocamera; le foto sono ridotte prima dell'invio). Sotto, le ultime spese registrate dallo stesso utente, con i documenti e la possibilità di aggiungerne altri.
+`[associazionesemplice_spese]` (incluso in `[associazionesemplice_area_soci]`, sezione `spese`, e disponibile come blocco/widget): modulo per registrare una spesa dal telefono, con importo, voce, conto, attività, descrizione e **documenti** (scelti dal telefono o scattati con la fotocamera; le foto sono ridotte prima dell'invio). Sotto, le ultime spese registrate dallo stesso utente, con i documenti e la possibilità di aggiungerne altri.
 
 - Compare solo a chi ha il permesso **Tesoriere**, che l'amministratore dà dalla scheda del socio (pannello "Tesoriere"). Serve un socio o volontario con accesso al sito; gli ospiti no.
 - Il tesoriere **non vede** saldi dei conti né movimenti di altri e non può annullare o modificare: registra e allega. La data non può essere futura.
