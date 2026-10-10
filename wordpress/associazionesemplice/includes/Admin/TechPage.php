@@ -119,7 +119,7 @@ final class TechPage {
 
 	public static function render_roles(): void {
 		Ui::header( 'Ruoli e accessi' );
-		echo '<p class="description">Chi può usare il plugin: gli <strong>amministratori</strong> hanno tutto; la <strong>Segreteria APS</strong> lavora su soci, attività e contabilità senza toccare le impostazioni (si assegna dalla scheda del socio). '
+		echo '<p class="description">Chi può usare il plugin: gli <strong>amministratori</strong> hanno tutto; la <strong>Segreteria</strong> lavora su soci, attività e contabilità senza toccare le impostazioni (si assegna dalla scheda del socio). '
 			. 'Se ti serve, puoi dare lo stesso accesso operativo a un altro ruolo di WordPress (ad esempio «Editor» o un ruolo creato da te): chi lo ha vede e gestisce soci, attività, registri e prima nota, ma non le impostazioni, i pagamenti, la copia di sicurezza e i testi. '
 			. 'Il tesoriere e lo staff degli eventi sono ruoli sulle persone (scheda del socio e scheda dell\'attività), non ruoli di WordPress.</p>';
 		Ui::form_open( 'asem_save_roles', Ui::url( 'asem-roles' ) );
@@ -129,7 +129,7 @@ final class TechPage {
 		}
 		echo '</tbody></table><p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
-		echo '<p class="description">Per dare l\'accesso a una sola persona, crea o assegna il ruolo «Segreteria APS» dalla sua scheda in Rubrica soci.</p>';
+		echo '<p class="description">Per dare l\'accesso a una sola persona, crea o assegna il ruolo «Segreteria» dalla sua scheda in Rubrica soci.</p>';
 		self::roles_matrix();
 		self::roles_people();
 		Ui::footer();

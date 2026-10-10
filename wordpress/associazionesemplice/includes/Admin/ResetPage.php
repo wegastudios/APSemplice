@@ -34,7 +34,7 @@ final class ResetPage {
 		echo '<h2>Che cosa vuoi azzerare</h2>';
 		echo '<p><label><input type="radio" name="mode" value="data" checked> <strong>Solo i dati</strong></label><br><span class="description">Cancella soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati. <strong>Restano</strong> le impostazioni, i testi personalizzati, le pagine del sito e il registro azioni. Si ricreano conti, voci e livelli predefiniti.</span></p>';
 		echo '<p><label><input type="radio" name="mode" value="factory"> <strong>Ripristino di fabbrica</strong></label><br><span class="description">Come appena installato: cancella anche impostazioni, testi, pagine create dalla procedura e registro azioni, e riapre la configurazione guidata. Le chiavi dei pagamenti online (Stripe, PayPal) restano.</span></p>';
-		echo '<p><label><input type="checkbox" name="users" value="1" checked> Elimina anche gli accessi dei soci (' . (int) $p['users'] . ' utenti WordPress con il solo ruolo «Socio APS»)</label><br><span class="description">Mai gli amministratori, la segreteria e gli altri utenti del sito.</span></p>';
+		echo '<p><label><input type="checkbox" name="users" value="1" checked> Elimina anche gli accessi dei soci (' . (int) $p['users'] . ' utenti WordPress con il solo ruolo «Socio»)</label><br><span class="description">Mai gli amministratori, la segreteria e gli altri utenti del sito.</span></p>';
 		echo '<p><button class="button button-primary">Continua</button></p></form>';
 	}
 
@@ -48,7 +48,7 @@ final class ResetPage {
 		} else {
 			echo '<p><strong>Restano:</strong> impostazioni, testi personalizzati, pagine del sito e registro azioni (con la registrazione di questo azzeramento).</p>';
 		}
-		echo '<p>' . ( $users ? 'Vengono eliminati anche <strong>' . (int) $p['users'] . ' accessi di soci</strong> (utenti con il solo ruolo «Socio APS»).' : 'Gli accessi dei soci (utenti WordPress) non vengono toccati, ma resteranno senza una scheda collegata.' ) . '</p>';
+		echo '<p>' . ( $users ? 'Vengono eliminati anche <strong>' . (int) $p['users'] . ' accessi di soci</strong> (utenti con il solo ruolo «Socio»).' : 'Gli accessi dei soci (utenti WordPress) non vengono toccati, ma resteranno senza una scheda collegata.' ) . '</p>';
 		echo '<p><strong>Prima di cancellare scarica una copia completa dei dati e conservala in un posto sicuro</strong> (è un file con i dati personali di soci e ospiti: trattala come tale). Sul sito non ne resta nessuna: nemmeno le copie salvate in precedenza, che verranno eliminate insieme ai dati.</p>';
 		echo '<p><a class="button button-primary" href="' . esc_url( Backup::download_url( true ) ) . '">Scarica la copia completa</a> ' . ( Backup::downloaded_recently() ? '<span style="color:#1a7f37">✔ Copia scaricata: puoi procedere.</span>' : '<span style="color:#b32d2e">Senza questo passaggio l\'azzeramento non parte.</span>' ) . '</p></div>';
 

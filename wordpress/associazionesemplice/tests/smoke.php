@@ -74,7 +74,8 @@ require_once ABSPATH . 'wp-admin/includes/plugin.php';
 foreach ( array( 'people', 'memberships', 'accounts', 'categories', 'activities', 'enrollments', 'transactions', 'cash_counts' ) as $t ) {
 	asem_ok( Db::t( $t ) === $wpdb->get_var( "SHOW TABLES LIKE '" . Db::t( $t ) . "'" ), "tabella $t" );
 }
-asem_ok( null !== get_role( Plugin::ROLE_MEMBER ), 'ruolo Socio APS' );
+asem_ok( null !== get_role( Plugin::ROLE_MEMBER ), 'ruolo Socio' );
+asem_ok( 'Socio' === wp_roles()->role_names[ Plugin::ROLE_MEMBER ] && 'Segreteria' === wp_roles()->role_names[ Plugin::ROLE_SECRETARY ], 'i ruoli si chiamano «Socio» e «Segreteria»' );
 asem_ok( get_role( 'administrator' )->has_cap( Plugin::CAP ), 'gli amministratori hanno la capability' );
 asem_ok( ! get_role( 'subscriber' )->has_cap( Plugin::CAP ), 'gli altri ruoli no' );
 asem_ok( count( Plugin::ledger()->accounts() ) >= 2, 'conti iniziali' );
@@ -101,7 +102,7 @@ $fp      = $people->get( $founder );
 asem_ok( ! empty( $fp['wp_user_id'] ), 'il socio fondatore ha un utente WordPress' );
 $wpu = get_userdata( (int) $fp['wp_user_id'] );
 asem_ok( 'fulvia@example.com' === $wpu->user_email, 'email dell\'utente = email del socio (minuscola)' );
-asem_ok( array( Plugin::ROLE_MEMBER ) === array_values( $wpu->roles ), 'ruolo Socio APS, nessun accesso admin' );
+asem_ok( array( Plugin::ROLE_MEMBER ) === array_values( $wpu->roles ), 'ruolo Socio, nessun accesso admin' );
 asem_ok( ! user_can( $wpu, Plugin::CAP ), 'il socio non può gestire il plugin' );
 asem_ok( $people->is_active_member( $founder ), 'fondatore: tessera sempre valida' );
 asem_ok( $people->active_until( $founder ) > gmdate( 'Y-m-d', strtotime( '+90 years' ) ), 'fondatore: scadenza a 99 anni' );
@@ -5350,7 +5351,7 @@ asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' )
 asem_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'accounts' ) ) >= 2 && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'categories' ) ) >= 8 && count( \AssociazioneSemplice\Levels::all() ) >= 2 && \AssociazioneSemplice\FiscalYears::is_open( \AssociazioneSemplice\FiscalYears::current() ), 'azzeramento dei dati: conti, voci, livelli e anno solare predefiniti ricreati' );
 asem_ok( 'Associazione da azzerare' === Settings::get( 'association_name' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) >= $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 5 ), 'action' ), true ), 'azzeramento dei dati: impostazioni e registro azioni restano, con la registrazione dell\'azzeramento' );
 asem_ok( 0 === count( \AssociazioneSemplice\Backup::saved() ) && ! \AssociazioneSemplice\Backup::downloaded_recently(), 'azzeramento: sul sito non resta nessuna copia e il permesso di scarico si consuma' );
-asem_ok( false !== get_userdata( 1 ) && $rs_mu && ! array_filter( $rs_mu, function ( $uid ) { return false !== get_userdata( $uid ); } ) && false !== strpos( $rs_msg[1], 'Dati azzerati' ) && $rs_msg[0] === Admin\Ui::url( 'asem' ), 'azzeramento: gli amministratori restano, gli accessi dei soci (solo ruolo «Socio APS») sono eliminati' );
+asem_ok( false !== get_userdata( 1 ) && $rs_mu && ! array_filter( $rs_mu, function ( $uid ) { return false !== get_userdata( $uid ); } ) && false !== strpos( $rs_msg[1], 'Dati azzerati' ) && $rs_msg[0] === Admin\Ui::url( 'asem' ), 'azzeramento: gli amministratori restano, gli accessi dei soci (solo ruolo «Socio») sono eliminati' );
 $rs_new = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Primo', 'last_name' => 'Dopo' ) );
 asem_ok( 1 === (int) $rs_new, 'azzeramento: la numerazione riparte da 1' );
 // ripristino di fabbrica

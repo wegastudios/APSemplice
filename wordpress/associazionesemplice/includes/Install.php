@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '35';
+	const DB_VERSION        = '36';
 
 	public static function activate(): void {
 		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
@@ -621,11 +621,24 @@ final class Install {
 	public static function add_roles_and_caps(): void {
 		// Ruolo per i soci creati come utenti: può solo "read", quindi nessun accesso alla gestione.
 		if ( ! get_role( Plugin::ROLE_MEMBER ) ) {
-			add_role( Plugin::ROLE_MEMBER, 'Socio APS', array( 'read' => true ) );
+			add_role( Plugin::ROLE_MEMBER, 'Socio', array( 'read' => true ) );
 		}
 		// Segreteria: lavora su soci, attività e contabilità, ma non tocca impostazioni, pagamenti online, privacy e testi.
 		if ( ! get_role( Plugin::ROLE_SECRETARY ) ) {
-			add_role( Plugin::ROLE_SECRETARY, 'Segreteria APS', array( 'read' => true, Plugin::CAP_OPS => true ) );
+			add_role( Plugin::ROLE_SECRETARY, 'Segreteria', array( 'read' => true, Plugin::CAP_OPS => true ) );
+		}
+		$wp_roles = wp_roles(); // i ruoli creati con il vecchio nome («Socio APS», «Segreteria APS») prendono il nome nuovo
+		$names    = array( Plugin::ROLE_MEMBER => 'Socio', Plugin::ROLE_SECRETARY => 'Segreteria' );
+		$renamed  = false;
+		foreach ( $names as $key => $name ) {
+			if ( isset( $wp_roles->roles[ $key ] ) && $name !== $wp_roles->roles[ $key ]['name'] ) {
+				$wp_roles->roles[ $key ]['name'] = $name;
+				$wp_roles->role_names[ $key ]    = $name;
+				$renamed                         = true;
+			}
+		}
+		if ( $renamed ) {
+			update_option( $wp_roles->role_key, $wp_roles->roles );
 		}
 		$admin = get_role( 'administrator' );
 		foreach ( array( Plugin::CAP, Plugin::CAP_OPS ) as $cap ) {

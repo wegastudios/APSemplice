@@ -69,7 +69,7 @@ final class SettingsPage {
 		echo '<tr><th>Consiglio direttivo</th><td><input type="number" min="0" max="30" name="board_councillors" value="' . (int) $s['board_councillors'] . '"> consiglieri<p class="description">Le cariche sono 1 presidente, 1 vicepresidente e questo numero di consiglieri. Le assegni dalla scheda del socio fondatore o ordinario in regola.</p></td></tr>';
 		echo '<tr><th>Pagina area riservata</th><td>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput
 			array( 'name' => 'member_area_page_id', 'selected' => (int) $s['member_area_page_id'], 'show_option_none' => '— home del sito —', 'option_none_value' => '0', 'echo' => 0 )
-		) . '<p class="description">La pagina del sito dove soci e volontari accedono alla propria area (si crea dalla sezione «Pagine del sito e shortcode» qui sotto). Chi ha solo il ruolo "Socio APS" viene indirizzato qui al posto di wp-admin.</p></td></tr>';
+		) . '<p class="description">La pagina del sito dove soci e volontari accedono alla propria area (si crea dalla sezione «Pagine del sito e shortcode» qui sotto). Chi ha solo il ruolo "Socio" viene indirizzato qui al posto di wp-admin.</p></td></tr>';
 		if ( Edition::has( 'license' ) ) {
 		$lic = License::status();
 		echo '<tr><th>Chiave di licenza</th><td><input type="text" name="license_key" value="' . esc_attr( (string) $s['license_key'] ) . '" class="regular-text" autocomplete="off">'
@@ -110,7 +110,7 @@ final class SettingsPage {
 		echo '<tr><td><code>[associazionesemplice_riservato accesso="soci"]…[/associazionesemplice_riservato]</code></td><td>Parte di pagina visibile solo ai soci (accesso = soci / volontari / attivita, con attivita="12,13")</td></tr>';
 		echo '</tbody></table><p class="description">Per riservare una <strong>pagina o un articolo intero</strong> usa il riquadro «Accesso (AssociazioneSemplice)» nell\'editor: puoi renderlo visibile ai soli soci, ai volontari o agli iscritti a una o più attività (es. il programma della prima lezione).</p>';
 		echo '<h2>Informazioni</h2><p>L\'amministrazione è riservata agli utenti con ruolo Amministratore (capability <code>asem_manage</code>). '
-			. 'I soci sono utenti WordPress con ruolo "Socio APS", senza accesso a wp-admin; soci e volontari usano l\'area riservata, che comunica con l\'API REST <code>' . esc_html( rest_url( 'associazionesemplice/v1' ) ) . '</code>.</p>';
+			. 'I soci sono utenti WordPress con ruolo "Socio", senza accesso a wp-admin; soci e volontari usano l\'area riservata, che comunica con l\'API REST <code>' . esc_html( rest_url( 'associazionesemplice/v1' ) ) . '</code>.</p>';
 		Ui::footer();
 	}
 
