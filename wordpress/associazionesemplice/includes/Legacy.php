@@ -31,8 +31,7 @@ final class Legacy {
 		self::cron();
 		self::folder();
 		self::deactivate_old_plugins();
-		wp_cache_delete( 'alloptions', 'options' );
-		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_flush(); // le modifiche dirette al database non passano dalla cache di WordPress
 		$GLOBALS['wp_roles'] = null; // i ruoli si rileggono dal database
 		wp_roles();
 	}
