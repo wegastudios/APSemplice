@@ -17,7 +17,7 @@ class ReservedWidget extends Widget_Base {
 	}
 
 	public function get_title() {
-		return 'Contenuto riservato (AssociazioneSemplice)';
+		return 'Contenuto riservato (Associazione Semplice)';
 	}
 
 	public function get_icon() {

@@ -307,7 +307,7 @@ delete_option( License::OPT_STATE );
 asem_ok( \AssociazioneSemplice\Edition::has( 'vat' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) && ! Admin\ProPage::needed(), 'licenza in standby: tutto disponibile come Pro completo, nessuna promozione' );
 // quote diverse: spariscono, resta la quota sola
 $lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
-\AssociazioneSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : AssociazioneSempliceMoney::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \AssociazioneSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
+\AssociazioneSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : \AssociazioneSemplice\Money::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \AssociazioneSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
 $lv_id = 0;
 foreach ( \AssociazioneSemplice\Levels::all() as $l ) {
 	if ( 'Livello con quota propria' === $l['name'] ) {
@@ -619,7 +619,7 @@ wp_set_current_user( 0 );
 asem_ok( false === strpos( $block( 'associazionesemplice/riservato', array( 'accesso' => 'members' ), '<p>BLK</p>' ), 'BLK' ), 'blocco Contenuto riservato: nascosto agli anonimi' );
 wp_set_current_user( $u_f );
 asem_ok( false !== strpos( $block( 'associazionesemplice/riservato', array( 'accesso' => 'members' ), '<p>BLK</p>' ), 'BLK' ), 'blocco Contenuto riservato: visibile ai soci' );
-asem_ok( false !== strpos( $block( 'associazionesemplice/vista', array( 'vista' => 'attivita' ) ), 'Yoga' ), 'blocco AssociazioneSemplice (vista attività)' );
+asem_ok( false !== strpos( $block( 'associazionesemplice/vista', array( 'vista' => 'attivita' ) ), 'Yoga' ), 'blocco Associazione Semplice (vista attività)' );
 wp_set_current_user( 1 );
 asem_ok( file_exists( ASEM_DIR . 'assets/blocks.js' ) && file_exists( ASEM_DIR . 'assets/frontend.css' ), 'asset front-end presenti' );
 
@@ -1177,7 +1177,7 @@ Settings::update( $wz_old );
 // Elementor (installato nel test): i widget si registrano e i controlli si costruiscono
 asem_ok( class_exists( '\Elementor\Plugin' ), 'Elementor è presente nell\'ambiente di test' );
 $el_widgets = \Elementor\Plugin::instance()->widgets_manager->get_widget_types();
-asem_ok( isset( $el_widgets['associazionesemplice_view'] ) && isset( $el_widgets['associazionesemplice_reserved'] ), 'Elementor: widget AssociazioneSemplice registrati' );
+asem_ok( isset( $el_widgets['associazionesemplice_view'] ) && isset( $el_widgets['associazionesemplice_reserved'] ), 'Elementor: widget Associazione Semplice registrati' );
 asem_ok( array_key_exists( 'view', $el_widgets['associazionesemplice_view']->get_controls() ) && array_key_exists( 'rule', $el_widgets['associazionesemplice_reserved']->get_controls() ), 'Elementor: i controlli dei widget si costruiscono' );
 asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/Elementor/ViewWidget.php' ), 'Areas::options()' ) && false !== strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/Blocks.php' ), 'Areas::options()' ), 'blocco e widget: propongono le viste per area' );
 wp_set_current_user( 1 );
@@ -4930,7 +4930,7 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	};
 	$tx_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
 	$wc_o = $wc_order( $wc_pay['public_id'], $wc_q, $wc_fee / 100 );
-	asem_ok( $wc_fee === ( \AssociazioneSemplice\WooBridge::paid_by_payment( $wc_o )[ $wc_pay['public_id'] ] ?? 0 ), 'woocommerce: l\'importo pagato per le voci AssociazioneSemplice si legge dall\'ordine' );
+	asem_ok( $wc_fee === ( \AssociazioneSemplice\WooBridge::paid_by_payment( $wc_o )[ $wc_pay['public_id'] ] ?? 0 ), 'woocommerce: l\'importo pagato per le voci Associazione Semplice si legge dall\'ordine' );
 	$wc_o->set_status( 'processing' );
 	$wc_o->save();
 	$wc_after = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay['id'], ARRAY_A );
@@ -4979,14 +4979,14 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	asem_ok( 'paid' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay4['id'] ) && $people->has_membership( $wc_p4, $wc_sy ), 'woocommerce: a ordine completato (denaro incassato alla consegna) la quota si registra' );
 	wp_set_current_user( 1 );
 	asem_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
-	// un ordine senza voci AssociazioneSemplice non cambia nulla
+	// un ordine senza voci Associazione Semplice non cambia nulla
 	$tx_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
 	$wc_x = wc_create_order();
 	$wc_x->add_product( wc_get_product( $wc_q ), 1 );
 	$wc_x->calculate_totals();
 	$wc_x->set_status( 'completed' );
 	$wc_x->save();
-	asem_ok( $tx_n === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'woocommerce: gli ordini del negozio senza voci AssociazioneSemplice non vengono toccati' );
+	asem_ok( $tx_n === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'woocommerce: gli ordini del negozio senza voci Associazione Semplice non vengono toccati' );
 	// voce senza prodotto
 	wp_set_current_user( 1 );
 	$wc_fake = array( 'type' => 'booking', 'person_id' => $wc_p, 'session_id' => 1, 'activity_id' => 999999, 'amount_cents' => 500, 'key' => 'b:1:' . $wc_p, 'label' => 'Prova', 'person_name' => 'X' );

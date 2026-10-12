@@ -69,7 +69,7 @@ final class Ics {
 	}
 
 	public static function calendar( string $name, array $events, string $tz, string $now ): string {
-		$out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//AssociazioneSemplice//Calendario//IT\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n"
+		$out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Associazione Semplice//Calendario//IT\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n"
 			. self::fold( 'X-WR-CALNAME:' . self::escape( $name ) ) . "\r\n" . 'X-WR-TIMEZONE:' . $tz . "\r\n";
 		foreach ( $events as $e ) {
 			$out .= self::event( $e, $tz, $now );

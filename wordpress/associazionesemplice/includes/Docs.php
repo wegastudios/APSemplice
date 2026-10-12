@@ -430,7 +430,7 @@ final class Docs {
 		}
 		check_admin_referer( 'asem_doc' );
 		if ( ! Edition::allows( 'export' ) ) {
-			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di AssociazioneSemplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
+			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di Associazione Semplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
 		$g      = wp_unslash( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification
 		$what   = (string) ( $g['what'] ?? '' );

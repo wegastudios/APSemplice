@@ -91,7 +91,7 @@ final class Notices {
 	 */
 	public static function send( int $activity_id, ?int $session_id, string $subject, string $body ): array {
 		if ( ! Edition::allows( 'official_notices' ) ) {
-			throw new \InvalidArgumentException( 'L\'invio degli avvisi è sospeso perché la licenza di AssociazioneSemplice non risulta in regola.' );
+			throw new \InvalidArgumentException( 'L\'invio degli avvisi è sospeso perché la licenza di Associazione Semplice non risulta in regola.' );
 		}
 		$a = Plugin::activities()->get( $activity_id );
 		if ( ! $a ) {

@@ -1,4 +1,4 @@
-# AssociazioneSemplice
+# Associazione Semplice
 
 Plugin **WordPress** per un'associazione di promozione sociale (APS): soci e ospiti, corsi ed eventi, prima nota, conti e fondi, area riservata sul sito.
 

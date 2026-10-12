@@ -1,4 +1,4 @@
-/* AssociazioneSemplice — app installabile e notifiche (nessuna dipendenza). */
+/* Associazione Semplice — app installabile e notifiche (nessuna dipendenza). */
 (function () {
 	'use strict';
 	var C = window.ASEM_PWA || {};

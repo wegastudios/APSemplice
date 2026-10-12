@@ -77,7 +77,7 @@ final class PayPalApi {
 			'payment_source' => array(
 				'paypal' => array(
 					'experience_context' => array(
-						'brand_name'  => mb_substr( '' !== $brand ? $brand : 'AssociazioneSemplice', 0, 120 ),
+						'brand_name'  => mb_substr( '' !== $brand ? $brand : 'Associazione Semplice', 0, 120 ),
 						'locale'      => 'it-IT',
 						'user_action' => 'PAY_NOW',
 						'return_url'  => $return_url,

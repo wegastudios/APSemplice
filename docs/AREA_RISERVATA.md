@@ -7,8 +7,8 @@ il builder decide colonne, spazi e sfondi. Lo stile (`assets/frontend.css`) ered
 
 | Builder | Come |
 |---|---|
-| **Gutenberg** | blocco **AssociazioneSemplice** (scegli la vista dalla barra laterale) e blocco **Contenuto riservato** (contenitore: i blocchi dentro li vedono solo gli aventi diritto) |
-| **Elementor** | widget **AssociazioneSemplice** e widget **Contenuto riservato (AssociazioneSemplice)**, categoria "AssociazioneSemplice" |
+| **Gutenberg** | blocco **Associazione Semplice** (scegli la vista dalla barra laterale) e blocco **Contenuto riservato** (contenitore: i blocchi dentro li vedono solo gli aventi diritto) |
+| **Elementor** | widget **Associazione Semplice** e widget **Contenuto riservato (Associazione Semplice)**, categoria "Associazione Semplice" |
 | **Qualunque editor** | shortcode (sotto); funzionano anche nei blocchi/widget "Shortcode" |
 
 Da *Impostazioni → Crea le pagine standard* nascono: **Area soci**, **Area volontari** (riservata ai volontari) e **Attività ed eventi**,
@@ -34,7 +34,7 @@ I volontari **non vedono i contatti** degli iscritti, solo i nomi.
 ## Contenuti riservati
 
 ### Pagine e articoli interi
-Nell'editor compare il riquadro **«Accesso (AssociazioneSemplice)»**. Chi può leggere:
+Nell'editor compare il riquadro **«Accesso (Associazione Semplice)»**. Chi può leggere:
 
 - **Pubblico** (default);
 - **Solo soci** (tessera valida);

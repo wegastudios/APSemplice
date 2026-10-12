@@ -277,7 +277,7 @@ final class Wizard {
 		}
 		$gen = (string) ( $p['product_default'] ?? '' );
 		if ( '' !== $gen ) {
-			$pid = 'new' === $gen ? WooBridge::create_product( 'Contributo ' . ( '' !== (string) Settings::get( 'association_name' ) ? (string) Settings::get( 'association_name' ) : 'AssociazioneSemplice' ), 0 ) : (int) $gen;
+			$pid = 'new' === $gen ? WooBridge::create_product( 'Contributo ' . ( '' !== (string) Settings::get( 'association_name' ) ? (string) Settings::get( 'association_name' ) : 'Associazione Semplice' ), 0 ) : (int) $gen;
 			WooBridge::assert_product( $pid );
 			Settings::update( array( 'woo_default_product' => $pid ) );
 			$done[] = 'Prodotto generico per le altre voci (corsi ed eventi) impostato' . ( 'new' === $gen ? ' (creato ora)' : '' ) . '.';

@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Punto unico da cui passano i testi che il plugin mostra o invia (pagine, email, PDF, messaggi).
  *
  * Nell'edizione gratuita i testi sono quelli originali. La personalizzazione dei testi (sostituzioni, lingue, tipo di ente e termini) è una
- * funzione di AssociazioneSemplice Pro: quando c'è e la licenza è in regola il lavoro lo fa {@see TextsEngine}, altrimenti i testi passano invariati.
+ * funzione di Associazione Semplice Pro: quando c'è e la licenza è in regola il lavoro lo fa {@see TextsEngine}, altrimenti i testi passano invariati.
  */
 final class Texts {
 

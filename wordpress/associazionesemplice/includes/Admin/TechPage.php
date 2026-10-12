@@ -41,8 +41,8 @@ final class TechPage {
 			echo '<p class="description">WooCommerce non è attivo su questo sito: installalo e attivalo per far pagare quote e contributi dal negozio.</p>';
 		} else {
 			echo '<p class="description">I soci pagano quote e contributi dal carrello e dal checkout del negozio. Ogni quota (per livello di socio) e ogni corso o evento si collega a un prodotto semplice, preferibilmente virtuale: '
-				. 'nel carrello il prezzo è quello calcolato da AssociazioneSemplice (quota del livello, sconto familiare, mensilità dovute) e quando l\'ordine risulta pagato l\'incasso entra in prima nota con la sua ricevuta. '
-				. 'Gli ordini senza voci AssociazioneSemplice non vengono toccati.</p>';
+				. 'nel carrello il prezzo è quello calcolato da Associazione Semplice (quota del livello, sconto familiare, mensilità dovute) e quando l\'ordine risulta pagato l\'incasso entra in prima nota con la sua ricevuta. '
+				. 'Gli ordini senza voci Associazione Semplice non vengono toccati.</p>';
 			Ui::form_open( 'asem_save_woo', Ui::url( 'asem-tech' ) );
 			echo '<p><label><input type="checkbox" name="woo_enabled" value="1"' . checked( $on, true, false ) . '> <strong>Usa WooCommerce per i pagamenti online</strong></label> '
 				. '<span class="description">Al posto di Stripe e PayPal (il gateway scelto cambia).</span></p>';
@@ -81,7 +81,7 @@ final class TechPage {
 		if ( $pay ) echo '<li><strong>Stripe e PayPal</strong> — carta e PayPal senza negozio: <a href="' . esc_url( Ui::url( 'asem-payments' ) ) . '">Pagamenti online</a>.</li>';
 		echo '<li><strong>Apple Wallet, Google Wallet, QR e calendario</strong>: <a href="' . esc_url( Ui::url( 'asem-card' ) ) . '">Tessera, QR e Wallet</a>.</li>';
 		echo '<li><strong>WP All Import</strong> — ' . ( class_exists( 'PMXI_Plugin' ) ? 'attivo su questo sito' : 'non attivo' ) . ': <a href="' . esc_url( Ui::url( 'asem-wpai' ) ) . '">Import con WP All Import</a>.</li>';
-		echo '<li><strong>Elementor e Gutenberg</strong> — widget e blocchi «AssociazioneSemplice» disponibili dove gli editor sono attivi.</li></ul>';
+		echo '<li><strong>Elementor e Gutenberg</strong> — widget e blocchi «Associazione Semplice» disponibili dove gli editor sono attivi.</li></ul>';
 		Ui::footer();
 	}
 

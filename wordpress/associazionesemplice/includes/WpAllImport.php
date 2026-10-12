@@ -44,7 +44,7 @@ final class WpAllImport {
 		foreach ( array( 'edit_post', 'read_post', 'delete_post', 'edit_posts', 'edit_others_posts', 'delete_posts', 'publish_posts', 'read_private_posts', 'create_posts', 'delete_others_posts', 'delete_private_posts', 'delete_published_posts', 'edit_private_posts', 'edit_published_posts' ) as $c ) {
 			$caps[ $c ] = Plugin::CAP; // solo chi gestisce il plugin: nessun altro può "caricare" movimenti o soci
 		}
-		foreach ( array( self::TYPE_LEDGER => 'Movimenti AssociazioneSemplice (import)', self::TYPE_PEOPLE => 'Soci e ospiti AssociazioneSemplice (import)' ) as $type => $label ) {
+		foreach ( array( self::TYPE_LEDGER => 'Movimenti Associazione Semplice (import)', self::TYPE_PEOPLE => 'Soci e ospiti Associazione Semplice (import)' ) as $type => $label ) {
 			register_post_type(
 				$type,
 				array(

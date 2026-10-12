@@ -18,7 +18,7 @@ final class DashboardPage {
 		$r        = Plugin::reports()->social_year( $year );
 		$name     = (string) Settings::get( 'association_name' );
 
-		Ui::header( 'AssociazioneSemplice' . ( $name ? ' — ' . $name : '' ) );
+		Ui::header( 'Associazione Semplice' . ( $name ? ' — ' . $name : '' ) );
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )

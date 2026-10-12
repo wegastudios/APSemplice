@@ -17,7 +17,7 @@ final class DonatePage {
 		Ui::form_open( 'asem_save_donate', Ui::url( 'asem-donate' ) );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Raccolta donazioni</th><td><label><input type="checkbox" name="donate_enabled" value="1"' . checked( ! empty( $s['donate_enabled'] ), true, false ) . '> Accendi il modulo di donazione</label>'
-			. '<p class="description">Spento di default. Il modulo compare dove inserisci lo shortcode <code>[associazionesemplice_donazioni]</code> (o il blocco/widget «AssociazioneSemplice»).</p></td></tr>';
+			. '<p class="description">Spento di default. Il modulo compare dove inserisci lo shortcode <code>[associazionesemplice_donazioni]</code> (o il blocco/widget «Associazione Semplice»).</p></td></tr>';
 		echo '<tr><th>Conto PayPal</th><td><input type="text" name="donate_paypal" value="' . esc_attr( (string) $s['donate_paypal'] ) . '" class="regular-text" autocomplete="off">'
 			. '<p class="description">L\'email del conto PayPal dell\'associazione, oppure il suo ID commerciante (13 caratteri, lo trovi nel profilo PayPal). Serve un conto Business abilitato a ricevere donazioni.</p></td></tr>';
 		echo '<tr><th>Importi proposti</th><td><input type="text" name="donate_amounts" value="' . esc_attr( (string) $s['donate_amounts'] ) . '" class="regular-text">'

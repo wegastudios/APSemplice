@@ -8,7 +8,7 @@ use Elementor\Widget_Base;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Widget Elementor: sceglie una vista di AssociazioneSemplice (area soci, tessera, attività, prossimi eventi…). */
+/** Widget Elementor: sceglie una vista di Associazione Semplice (area soci, tessera, attività, prossimi eventi…). */
 class ViewWidget extends Widget_Base {
 
 	public function get_name() {
@@ -16,7 +16,7 @@ class ViewWidget extends Widget_Base {
 	}
 
 	public function get_title() {
-		return 'AssociazioneSemplice';
+		return 'Associazione Semplice';
 	}
 
 	public function get_icon() {

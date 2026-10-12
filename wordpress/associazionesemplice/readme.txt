@@ -1,4 +1,4 @@
-=== AssociazioneSemplice ===
+=== Associazione Semplice ===
 Contributors: wegastudios
 Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
@@ -12,7 +12,7 @@ Members, events and courses, and a cash book for small Italian non-profit associ
 
 == Description ==
 
-AssociazioneSemplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
+Associazione Semplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
 
 The plugin is built around Italian third-sector rules (APS, ETS, registers, tax rules), so its interface and texts are in Italian. An English text pack is included and can be selected in the settings, and further language packs can be uploaded as CSV, Excel or JSON files; the plugin does not use the WordPress translation files.
 
@@ -26,7 +26,7 @@ The plugin is built around Italian third-sector rules (APS, ETS, registers, tax 
 * **Backup and reset**: download a full copy of the data; reset the data to start over.
 * Works with WP All Import and Elementor if you use them.
 
-Advanced features (online payments, several accounts and funds, accounting and reports, mass emails, app and wallet cards, receipts, VAT) are in the separate AssociazioneSemplice Pro add-on.
+Advanced features (online payments, several accounts and funds, accounting and reports, mass emails, app and wallet cards, receipts, VAT) are in the separate Associazione Semplice Pro add-on.
 
 == External services ==
 
@@ -61,13 +61,13 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 * Role names are now simply Member and Office (Socio, Segreteria); existing roles are renamed automatically.
 
 = 1.1.9 =
-* Renamed to AssociazioneSemplice (database prefix asem_); installations using the old name are converted automatically on first run.
+* Renamed to Associazione Semplice (database prefix asem_); installations using the old name are converted automatically on first run.
 
 = 1.1.8 =
 * Privacy notice (GDPR) generated from the organisation data: responsible person (president, otherwise the secretariat member), data shared with third parties only for the events attended, no commercial transfer. Available as a site page and as a PDF.
 
 = 1.1.7 =
-* Text customisation, languages, entity type and terms are now part of AssociazioneSemplice Pro; the free edition shows the original texts.
+* Text customisation, languages, entity type and terms are now part of Associazione Semplice Pro; the free edition shows the original texts.
 
 = 1.1.6 =
 * Card preview in Appearance: it now has the card border and colours and a real sample QR code.

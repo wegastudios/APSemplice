@@ -73,7 +73,7 @@ final class License {
 		return ! in_array( $feature, self::policy()['blocked'], true );
 	}
 
-	/** La licenza non è in regola (pagamento mancante o dominio non più associato)? Allora AssociazioneSemplice Pro torna alle funzioni di base. */
+	/** La licenza non è in regola (pagamento mancante o dominio non più associato)? Allora Associazione Semplice Pro torna alle funzioni di base. */
 	public static function degraded(): bool {
 		return in_array( self::policy()['status'], LicensePolicy::penalized_statuses(), true );
 	}

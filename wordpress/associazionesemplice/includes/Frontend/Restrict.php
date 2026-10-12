@@ -189,7 +189,7 @@ final class Restrict {
 
 	public static function add_meta_box(): void {
 		foreach ( self::post_types() as $type ) {
-			add_meta_box( 'asem_access', 'Accesso (AssociazioneSemplice)', array( __CLASS__, 'render_meta_box' ), $type, 'side', 'default' );
+			add_meta_box( 'asem_access', 'Accesso (Associazione Semplice)', array( __CLASS__, 'render_meta_box' ), $type, 'side', 'default' );
 		}
 	}
 

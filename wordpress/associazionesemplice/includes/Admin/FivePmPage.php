@@ -36,7 +36,7 @@ final class FivePmPage {
 		if ( '' === $cf ) {
 			echo '<div class="notice notice-warning inline"><p>Manca il codice fiscale dell\'associazione: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-settings' ) ) . '">Impostazioni</a>, senza non si può chiedere il 5x1000.</p></div>';
 		}
-		echo '<h2>Chiedi il 5x1000 ai soci</h2><p>Il messaggio con il codice fiscale compare dove inserisci lo shortcode <code>[associazionesemplice_cinquepermille]</code> (o il blocco «AssociazioneSemplice» → 5x1000). Questo è il testo:</p>';
+		echo '<h2>Chiedi il 5x1000 ai soci</h2><p>Il messaggio con il codice fiscale compare dove inserisci lo shortcode <code>[associazionesemplice_cinquepermille]</code> (o il blocco «Associazione Semplice» → 5x1000). Questo è il testo:</p>';
 		echo '<div class="asem-card">' . esc_html( FivePerMille::text() ) . '</div>';
 		$body = 'Ciao {nome}, ' . FivePerMille::text() . "\n\nGrazie, {associazione}";
 		echo '<p><a class="button" href="' . esc_url( Ui::url( 'asem-messages', array( 'audience' => 'members_all', 'subject' => 'Il tuo 5x1000', 'body' => $body, 'preview' => 1 ) ) ) . '">Prepara il promemoria per i soci</a> '
