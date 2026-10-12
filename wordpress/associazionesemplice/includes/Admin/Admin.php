@@ -65,7 +65,7 @@ final class Admin {
 
 	public static function menu(): void {
 		$cap = Plugin::CAP_OPS;
-		add_menu_page( 'AssociazioneSemplice', 'AssociazioneSemplice', $cap, 'asem', self::guard( 'asem', array( DashboardPage::class, 'render' ) ), 'dashicons-groups', 30 );
+		add_menu_page( 'Associazione Semplice', 'Associazione Semplice', $cap, 'asem', self::guard( 'asem', array( DashboardPage::class, 'render' ) ), 'dashicons-groups', 30 );
 		$visible = array(
 			array( 'asem', 'Bacheca', array( DashboardPage::class, 'render' ) ),
 			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
