@@ -154,7 +154,7 @@ final class Pwa {
 
 	public static function service_worker(): string {
 		$js = <<<'JS'
-/* AssociazioneSemplice — service worker. Le pagine non si salvano mai: i dati personali restano solo in rete. Qui solo offline minimo e notifiche. */
+/* Associazione Semplice — service worker. Le pagine non si salvano mai: i dati personali restano solo in rete. Qui solo offline minimo e notifiche. */
 const CACHE = 'asem-pwa-%VER%';
 const OFFLINE = '%OFFLINE%';
 const ASSETS = '%ASSETS%';

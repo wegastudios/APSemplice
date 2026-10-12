@@ -15,14 +15,14 @@ final class GuidePage {
 		'Come registro le presenze?'             => 'Registri → Presenze: scegli il corso, il mese e la lezione, spunta chi era presente e salva. Il riepilogo si scarica in PDF o CSV.',
 		'Come invio un messaggio ai soci?'       => 'Rubrica soci → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.',
 		'Dove trovo ricevute e rendiconto?'      => 'Le ricevute si scaricano dalla prima nota e dall\'area soci. Il rendiconto per cassa è in Contabilità → Rendiconto, in PDF con le firme.',
-		'Come cambio i testi o i termini?'       => 'Con AssociazioneSemplice Pro, in Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.',
+		'Come cambio i testi o i termini?'       => 'Con Associazione Semplice Pro, in Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.',
 		'Come faccio una copia dei dati?'        => 'Impostazioni → Copia di sicurezza: scarichi un file con tutti i dati; da lì puoi anche ripristinarlo.',
 	);
 
 	public static function render(): void {
 		Ui::header( 'Guida iniziale' );
 		$p = Guide::progress();
-		echo '<p>Per mettere in funzione AssociazioneSemplice ci sono pochi passi: ' . (int) $p['done'] . ' su ' . (int) $p['total'] . ' già fatti.</p>';
+		echo '<p>Per mettere in funzione Associazione Semplice ci sono pochi passi: ' . (int) $p['done'] . ' su ' . (int) $p['total'] . ' già fatti.</p>';
 		echo '<table class="widefat striped"><tbody>';
 		foreach ( Guide::steps() as $s ) {
 			echo '<tr><td style="width:2em">' . ( $s['done'] ? '✅' : '⬜' ) . '</td><td><strong>' . esc_html( $s['title'] ) . '</strong><br><span class="description">' . esc_html( $s['hint'] ) . '</span></td>'

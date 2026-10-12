@@ -3,7 +3,7 @@ namespace AssociazioneSemplice;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Tutte le impostazioni si cambiano dal pannello (menu AssociazioneSemplice → Impostazioni): nessun file da modificare. */
+/** Tutte le impostazioni si cambiano dal pannello (menu Associazione Semplice → Impostazioni): nessun file da modificare. */
 final class Settings {
 
 	const OPTION = 'asem_settings';
@@ -197,7 +197,7 @@ final class Settings {
 		$clean['member_term']         = mb_substr( trim( (string) $clean['member_term'] ), 0, 60 );
 		$clean['entity_types_custom'] = mb_substr( trim( (string) $clean['entity_types_custom'] ), 0, 1000 );
 		$clean['member_terms_custom'] = mb_substr( trim( (string) $clean['member_terms_custom'] ), 0, 1000 );
-		Texts::flush(); // tipo di ente e termini (funzione di AssociazioneSemplice Pro): le sostituzioni si ricalcolano
+		Texts::flush(); // tipo di ente e termini (funzione di Associazione Semplice Pro): le sostituzioni si ricalcolano
 		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events' ) as $k ) {
 			$clean[ $k ] = empty( $clean[ $k ] ) ? 0 : 1;
 		}

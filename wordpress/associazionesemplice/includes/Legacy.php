@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Chi aveva installato il plugin con il vecchio nome (APSemplice, prefisso `apse_`) non perde nulla: al primo avvio tabelle, opzioni,
- * ruoli, metadati, lavori periodici e shortcode passano al nuovo nome (AssociazioneSemplice, prefisso `asem_`). Il passaggio è unico e sicuro da ripetere.
+ * ruoli, metadati, lavori periodici e shortcode passano al nuovo nome (Associazione Semplice, prefisso `asem_`). Il passaggio è unico e sicuro da ripetere.
  */
 final class Legacy {
 

@@ -159,7 +159,7 @@ final class Backup {
 				JSON_PRETTY_PRINT
 			)
 		);
-		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di AssociazioneSemplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati.\nSi ripristina da Impostazioni → Copia di sicurezza, sullo stesso sito.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
+		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di Associazione Semplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati.\nSi ripristina da Impostazioni → Copia di sicurezza, sullo stesso sito.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
 		$ok = $zip->close();
 		foreach ( $tmp as $f ) {
 			wp_delete_file( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -187,7 +187,7 @@ final class Backup {
 		$m   = $raw ? json_decode( $raw, true ) : null;
 		if ( ! is_array( $m ) || 'associazionesemplice' !== ( $m['plugin'] ?? '' ) || empty( $m['tables'] ) ) {
 			$zip->close();
-			throw new \InvalidArgumentException( 'Il file non è una copia di sicurezza di AssociazioneSemplice.' );
+			throw new \InvalidArgumentException( 'Il file non è una copia di sicurezza di Associazione Semplice.' );
 		}
 		if ( (int) ( $m['db_version'] ?? 0 ) > (int) Install::DB_VERSION ) {
 			$zip->close();

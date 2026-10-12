@@ -94,7 +94,7 @@ final class SettingsPage {
 		if ( Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
 			LevelsEditor::section();
 		}
-		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>AssociazioneSemplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>AssociazioneSemplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
+		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>Associazione Semplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>Associazione Semplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
 		Ui::form_open( 'asem_create_pages', Ui::url( 'asem-settings' ) );
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già inseriti. Puoi poi personalizzarne l\'impaginazione.</span></p>';
 		Ui::form_close();
@@ -108,7 +108,7 @@ final class SettingsPage {
 		echo '<tr><td><code>[associazionesemplice_spese]</code></td><td>Nome precedente di «Area tesoriere»: continua a funzionare</td></tr>';
 		echo '<tr><td><code>[associazionesemplice_attivita tipo="evento" anno="2025/2026" date="5"]</code></td><td>Filtri: tipo = corso / evento / ricorrente, anno sociale, date da mostrare</td></tr>';
 		echo '<tr><td><code>[associazionesemplice_riservato accesso="soci"]…[/associazionesemplice_riservato]</code></td><td>Parte di pagina visibile solo ai soci (accesso = soci / volontari / attivita, con attivita="12,13")</td></tr>';
-		echo '</tbody></table><p class="description">Per riservare una <strong>pagina o un articolo intero</strong> usa il riquadro «Accesso (AssociazioneSemplice)» nell\'editor: puoi renderlo visibile ai soli soci, ai volontari o agli iscritti a una o più attività (es. il programma della prima lezione).</p>';
+		echo '</tbody></table><p class="description">Per riservare una <strong>pagina o un articolo intero</strong> usa il riquadro «Accesso (Associazione Semplice)» nell\'editor: puoi renderlo visibile ai soli soci, ai volontari o agli iscritti a una o più attività (es. il programma della prima lezione).</p>';
 		echo '<h2>Informazioni</h2><p>L\'amministrazione è riservata agli utenti con ruolo Amministratore (capability <code>asem_manage</code>). '
 			. 'I soci sono utenti WordPress con ruolo "Socio", senza accesso a wp-admin; soci e volontari usano l\'area riservata, che comunica con l\'API REST <code>' . esc_html( rest_url( 'associazionesemplice/v1' ) ) . '</code>.</p>';
 		Ui::footer();

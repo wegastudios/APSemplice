@@ -56,7 +56,7 @@ final class Exports {
 		}
 		check_admin_referer( 'asem_export' );
 		if ( ! Edition::allows( 'export' ) ) {
-			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di AssociazioneSemplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
+			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di Associazione Semplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
 		$what =isset( $_GET['what'] ) ? sanitize_key( wp_unslash( $_GET['what'] ) ) : '';
 		if ( ( ( 'period' === $what && ! Edition::has( 'fiscal' ) ) || ( 'social' === $what && ! Edition::has( 'reports' ) ) ) ) { // in questa edizione si esportano solo soci e prima nota

@@ -42,7 +42,7 @@ final class Blocks {
 			'associazionesemplice/vista',
 			array(
 				'api_version'     => 2,
-				'title'           => 'AssociazioneSemplice',
+				'title'           => 'Associazione Semplice',
 				'editor_script'   => 'asem-blocks',
 				'attributes'      => array(
 					'vista'   => array( 'type' => 'string', 'default' => 'area_soci' ),

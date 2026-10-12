@@ -1,4 +1,4 @@
-/* AssociazioneSemplice — blocchi Gutenberg (senza build). Il disegno è sempre fatto dal server. */
+/* Associazione Semplice — blocchi Gutenberg (senza build). Il disegno è sempre fatto dal server. */
 (function (wp) {
 	'use strict';
 	var el = wp.element.createElement;
@@ -18,10 +18,10 @@
 		return out;
 	}
 
-	/* --- Vista AssociazioneSemplice (area soci, tessera, attività, prossimi eventi, …) --- */
+	/* --- Vista Associazione Semplice (area soci, tessera, attività, prossimi eventi, …) --- */
 	registerBlockType('associazionesemplice/vista', {
 		apiVersion: 2,
-		title: 'AssociazioneSemplice',
+		title: 'Associazione Semplice',
 		description: 'Area soci, tessera, attività ed eventi dell\'associazione.',
 		icon: 'groups',
 		category: 'widgets',
@@ -45,7 +45,7 @@
 				controls.push(el(TextControl, { key: 'l', label: 'Numero di eventi', value: a.limite, onChange: function (x) { set({ limite: x }); } }));
 			}
 			return el('div', useBlockProps ? useBlockProps() : {},
-				el(InspectorControls, null, el(PanelBody, { title: 'AssociazioneSemplice', initialOpen: true }, controls)),
+				el(InspectorControls, null, el(PanelBody, { title: 'Associazione Semplice', initialOpen: true }, controls)),
 				el(ServerSideRender, { block: 'associazionesemplice/vista', attributes: a })
 			);
 		},

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Quali funzioni esistono in questa installazione.
  *
- * Il plugin gratuito contiene il nucleo; le funzioni avanzate stanno nel plugin AssociazioneSemplice Pro, che aggiunge la propria cartella con
+ * Il plugin gratuito contiene il nucleo; le funzioni avanzate stanno nel plugin Associazione Semplice Pro, che aggiunge la propria cartella con
  * {@see Edition::add_dir()}. Una funzione c'è se il suo file di riferimento si trova in una delle cartelle: niente interruttori, niente
  * chiavi, niente codice «spento». Il resto del plugin chiede `Edition::has( 'payments' )` prima di mostrare o usare una funzione avanzata.
  */
@@ -66,23 +66,23 @@ final class Edition {
 		return self::$dirs;
 	}
 
-	/** @var string livello di compatibilità di AssociazioneSemplice Pro rifiutato perché diverso da quello di AssociazioneSemplice ('' = nessun problema) */
+	/** @var string livello di compatibilità di Associazione Semplice Pro rifiutato perché diverso da quello di Associazione Semplice ('' = nessun problema) */
 	private static $mismatch = '';
 
 	/**
-	 * AssociazioneSemplice e AssociazioneSemplice Pro hanno versioni indipendenti (si aggiorna uno o l'altro, in qualunque ordine); si parlano finché hanno lo
+	 * Associazione Semplice e Associazione Semplice Pro hanno versioni indipendenti (si aggiorna uno o l'altro, in qualunque ordine); si parlano finché hanno lo
 	 * stesso «livello di compatibilità», un numero che cambia solo quando cambia ciò che si scambiano.
 	 */
 	public static function compatible( int $pro_api, int $free_api ): bool {
 		return $pro_api === $free_api;
 	}
 
-	/** Il livello di compatibilità di AssociazioneSemplice Pro rifiutato perché non corrisponde (vuoto se tutto a posto). */
+	/** Il livello di compatibilità di Associazione Semplice Pro rifiutato perché non corrisponde (vuoto se tutto a posto). */
 	public static function mismatch(): string {
 		return self::$mismatch;
 	}
 
-	/** Il plugin Pro dichiara qui la propria cartella `includes/`. Se il suo livello di compatibilità non è quello di AssociazioneSemplice non si carica niente. */
+	/** Il plugin Pro dichiara qui la propria cartella `includes/`. Se il suo livello di compatibilità non è quello di Associazione Semplice non si carica niente. */
 	public static function add_dir( string $dir ): void {
 		if ( defined( 'ASEM_PRO_API' ) && defined( 'ASEM_API' ) && ! self::compatible( (int) ASEM_PRO_API, (int) ASEM_API ) ) {
 			self::$mismatch = (string) ASEM_PRO_API;
@@ -119,7 +119,7 @@ final class Edition {
 	/** @var array<string,bool> funzioni già cercate sul disco (si svuota quando cambiano le cartelle) */
 	private static $found = array();
 
-	/** Con AssociazioneSemplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
+	/** Con Associazione Semplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
 	public static function degraded(): bool {
 		return self::installed( 'license' ) && function_exists( 'get_option' ) && method_exists( License::class, 'degraded' ) && License::degraded();
 	}
@@ -150,15 +150,15 @@ final class Edition {
 	/** Perché una funzione avanzata non è disponibile (da mostrare a chi prova a usarla). */
 	public static function missing_message( string $feature = '' ): string {
 		if ( '' !== $feature && self::installed( $feature ) && ! self::degraded() && self::plan_blocks( $feature ) ) {
-			return 'Questa funzione fa parte della licenza AssociazioneSemplice Pro Fiscale: la tua licenza è di livello contabile.';
+			return 'Questa funzione fa parte della licenza Associazione Semplice Pro Fiscale: la tua licenza è di livello contabile.';
 		}
 		if ( self::degraded() ) {
-			return 'La licenza di AssociazioneSemplice Pro non è in regola: questa funzione è sospesa. Regolarizza la licenza e torna disponibile; intanto resta tutto il resto, con i tuoi dati.';
+			return 'La licenza di Associazione Semplice Pro non è in regola: questa funzione è sospesa. Regolarizza la licenza e torna disponibile; intanto resta tutto il resto, con i tuoi dati.';
 		}
-		return 'Questa funzione fa parte di AssociazioneSemplice Pro e non è inclusa in questa edizione.';
+		return 'Questa funzione fa parte di Associazione Semplice Pro e non è inclusa in questa edizione.';
 	}
 
-	/** Indirizzo del sito dove si presenta e si acquista AssociazioneSemplice Pro (modificabile con il filtro `asem_pro_url`). */
+	/** Indirizzo del sito dove si presenta e si acquista Associazione Semplice Pro (modificabile con il filtro `asem_pro_url`). */
 	public static function pro_url(): string {
 		return (string) apply_filters( 'asem_pro_url', 'https://www.wegastudios.com' );
 	}
@@ -167,7 +167,7 @@ final class Edition {
 	public static function missing_html(): string {
 		$html = '<p>' . esc_html( self::missing_message() ) . '</p>';
 		if ( ! self::degraded() && function_exists( 'admin_url' ) ) {
-			$html .= '<p><a href="' . esc_url( admin_url( 'admin.php?page=asem-pro' ) ) . '">Scopri cosa comprende AssociazioneSemplice Pro →</a></p>';
+			$html .= '<p><a href="' . esc_url( admin_url( 'admin.php?page=asem-pro' ) ) . '">Scopri cosa comprende Associazione Semplice Pro →</a></p>';
 		}
 		if ( self::degraded() ) {
 			$url   = License::payment_url();

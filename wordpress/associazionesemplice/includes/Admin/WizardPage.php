@@ -102,7 +102,7 @@ final class WizardPage {
 	echo self::stepper(); // phpcs:ignore WordPress.Security.EscapeOutput
 
 		// 1. Ente, ospiti e iscrizione
-		$texts = \AssociazioneSemplice\Edition::has( 'texts' ); // tipo di ente e termini adattano i testi: funzione di AssociazioneSemplice Pro
+		$texts = \AssociazioneSemplice\Edition::has( 'texts' ); // tipo di ente e termini adattano i testi: funzione di Associazione Semplice Pro
 		$ents  = $texts ? array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) ) : array();
 		$mems  = $texts ? array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) ) : array();
 		$jm   = (string) $s['join_mode'];

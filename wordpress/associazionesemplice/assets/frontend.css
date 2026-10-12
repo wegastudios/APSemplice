@@ -1,5 +1,5 @@
 /*
- * AssociazioneSemplice — front-end.
+ * Associazione Semplice — front-end.
  * Eredita font, dimensioni e colori del tema. Il colore d'accento segue il colore Primario di Elementor o "primary" del tema a blocchi
  * (--wp--preset--color--primary) e si può cambiare da CSS: .asemf { --asemf-accent: #c0392b; }
  * Il layout esterno (colonne, spazi, sfondi) lo decide il builder (Gutenberg, Elementor).

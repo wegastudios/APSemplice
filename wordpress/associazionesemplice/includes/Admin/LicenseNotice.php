@@ -7,7 +7,7 @@ use AssociazioneSemplice\LicensePolicy;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Avviso in cima alle pagine del plugin quando la licenza di AssociazioneSemplice Pro non è in regola. Non copre niente e non blocca niente di ciò che
+ * Avviso in cima alle pagine del plugin quando la licenza di Associazione Semplice Pro non è in regola. Non copre niente e non blocca niente di ciò che
  * c'è nell'edizione di base: ricorda solo che le funzioni avanzate sono sospese e come regolarizzare. I dati restano sempre accessibili.
  */
 final class LicenseNotice {
@@ -31,7 +31,7 @@ final class LicenseNotice {
 		}
 		$p   = License::policy();
 		$url = License::payment_url();
-		$html  = '<div class="notice notice-warning asem-license-notice"><p><strong>Licenza di AssociazioneSemplice Pro non in regola.</strong> ' . esc_html( LicensePolicy::message( $p['status'] ) ) . '</p>';
+		$html  = '<div class="notice notice-warning asem-license-notice"><p><strong>Licenza di Associazione Semplice Pro non in regola.</strong> ' . esc_html( LicensePolicy::message( $p['status'] ) ) . '</p>';
 		$html .= '<p>Le funzioni avanzate (pagamenti online, conti e fondi, contabilità, comunicazioni, app e quote diverse per i soci) sono sospese; il resto funziona e i tuoi dati sono al sicuro. ';
 		$html .= $url
 			? '<a class="button button-primary" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza la licenza</a>'

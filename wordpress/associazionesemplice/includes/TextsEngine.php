@@ -248,7 +248,7 @@ final class TextsEngine {
 		if ( preg_match( '/(SELECT|FROM|WHERE|COALESCE|GROUP BY|ORDER BY|LEFT JOIN)/', $s ) || preg_match( '/^[A-Z0-9-]+$/', $s ) ) {
 			return false; // pezzi di query e sigle (UTF-8)
 		}
-		if ( preg_match( '/^(START TRANSACTION|COMMIT|ROLLBACK|NOT EXISTS|Options |Deny |Require |Windows-|last day|first day|next |Referrer-|X-)/', $s ) || in_array( $s, array( 'PayerID', 'Stripe', 'AssociazioneSemplice', 'UTF-8' ), true ) ) {
+		if ( preg_match( '/^(START TRANSACTION|COMMIT|ROLLBACK|NOT EXISTS|Options |Deny |Require |Windows-|last day|first day|next |Referrer-|X-)/', $s ) || in_array( $s, array( 'PayerID', 'Stripe', 'Associazione Semplice', 'UTF-8' ), true ) ) {
 			return false; // istruzioni tecniche, intestazioni, nomi di prodotto
 		}
 		$words = preg_split( '/\s+/u', $s ) ?: array();
@@ -314,7 +314,7 @@ final class TextsEngine {
 	public static function catalog(): array {
 		$files = array();
 		$sig   = ASEM_VERSION . '|v' . self::CATALOG_VERSION;
-		foreach ( Edition::dirs() as $base ) { // la cartella di AssociazioneSemplice e, se c'è, quella delle funzioni avanzate
+		foreach ( Edition::dirs() as $base ) { // la cartella di Associazione Semplice e, se c'è, quella delle funzioni avanzate
 			$dir = rtrim( $base, '/\\' );
 			$it  = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) );
 			foreach ( $it as $f ) {

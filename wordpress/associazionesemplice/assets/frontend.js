@@ -1,4 +1,4 @@
-/* AssociazioneSemplice — front-end: conferme prima di annullare, e totale dei pagamenti online. */
+/* Associazione Semplice — front-end: conferme prima di annullare, e totale dei pagamenti online. */
 (function () {
 	'use strict';
 	document.addEventListener('click', function (e) {

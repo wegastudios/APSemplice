@@ -26,7 +26,7 @@ final class WpAiPage {
 
 		echo '<div class="asem-card"><h2>Come si fa</h2><ol>'
 			. '<li>In <strong>All Import → Nuova importazione</strong> carica il tuo file (Excel, CSV, XML, anche da indirizzo web o Google Fogli).</li>'
-			. '<li>In "Importa in" scegli <strong>Movimenti AssociazioneSemplice (import)</strong> per la prima nota oppure <strong>Soci e ospiti AssociazioneSemplice (import)</strong> per soci e ospiti.</li>'
+			. '<li>In "Importa in" scegli <strong>Movimenti Associazione Semplice (import)</strong> per la prima nota oppure <strong>Soci e ospiti Associazione Semplice (import)</strong> per soci e ospiti.</li>'
 			. '<li>Il titolo è libero (ad esempio la data e la descrizione): non influisce sull\'importazione.</li>'
 			. '<li>In <strong>Campi personalizzati</strong> aggiungi i campi qui sotto, uno per colonna, e trascina i dati del tuo file. Quelli che non ti servono lasciali fuori.</li>'
 			. '<li>Avvia l\'importazione. Al termine il plugin legge gli elementi, applica le stesse regole dell\'import da file, li registra e <strong>toglie quelli riusciti</strong>. Quelli con errori restano qui sotto con il motivo.</li>'

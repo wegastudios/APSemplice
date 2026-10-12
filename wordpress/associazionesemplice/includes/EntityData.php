@@ -24,7 +24,7 @@ final class EntityData {
 		};
 		$vals = array();
 
-		if ( Edition::has( 'texts' ) && ( $has( 'entity_type' ) || $has( 'member_term' ) ) ) { // tipo di ente e termini: funzione di AssociazioneSemplice Pro
+		if ( Edition::has( 'texts' ) && ( $has( 'entity_type' ) || $has( 'member_term' ) ) ) { // tipo di ente e termini: funzione di Associazione Semplice Pro
 			$ent = mb_strtolower( trim( $txt( 'entity_type' ) ), 'UTF-8' );
 			$mem = mb_strtolower( trim( $txt( 'member_term' ) ), 'UTF-8' );
 			if ( ! isset( Terms::entity_types( (string) Settings::get( 'entity_types_custom' ) )[ $ent ] ) ) {

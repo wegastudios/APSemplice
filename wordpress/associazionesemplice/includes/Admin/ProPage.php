@@ -6,7 +6,7 @@ use AssociazioneSemplice\Edition;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pagina che presenta le funzioni di AssociazioneSemplice Pro e dei suoi due livelli di licenza. È un semplice elenco informativo (niente funzioni
+ * Pagina che presenta le funzioni di Associazione Semplice Pro e dei suoi due livelli di licenza. È un semplice elenco informativo (niente funzioni
  * finte né pulsanti che non fanno nulla) e compare solo se c'è qualcosa che questa installazione non ha.
  */
 final class ProPage {
@@ -48,8 +48,8 @@ final class ProPage {
 	}
 
 	public static function render(): void {
-		Ui::header( 'AssociazioneSemplice Pro' );
-		echo '<p>AssociazioneSemplice resta gratuito per la gestione di base di un\'associazione. <strong>AssociazioneSemplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, in due livelli di licenza. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
+		Ui::header( 'Associazione Semplice Pro' );
+		echo '<p>Associazione Semplice resta gratuito per la gestione di base di un\'associazione. <strong>Associazione Semplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, in due livelli di licenza. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
 		foreach ( self::catalog() as $level => $rows ) {
 			echo '<div class="asem-card"><h2>' . esc_html( $level ) . '</h2><table class="widefat striped"><tbody>';
 			foreach ( $rows as $r ) {
@@ -58,7 +58,7 @@ final class ProPage {
 			}
 			echo '</tbody></table></div>';
 		}
-		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri AssociazioneSemplice Pro</a> <span class="description">Si apre il sito di Wega Studios.</span></p>';
+		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a> <span class="description">Si apre il sito di Wega Studios.</span></p>';
 		echo '<p class="description">Il livello contabile comprende conti, pagamenti, report e comunicazioni; il livello fiscale aggiunge IVA, 5 per mille e gli anni solari per il commercialista.</p>';
 		Ui::footer();
 	}

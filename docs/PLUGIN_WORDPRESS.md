@@ -1,4 +1,4 @@
-# AssociazioneSemplice per WordPress
+# Associazione Semplice per WordPress
 
 Plugin WordPress per la gestione di un'associazione (cartella `wordpress/associazionesemplice/`). La vecchia app Android è stata rimossa dal repository (resta nella cronologia di git).
 
@@ -109,7 +109,7 @@ Tabelle (`{prefisso}asem_*`): `people`, `memberships`, `accounts`, `categories`,
 
 1. Scarica `associazionesemplice.zip` dall'artefatto `associazionesemplice-plugin` dell'ultima esecuzione di *WordPress plugin* in GitHub Actions.
 2. WordPress → Plugin → Aggiungi nuovo → Carica plugin → attiva.
-3. Menu **AssociazioneSemplice** → Impostazioni (denominazione, mese di inizio dell'anno sociale, quota associativa).
+3. Menu **Associazione Semplice** → Impostazioni (denominazione, mese di inizio dell'anno sociale, quota associativa).
 
 I dati restano nelle tabelle anche se disattivi/elimini il plugin.
 
@@ -129,7 +129,7 @@ La direzione di prodotto (area soci, volontari, comunicazioni, pagamenti, PWA) �
 5. Modifica dei movimenti con storico, backup/export completo, PDF.
 
 ## Tutto dal pannello
-Ogni impostazione si cambia da **AssociazioneSemplice → Impostazioni**, senza modificare file né scrivere codice:
+Ogni impostazione si cambia da **Associazione Semplice → Impostazioni**, senza modificare file né scrivere codice:
 denominazione, mese di inizio dell'anno sociale, quota associativa, durata della tessera del fondatore, pagina dell'area soci,
 chiave di licenza, termine predefinito di cancellazione, **colore d'accento** del sito (selettore colore), **testo dell'invito al pagamento**,
 **messaggio sui contenuti riservati**, gateway di pagamento e relative chiavi. Le pagine del sito si creano con un pulsante e si impaginano
@@ -171,7 +171,7 @@ Nel modulo **Nuova spesa** si possono allegare uno o più PDF o foto (campo "Doc
 
 ## Import con WP All Import (alternativa)
 
-Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizione due "tipi di contenuto di appoggio" che WP All Import vede: **Movimenti AssociazioneSemplice (import)** e **Soci e ospiti AssociazioneSemplice (import)**. In WP All Import si sceglie uno dei due, e nei *Campi personalizzati* si trascinano i dati nei campi `asem_*` (elenco in *Soci → Import con WP All Import*). A importazione finita il plugin legge gli elementi, applica le stesse regole dell'import da file (compresi doppioni e saldi), li registra e toglie quelli riusciti; gli errori restano in elenco con il motivo, con i pulsanti *Riprova* ed *Elimina*. Funziona anche con le importazioni pianificate. Solo chi amministra il plugin può creare questi elementi.
+Soci, ospiti e prima nota non sono articoli, quindi il plugin mette a disposizione due "tipi di contenuto di appoggio" che WP All Import vede: **Movimenti Associazione Semplice (import)** e **Soci e ospiti Associazione Semplice (import)**. In WP All Import si sceglie uno dei due, e nei *Campi personalizzati* si trascinano i dati nei campi `asem_*` (elenco in *Soci → Import con WP All Import*). A importazione finita il plugin legge gli elementi, applica le stesse regole dell'import da file (compresi doppioni e saldi), li registra e toglie quelli riusciti; gli errori restano in elenco con il motivo, con i pulsanti *Riprova* ed *Elimina*. Funziona anche con le importazioni pianificate. Solo chi amministra il plugin può creare questi elementi.
 
 ## QR della tessera e biglietti QR degli eventi (facoltativi)
 
@@ -441,7 +441,7 @@ Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Reg
 **WooCommerce** (Impostazioni → Tecniche → Integrazioni, spento di default): la compatibilità si attiva con «Usa WooCommerce per i pagamenti online» e sostituisce Stripe e PayPal come gateway.
 - Ogni **quota associativa** (per livello di socio) e ogni **corso o evento** si collega a un prodotto semplice (meglio se virtuale); un **prodotto generico** copre le voci senza un prodotto proprio, come le mensilità.
 - Il socio sceglie le voci da «Pagamenti» nell'area soci e va al checkout del negozio: nel carrello il **prezzo è quello calcolato dal server** (quota del livello, sconto familiare, mensilità dovute), non quello di listino.
-- Quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota (conto «WooCommerce», ricevuta e tessera rinnovata) **una sola volta**; se l'importo pagato è diverso da quello atteso entra come «non abbinato» e il pagamento va controllato. Ordini annullati o falliti chiudono il pagamento in attesa. Gli ordini senza voci AssociazioneSemplice non vengono toccati; i rimborsi si registrano a mano.
+- Quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota (conto «WooCommerce», ricevuta e tessera rinnovata) **una sola volta**; se l'importo pagato è diverso da quello atteso entra come «non abbinato» e il pagamento va controllato. Ordini annullati o falliti chiudono il pagamento in attesa. Gli ordini senza voci Associazione Semplice non vengono toccati; i rimborsi si registrano a mano.
 - Database v31: tabella `woo_links`; impostazioni `woo_default_product`, `card_enabled`, `reports_enabled`.
 
 ## App installabile (PWA) e notifiche push
@@ -599,7 +599,7 @@ La pagina Impostazioni → Ruoli e accessi riporta la matrice «chi può fare co
 
 ## Aree del sito, blocchi e widget
 
-Le viste (shortcode, blocco Gutenberg «AssociazioneSemplice», widget Elementor «AssociazioneSemplice») sono raggruppate per area e nei selettori compaiono nominate e ordinate così («Soci · Tessera digitale»):
+Le viste (shortcode, blocco Gutenberg «Associazione Semplice», widget Elementor «Associazione Semplice») sono raggruppate per area e nei selettori compaiono nominate e ordinate così («Soci · Tessera digitale»):
 - **Soci**: area soci, tessera, le mie attività, pagamenti, ricevute, regolamento, ospiti, profilo, avvisi, calendario, app.
 - **Segreteria**: `[associazionesemplice_segreteria]` — richieste di accesso da evadere e collegamenti alla gestione (visibile a segreteria, presidente e vicepresidente; agli altri compare un avviso).
 - **Tesoriere**: `[associazionesemplice_tesoriere]` — incassi, cassa per più persone, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi (il vecchio `[associazionesemplice_spese]` continua a funzionare).
@@ -643,11 +643,11 @@ Non si libera mai il posto di chi ha già versato (anche in parte), di chi sta p
 
 ## Edizioni: gratuita e Pro, e licenza scaduta
 
-AssociazioneSemplice (gratuito) contiene il nucleo; **AssociazioneSemplice Pro** è un plugin a parte che si aggiunge e richiede l'altro attivo. Le due edizioni condividono dati e classi: una funzione avanzata esiste se il suo file è presente (`Edition::has`).
+Associazione Semplice (gratuito) contiene il nucleo; **Associazione Semplice Pro** è un plugin a parte che si aggiunge e richiede l'altro attivo. Le due edizioni condividono dati e classi: una funzione avanzata esiste se il suo file è presente (`Edition::has`).
 
 - **Nel gratuito**: libro soci con una sola quota (più l'opzione socio fondatore), tessera con QR, ospiti, eventi e corsi, prima nota con una cassa unica, privacy, verbali, copia di sicurezza, area soci minima, ruoli, configurazione guidata, donazioni con PayPal, WP All Import ed Elementor. Esportazioni: solo libro soci e prima nota.
 - **Nel Pro**: pagamenti online, conti multipli e fondi, contabilità e report, 5 per mille, assicurazioni e presenze, comunicazioni di massa, app e notifiche, Wallet, ricevute PDF, incasso sul posto, IVA, più livelli di socio, personalizzazione dei testi (testi, lingue, tipo di ente e termini), licenza.
-- **Licenza non in regola** (pagamento mancante o dominio non più associato): AssociazioneSemplice Pro **torna alle funzioni di base**. Le funzioni avanzate spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata (con il collegamento per farlo); in cima alle pagine c'è un avviso, ma niente copre i dati. Le quote diverse dei soci non si applicano più (vale la quota sola), la scelta del tipo di socio sparisce e i soci con un livello proprio pagano la quota generale. Soci, volontari ed esportazioni di base non si bloccano mai. I pagamenti online già avviati si chiudono comunque (webhook, ritorno dal gateway, controllo periodico), così gli incassi in arrivo si registrano. Regolarizzata la licenza, tutto torna come prima: i dati non si toccano.
+- **Licenza non in regola** (pagamento mancante o dominio non più associato): Associazione Semplice Pro **torna alle funzioni di base**. Le funzioni avanzate spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata (con il collegamento per farlo); in cima alle pagine c'è un avviso, ma niente copre i dati. Le quote diverse dei soci non si applicano più (vale la quota sola), la scelta del tipo di socio sparisce e i soci con un livello proprio pagano la quota generale. Soci, volontari ed esportazioni di base non si bloccano mai. I pagamenti online già avviati si chiudono comunque (webhook, ritorno dal gateway, controllo periodico), così gli incassi in arrivo si registrano. Regolarizzata la licenza, tutto torna come prima: i dati non si toccano.
 - I pacchetti si costruiscono con `wordpress/build.sh`; l'elenco dei file avanzati è in `associazionesemplice/tests/pro-files.txt`.
 
 ## Livelli di licenza del Pro e pagina «Scopri il Pro»
@@ -667,7 +667,7 @@ Il colore d'accento (tessera, pulsanti) è quello scelto in Impostazioni → Asp
 
 ## Personalizzazione dei testi (Pro)
 
-Testi modificabili, lingue aggiuntive e tipo di ente con i termini («associazione/comitato», «socio/tesserato») sono una funzione di **AssociazioneSemplice Pro** (`TextsEngine.php`, `Terms.php`, `Languages.php`, `Admin/TextsPage.php`). Nel gratuito resta `Texts.php`, una facciata (`mail`, `plain`, `html`, `flush`) che lascia i testi originali. Con la licenza scaduta tornano i testi originali; le personalizzazioni restano salvate. L'elenco dei testi non comincia mai con la punteggiatura che separa un frammento da ciò che lo precede.
+Testi modificabili, lingue aggiuntive e tipo di ente con i termini («associazione/comitato», «socio/tesserato») sono una funzione di **Associazione Semplice Pro** (`TextsEngine.php`, `Terms.php`, `Languages.php`, `Admin/TextsPage.php`). Nel gratuito resta `Texts.php`, una facciata (`mail`, `plain`, `html`, `flush`) che lascia i testi originali. Con la licenza scaduta tornano i testi originali; le personalizzazioni restano salvate. L'elenco dei testi non comincia mai con la punteggiatura che separa un frammento da ciò che lo precede.
 
 ## Informativa privacy (GDPR)
 
@@ -687,4 +687,4 @@ Strumenti → Integrazioni: con la chiave API di Google Maps dell'ente (spenta d
 
 ## Versioni
 
-AssociazioneSemplice e AssociazioneSemplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`ASEM_API` / `ASEM_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.
+Associazione Semplice e Associazione Semplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`ASEM_API` / `ASEM_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.

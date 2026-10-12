@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  *  2. nel carrello ogni voce è un prodotto collegato (WooLinks) con il prezzo calcolato dal server (quota del livello, sconto familiare, mensilità…);
  *  3. quando l'ordine risulta pagato (in lavorazione o completato) l'incasso entra in prima nota, una sola volta, come per gli altri gateway.
  *
- * Gli ordini che non contengono voci AssociazioneSemplice non vengono toccati.
+ * Gli ordini che non contengono voci Associazione Semplice non vengono toccati.
  */
 final class WooBridge {
 
@@ -93,7 +93,7 @@ final class WooBridge {
 	// ---------- Carrello ----------
 
 	/**
-	 * Mette le voci da pagare nel carrello (sostituendo quelle AssociazioneSemplice già presenti) e restituisce l'indirizzo del checkout.
+	 * Mette le voci da pagare nel carrello (sostituendo quelle Associazione Semplice già presenti) e restituisce l'indirizzo del checkout.
 	 *
 	 * @param array[] $items voci da pagare (PaymentItems), con importi calcolati dal server
 	 * @throws \InvalidArgumentException
@@ -140,7 +140,7 @@ final class WooBridge {
 		return wc_get_checkout_url();
 	}
 
-	/** Il prezzo delle voci AssociazioneSemplice è quello calcolato dal server, non quello del listino. */
+	/** Il prezzo delle voci Associazione Semplice è quello calcolato dal server, non quello del listino. */
 	public static function apply_prices( $cart ): void {
 		if ( ! is_object( $cart ) || ! method_exists( $cart, 'get_cart' ) ) {
 			return;
@@ -170,7 +170,7 @@ final class WooBridge {
 
 	// ---------- Ordini ----------
 
-	/** Importo (centesimi) pagato per le voci AssociazioneSemplice di un ordine, per pagamento. @return array<string,int> */
+	/** Importo (centesimi) pagato per le voci Associazione Semplice di un ordine, per pagamento. @return array<string,int> */
 	public static function paid_by_payment( $order ): array {
 		$out = array();
 		foreach ( $order->get_items() as $it ) {

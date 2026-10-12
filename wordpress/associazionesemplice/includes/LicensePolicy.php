@@ -59,8 +59,8 @@ final class LicensePolicy {
 	/** Testo del popup per lo stato. */
 	public static function message( string $status ): string {
 		if ( self::STATUS_UNLICENSED === $status ) {
-			return 'Questo sito non risulta più associato a una licenza valida di AssociazioneSemplice.';
+			return 'Questo sito non risulta più associato a una licenza valida di Associazione Semplice.';
 		}
-		return 'Il pagamento della licenza di AssociazioneSemplice non risulta effettuato.';
+		return 'Il pagamento della licenza di Associazione Semplice non risulta effettuato.';
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name:       AssociazioneSemplice Pro
- * Description:       Funzioni avanzate per AssociazioneSemplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede AssociazioneSemplice.
+ * Plugin Name:       Associazione Semplice Pro
+ * Description:       Funzioni avanzate per Associazione Semplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede Associazione Semplice.
  * Version:           1.1.3
  * Requires at least: 6.0
  * Requires PHP:      7.4
@@ -15,22 +15,22 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'ASEM_PRO_VERSION', '1.1.3' );
-define( 'ASEM_PRO_API', 1 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di AssociazioneSemplice
+define( 'ASEM_PRO_API', 1 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
 define( 'ASEM_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
- * Installare e aggiornare AssociazioneSemplice e AssociazioneSemplice Pro si può fare in qualunque ordine e anche uno solo dei due: questo file non dà mai
- * errori. Le versioni sono indipendenti; contano solo la presenza di AssociazioneSemplice e il livello di compatibilità (`ASEM_API`), che cambia
+ * Installare e aggiornare Associazione Semplice e Associazione Semplice Pro si può fare in qualunque ordine e anche uno solo dei due: questo file non dà mai
+ * errori. Le versioni sono indipendenti; contano solo la presenza di Associazione Semplice e il livello di compatibilità (`ASEM_API`), che cambia
  * di rado. Se non ci sono o non corrispondono il Pro non carica le sue funzioni e dice cosa fare (i dati non si toccano).
  *
  * @return string '' se si può caricare, altrimenti il messaggio da mostrare
  */
 function asem_pro_problem(): string {
 	if ( ! class_exists( 'AssociazioneSemplice\Edition' ) || ! defined( 'ASEM_VERSION' ) ) {
-		return '<strong>AssociazioneSemplice Pro</strong> ha bisogno del plugin <strong>AssociazioneSemplice</strong>: installalo e attivalo.';
+		return '<strong>Associazione Semplice Pro</strong> ha bisogno del plugin <strong>Associazione Semplice</strong>: installalo e attivalo.';
 	}
 	if ( ! defined( 'ASEM_API' ) || ASEM_API !== ASEM_PRO_API ) {
-		return '<strong>AssociazioneSemplice Pro</strong> non è compatibile con questa versione di AssociazioneSemplice: aggiorna AssociazioneSemplice Pro e AssociazioneSemplice all\'ultima versione. Intanto le funzioni avanzate sono sospese; il resto funziona e i dati sono al sicuro.';
+		return '<strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: aggiorna Associazione Semplice Pro e Associazione Semplice all\'ultima versione. Intanto le funzioni avanzate sono sospese; il resto funziona e i dati sono al sicuro.';
 	}
 	return '';
 }
@@ -47,7 +47,7 @@ register_activation_hook(
 );
 
 /**
- * Le funzioni avanzate sono le stesse classi di AssociazioneSemplice (stesso spazio dei nomi) messe in una cartella a parte: il plugin gratuito
+ * Le funzioni avanzate sono le stesse classi di Associazione Semplice (stesso spazio dei nomi) messe in una cartella a parte: il plugin gratuito
  * le trova da solo appena questa cartella gli viene indicata.
  */
 add_action(
@@ -67,5 +67,5 @@ add_action(
 		}
 		\AssociazioneSemplice\Edition::add_dir( ASEM_PRO_DIR . 'includes' );
 	},
-	5 // prima che AssociazioneSemplice si avvii (priorità 10)
+	5 // prima che Associazione Semplice si avvii (priorità 10)
 );

@@ -4,7 +4,7 @@ namespace AssociazioneSemplice\Frontend;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Widget Elementor ("AssociazioneSemplice" e "Contenuto riservato"). Le classi dei widget si caricano solo quando
+ * Widget Elementor ("Associazione Semplice" e "Contenuto riservato"). Le classi dei widget si caricano solo quando
  * Elementor le richiede, quindi senza Elementor non succede nulla.
  */
 final class ElementorSupport {
@@ -13,7 +13,7 @@ final class ElementorSupport {
 		add_action(
 			'elementor/elements/categories_registered',
 			function ( $elements_manager ) {
-				$elements_manager->add_category( 'associazionesemplice', array( 'title' => 'AssociazioneSemplice', 'icon' => 'eicon-user-circle-o' ) );
+				$elements_manager->add_category( 'associazionesemplice', array( 'title' => 'Associazione Semplice', 'icon' => 'eicon-user-circle-o' ) );
 			}
 		);
 		add_action(
@@ -24,7 +24,7 @@ final class ElementorSupport {
 					$widgets_manager->register( new Elementor\ReservedWidget() );
 				} catch ( \Throwable $e ) {
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						error_log( 'AssociazioneSemplice: widget Elementor non registrati: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions
+						error_log( 'Associazione Semplice: widget Elementor non registrati: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions
 					}
 				}
 			}

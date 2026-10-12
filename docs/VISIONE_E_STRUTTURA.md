@@ -28,7 +28,7 @@ tenuti fuori da wp-admin (barra nascosta, reindirizzamento all'area riservata), 
 
 | Chi | Dove | Cosa può fare |
 |---|---|---|
-| **Amministratore del sito** | wp-admin → menu AssociazioneSemplice (già fatto) | tutto |
+| **Amministratore del sito** | wp-admin → menu Associazione Semplice (già fatto) | tutto |
 | **Socio e volontario** | area riservata sul sito (front-end) | solo le **sue attività**: vedere gli iscritti, comunicare con loro, segnare le presenze |
 | **Socio** (fondatore/ordinario/volontario) | area riservata sul sito | solo **i propri dati**: tessera digitale, profilo, attività e pagamenti, ospiti, rinnovo e pagamenti online |
 | **Ospite** | nessun accesso (per ora) | riceve comunicazioni; in futuro link personale |

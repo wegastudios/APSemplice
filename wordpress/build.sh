@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Costruisce i due pacchetti installabili partendo dal codice unico:
 #   dist/associazionesemplice-free.zip  → cartella associazionesemplice/      (edizione gratuita, senza i file elencati in associazionesemplice/tests/pro-files.txt)
-#   dist/associazionesemplice-pro.zip   → cartella associazionesemplice-pro/  (quei file, che si aggiungono ad AssociazioneSemplice quando è attivo)
+#   dist/associazionesemplice-pro.zip   → cartella associazionesemplice-pro/  (quei file, che si aggiungono ad Associazione Semplice quando è attivo)
 # Uso: bash wordpress/build.sh [cartella-di-uscita]
 set -euo pipefail
 root="$PWD"

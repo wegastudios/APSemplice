@@ -26,12 +26,12 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // associazionesemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
-		if ( '' !== Edition::mismatch() ) { // AssociazioneSemplice Pro troppo diverso da questo AssociazioneSemplice: non si carica, e si dice cosa fare
+		if ( '' !== Edition::mismatch() ) { // Associazione Semplice Pro troppo diverso da questo Associazione Semplice: non si carica, e si dice cosa fare
 			add_action(
 				'admin_notices',
 				function () {
 					if ( current_user_can( 'activate_plugins' ) ) {
-						echo '<div class="notice notice-error"><p><strong>AssociazioneSemplice Pro</strong> non è compatibile con questa versione di AssociazioneSemplice: le funzioni avanzate sono sospese. Aggiorna AssociazioneSemplice Pro e AssociazioneSemplice all\'ultima versione; il resto funziona e i dati sono al sicuro.</p></div>';
+						echo '<div class="notice notice-error"><p><strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: le funzioni avanzate sono sospese. Aggiorna Associazione Semplice Pro e Associazione Semplice all\'ultima versione; il resto funziona e i dati sono al sicuro.</p></div>';
 					}
 				}
 			);

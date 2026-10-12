@@ -1,4 +1,4 @@
-/* AssociazioneSemplice — interazioni della schermata di amministrazione (nessuna dipendenza). */
+/* Associazione Semplice — interazioni della schermata di amministrazione (nessuna dipendenza). */
 (function () {
 	'use strict';
 
@@ -766,7 +766,7 @@
 	}
 })();
 
-/* Il menu AssociazioneSemplice resta aperto su tutte le pagine del plugin (anche quelle di dettaglio e le schede nascoste) */
+/* Il menu Associazione Semplice resta aperto su tutte le pagine del plugin (anche quelle di dettaglio e le schede nascoste) */
 (function () {
 	if (!/[?&]page=asem/.test(window.location.search)) { return; }
 	var li = document.getElementById('toplevel_page_asem');

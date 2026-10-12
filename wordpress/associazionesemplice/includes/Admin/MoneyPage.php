@@ -60,7 +60,7 @@ final class MoneyPage {
 		}
 		echo '<p><a href="' . esc_url( Ui::url( 'asem-ledger' ) ) . '">Apri la prima nota →</a></p>';
 		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) { // un solo promemoria, discreto, dove serve davvero
-			echo '<p class="description">Più conti, pagamenti online, ricevute e report sono in AssociazioneSemplice Pro: <a href="' . esc_url( Ui::url( 'asem-pro' ) ) . '">scopri cosa comprende</a>.</p>';
+			echo '<p class="description">Più conti, pagamenti online, ricevute e report sono in Associazione Semplice Pro: <a href="' . esc_url( Ui::url( 'asem-pro' ) ) . '">scopri cosa comprende</a>.</p>';
 		}
 		Ui::footer();
 	}
