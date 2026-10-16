@@ -1,0 +1,30 @@
+name: Portale
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    paths: ["portale/**", ".github/workflows/portale.yml"]
+  pull_request:
+    paths: ["portale/**", ".github/workflows/portale.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Portale (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.1", "8.3"]
+    defaults:
+      run:
+        working-directory: portale
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, sodium, curl, intl, mbstring
+      - name: Syntax check
+        run: find . -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - run: php tests/run.php

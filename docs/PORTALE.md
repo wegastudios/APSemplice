@@ -1,0 +1,47 @@
+# Portale: vendita e gestione degli abbonamenti
+
+Applicazione PHP indipendente (cartella `portale/`, nessun framework, nessuna dipendenza): vende i piani, incassa con Stripe e PayPal,
+chiede le licenze al server Wega (`https://license.wegastudios.com/api/v1`) e le fa gestire al cliente. Non fa parte degli zip del plugin.
+
+Requisiti: PHP 7.4+ con `pdo_sqlite` (o `pdo_mysql`), `sodium`, `curl`, `intl` (domini con accenti). Cartella pubblica: `portale/public/`.
+
+## Piani
+
+| Piano | `plan_name` inviato a Wega | Licenza |
+|---|---|---|
+| Free | `Free` | tipo 3, 3650 giorni, gratuita |
+| Pro Lite (senza contabilità) | `Pro Lite` | tipo 3, 31 giorni (mensile) o 366 (annuale), rinnovata a ogni pagamento |
+| Pro Full | `Pro Full` | idem |
+
+Prezzi e codici dei prodotti sono in `config.php` (`plans`). Il portale non decide l'importo: lo addebita il prezzo Stripe / il piano PayPal indicato.
+I giorni in più rispetto al periodo (31/366) coprono i ritardi di pagamento; il server ha poi 5 giorni di tolleranza.
+
+## Percorsi
+
+- Licenza free: `/free` (email + dominio) → email con link → conferma → la chiave compare in `/account`. La licenza si emette solo dopo la conferma.
+- Acquisto: `/acquista?plan=full&period=year` → Stripe Checkout o PayPal → webhook → licenza emessa → email con il link per vedere la chiave.
+- Area riservata `/account`: chiave, scadenza, **cambio dominio** (`PUT /licenses/{id}/binding`, max 3 ogni 30 giorni), disdetta del rinnovo, carta e fatture (portale Stripe).
+- Accesso senza password: link monouso di 15 minuti; il link apre una pagina con pulsante, così gli antispam non lo consumano.
+
+## Webhook da configurare
+
+- Stripe → `https://…/webhook/stripe`: `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`.
+- PayPal → `https://…/webhook/paypal`: `BILLING.SUBSCRIPTION.ACTIVATED`, `PAYMENT.SALE.COMPLETED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, `BILLING.SUBSCRIPTION.CANCELLED`, `…EXPIRED`, `…SUSPENDED`.
+
+Ogni evento si elabora una volta sola (tabella `events`); se l'elaborazione fallisce risponde 500 e il provider riprova.
+Il rinnovo chiama `POST /licenses/renew` (non si ripete in automatico su errore 5xx: il server aggiungerebbe i giorni due volte; riprova il provider).
+PayPal manda `PAYMENT.SALE.COMPLETED` anche per il primo pagamento: conta come rinnovo solo negli ultimi `renew_window_days` di validità.
+
+## Sicurezza
+
+Token Wega e chiavi dei provider solo in `config.php` (fuori dal repository, vedi `.gitignore`); chiavi di licenza cifrate nel database (`app_key`, libsodium);
+firme dei webhook verificate (Stripe HMAC con tolleranza 5 minuti; PayPal con `verify-webhook-signature`); CSRF su ogni modulo; un dominio appartiene a un solo cliente
+(altrimenti `external_ref` idempotente restituirebbe la chiave a chi non è il proprietario).
+
+## Da fare
+
+1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` in `config.php`; token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
+2. **Client nel plugin**: validazione giornaliera (`POST /licenses/validate`), attestazione JWT EdDSA, cambio dei livelli. Oggi il plugin ha i livelli *Pro (contabile)* e *Pro Fiscale*; il nuovo catalogo è *Lite/Full*: va deciso come si mappano (`plan_name` → `License::plan()`).
+   Le regole attuali (`docs/LICENZE.md`: 2 installazioni, sottodomini) non coincidono con il tipo 3 del server (un dominio, `www` ignorato): da allineare.
+3. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
+4. Pannello amministrativo del portale (elenco clienti, revoche): non incluso.
