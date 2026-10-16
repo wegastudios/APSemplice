@@ -5,3 +5,5 @@ claude.ppk
 claude.pub
 *.ppk
 *.pem
+claude.ssh
+deploy_key*
