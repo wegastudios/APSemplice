@@ -58,12 +58,15 @@ Token Wega e chiavi dei provider solo in `config.php` (fuori dal repository, ved
 firme dei webhook verificate (Stripe HMAC con tolleranza 5 minuti; PayPal con `verify-webhook-signature`); CSRF su ogni modulo; un dominio appartiene a un solo cliente
 (altrimenti `external_ref` idempotente restituirebbe la chiave a chi non è il proprietario).
 
-## Da fare
+## Stato e da fare
 
-1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` in `config.php`; token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
-2. **Client nel plugin**: fatto (`LicenseClient`, `License::sync()`, vedi `docs/LICENZE.md`). Resta la credenziale solo-verifica del server Wega in `ASEM_LICENSE_TOKEN` (permesso `licenses:validate`). I nomi dei piani inviati al server devono contenere Free, Lite o Full.
-3. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
-4. Pannello amministrativo del portale (elenco clienti, revoche): non incluso.
+Fatto: vendita (Stripe e PayPal, ricorrente e singolo), licenze Wega, area cliente, prova Pro, pannello `/admin` (cruscotto, licenze, clienti, piani e prezzi, email, impostazioni, registro, pagamenti, cookie e script, pagine legali), cron degli avvisi, client nel plugin (`docs/LICENZE.md`).
+
+Da fare:
+1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
+2. Credenziale solo-verifica del server Wega (`licenses:validate`) in `ASEM_LICENSE_TOKEN` nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
+3. Prova su staging dei percorsi reali (acquisto, rinnovo, webhook, prova Pro) con le chiavi di test.
+4. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
 
 ## Chiavi, cookie e pagine legali (dal pannello)
 
