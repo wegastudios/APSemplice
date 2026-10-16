@@ -337,6 +337,84 @@ Portale\Audit::log( $db, 'io@esempio.it', 'prova', 'dettaglio' );
 check( 'registro: azione salvata', 'prova' === Portale\Audit::recent( $db, 5 )[0]['action'] );
 check( 'robots: segnali di non indicizzazione di default', false === Config::get( 'indexable', false ) );
 
+// --- Chiavi dal pannello ----------------------------------------------------------------------------------------------------------
+$tokenOk = 'wic_3c6d8003fdd2b68f.d5S6nSoypyWsa5RmmMPApIHcrhCf5d_rB1Pr_6ftmO13bJlM';
+$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
+Portale\Settings::load( $db );
+check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
+$raw = $db->one( "SELECT val FROM settings WHERE name = 'secrets'" )['val'];
+check( 'chiavi: nel database restano cifrate', false === strpos( $raw, 'sk_test_' ) && false === strpos( $raw, 'wic_3c6d' ) );
+$st = Portale\Settings::secretsStatus( $db );
+check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret']['mask'] && 'pannello' === $st['stripe_secret']['source'] && 'config.php' === $st['paypal_secret']['source'] );
+check( 'chiavi: formato sbagliato rifiutato', null !== throwsUser( function () use ( $db ) {
+	Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => 'non-una-chiave' ) );
+} ) && null !== throwsUser( function () use ( $db ) {
+	Portale\Settings::saveSecrets( $db, array( 'wega_token' => 'sbagliato' ) );
+} ) );
+Portale\Settings::saveSecrets( $db, array( 'stripe_webhook' => 'whsec_abcdefghijklmnop' ) );
+Portale\Settings::load( $db );
+check( 'chiavi: un modulo non cancella le altre né la modalità PayPal', 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && 'whsec_abcdefghijklmnop' === Config::get( 'stripe.webhook_secret' ) && true === Config::get( 'paypal.live' ) );
+Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook' => '1' ) );
+check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook']['source'] );
+
+// Prova dei collegamenti (server finto).
+$prev = Http::$transport;
+$code = 200;
+Http::$transport = function ( $m, $u ) use ( &$code ) {
+	return array( $code, '{}' );
+};
+Config::set( 'paypal.client_id', 'AbcdefghijklmnopqrstUV' );
+Config::set( 'paypal.secret', 'AbcdefghijklmnopqrstUV' );
+$code = 200;
+list( $okS ) = Portale\Connections::test( 'stripe' );
+list( $okP ) = Portale\Connections::test( 'paypal' );
+list( $okW ) = Portale\Connections::test( 'wega' );
+check( 'collegamenti: tutto raggiungibile', $okS && $okP && $okW );
+$code = 401;
+check( 'collegamenti: chiave rifiutata (401) segnalata', ! Portale\Connections::test( 'stripe' )[0] && ! Portale\Connections::test( 'wega' )[0] && ! Portale\Connections::test( 'paypal' )[0] );
+$code = 403;
+check( 'collegamenti: server licenze con token valido ma permessi parziali va bene', Portale\Connections::test( 'wega' )[0] );
+$code = 503;
+check( 'collegamenti: server giù non è un successo', ! Portale\Connections::test( 'wega' )[0] );
+check( 'collegamenti: nome sconosciuto', ! Portale\Connections::test( 'altro' )[0] );
+Http::$transport = $prev;
+
+// --- Script di monitoraggio e cookie ---------------------------------------------------------------------------------------------
+Config::set( 'tracking', array() );
+check( 'cookie: senza script niente banner', ! Portale\Tracking::banner() && '' === Portale\Tracking::slot( 'head' ) );
+check( 'cookie: snippet che chiude il template rifiutato', null !== throwsUser( function () {
+	Portale\Tracking::validate( '<script>x</script></TEMPLATE><script>evil()</script>' );
+} ) );
+Portale\Settings::saveTracking( $db, array( 'head' => '<script async src="https://t.example/a.js"></script>', 'head_cat' => 'analytics', 'foot' => '<script>necessario()</script>', 'foot_cat' => 'necessary' ) );
+Portale\Settings::load( $db );
+$rev1 = Portale\Tracking::conf()['rev'];
+check( 'cookie: script statistico dentro un template inerte', 0 === strpos( Portale\Tracking::slot( 'head' ), '<template data-cc-cat="analytics" data-cc-slot="head">' ) && Portale\Tracking::banner() && array( 'analytics' ) === array_keys( Portale\Tracking::categories() ) );
+check( 'cookie: script necessario stampato subito', '<script>necessario()</script>' === trim( Portale\Tracking::slot( 'foot' ) ) );
+Portale\Settings::saveTracking( $db, array( 'head' => '<script async src="https://t.example/a.js"></script>', 'head_cat' => 'analytics', 'foot' => '<script>necessario()</script>', 'foot_cat' => 'necessary' ) );
+Portale\Settings::load( $db );
+check( 'cookie: salvare senza cambiare non richiede un nuovo consenso', $rev1 === Portale\Tracking::conf()['rev'] );
+Portale\Settings::saveTracking( $db, array( 'head' => '<script>altro()</script>', 'head_cat' => 'marketing', 'foot' => '', 'foot_cat' => 'necessary' ) );
+Portale\Settings::load( $db );
+check( 'cookie: cambiare gli script aggiorna la revisione e le categorie', Portale\Tracking::conf()['rev'] >= $rev1 && array( 'marketing' ) === array_keys( Portale\Tracking::categories() ) );
+check( 'cookie: categoria sconosciuta ripiega su «statistiche»', 'analytics' === ( function () use ( $db ) {
+	Portale\Settings::saveTracking( $db, array( 'head' => '<b></b>', 'head_cat' => 'hack' ) );
+	Portale\Settings::load( $db );
+	return Portale\Tracking::conf()['head_cat'];
+} )() );
+Portale\Settings::saveTracking( $db, array() );
+Portale\Settings::load( $db );
+
+// --- Pagine legali -----------------------------------------------------------------------------------------------------------------------
+Portale\Settings::saveLegal( $db, array( 'titolare' => 'Associazione <b>Prova</b>', 'email' => 'privacy@esempio.it', 'privacy_body' => "## Titolo\n\nUn <script>alert(1)</script> **forte** per {titolare}\n\n- uno\n- due" ) );
+Portale\Settings::load( $db );
+$html = Portale\Legal::html( Portale\Legal::body( 'privacy' ) );
+check( 'legale: testo personalizzato con titoli, elenco e grassetto', false !== strpos( $html, '<h2>Titolo</h2>' ) && false !== strpos( $html, '<strong>forte</strong>' ) && false !== strpos( $html, '<ul><li>uno</li><li>due</li></ul>' ) );
+check( 'legale: HTML inserito dall\'amministratore è neutralizzato', false === strpos( $html, '<script>' ) && false === strpos( $html, '<b>Prova' ) && false !== strpos( $html, '&lt;b&gt;Prova&lt;/b&gt;' ) );
+check( 'legale: pagina cookie usa il testo di base se non personalizzata', ! Portale\Legal::isCustom( 'cookie' ) && false !== strpos( Portale\Legal::html( Portale\Legal::body( 'cookie' ) ), 'privacy@esempio.it' ) );
+Portale\Settings::saveLegal( $db, array( 'email' => 'non-valida' ) );
+Portale\Settings::load( $db );
+check( 'legale: email non valida scartata, si torna ai valori di base', 'info@associazionesemplice.it' === Portale\Legal::vars()['email'] && ! Portale\Legal::isCustom( 'privacy' ) );
+
 // --- Errori del server licenze -----------------------------------------------------
 Http::$transport = function () {
 	return array( 422, json_encode( array( 'error' => array( 'code' => 'INVALID_DOMAIN', 'message' => 'no' ) ) ) );

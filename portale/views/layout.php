@@ -13,7 +13,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <meta name="theme-color" content="#0f6b57">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230f6b57'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/portale.css?v=<?php echo e( $v ); ?>">
-</head>
+<?php echo \Portale\Tracking::slot( 'head' ); ?></head>
 <body>
 <header class="site-header"><div class="wrap">
 	<a class="logo" href="/"><span class="logo-mark"><?php echo icon( 'users' ); ?></span>Associazione Semplice</a>
@@ -26,8 +26,24 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <main><?php echo $content; ?></main>
 <footer class="site-footer"><div class="wrap">
 	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice · un progetto di Wega Studios</div>
-	<div><a href="/free">Licenza gratuita</a><a href="/accedi">Area riservata</a><a href="mailto:info@associazionesemplice.it">info@associazionesemplice.it</a></div>
+	<div><a href="/free">Licenza gratuita</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
+<?php if ( \Portale\Tracking::banner() ) : $cc = \Portale\Tracking::categories(); ?>
+<div class="cc" id="cc" role="dialog" aria-label="Cookie" aria-live="polite" hidden data-rev="<?php echo (int) \Portale\Tracking::conf()['rev']; ?>" data-cats="<?php echo e( implode( ',', array_keys( $cc ) ) ); ?>">
+	<div class="cc-box">
+		<p class="cc-text"><?php echo e( \Portale\Tracking::bannerText() ); ?> <a href="/cookie">Informativa sui cookie</a></p>
+		<div class="cc-prefs" hidden>
+			<label class="check"><input type="checkbox" checked disabled> Necessari (sempre attivi)</label>
+			<?php foreach ( $cc as $k => $l ) : ?><label class="check"><input type="checkbox" data-cc-pref="<?php echo e( $k ); ?>"> <?php echo e( $l ); ?></label><?php endforeach; ?>
+		</div>
+		<div class="cc-actions">
+			<button type="button" class="btn alt small" data-cc="reject">Rifiuta</button>
+			<button type="button" class="btn alt small" data-cc="custom">Personalizza</button>
+			<button type="button" class="btn small" data-cc="all">Accetta tutti</button>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
 <script src="/assets/portale.js?v=<?php echo e( $v ); ?>" defer></script>
-</body>
+<?php echo \Portale\Tracking::slot( 'foot' ); ?></body>
 </html>

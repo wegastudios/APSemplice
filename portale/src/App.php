@@ -47,6 +47,9 @@ final class App {
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
 			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
+			$slug = ltrim( $path, '/' );
+			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
 		} elseif ( $get && '/free' === $path ) {
 			View::render( 'free', array() );
 		} elseif ( ! $get && '/free' === $path ) {

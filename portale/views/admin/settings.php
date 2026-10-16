@@ -36,11 +36,11 @@ $names = array(
 		<div class="row-actions"><button class="btn" type="submit">Salva le impostazioni</button></div>
 	</form>
 	<div class="card2" style="margin-top:26px">
-		<h2>Collegamenti (in config.php sul server)</h2>
+		<h2>Collegamenti</h2>
 		<p><span class="status-dot<?php echo $cfg['key'] ? '' : ' off'; ?>"></span>Chiave di cifratura</p>
 		<p><span class="status-dot<?php echo $cfg['wega'] ? '' : ' off'; ?>"></span>Server licenze Wega</p>
 		<p><span class="status-dot<?php echo $cfg['stripe'] ? '' : ' off'; ?>"></span>Stripe</p>
 		<p style="margin:0"><span class="status-dot<?php echo $cfg['paypal'] ? '' : ' off'; ?>"></span>PayPal</p>
-		<p class="hint">Le chiavi segrete restano nel file di configurazione sul server e non si modificano da qui.</p>
+		<p class="hint">Le chiavi si inseriscono in <a href="/admin/pagamenti">Pagamenti</a>.</p>
 	</div>
 </div></section>

@@ -209,3 +209,14 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .trial-box { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 14px; padding: 16px 18px; margin-top: 18px; }
 .trial-box p { margin: 0; } .trial-box .btn { margin-top: 0 !important; }
 @media (max-width: 700px) { .form-grid.two { grid-template-columns: 1fr; } .dl { grid-template-columns: 1fr; gap: 2px; } .dl dd { margin-bottom: 10px; } }
+
+/* Banner cookie e pagine legali */
+.cc { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 50; display: flex; justify-content: center; pointer-events: none; }
+.cc[hidden] { display: none; }
+.cc-box { pointer-events: auto; width: 100%; max-width: 760px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.22); padding: 20px 22px; }
+.cc-text { margin: 0 0 14px; font-size: .95rem; } .cc-prefs { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 0 0 14px; } .cc-prefs[hidden] { display: none; }
+.cc-prefs .check { margin: 6px 0; font-weight: 600; font-size: .93rem; }
+.cc-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+@media (max-width: 520px) { .cc-actions .btn { flex: 1 1 100%; } }
+.legal h2 { font-size: 1.25rem; margin: 1.8em 0 .5em; } .legal p, .legal li { color: var(--muted); } .legal ul { padding-left: 1.2em; } .legal strong { color: var(--fg); }
+.site-footer a[data-cc-open] { cursor: pointer; }

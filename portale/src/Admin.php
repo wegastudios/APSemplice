@@ -83,6 +83,30 @@ final class Admin {
 				Settings::saveGeneral( $this->db, $_POST );
 				$this->done( 'settings', 'Impostazioni salvate.', '/admin/impostazioni' );
 			}
+		} elseif ( 'pagamenti' === $a ) {
+			if ( $get ) {
+				$this->show( 'payments', 'pagamenti', array( 's' => Settings::secretsStatus( $this->db ), 'base' => rtrim( (string) Config::get( 'base_url' ), '/' ) ) );
+			} elseif ( 'prova' === $b ) {
+				list( $ok, $msg ) = Connections::test( $c );
+				$this->done( 'test_' . $c, ( $ok ? '✓ ' : '✗ ' ) . $msg, '/admin/pagamenti' );
+			} else {
+				$changed = Settings::saveSecrets( $this->db, $_POST );
+				$this->done( 'secrets', $changed ? 'Chiavi salvate (' . implode( ', ', $changed ) . ').' : 'Impostazioni di pagamento salvate.', '/admin/pagamenti' );
+			}
+		} elseif ( 'cookie' === $a ) {
+			if ( $get ) {
+				$this->show( 'cookies', 'cookie', array( 't' => Tracking::conf(), 'cats' => Tracking::CATEGORIES ) );
+			} else {
+				Settings::saveTracking( $this->db, $_POST );
+				$this->done( 'tracking', 'Cookie e script salvati.', '/admin/cookie' );
+			}
+		} elseif ( 'legale' === $a ) {
+			if ( $get ) {
+				$this->show( 'legal_edit', 'legale', array( 'vars' => Legal::vars(), 'legal' => (array) Config::get( 'legal', array() ) ) );
+			} else {
+				Settings::saveLegal( $this->db, $_POST );
+				$this->done( 'legal', 'Pagine legali salvate.', '/admin/legale' );
+			}
 		} elseif ( 'registro' === $a && $get ) {
 			$this->show( 'audit', 'registro', array( 'rows' => Audit::recent( $this->db, 200 ) ) );
 		} else {

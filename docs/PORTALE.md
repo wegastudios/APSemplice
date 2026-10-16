@@ -65,3 +65,9 @@ firme dei webhook verificate (Stripe HMAC con tolleranza 5 minuti; PayPal con `v
    Le regole attuali (`docs/LICENZE.md`: 2 installazioni, sottodomini) non coincidono con il tipo 3 del server (un dominio, `www` ignorato): da allineare.
 3. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
 4. Pannello amministrativo del portale (elenco clienti, revoche): non incluso.
+
+## Chiavi, cookie e pagine legali (dal pannello)
+
+- **Pagamenti** (`/admin/pagamenti`): token Wega, chiavi Stripe e PayPal si inseriscono da qui. Sono **cifrate** nel database con `app_key` (che resta in `config.php`), si vedono solo gli ultimi 4 caratteri, un campo vuoto non cambia nulla; le chiavi del pannello hanno la precedenza su `config.php`. Ogni servizio ha «Prova il collegamento» e la pagina mostra gli indirizzi dei webhook e gli eventi da selezionare.
+- **Cookie e script** (`/admin/cookie`): spazio per gli script di monitoraggio nell'header e nel footer, ciascuno con la sua categoria di consenso (statistiche, marketing, necessari). Gli script non necessari stanno in `<template>` e partono solo dopo il consenso (`assets/portale.js`); il banner compare solo se esiste uno script che richiede consenso; cambiando gli script a tutti viene richiesta di nuovo la scelta. Cookie della scelta: `asem_cc`, 6 mesi.
+- **Pagine legali** (`/admin/legale`): `/privacy` e `/cookie` con testi di base modificabili e dati del titolare. Sono un modello: vanno verificati da un consulente.

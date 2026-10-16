@@ -7,7 +7,7 @@ if ( ! $cfg['stripe'] ) { $missing[] = 'Stripe (chiave segreta e segreto del web
 if ( ! $cfg['paypal'] ) { $missing[] = 'PayPal (client, segreto e ID del webhook)'; }
 ?>
 <section class="admin"><div class="wrap">
-	<?php if ( $missing ) : ?><div class="card2" style="border-color:var(--accent)"><h2>Da completare in config.php</h2><p class="muted" style="margin:0"><?php echo e( implode( ' · ', $missing ) ); ?></p></div><?php endif; ?>
+	<?php if ( $missing ) : ?><div class="card2" style="border-color:var(--accent)"><h2>Da completare</h2><p class="muted" style="margin:0 0 10px"><?php echo e( implode( ' · ', $missing ) ); ?></p><a class="btn small" href="/admin/pagamenti">Inserisci le chiavi</a></div><?php endif; ?>
 	<div class="stats">
 		<div class="stat"><b><?php echo (int) $active; ?></b><span>Licenze attive</span></div>
 		<div class="stat"><b><?php echo (int) $paying; ?></b><span>Abbonamenti a pagamento</span></div>

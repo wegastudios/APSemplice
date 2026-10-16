@@ -46,6 +46,13 @@ final class Settings {
 		if ( ! empty( $g['mail_from'] ) ) {
 			Config::set( 'mail_from', (string) $g['mail_from'] );
 		}
+		self::loadSecrets( $db );
+		foreach ( array( 'tracking', 'legal' ) as $k ) {
+			$v = self::read( $db, $k );
+			if ( $v ) {
+				Config::set( $k, $v );
+			}
+		}
 	}
 
 	private static function apply( string $path, array $g, string $key ): void {
@@ -158,6 +165,111 @@ final class Settings {
 			}
 		}
 		return $base;
+	}
+
+	// --- Chiavi dei servizi (cifrate nel database) ---------------------------------------------------------------
+
+	/** Campo => [percorso in Config, controllo del formato, etichetta]. */
+	const SECRETS = array(
+		'stripe_secret'  => array( 'stripe.secret_key', '/^(sk|rk)_(test|live)_[A-Za-z0-9]{10,200}$/', 'La chiave segreta Stripe deve iniziare con «sk_test_» o «sk_live_».' ),
+		'stripe_webhook' => array( 'stripe.webhook_secret', '/^whsec_[A-Za-z0-9]{10,200}$/', 'Il segreto del webhook Stripe deve iniziare con «whsec_».' ),
+		'paypal_client'  => array( 'paypal.client_id', '/^[A-Za-z0-9_-]{20,200}$/', 'Il Client ID PayPal non sembra valido.' ),
+		'paypal_secret'  => array( 'paypal.secret', '/^[A-Za-z0-9_-]{20,300}$/', 'Il segreto PayPal non sembra valido.' ),
+		'paypal_webhook' => array( 'paypal.webhook_id', '/^[A-Za-z0-9]{10,60}$/', 'L\'ID del webhook PayPal non sembra valido.' ),
+		'wega_token'     => array( 'wega.token', '/^wic_[a-f0-9]{8,}\.[A-Za-z0-9_-]{20,}$/', 'Il token Wega deve avere la forma «wic_…».«segreto».' ),
+	);
+
+	/** @var array valori presenti in config.php prima di applicare quelli del pannello */
+	private static $fromFile = array();
+
+	private static function loadSecrets( Db $db ): void {
+		$sealed = self::read( $db, 'secrets' );
+		foreach ( self::SECRETS as $k => $def ) {
+			if ( ! isset( self::$fromFile[ $k ] ) ) {
+				self::$fromFile[ $k ] = (string) Config::get( $def[0], '' );
+			}
+			if ( ! empty( $sealed[ $k ] ) ) {
+				try {
+					Config::set( $def[0], Secrets::open( (string) $sealed[ $k ] ) );
+				} catch ( \Throwable $e ) {
+					error_log( '[portale] chiave «' . $k . '» non leggibile: ' . $e->getMessage() );
+				}
+			}
+		}
+		$pay = self::read( $db, 'payments' );
+		if ( array_key_exists( 'paypal_live', $pay ) ) {
+			Config::set( 'paypal.live', (bool) $pay['paypal_live'] );
+		}
+	}
+
+	/** Per il modulo: per ogni chiave se c'è, da dove viene e gli ultimi caratteri (mai il valore intero). */
+	public static function secretsStatus( Db $db ): array {
+		$sealed = self::read( $db, 'secrets' );
+		$out    = array();
+		foreach ( self::SECRETS as $k => $def ) {
+			$val = '';
+			try {
+				$val = ! empty( $sealed[ $k ] ) ? Secrets::open( (string) $sealed[ $k ] ) : '';
+			} catch ( \Throwable $e ) {
+				$val = '';
+			}
+			$fromPanel = '' !== $val;
+			$val       = $fromPanel ? $val : ( self::$fromFile[ $k ] ?? '' );
+			$out[ $k ] = array( 'set' => '' !== $val, 'mask' => '' !== $val ? '••••' . substr( $val, -4 ) : '', 'source' => $fromPanel ? 'pannello' : ( '' !== $val ? 'config.php' : '' ) );
+		}
+		$out['paypal_live'] = (bool) Config::get( 'paypal.live', false );
+		return $out;
+	}
+
+	/** Salva le chiavi dal modulo: vuoto = non cambia, «rimuovi» = cancella. @return array nomi dei campi cambiati */
+	public static function saveSecrets( Db $db, array $in ): array {
+		$sealed  = self::read( $db, 'secrets' );
+		$changed = array();
+		foreach ( self::SECRETS as $k => $def ) {
+			$v = trim( (string) ( $in[ $k ] ?? '' ) );
+			if ( ! empty( $in[ 'remove_' . $k ] ) ) {
+				unset( $sealed[ $k ] );
+				$changed[] = $k;
+			} elseif ( '' !== $v ) {
+				if ( ! preg_match( $def[1], $v ) ) {
+					throw new UserError( $def[2] );
+				}
+				$sealed[ $k ] = Secrets::seal( $v );
+				$changed[]    = $k;
+			}
+		}
+		self::write( $db, 'secrets', $sealed );
+		// La modalità PayPal si cambia solo dal modulo PayPal (che manda anche questo campo nascosto).
+		if ( isset( $in['paypal_live_present'] ) ) {
+			self::write( $db, 'payments', array( 'paypal_live' => ! empty( $in['paypal_live'] ) ) );
+		}
+		return $changed;
+	}
+
+	// --- Cookie, script di monitoraggio, pagine legali ---------------------------------------------------------------
+
+	public static function saveTracking( Db $db, array $in ): void {
+		$cat  = function ( $v ) { return in_array( $v, array( 'analytics', 'marketing', 'necessary' ), true ) ? $v : 'analytics'; };
+		$new  = array(
+			'head' => Tracking::validate( (string) ( $in['head'] ?? '' ) ), 'head_cat' => $cat( $in['head_cat'] ?? '' ),
+			'foot' => Tracking::validate( (string) ( $in['foot'] ?? '' ) ), 'foot_cat' => $cat( $in['foot_cat'] ?? '' ),
+			'banner_text' => mb_substr( trim( (string) ( $in['banner_text'] ?? '' ) ), 0, 600 ),
+		);
+		$old       = self::read( $db, 'tracking' );
+		$same      = isset( $old['head'] ) && $old['head'] === $new['head'] && $old['foot'] === $new['foot'] && $old['head_cat'] === $new['head_cat'] && $old['foot_cat'] === $new['foot_cat'];
+		// Se cambiano gli script chi aveva già scelto viene interpellato di nuovo.
+		$new['rev'] = $same ? (int) ( $old['rev'] ?? 1 ) : time();
+		self::write( $db, 'tracking', $new );
+	}
+
+	public static function saveLegal( Db $db, array $in ): void {
+		$t     = function ( $k, int $max ) use ( $in ) { return mb_substr( trim( (string) ( $in[ $k ] ?? '' ) ), 0, $max ); };
+		$email = $t( 'email', 190 );
+		self::write( $db, 'legal', array(
+			'titolare' => $t( 'titolare', 160 ), 'indirizzo' => $t( 'indirizzo', 240 ), 'piva' => $t( 'piva', 40 ),
+			'email' => ( '' === $email || filter_var( $email, FILTER_VALIDATE_EMAIL ) ) ? $email : '',
+			'privacy_body' => $t( 'privacy_body', 30000 ), 'cookie_body' => $t( 'cookie_body', 30000 ),
+		) );
 	}
 
 	private static function read( Db $db, string $name ): array {
