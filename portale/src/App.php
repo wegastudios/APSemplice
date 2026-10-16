@@ -35,6 +35,12 @@ final class App {
 		} catch ( UserError $e ) {
 			http_response_code( 422 );
 			View::render( 'message', array( 'title' => 'Non è andata a buon fine', 'text' => $e->getMessage() ) );
+		} catch ( WegaException $e ) {
+			error_log( '[portale] wega ' . $e->errorCode . ' ' . $e->httpStatus . ' ' . $e->getMessage() );
+			http_response_code( 502 );
+			// Alla gestione si mostra la causa vera; ai clienti un messaggio generico.
+			$detail = ! empty( $_SESSION['admin'] ) ? ' Risposta del server licenze: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage() : '';
+			View::render( 'message', array( 'title' => 'Server licenze non disponibile', 'text' => 'Non è stato possibile completare l\'operazione con il server licenze: riprova tra qualche minuto.' . $detail ) );
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] ' . $e->getMessage() );
 			http_response_code( 500 );
@@ -50,7 +56,7 @@ final class App {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
@@ -102,6 +108,8 @@ final class App {
 			}
 		} elseif ( ! $get && '/entra' === $path ) {
 			$this->enter( (string) $this->in( 'token' ) );
+		} elseif ( $get && 0 === strpos( $path, '/scarica/' ) ) {
+			$this->download( $path );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( ! $get && '/account/dominio' === $path ) {
@@ -149,6 +157,17 @@ final class App {
 		header( 'Location: ' . ( $_SESSION['admin'] ? '/admin' : '/account' ), true, 303 );
 	}
 
+	/** Scarico di un pacchetto del plugin: solo con accesso eseguito, licenza in regola e entro il limite giornaliero. */
+	private function download( string $path ): void {
+		$cid   = $this->customerId();
+		$parts = explode( '/', trim( substr( $path, 9 ), '/' ) );
+		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! preg_match( '/^d+.d+.d+$/', $parts[1] ) ) {
+			throw new UserError( 'Questa versione non è disponibile.' );
+		}
+		$file = Releases::authorize( $this->db, $cid, ! empty( $_SESSION['admin'] ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );
+		Releases::stream( $file, $parts[0], $parts[1] );
+	}
+
 	private function account(): void {
 		$cid  = $this->customerId();
 		$subs = $this->billing->forCustomer( $cid );
@@ -160,6 +179,7 @@ final class App {
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
 			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['admin'] ),
+			'releases' => array_combine( Releases::entitled( $subs ), array_map( function ( $p ) { return Releases::all( $this->db, $p ); }, Releases::entitled( $subs ) ) ) ?: array(),
 		) );
 	}
 

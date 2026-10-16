@@ -1,4 +1,4 @@
-<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin */
+<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin @var array $releases */
 $csrf = Portale\App::csrf();
 ?>
 <section class="page"><div class="wrap" style="max-width:860px">
@@ -12,6 +12,21 @@ $csrf = Portale\App::csrf();
 	<?php if ( ! $subs ) : ?>
 		<div class="sub empty"><div class="ico" style="margin:0 auto 16px"><?php echo icon( 'key' ); ?></div><h2>Nessuna licenza, per ora</h2><p class="muted">Parti dal piano gratuito oppure scegli un piano Pro.</p>
 		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/#prezzi">Vedi i piani</a></div>
+	<?php endif; ?>
+	<?php if ( ! empty( $releases ) ) : ?>
+	<div class="sub">
+		<div class="sub-top"><h2>Scarica il plugin</h2></div>
+		<?php foreach ( $releases as $prod => $list ) : if ( ! $list ) { continue; } ?>
+			<p style="margin:12px 0 6px"><b><?php echo e( Portale\Releases::PRODUCTS[ $prod ][1] ); ?></b> <span class="muted small">versione <?php echo e( $list[0]['version'] ); ?> · <?php echo e( date_it( $list[0]['created_at'] ) ); ?></span></p>
+			<a class="btn" href="/scarica/<?php echo e( $prod ); ?>/<?php echo e( $list[0]['version'] ); ?>">Scarica la <?php echo e( $list[0]['version'] ); ?></a>
+			<?php if ( count( $list ) > 1 ) : ?>
+			<details style="margin-top:10px"><summary class="muted small">Versioni precedenti, per tornare indietro</summary>
+				<ul class="muted small" style="margin:8px 0 0;padding-left:18px"><?php foreach ( array_slice( $list, 1 ) as $r ) : ?><li><a href="/scarica/<?php echo e( $prod ); ?>/<?php echo e( $r['version'] ); ?>"><?php echo e( $r['version'] ); ?></a> · <?php echo e( date_it( $r['created_at'] ) ); ?><?php echo $r['note'] ? ' · ' . e( $r['note'] ) : ''; ?></li><?php endforeach; ?></ul>
+			</details>
+			<?php endif; ?>
+		<?php endforeach; ?>
+		<p class="hint">I pacchetti si scaricano solo da qui, con la licenza in regola. Carica lo zip da WordPress: Plugin → Aggiungi nuovo → Carica plugin. Per tornare indietro disattiva e sostituisci il plugin con la versione precedente (i dati restano).</p>
+	</div>
 	<?php endif; ?>
 	<?php foreach ( $subs as $s ) :
 		$key = '';

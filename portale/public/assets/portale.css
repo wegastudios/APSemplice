@@ -36,6 +36,7 @@ p { margin: 0 0 1em; }
 .nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .95rem; padding: 8px 12px; border-radius: 10px; }
 .nav a:hover { color: var(--fg); background: var(--surface-2); }
 .nav a.btn { color: var(--brand-fg); margin-left: 6px; }
+.nav a.btn:hover { background: var(--brand-2); color: var(--brand-fg); }
 
 /* Pulsanti */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border-radius: 12px; border: 1px solid transparent; background: var(--brand); color: var(--brand-fg); font: inherit; font-weight: 700; font-size: 1rem; text-decoration: none; cursor: pointer; transition: transform .12s, background .12s, box-shadow .12s; }

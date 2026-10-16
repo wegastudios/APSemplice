@@ -107,6 +107,24 @@ final class Admin {
 				Settings::saveLegal( $this->db, $_POST );
 				$this->done( 'legal', 'Pagine legali salvate.', '/admin/legale' );
 			}
+		} elseif ( 'versioni' === $a ) {
+			if ( $get ) {
+				$rows = array();
+				foreach ( array_keys( Releases::PRODUCTS ) as $p ) {
+					$rows[ $p ] = Releases::all( $this->db, $p );
+				}
+				$this->show( 'releases', 'versioni', array( 'rows' => $rows, 'keep' => Settings::limit( 'releases_keep' ) ) );
+			} elseif ( 'elimina' === $b ) {
+				Releases::remove( $this->db, (string) ( $_POST['product'] ?? '' ), (string) ( $_POST['version'] ?? '' ), $this->email );
+				$this->done( 'release_remove', 'Versione eliminata.', '/admin/versioni' );
+			} else {
+				$f = $_FILES['package'] ?? null;
+				if ( ! $f || UPLOAD_ERR_OK !== (int) $f['error'] || ! is_uploaded_file( (string) $f['tmp_name'] ) ) {
+					throw new UserError( 'Caricamento non riuscito: scegli lo zip del plugin (controlla anche il limite di upload_max_filesize del server).' );
+				}
+				$row = Releases::add( $this->db, (string) ( $_POST['product'] ?? '' ), (string) $f['tmp_name'], (string) ( $_POST['note'] ?? '' ), $this->email );
+				$this->done( 'release_add', 'Versione ' . $row['version'] . ' pubblicata.', '/admin/versioni' );
+			}
 		} elseif ( 'registro' === $a && $get ) {
 			$this->show( 'audit', 'registro', array( 'rows' => Audit::recent( $this->db, 200 ) ) );
 		} else {
