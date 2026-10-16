@@ -28,7 +28,7 @@ final class Languages {
 			return self::$bundled;
 		}
 		self::$bundled = array();
-		foreach ( glob( rtrim( ASEM_DIR, '/\\' ) . '/languages/*.json' ) ?: array() as $file ) {
+		foreach ( glob( __DIR__ . '/languages/*.json' ) ?: array() as $file ) {
 			$j = json_decode( (string) file_get_contents( $file ), true );
 			if ( is_array( $j ) && isset( $j['code'], $j['strings'] ) && is_array( $j['strings'] ) && self::valid_code( (string) $j['code'] ) && self::DEFAULT_CODE !== $j['code'] ) {
 				self::$bundled[ (string) $j['code'] ] = array( 'name' => (string) ( $j['name'] ?? $j['code'] ), 'strings' => self::clean( $j['strings'] ) );

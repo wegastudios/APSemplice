@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.11
+Stable tag: 1.1.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -59,6 +59,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.12 =
+* Moved the English language pack to the Pro plugin (translations belong to text customisation, a Pro feature).
 
 = 1.1.11 =
 * License: optional free license key tied to the domain, checked daily with the license server (plan, expiry, signed response); license settings panel with a free key link; the free plugin never loses a basic feature because of a license. Pro Lite and Pro Full levels.
