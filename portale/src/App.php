@@ -86,10 +86,15 @@ final class App {
 			}
 			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per entrare.' ) );
 		} elseif ( $get && 0 === strpos( $path, '/entra/' ) ) {
-			// Il link apre una pagina con un pulsante: i programmi antispam che "visitano" i link non lo consumano.
-			View::render( 'enter', array( 'token' => substr( $path, 7 ) ) );
+			// Clic di una persona (il browser lo dichiara con Sec-Fetch-User): si entra subito. Visite automatiche degli antispam,
+			// che non lo dichiarano, vedono la pagina col pulsante e non consumano il link.
+			if ( '?1' === ($_SERVER['HTTP_SEC_FETCH_USER'] ?? '') && 'navigate' === ($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '') ) {
+				$this->enter( substr( $path, 7 ) );
+			} else {
+				View::render( 'enter', array( 'token' => substr( $path, 7 ) ) );
+			}
 		} elseif ( ! $get && '/entra' === $path ) {
-			$this->enter();
+			$this->enter( (string) $this->in( 'token' ) );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( ! $get && '/account/dominio' === $path ) {
@@ -120,8 +125,8 @@ final class App {
 		}
 	}
 
-	private function enter(): void {
-		$t = $this->auth->consume( (string) $this->in( 'token' ) );
+	private function enter( string $token ): void {
+		$t = $this->auth->consume( $token );
 		if ( ! $t ) {
 			throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo.' );
 		}
