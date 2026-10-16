@@ -34,6 +34,10 @@ final class WegaSync {
 			$r['_sub']    = $db->one( 'SELECT * FROM subscriptions WHERE license_id = ?', array( (string) ( $r['id'] ?? '' ) ) );
 			$r['_reason'] = '';
 			$r['_state']  = 'known';
+			$r['_diff']   = array();
+			if ( $r['_sub'] ) {
+				$r['_diff'] = self::differences( $r['_sub'], $r );
+			}
 			if ( ! $r['_sub'] ) {
 				$reason       = self::problem( $db, $r );
 				$r['_state']  = '' === $reason ? 'missing' : 'blocked';
@@ -42,6 +46,22 @@ final class WegaSync {
 			$out[] = $r;
 		}
 		return $out;
+	}
+
+	/** Differenze tra la licenza nel portale e quella su Wega (devono essere identiche). @return string[] */
+	public static function differences( array $sub, array $w ): array {
+		$d = array();
+		if ( isset( $w['domain'] ) && Domain::normalize( (string) $w['domain'] ) !== $sub['domain'] ) {
+			$d[] = 'dominio: Wega ' . $w['domain'];
+		}
+		if ( ! empty( $w['expires_at'] ) && ! empty( $sub['expires_at'] ) && abs( strtotime( (string) $w['expires_at'] ) - strtotime( $sub['expires_at'] . ' UTC' ) ) > 86400 ) {
+			$d[] = 'scadenza: Wega ' . gmdate( 'd/m/Y', (int) strtotime( (string) $w['expires_at'] ) );
+		}
+		$wegaOff = in_array( strtoupper( (string) ( $w['state'] ?? '' ) ), array( 'SUSPENDED', 'REVOKED' ), true );
+		if ( $wegaOff !== ( 'canceled' === $sub['status'] ) ) {
+			$d[] = 'stato: Wega ' . strtoupper( (string) ( $w['state'] ?? '' ) );
+		}
+		return $d;
 	}
 
 	/** Licenze del portale con un id Wega che Wega non elenca (solo se l'elenco è completo). */

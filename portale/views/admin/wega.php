@@ -17,7 +17,7 @@ foreach ( $rows as $r ) {
 	<?php foreach ( $rows as $r ) : ?>
 		<tr><td><?php echo e( (string) ( $r['customer_id'] ?? '' ) ); ?></td><td><?php echo e( (string) ( $r['domain'] ?? '' ) ); ?></td><td><?php echo e( (string) ( $r['plan_name'] ?? '' ) ); ?></td><td><span class="badge"><?php echo e( (string) ( $r['state'] ?? '' ) ); ?></span></td>
 		<td><?php echo e( date_it( ! empty( $r['expires_at'] ) ? gmdate( 'Y-m-d H:i:s', (int) strtotime( (string) $r['expires_at'] ) ) : null ) ); ?></td>
-		<td><?php if ( 'known' === $r['_state'] ) : ?><a href="/admin/licenze/<?php echo e( $r['_sub']['id'] ); ?>">Sì</a><?php elseif ( 'blocked' === $r['_state'] ) : ?><span class="muted small"><?php echo e( $r['_reason'] ); ?></span><?php else : ?><b>No</b><?php endif; ?></td>
+		<td><?php if ( 'known' === $r['_state'] ) : ?><a href="/admin/licenze/<?php echo e( $r['_sub']['id'] ); ?>">Sì</a><?php if ( $r['_diff'] ) : ?> <span class="badge bad" title="Il portale e Wega devono essere identici"><?php echo e( implode( '; ', $r['_diff'] ) ); ?></span><?php endif; ?><?php elseif ( 'blocked' === $r['_state'] ) : ?><span class="muted small"><?php echo e( $r['_reason'] ); ?></span><?php else : ?><b>No</b><?php endif; ?></td>
 		<td><?php if ( 'missing' === $r['_state'] ) : ?><form method="post" action="/admin/wega"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( (string) $r['id'] ); ?>"><button class="btn alt small" type="submit">Importa</button></form><?php endif; ?></td></tr>
 	<?php endforeach; ?>
 	<?php if ( ! $rows ) : ?><tr><td colspan="7" class="muted">Wega non ha licenze per questo portale.</td></tr><?php endif; ?>

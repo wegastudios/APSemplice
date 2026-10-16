@@ -12,6 +12,8 @@ final class Billing {
 	private $db;
 	/** @var WegaClient */
 	private $wega;
+	/** @var string Avviso dell'ultima eliminazione di un cliente (operazione non ancora offerta da Wega). */
+	public $warning = '';
 
 	public function wega(): WegaClient {
 		return $this->wega;
@@ -426,6 +428,35 @@ final class Billing {
 		return false === $t ? null : gmdate( 'Y-m-d H:i:s', $t );
 	}
 
+	// --- Specchio su Wega ----------------------------------------------------------------------------------------------
+
+	/**
+	 * Riflette su Wega un cambiamento fatto nel portale, perché i due sistemi restino identici (Wega è la copia di sicurezza delle licenze).
+	 * Se Wega non offre ancora l'operazione (404/405) il cambiamento locale prosegue e si restituisce un avviso; un errore vero blocca tutto
+	 * (nulla cambia nel portale) per non creare differenze.
+	 *
+	 * @param string $action suspend | restore | revoke
+	 * @return string avviso da mostrare, vuoto se tutto è andato a buon fine o non c'era nulla da riflettere
+	 * @throws UserError
+	 */
+	public function mirror( array $sub, string $action ): string {
+		if ( empty( $sub['license_id'] ) ) {
+			return '';
+		}
+		try {
+			$this->wega->{$action}( (string) $sub['license_id'] );
+			return '';
+		} catch ( WegaException $e ) {
+			if ( 'LICENSE_NOT_FOUND' === $e->errorCode ) {
+				return 'La licenza non risulta più su Wega.';
+			}
+			if ( in_array( $e->httpStatus, array( 404, 405, 501 ), true ) ) {
+				return 'Wega non offre ancora questa operazione: la modifica non è stata riflessa sul server licenze.';
+			}
+			throw new UserError( 'Il server licenze non ha accettato la modifica (' . $e->errorCode . ', HTTP ' . $e->httpStatus . '): non è cambiato nulla. Riprova.' );
+		}
+	}
+
 	// --- Eliminazione (gestione) ---------------------------------------------------------------------------------------
 
 	/** Motivo per cui una licenza non si può eliminare, o null. Non tocca il server Wega né i provider. */
@@ -445,6 +476,7 @@ final class Billing {
 		if ( $reason = $this->undeletableReason( $sub ) ) {
 			throw new UserError( $reason );
 		}
+		$sub['_warning'] = $this->mirror( $sub, 'revoke' );
 		$this->db->run( 'DELETE FROM subscriptions WHERE id = ?', array( $subId ) );
 		return $sub;
 	}
@@ -456,6 +488,11 @@ final class Billing {
 			if ( $reason = $this->undeletableReason( $s ) ) {
 				throw new UserError( $s['domain'] . ': ' . $reason );
 			}
+		}
+		// Prima Wega (tutte o nessuna per errore vero), poi il database locale.
+		$this->warning = '';
+		foreach ( $subs as $s ) {
+			$this->warning = $this->mirror( $s, 'revoke' ) ?: $this->warning;
 		}
 		foreach ( array( 'subscriptions', 'login_tokens', 'downloads' ) as $t ) {
 			$this->db->run( 'DELETE FROM ' . $t . ' WHERE customer_id = ?', array( $customerId ) );

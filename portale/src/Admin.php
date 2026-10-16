@@ -250,12 +250,13 @@ final class Admin {
 				if ( ! in_array( $st, array( 'active', 'canceled' ), true ) ) {
 					throw new UserError( 'Stato non valido.' );
 				}
+				$warn = $this->billing->mirror( $sub, 'canceled' === $st ? 'suspend' : 'restore' );
 				$this->billing->setStatus( $id, $st );
-				$this->done( 'status', 'Stato di ' . $sub['domain'] . ': ' . $st, $to, $id );
+				$this->done( 'status', 'Stato di ' . $sub['domain'] . ': ' . $st . ( $warn ? ' — ' . $warn : '' ), $to, $id );
 				break;
 			case 'elimina':
-				$this->billing->deleteSubscription( $id );
-				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.', '/admin/licenze', $id );
+				$deleted = $this->billing->deleteSubscription( $id );
+				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.' . ( ! empty( $deleted['_warning'] ) ? ' ' . $deleted['_warning'] : '' ), '/admin/licenze', $id );
 				break;
 			case 'nota':
 				$this->db->run( 'UPDATE subscriptions SET note = ? WHERE id = ?', array( mb_substr( trim( (string) ( $_POST['note'] ?? '' ) ), 0, 255 ), $id ) );
@@ -330,7 +331,7 @@ final class Admin {
 			throw new UserError( 'Non puoi eliminare il tuo stesso account mentre sei dentro.' );
 		}
 		$n = $this->billing->deleteCustomer( $id );
-		$this->done( 'customer_delete', 'Cliente ' . $c['email'] . ' eliminato (' . $n . ' licenze).', '/admin/clienti' );
+		$this->done( 'customer_delete', 'Cliente ' . $c['email'] . ' eliminato (' . $n . ' licenze).' . ( $this->billing->warning ? ' ' . $this->billing->warning : '' ), '/admin/clienti' );
 	}
 
 	private function savePlan( string $code ): void {

@@ -595,5 +595,25 @@ check( 'wega import: ripetuta rifiutata', null !== throwsUser( function () use (
 check( 'wega import: dopo l\'importazione risulta già nel portale', 'known' === Portale\WegaSync::compare( $sdb, array( $all[0] ) )[0]['_state'] );
 check( 'wega orfane: licenza del portale che Wega non elenca', 1 === count( Portale\WegaSync::orphans( $sdb, array( $all[0] ) ) ) );
 
+// --- Specchio su Wega -------------------------------------------------------------------------
+$mdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb->migrate();
+$mbil = new Billing( $mdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$mcalls = array();
+$mcode  = 200;
+Http::$transport = function ( $m, $url ) use ( &$mcalls, &$mcode ) {
+	$mcalls[] = $m . ' ' . substr( $url, strlen( 'https://license.test/api/v1' ) );
+	return 200 === $mcode ? array( 200, '{"data":{"state":"REVOKED"}}' ) : array( $mcode, '{"error":{"code":"X","message":"m"}}' );
+};
+$msub = array( 'license_id' => 'L9', 'domain' => 'm.it' );
+check( 'specchio: senza licenza su Wega non chiama nulla', '' === $mbil->mirror( array( 'license_id' => null ), 'revoke' ) && array() === $mcalls );
+check( 'specchio: revoca riuscita chiama Wega', '' === $mbil->mirror( $msub, 'revoke' ) && array( 'POST /licenses/L9/revoke' ) === $mcalls );
+$mcode = 404;
+check( 'specchio: operazione non ancora offerta (404) → avviso, si prosegue', '' !== $mbil->mirror( $msub, 'suspend' ) );
+$mcode = 500;
+check( 'specchio: errore vero del server → bloccato', null !== throwsUser( function () use ( $mbil, $msub ) { $mbil->mirror( $msub, 'restore' ); } ) );
+check( 'differenze: licenze identiche', array() === Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'active' ), array( 'domain' => 'www.a.it', 'expires_at' => '2027-01-01T00:00:00Z', 'state' => 'ACTIVE' ) ) );
+check( 'differenze: dominio, scadenza e stato diversi', 3 === count( Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'canceled' ), array( 'domain' => 'b.it', 'expires_at' => '2027-03-01T00:00:00Z', 'state' => 'ACTIVE' ) ) ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
