@@ -221,3 +221,5 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 @media (max-width: 520px) { .cc-actions .btn { flex: 1 1 100%; } }
 .legal h2 { font-size: 1.25rem; margin: 1.8em 0 .5em; } .legal p, .legal li { color: var(--muted); } .legal ul { padding-left: 1.2em; } .legal strong { color: var(--fg); }
 .site-footer a[data-cc-open] { cursor: pointer; }
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--brand); text-decoration: underline; cursor: pointer; }
+.linklike:hover { color: var(--brand-2); }

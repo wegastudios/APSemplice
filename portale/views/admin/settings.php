@@ -5,6 +5,7 @@ $names = array(
 	'reminder_days' => 'Avviso di scadenza, giorni prima (0 = mai)', 'trial_days' => 'Durata della prova Pro (giorni)',
 	'proxy_ip' => 'Verifiche dal plugin per IP, ogni ora', 'proxy_key' => 'Verifiche dal plugin per chiave, ogni ora',
 	'releases_keep' => 'Versioni dei plugin da tenere online', 'download_day' => 'Scarichi per cliente ogni 24 ore',
+	'password_min' => 'Lunghezza minima della password', 'login_fails' => 'Errori di password per ora prima del blocco',
 );
 ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
@@ -41,6 +42,15 @@ $names = array(
 			<h2>Pacchetti del plugin</h2>
 			<p class="muted">I pacchetti si caricano da <a href="/admin/versioni">Versioni</a> e si scaricano solo dall'area cliente.</p>
 			<?php foreach ( array( 'releases_keep', 'download_day' ) as $k ) : ?>
+				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
+				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">
+				<div class="risk"><?php echo e( $limits[ $k ][3] ); ?></div>
+			<?php endforeach; ?>
+		</div>
+		<div class="card2">
+			<h2>Accesso dei clienti</h2>
+			<p class="muted">Email e password; il link per email resta per il primo accesso e per chi dimentica la password.</p>
+			<?php foreach ( array( 'password_min', 'login_fails' ) as $k ) : ?>
 				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
 				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">
 				<div class="risk"><?php echo e( $limits[ $k ][3] ); ?></div>

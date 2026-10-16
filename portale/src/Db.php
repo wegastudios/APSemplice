@@ -77,6 +77,7 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS downloads (id VARCHAR(32) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, at VARCHAR(19) NOT NULL, product VARCHAR(8) NOT NULL, version VARCHAR(20) NOT NULL)',
 			'CREATE INDEX idx_dl_customer ON downloads (customer_id, at)',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
+			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',

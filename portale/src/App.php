@@ -92,12 +92,16 @@ final class App {
 			View::render( 'login', array() );
 		} elseif ( ! $get && '/accedi' === $path ) {
 			$email = strtolower( trim( (string) $this->in( 'email' ) ) );
-			$cust  = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
+			if ( 'link' !== (string) $this->in( 'mode' ) && '' !== (string) $this->in( 'password' ) ) {
+				$this->startSession( $this->auth->loginWithPassword( $email, (string) $this->in( 'password' ), $this->clientIp() ), false );
+				return;
+			}
+			$cust = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
 			// Stessa risposta se l'email non esiste: non si rivela chi è cliente.
 			if ( $cust && $this->auth->canIssue( $cust['id'] ) ) {
 				$this->sendLink( $cust, $this->auth->issue( $cust['id'] ), 'login_link' );
 			}
-			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per entrare.' ) );
+			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per entrare. Dal link puoi anche scegliere una nuova password.' ) );
 		} elseif ( $get && 0 === strpos( $path, '/entra/' ) ) {
 			// Clic di una persona (il browser lo dichiara con Sec-Fetch-User): si entra subito. Visite automatiche degli antispam,
 			// che non lo dichiarano, vedono la pagina col pulsante e non consumano il link.
@@ -112,6 +116,8 @@ final class App {
 			$this->download( $path );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
+		} elseif ( ! $get && '/account/password' === $path ) {
+			$this->changePassword();
 		} elseif ( ! $get && '/account/dominio' === $path ) {
 			$this->billing->changeDomain( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'domain' ) );
 			header( 'Location: /account', true, 303 );
@@ -151,10 +157,34 @@ final class App {
 				$this->billing->activate( $sub['id'] );
 			}
 		}
+		$this->startSession( $this->db->one( 'SELECT * FROM customers WHERE id = ?', array( $t['customer_id'] ) ) ?: array( 'id' => $t['customer_id'], 'email' => '' ), true );
+	}
+
+	/** Apre la sessione del cliente; entrando dal link per email la password si può impostare senza digitare la vecchia. */
+	private function startSession( array $cust, bool $viaLink ): void {
 		session_regenerate_id( true );
-		$_SESSION['customer'] = $t['customer_id'];
-		$_SESSION['admin']    = Admin::isAdminEmail( $this->customerEmail( $t['customer_id'] ) );
+		$_SESSION['customer'] = $cust['id'];
+		$_SESSION['via_link'] = $viaLink;
+		$_SESSION['admin']    = Admin::isAdminEmail( (string) $cust['email'] );
 		header( 'Location: ' . ( $_SESSION['admin'] ? '/admin' : '/account' ), true, 303 );
+	}
+
+	private function clientIp(): string {
+		$ip = Config::get( 'trust_forwarded_for', false ) ? trim( explode( ',', (string) ( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) )[0] ) : '';
+		return '' !== $ip ? $ip : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+	}
+
+	private function changePassword(): void {
+		$cid = $this->customerId();
+		if ( $this->auth->hasPassword( $cid ) && empty( $_SESSION['via_link'] ) && ! $this->auth->checkPassword( $cid, (string) $this->in( 'current' ) ) ) {
+			throw new UserError( 'La password attuale non è corretta.' );
+		}
+		if ( (string) $this->in( 'password' ) !== (string) $this->in( 'confirm' ) ) {
+			throw new UserError( 'Le due password non coincidono.' );
+		}
+		$this->auth->setPassword( $cid, (string) $this->in( 'password' ), $this->customerEmail( $cid ) );
+		$_SESSION['acc_flash'] = 'Password salvata: da ora puoi entrare con email e password.';
+		header( 'Location: /account', true, 303 );
 	}
 
 	/** Scarico di un pacchetto del plugin: solo con accesso eseguito, licenza in regola e entro il limite giornaliero. */
@@ -175,7 +205,10 @@ final class App {
 		foreach ( $subs as $s ) {
 			$trial[ $s['id'] ] = $this->billing->trialAvailable( $s );
 		}
+		$flash = (string) ( $_SESSION['acc_flash'] ?? '' );
+		unset( $_SESSION['acc_flash'] );
 		View::render( 'account', array(
+			'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
 			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['admin'] ),
@@ -202,9 +235,7 @@ final class App {
 	private function licenseApi( string $method, string $path ): void {
 		$proxy = new LicenseProxy( $this->db, $this->billing->wega() );
 		if ( 'POST' === $method && '/api/license/validate' === $path ) {
-			$ip  = (string) ( Config::get( 'trust_forwarded_for', false ) ? trim( explode( ',', (string) ( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) )[0] ) : '' );
-			$ip  = '' !== $ip ? $ip : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
-			$res = $proxy->validate( (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $ip );
+			$res = $proxy->validate( (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $this->clientIp() );
 		} elseif ( 'GET' === $method && '/.well-known/jwks.json' === $path ) {
 			$res = $proxy->jwks();
 		} else {
