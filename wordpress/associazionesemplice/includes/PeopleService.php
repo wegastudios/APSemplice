@@ -657,6 +657,44 @@ class PeopleService {
 		Audit::log( 'person.updated', 'person', $id, $current['type'] === $d['type'] ? array() : array( 'type' => array( $current['type'], $d['type'] ) ) );
 	}
 
+	/**
+	 * Scollega l'email di un socio: si riparte senza email (e senza accesso all'area riservata) ma lo storico resta.
+	 * L'utente WordPress non viene cancellato; si rifiuta se ha altri ruoli oltre a quello di socio.
+	 */
+	public function detach_email( int $id ): void {
+		$p = $this->get( $id );
+		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'L\'email si scollega solo dai soci.' );
+		}
+		if ( empty( $p['email'] ) && empty( $p['wp_user_id'] ) ) {
+			throw new \InvalidArgumentException( 'Il socio non ha un\'email collegata.' );
+		}
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			$user = get_userdata( (int) $p['wp_user_id'] );
+			if ( $user && array( Plugin::ROLE_MEMBER ) !== array_values( $user->roles ) ) {
+				throw new \InvalidArgumentException( 'L\'utente collegato ha altri ruoli oltre a quello di socio (amministratore, segreteria…): togli prima quei ruoli.' );
+			}
+			if ( $user ) {
+				\WP_Session_Tokens::get_instance( $user->ID )->destroy_all(); // chiude gli accessi aperti
+			}
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'email' => null, 'wp_user_id' => null, 'updated_at' => Db::now() ), array( 'id' => $id ) );
+		Audit::log( 'person.email_detached', 'person', $id );
+	}
+
+	/** Scollega il numero di telefono di un socio (gli ospiti no: il cellulare è il loro dato d'identità). */
+	public function detach_phone( int $id ): void {
+		$p = $this->get( $id );
+		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Il telefono si scollega solo dai soci.' );
+		}
+		if ( empty( $p['phone'] ) ) {
+			throw new \InvalidArgumentException( 'Il socio non ha un numero di telefono collegato.' );
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'phone' => null, 'updated_at' => Db::now() ), array( 'id' => $id ) );
+		Audit::log( 'person.phone_detached', 'person', $id );
+	}
+
 	/** Eliminazione logica: libera la tessera e il collegamento all'utente WordPress (che NON viene cancellato). */
 	public function delete( int $id ): void {
 		$p = $this->get( $id );

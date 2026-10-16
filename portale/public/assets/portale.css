@@ -223,3 +223,5 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .site-footer a[data-cc-open] { cursor: pointer; }
 .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--brand); text-decoration: underline; cursor: pointer; }
 .linklike:hover { color: var(--brand-2); }
+.tabs.sub { margin-top: -14px; gap: 2px; } .tabs.sub a { padding: 7px 14px; font-size: .92rem; font-weight: 500; border-radius: 999px; border-bottom: 0; margin-bottom: 0; }
+.tabs.sub a[aria-current="page"] { background: var(--brand-soft); color: var(--brand-2); }

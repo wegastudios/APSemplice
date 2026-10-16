@@ -116,6 +116,8 @@ final class Actions {
 			'asem_save_transfer'      => 'save_transfer',
 			'asem_void_tx'            => 'void_tx',
 			'asem_add_account'        => 'add_account',
+			'asem_detach_email'       => 'detach_email',
+			'asem_detach_phone'       => 'detach_phone',
 			'asem_suspend_member'     => 'suspend_member',
 			'asem_suspend_expired'    => 'suspend_expired',
 			'asem_reactivate_member'  => 'reactivate_member',
@@ -996,6 +998,18 @@ final class Actions {
 	private static function suspend_member( array $p ): array {
 		Plugin::people()->suspend( (int) ( $p['id'] ?? 0 ) );
 		return array( $p['_back'] ?? Ui::url( 'asem' ), 'Socio sospeso: è inattivo finché non rinnova la tessera (oppure lo riattivi).' );
+	}
+
+	private static function detach_email( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		Plugin::people()->detach_email( $id );
+		return array( $p['_back'] ?? Ui::url( 'asem-person', array( 'id' => $id ) ), 'Email scollegata: il socio non ha più l\'accesso; lo storico resta. Per riattivarlo usa il link di attivazione o aggiungi una nuova email.' );
+	}
+
+	private static function detach_phone( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		Plugin::people()->detach_phone( $id );
+		return array( $p['_back'] ?? Ui::url( 'asem-person', array( 'id' => $id ) ), 'Numero di telefono scollegato; lo storico resta.' );
 	}
 
 	private static function reactivate_member( array $p ): array {

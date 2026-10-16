@@ -3433,6 +3433,34 @@ asem_ok( ! $people->is_suspended( $sp_a ), 'sospensione: si riattiva a mano' );
 $pay_q( $sp_a );
 asem_ok( $people->is_active_member( $sp_a ), 'sospensione: dopo la riattivazione si incassa il rinnovo e il socio è attivo' );
 
+// scollega email e telefono: si riparte senza il dato, lo storico resta
+$dt_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Scollega', 'last_name' => 'Contatti', 'email' => 'scollega.contatti@example.com', 'phone' => '333 1234567' ) );
+$dt_html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Scollega', array( 'id' => $dt_a ) );
+asem_ok( false !== strpos( $dt_html, 'Scollega email' ) && false !== strpos( $dt_html, 'asem_detach_phone' ), 'scheda socio: pulsanti Scollega email e Scollega numero di telefono' );
+asem_ok( 'asem_operate' === Admin\Actions::required_cap( 'asem_detach_email' ) && 'asem_operate' === Admin\Actions::required_cap( 'asem_detach_phone' ), 'scollega: solo amministratore o segreteria' );
+$dt_user = (int) $people->get( $dt_a )['wp_user_id'];
+$people->detach_phone( $dt_a );
+asem_ok( empty( $people->get( $dt_a )['phone'] ), 'scollega telefono: il numero sparisce' );
+$people->detach_email( $dt_a );
+$dt_p = $people->get( $dt_a );
+asem_ok( empty( $dt_p['email'] ) && empty( $dt_p['wp_user_id'] ) && null === $dt_p['deleted_at'], 'scollega email: socio senza email né accesso, ma ancora in anagrafica' );
+asem_ok( $dt_user > 0 && false !== get_userdata( $dt_user ), 'scollega email: l\'utente WordPress non viene cancellato' );
+$threw = false;
+try {
+	$people->detach_email( $dt_a );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+asem_ok( $threw, 'scollega email: senza email non c\'è nulla da scollegare' );
+$dt_g = $people->create( array( 'type' => 'guest', 'first_name' => 'Ospite', 'last_name' => 'Scollega', 'phone' => '333 7654321', 'host_person_id' => $dt_a ) );
+$threw = false;
+try {
+	$people->detach_phone( $dt_g );
+} catch ( \InvalidArgumentException $e ) {
+	$threw = true;
+}
+asem_ok( $threw, 'scollega telefono: non per gli ospiti' );
+
 // sospensione in blocco: scaduti da oltre 8 mesi
 $old_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Molto', 'last_name' => 'Scaduto', 'email' => 'molto.scaduto@example.com' ) );
 $people->set_membership( $old_a, (string) ( $cy - 3 ), true, 'manual' );

@@ -93,3 +93,14 @@ Il portale ospita gli zip del plugin gratuito e del Pro (`Releases`). Restano on
 - L'area cliente (`/account`) mostra «Scarica il plugin» con l'ultima versione e, in un menu a comparsa, le precedenti.
 - **Pubblicare una versione**: `bash wordpress/build.sh` poi `bash portale/release.sh free|pro|both ["nota"]` (carica via ssh e lancia `bin/release.php`), oppure dal pannello **Versioni** (`/admin/versioni`, richiede l'estensione `zip` di PHP e `upload_max_filesize` sufficiente). Il numero di versione si legge dall'intestazione del plugin dentro lo zip; una versione già presente non si sovrascrive.
 - Caricate il 2026-10-16: gratuito 1.1.11, Pro 1.1.4.
+
+## Gestione a sezioni e eliminazioni
+
+Il pannello `/admin` ha cinque sezioni, ciascuna con le sue schede: **Cruscotto**; **Piani** (piani e prezzi, versioni del plugin); **Clienti** (licenze, clienti e domini); **Impostazioni** (generali, pagamenti, email, registro); **Pagine** (privacy e cookie, script e consenso).
+
+- L'elenco **Licenze** mostra anche quelle «in attesa» (pagamenti mai conclusi), che prima restavano invisibili ma occupavano il dominio (messaggio «dominio già registrato da un altro indirizzo email»). Filtro «In attesa» incluso.
+- **Elimina licenza** (elenco e dettaglio) e **Elimina cliente** (scheda Clienti e domini, con elenco dei domini): tolgono dal portale email, domini, licenze, link di accesso e registro scarichi, così email e dominio tornano usabili. Si rifiuta se resta un rinnovo automatico attivo su Stripe/PayPal (prima va disdetto) e non si può eliminare il proprio account. **Il server Wega e i provider non vengono toccati**: la licenza resta su Wega com'è.
+
+## Da Wega: confronto e importazione
+
+Gestione → Clienti → **Da Wega** elenca le licenze che il server Wega ha emesso per il portale (`GET /licenses`, scope `licenses:list`, **ancora da realizzare lato Wega**: richiesta in `docs/WEGA-richiesta-elenco-licenze.md`), le confronta con il database e permette di **importare** quelle mancanti (una o tutte). L'elenco non contiene le chiavi: le licenze importate non mostrano la chiave al cliente. Non sono importabili (con il motivo in tabella) le licenze con cliente che non è un'email, piano sconosciuto al portale o dominio già di un altro cliente. In fondo, le licenze del portale che Wega non elenca. Finché Wega non offre l'elenco la pagina lo dice (404/403) senza errori.
