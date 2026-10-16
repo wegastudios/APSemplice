@@ -164,6 +164,7 @@ final class App {
 	private function startSession( array $cust, bool $viaLink ): void {
 		session_regenerate_id( true );
 		$_SESSION['customer'] = $cust['id'];
+		$this->billing->touchCustomer( (string) $cust['id'] );
 		$_SESSION['via_link'] = $viaLink;
 		$_SESSION['admin']    = Admin::isAdminEmail( (string) $cust['email'] );
 		header( 'Location: ' . ( $_SESSION['admin'] ? '/admin' : '/account' ), true, 303 );

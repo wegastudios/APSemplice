@@ -45,6 +45,7 @@ final class LicenseProxy {
 		$ck  = hash( 'sha256', $key . '|' . $dom );
 		$hit = $this->db->one( 'SELECT body, at FROM proxy_cache WHERE k = ?', array( $ck ) );
 		if ( $hit && $now - (int) strtotime( $hit['at'] . ' UTC' ) < self::CACHE_TTL ) {
+			$this->seen( (string) $hit['body'], $now );
 			return array( 200, (string) $hit['body'], array() );
 		}
 
@@ -60,6 +61,7 @@ final class LicenseProxy {
 		}
 
 		$body = (string) json_encode( $data );
+		$this->seen( $body, $now );
 		$this->db->run( 'DELETE FROM proxy_cache WHERE k = ?', array( $ck ) );
 		$this->db->run( 'INSERT INTO proxy_cache (k, body, at) VALUES (?,?,?)', array( $ck, $body, gmdate( 'Y-m-d H:i:s', $now ) ) );
 		return array( 200, $body, array() );
@@ -83,6 +85,14 @@ final class LicenseProxy {
 			return array( 200, (string) $row['body'], array( 'Cache-Control: public, max-age=300' ) );
 		}
 		return $this->error( 502, 'UPSTREAM', 'Chiavi non disponibili.' );
+	}
+
+	/** Una verifica valida conta come accesso: serve al rinnovo automatico delle licenze gratuite. */
+	private function seen( string $body, int $now ): void {
+		$j = json_decode( $body, true );
+		if ( is_array( $j ) && ! empty( $j['valid'] ) && ! empty( $j['license_id'] ) ) {
+			$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE license_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ), (string) $j['license_id'] ) );
+		}
 	}
 
 	/** Conta una richiesta nella finestra oraria; false se supera il limite. */
