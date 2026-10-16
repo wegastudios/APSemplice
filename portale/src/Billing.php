@@ -470,6 +470,20 @@ final class Billing {
 		return array( $done, $lapse );
 	}
 
+	/** Rilegge da Wega la chiave di una licenza del portale che non la conserva (importata o persa) e la salva cifrata. */
+	public function recoverKey( string $subId ): bool {
+		$sub = $this->subscription( $subId );
+		if ( ! $sub || empty( $sub['license_id'] ) || ! empty( $sub['license_key_enc'] ) ) {
+			return false;
+		}
+		$key = $this->wega->licenseKey( (string) $sub['license_id'] );
+		if ( '' === $key ) {
+			return false;
+		}
+		$this->db->run( 'UPDATE subscriptions SET license_key_enc = ?, updated_at = ? WHERE id = ?', array( Secrets::seal( $key ), Db::now(), $subId ) );
+		return true;
+	}
+
 	// --- Specchio su Wega ----------------------------------------------------------------------------------------------
 
 	/**

@@ -67,6 +67,26 @@ final class LicenseProxy {
 		return array( 200, $body, array() );
 	}
 
+	/**
+	 * Ultime versioni pubblicate dei plugin, per l'avviso «ci sono aggiornamenti». Pubblico: il plugin non manda né chiave né dati del sito.
+	 * Il link porta all'accesso (gli zip non hanno indirizzi pubblici). @return array [codice, corpo JSON, intestazioni]
+	 */
+	public function latest( string $ip, ?int $now = null ): array {
+		$now = $now ?? time();
+		if ( ! $this->allow( 'plugin:' . hash( 'sha256', $ip ), gmdate( 'YmdH', $now ), Settings::limit( 'proxy_ip' ), $now ) ) {
+			return $this->error( 429, 'RATE_LIMITED', 'Troppe richieste: riprova più tardi.', array( 'Retry-After: 3600' ) );
+		}
+		$url = rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi';
+		$out = array();
+		foreach ( array_keys( Releases::PRODUCTS ) as $p ) {
+			$all = Releases::all( $this->db, $p );
+			if ( $all ) {
+				$out[ $p ] = array( 'version' => $all[0]['version'], 'url' => $url );
+			}
+		}
+		return array( 200, (string) json_encode( (object) $out ), array( 'Cache-Control: public, max-age=300' ) );
+	}
+
 	/** Chiavi pubbliche di Wega, in cache; se Wega non risponde si usa l'ultima copia. @return array [codice, corpo, intestazioni] */
 	public function jwks( ?int $now = null ): array {
 		$now = $now ?? time();

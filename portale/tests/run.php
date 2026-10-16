@@ -648,5 +648,36 @@ $fdb->run( 'UPDATE subscriptions SET license_id = ? WHERE id = ?', array( 'LIC-I
 $fbil->touch( 'LIC-I', $fnow );
 check( 'gratuite: un accesso riporta la licenza tra quelle da rinnovare', 'x' !== (string) $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] && strtotime( $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] . ' UTC' ) === $fnow );
 
+// --- Ultime versioni dei plugin (avviso aggiornamenti) ----------------------------------------
+$ldb = new Db( new PDO( 'sqlite::memory:' ) );
+$ldb->migrate();
+$lpx = new Portale\LicenseProxy( $ldb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$r   = $lpx->latest( '7.7.7.7', 1700000000 );
+check( 'aggiornamenti: senza versioni pubblicate l\'elenco è vuoto', 200 === $r[0] && '{}' === $r[1] );
+foreach ( array( '1.1.9', '1.1.14', '1.1.10' ) as $v ) {
+	$ldb->run( 'INSERT INTO releases (product, version, size, sha256, created_at) VALUES (?,?,?,?,?)', array( 'free', $v, 1, 'x', Db::now() ) );
+}
+$j = json_decode( $lpx->latest( '7.7.7.7', 1700000000 )[1], true );
+check( 'aggiornamenti: ultima versione in ordine numerico, prodotto senza versioni omesso, link https all\'accesso', '1.1.14' === $j['free']['version'] && ! isset( $j['pro'] ) && 0 === strpos( $j['free']['url'], 'https://' ) && '/accedi' === substr( $j['free']['url'], -7 ) );
+check( 'aggiornamenti: cache pubblica di 5 minuti', in_array( 'Cache-Control: public, max-age=300', $lpx->latest( '7.7.7.7', 1700000000 )[2], true ) );
+$last = 0;
+for ( $i = 0; $i < 70; $i++ ) {
+	$last = $lpx->latest( '8.8.8.8', 1700000000 )[0];
+}
+check( 'aggiornamenti: limite per IP', 429 === $last );
+
+// --- Recupero della chiave da Wega ------------------------------------------------------------
+$kdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$kdb->migrate();
+$kbil = new Billing( $kdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$kdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k1', 'k@esempio.it', Db::now() ) );
+$kdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( 's1', 'k1', 'free', 'manual', 'manual', 'active', 'k.it', 'once', 'LK1', Db::now(), Db::now() ) );
+$kurl = '';
+Http::$transport = function ( $m, $url ) use ( &$kurl ) {
+	$kurl = $m . ' ' . $url;
+	return array( 200, '{"data":{"license_id":"LK1","license_key":"WEGA-RECUPERATA"}}' );
+};
+check( 'chiave: recuperata da Wega e salvata cifrata', $kbil->recoverKey( 's1' ) && 'GET https://license.test/api/v1/licenses/LK1/key' === $kurl && 'WEGA-RECUPERATA' === Portale\Secrets::open( $kbil->subscription( 's1' )['license_key_enc'] ) );
+check( 'chiave: già presente, non si rilegge', ! $kbil->recoverKey( 's1' ) );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

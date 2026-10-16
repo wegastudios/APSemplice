@@ -24,7 +24,7 @@ final class App {
 				$this->webhook( $path );
 				return;
 			}
-			if ( 0 === strpos( $path, '/api/license/' ) || '/.well-known/jwks.json' === $path ) {
+			if ( 0 === strpos( $path, '/api/license/' ) || '/api/plugin/latest' === $path || '/.well-known/jwks.json' === $path ) {
 				$this->licenseApi( $method, $path );
 				return;
 			}
@@ -56,7 +56,7 @@ final class App {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
@@ -237,6 +237,8 @@ final class App {
 		$proxy = new LicenseProxy( $this->db, $this->billing->wega() );
 		if ( 'POST' === $method && '/api/license/validate' === $path ) {
 			$res = $proxy->validate( (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $this->clientIp() );
+		} elseif ( 'GET' === $method && '/api/plugin/latest' === $path ) {
+			$res = $proxy->latest( $this->clientIp() );
 		} elseif ( 'GET' === $method && '/.well-known/jwks.json' === $path ) {
 			$res = $proxy->jwks();
 		} else {

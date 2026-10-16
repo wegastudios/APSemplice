@@ -108,3 +108,11 @@ Gestione → Clienti → **Da Wega** elenca le licenze che il server Wega ha eme
 ## Rinnovo automatico delle licenze gratuite
 
 Il lavoro giornaliero (`bin/cron.php`) rinnova (`POST /licenses/renew`, senza email) le licenze **gratuite** che scadono entro «giorni di anticipo» (default 2), **salvo** quelle senza accessi da più di «giorni senza accessi» (default 30): quelle scadono. «Accesso» = una verifica valida dal plugin (passa dal rimbalzo) o l'ingresso del cliente nell'area riservata; se non c'è mai stato, vale la data di emissione. Entrambi i limiti sono in Impostazioni (con i rischi). Le licenze a pagamento e di prova non sono toccate; un errore di Wega su una licenza non ferma le altre. La data dell'ultimo accesso è nella colonna `last_seen_at`.
+
+## Avviso «ci sono aggiornamenti» (per il plugin)
+
+`GET /api/plugin/latest`, pubblico e senza autenticazione: `{"free":{"version":"1.1.14","url":"https://…/accedi"},"pro":{…}}`, con l'ultima versione pubblicata in Versioni per ciascun prodotto (un prodotto senza versioni è omesso). Il link porta alla pagina di accesso: gli zip non hanno indirizzi pubblici. Cache pubblica di 5 minuti e lo stesso limite per IP delle verifiche (`/api/license/validate`). Il plugin non manda né chiave né dati del sito.
+
+## Specchio su Wega (percorsi definitivi)
+
+Wega è la copia di sicurezza delle licenze: ogni cambiamento del portale si riflette su Wega. Scope `licenses:manage` e `licenses:reveal-key` (assegnati ai portali esistenti). Usati dal portale: `POST /licenses/{id}/suspend|restore|revoke` (stato annullato/ripristinato e eliminazione di licenze e clienti), `GET /licenses/{id}/key` (recupero della chiave di una licenza che il portale non conserva: pulsante «Recupera la chiave da Wega» nel dettaglio e automatico all'importazione da Wega), `PATCH /licenses/{id}` (disponibile nel client per scadenza, cliente, piano, dominio). Un errore vero di Wega blocca l'operazione (nulla cambia nel portale); se l'operazione non esiste (404/405) si prosegue con un avviso.
