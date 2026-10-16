@@ -1,3 +1,9 @@
 .DS_Store
 /AssociazioneSemplice-plugin.zip
 CLAUDE.md
+claude.ppk
+claude.pub
+*.ppk
+*.pem
+claude.ssh
+deploy_key*

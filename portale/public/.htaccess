@@ -1,0 +1,4 @@
+# Tutto ciò che non è un file reale passa dal router (robots.txt compreso: lo genera il portale).
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

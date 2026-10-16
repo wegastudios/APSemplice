@@ -2,6 +2,7 @@
 /**
  * Plugin Name:       Associazione Semplice
  * Description:       Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale (APS).
+ * Plugin URI:        https://associazionesemplice.it
  * Version:           1.1.10
  * Requires at least: 6.0
  * Requires PHP:      7.4
