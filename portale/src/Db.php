@@ -71,7 +71,13 @@ final class Db {
 				enabled INTEGER NOT NULL DEFAULT 1, updated_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS audit (
 				id VARCHAR(32) PRIMARY KEY, at VARCHAR(19) NOT NULL, actor VARCHAR(190) NOT NULL, action VARCHAR(60) NOT NULL, detail TEXT NULL)',
+			'CREATE TABLE IF NOT EXISTS rate_limits (bucket VARCHAR(80) NOT NULL, hour VARCHAR(10) NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (bucket, hour))',
+			'CREATE TABLE IF NOT EXISTS proxy_cache (k VARCHAR(64) PRIMARY KEY, body TEXT NOT NULL, at VARCHAR(19) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS releases (product VARCHAR(8) NOT NULL, version VARCHAR(20) NOT NULL, size INTEGER NOT NULL, sha256 VARCHAR(64) NOT NULL, note VARCHAR(500) NULL, created_at VARCHAR(19) NOT NULL, PRIMARY KEY (product, version))',
+			'CREATE TABLE IF NOT EXISTS downloads (id VARCHAR(32) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, at VARCHAR(19) NOT NULL, product VARCHAR(8) NOT NULL, version VARCHAR(20) NOT NULL)',
+			'CREATE INDEX idx_dl_customer ON downloads (customer_id, at)',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
+			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',

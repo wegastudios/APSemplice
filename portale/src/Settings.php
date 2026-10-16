@@ -15,6 +15,12 @@ final class Settings {
 		'renew_window'   => array( 5, 1, 30, 'Un pagamento PayPal conta come rinnovo solo negli ultimi N giorni di validità. Se alzi: un primo pagamento tardivo potrebbe contare due volte. Se abbassi: un rinnovo anticipato di PayPal potrebbe non essere registrato.' ),
 		'reminder_days'  => array( 14, 0, 60, 'Giorni prima della scadenza in cui parte l\'email «licenza in scadenza» (0 = non inviare). Se alzi: più tempo ai clienti ma più email. Se abbassi: meno margine per rinnovare.' ),
 		'trial_days'     => array( 30, 1, 90, 'Giorni di prova gratuita del piano Pro, una sola volta per licenza gratuita. Se alzi: più clienti si convincono ma lo stesso dominio usa il Pro gratis più a lungo. Se abbassi: la prova può essere troppo breve per valutare il piano.' ),
+	'proxy_ip'       => array( 60, 5, 1000, 'Verifiche di licenza accettate da un singolo indirizzo IP ogni ora (il plugin ne fa una al giorno per sito). Se alzi: più margine per reti condivise con molti siti, ma è più facile tentare chiavi a caso. Se abbassi: più protezione dai tentativi, ma un\x27agenzia con molti siti sullo stesso server può essere respinta.' ),
+	'proxy_key'      => array( 20, 3, 200, 'Verifiche accettate ogni ora per la stessa chiave. Se alzi: più controlli manuali consentiti. Se abbassi: chi preme spesso «Controlla adesso» può essere respinto per un po\x27.' ),
+	'releases_keep' => array( 10, 3, 50, 'Quante versioni di ciascun plugin restano scaricabili per tornare indietro; le più vecchie si cancellano dal server a ogni nuova pubblicazione. Se alzi: più possibilità di tornare indietro ma più spazio e più vecchie versioni (con eventuali difetti) ancora in giro. Se abbassi: meno scelta se una versione nuova dà problemi.' ),
+	'download_day'  => array( 10, 1, 200, 'Scarichi dei pacchetti per cliente ogni 24 ore. Se alzi: più comodo per chi gestisce molti siti, ma un account condiviso può far circolare il plugin. Se abbassi: più protezione, ma chi aggiorna molti siti può restare bloccato fino al giorno dopo.' ),
+	'password_min'  => array( 10, 8, 64, 'Lunghezza minima della password dei clienti. Se alzi: password più difficili da indovinare ma più clienti ricorrono al link per email. Se abbassi: più comodo ma più esposto a tentativi di indovinare.' ),
+	'login_fails'   => array( 5, 3, 30, 'Errori di password consentiti per email ogni ora, poi l\x27accesso con password si ferma (resta il link per email); per lo stesso indirizzo IP il limite è 4 volte tanto. Se alzi: meno clienti respinti per un errore, ma più tentativi possibili per chi prova a indovinare. Se abbassi: più protezione, ma chi sbaglia spesso resta fuori per un\x27ora.' ),
 	);
 
 	/** Applica al Config i valori salvati. Da chiamare dopo la connessione al database. */
@@ -34,6 +40,12 @@ final class Settings {
 		self::apply( 'renew_window_days', $g, 'renew_window' );
 		self::apply( 'reminder_days', $g, 'reminder_days' );
 		self::apply( 'trial_days', $g, 'trial_days' );
+		self::apply( 'proxy_per_ip', $g, 'proxy_ip' );
+		self::apply( 'proxy_per_key', $g, 'proxy_key' );
+		self::apply( 'releases_keep', $g, 'releases_keep' );
+		self::apply( 'download_day', $g, 'download_day' );
+		self::apply( 'password_min', $g, 'password_min' );
+		self::apply( 'login_fails', $g, 'login_fails' );
 		if ( array_key_exists( 'trial_enabled', $g ) ) {
 			Config::set( 'trial_enabled', (bool) $g['trial_enabled'] );
 		}
@@ -63,7 +75,7 @@ final class Settings {
 
 	/** Valore corrente di un limite (da config o da pannello) dentro i margini consentiti. */
 	public static function limit( string $key ): int {
-		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days' );
+		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'password_min' => 'password_min', 'login_fails' => 'login_fails' );
 		$v     = Config::get( $paths[ $key ], null );
 		return self::clamp( $key, null === $v ? self::LIMITS[ $key ][0] : $v );
 	}

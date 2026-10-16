@@ -21,7 +21,7 @@ I giorni in più rispetto al periodo (31/366) coprono i ritardi di pagamento; il
 - Licenza free: `/free` (email + dominio) → email con link → conferma → la chiave compare in `/account`. La licenza si emette solo dopo la conferma.
 - Acquisto: `/acquista?plan=full&period=year` → Stripe Checkout o PayPal → webhook → licenza emessa → email con il link per vedere la chiave.
 - Area riservata `/account`: chiave, scadenza, **cambio dominio** (`PUT /licenses/{id}/binding`, max 3 ogni 30 giorni), disdetta del rinnovo, carta e fatture (portale Stripe).
-- Accesso senza password: link monouso di 15 minuti; il link apre una pagina con pulsante, così gli antispam non lo consumano.
+- Accesso: **email e password** (`/accedi`). Il link per email (monouso, 15 minuti; apre una pagina con pulsante così gli antispam non lo consumano) resta per il primo accesso e per la password dimenticata: entrando dal link si sceglie la password dall'area riservata senza digitare la vecchia. Password salvata come impronta bcrypt (con pre-impronta SHA-256: nessun limite di 72 byte), minimo 10 caratteri e dopo 5 errori/ora per email (4 volte tanto per IP) l'accesso con password si ferma; i limiti sono in Impostazioni → «Accesso dei clienti». Stesso errore per email sconosciuta e password sbagliata.
 
 ## Pagamenti: ricorrenti, singoli, prova
 
@@ -58,15 +58,38 @@ Token Wega e chiavi dei provider solo in `config.php` (fuori dal repository, ved
 firme dei webhook verificate (Stripe HMAC con tolleranza 5 minuti; PayPal con `verify-webhook-signature`); CSRF su ogni modulo; un dominio appartiene a un solo cliente
 (altrimenti `external_ref` idempotente restituirebbe la chiave a chi non è il proprietario).
 
-## Da fare
+## Stato e da fare
 
-1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` in `config.php`; token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
-2. **Client nel plugin**: fatto (`LicenseClient`, `License::sync()`, vedi `docs/LICENZE.md`). Resta la credenziale solo-verifica del server Wega in `ASEM_LICENSE_TOKEN` (permesso `licenses:validate`). I nomi dei piani inviati al server devono contenere Free, Lite o Full.
-3. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
-4. Pannello amministrativo del portale (elenco clienti, revoche): non incluso.
+Fatto: vendita (Stripe e PayPal, ricorrente e singolo), licenze Wega, area cliente, prova Pro, pannello `/admin` (cruscotto, licenze, clienti, piani e prezzi, email, impostazioni, registro, pagamenti, cookie e script, pagine legali), cron degli avvisi, client nel plugin (`docs/LICENZE.md`).
+
+Da fare:
+1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
+2. Passare il plugin al rimbalzo (vedi sotto): così non serve nessuna credenziale nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
+3. Prova su staging dei percorsi reali (acquisto, rinnovo, webhook, prova Pro) con le chiavi di test.
+4. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
 
 ## Chiavi, cookie e pagine legali (dal pannello)
 
 - **Pagamenti** (`/admin/pagamenti`): token Wega, chiavi Stripe e PayPal si inseriscono da qui. Sono **cifrate** nel database con `app_key` (che resta in `config.php`), si vedono solo gli ultimi 4 caratteri, un campo vuoto non cambia nulla; le chiavi del pannello hanno la precedenza su `config.php`. Ogni servizio ha «Prova il collegamento» e la pagina mostra gli indirizzi dei webhook e gli eventi da selezionare.
 - **Cookie e script** (`/admin/cookie`): spazio per gli script di monitoraggio nell'header e nel footer, ciascuno con la sua categoria di consenso (statistiche, marketing, necessari). Gli script non necessari stanno in `<template>` e partono solo dopo il consenso (`assets/portale.js`); il banner compare solo se esiste uno script che richiede consenso; cambiando gli script a tutti viene richiesta di nuovo la scelta. Cookie della scelta: `asem_cc`, 6 mesi.
 - **Pagine legali** (`/admin/legale`): `/privacy` e `/cookie` con testi di base modificabili e dati del titolare. Sono un modello: vanno verificati da un consulente.
+
+## Rimbalzo delle verifiche del plugin
+
+Il plugin non parla con il server Wega: chiede la verifica al portale, che la gira a Wega con il proprio token (`LicenseProxy`). Nel plugin non restano né l'indirizzo di Wega né credenziali.
+
+- `POST /api/license/validate` con `{"license_key":…,"domain":…}`: il portale normalizza il dominio, chiama `POST /licenses/validate` e restituisce la risposta di Wega **invariata**, attestazione firmata compresa. Un `valid: false` è una risposta 200 come su Wega; gli errori 4xx di Wega passano con il loro codice; rete e errori 5xx diventano **502**, così il plugin tiene lo stato precedente. Il plugin può solo verificare: emissione, rinnovo e cambio dominio restano solo del portale.
+- `GET /.well-known/jwks.json`: copia in cache (1 ora, ultima copia valida se Wega non risponde) delle chiavi pubbliche di Wega. Il portale **non firma nulla**: il plugin verifica la firma EdDSA con le chiavi di Wega, quindi un portale compromesso non può dichiarare valida una chiave scaduta.
+- Memoria breve (5 minuti) delle risposte, per chiave e dominio, e limiti orari per IP (60) e per chiave (20), modificabili da Impostazioni → «Verifiche dal plugin» (con i rischi). Superato il limite: 429 con `Retry-After`. Dietro un proxy fidato impostare `trust_forwarded_for` in `config.php`.
+- Registro: solo limiti superati ed errori di Wega, non ogni verifica.
+- Plugin (da fare nella sessione del plugin): `LicenseClient::API` → `https://associazionesemplice.it/api/license`, `ISSUER` e JWKS → il portale (l'`iss` del JWT resta quello di Wega), togliere `ASEM_LICENSE_TOKEN`, aggiornare il readme (servizio esterno) e `docs/LICENZE.md`.
+
+## Pacchetti del plugin (download riservato)
+
+Il portale ospita gli zip del plugin gratuito e del Pro (`Releases`). Restano online le **ultime 10 versioni** di ciascuno (limite «Versioni dei plugin da tenere online» in Impostazioni, 3–50) per poter tornare indietro; le più vecchie si cancellano a ogni nuova pubblicazione.
+
+- **Nessun link pubblico.** I file stanno in `data/releases/{free,pro}/VERSIONE.zip`, fuori dalla cartella pubblica. Si scaricano solo da `/scarica/{free|pro}/{versione}` con accesso eseguito (link per email) e licenza in regola: gratuito con qualunque licenza attiva, Pro con un piano a pagamento o di prova attivo (scaduta o pagamento non riuscito = niente). Il percorso è escluso da `robots.txt`, la risposta è `no-store` e `noindex`.
+- **Limite di scarichi** per cliente ogni 24 ore (default 10, 1–200, in Impostazioni con i rischi); la gestione non ha limiti. Ogni scarico è registrato (tabella `downloads`).
+- L'area cliente (`/account`) mostra «Scarica il plugin» con l'ultima versione e, in un menu a comparsa, le precedenti.
+- **Pubblicare una versione**: `bash wordpress/build.sh` poi `bash portale/release.sh free|pro|both ["nota"]` (carica via ssh e lancia `bin/release.php`), oppure dal pannello **Versioni** (`/admin/versioni`, richiede l'estensione `zip` di PHP e `upload_max_filesize` sufficiente). Il numero di versione si legge dall'intestazione del plugin dentro lo zip; una versione già presente non si sovrascrive.
+- Caricate il 2026-10-16: gratuito 1.1.11, Pro 1.1.4.

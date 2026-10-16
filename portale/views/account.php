@@ -1,4 +1,4 @@
-<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin */
+<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin @var array $releases @var bool $has_password @var bool $via_link @var string $flash */
 $csrf = Portale\App::csrf();
 ?>
 <section class="page"><div class="wrap" style="max-width:860px">
@@ -9,9 +9,38 @@ $csrf = Portale\App::csrf();
 			<form method="post" action="/esci"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Esci</button></form>
 		</div>
 	</div>
+	<?php if ( ! empty( $flash ) ) : ?><div class="flash" role="status"><?php echo e( $flash ); ?></div><?php endif; ?>
+	<div class="sub">
+		<div class="sub-top"><h2>Password</h2><?php if ( $has_password ) : ?><span class="badge">Impostata</span><?php else : ?><span class="badge warn">Da impostare</span><?php endif; ?></div>
+		<?php if ( ! $has_password ) : ?><p class="muted small" style="margin:0 0 6px">Scegli una password per entrare con email e password, senza aspettare il link.</p><?php endif; ?>
+		<details<?php echo $has_password ? '' : ' open'; ?>><summary class="muted small"><?php echo $has_password ? 'Cambia la password' : 'Imposta la password'; ?></summary>
+		<form method="post" action="/account/password" class="domain-form" style="display:block;margin-top:10px">
+			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
+			<?php if ( $has_password && ! $via_link ) : ?><label for="pw-cur">Password attuale</label><input id="pw-cur" type="password" name="current" autocomplete="current-password" required><?php endif; ?>
+			<label for="pw-new">Nuova password</label><input id="pw-new" type="password" name="password" autocomplete="new-password" minlength="<?php echo (int) Portale\Settings::limit( 'password_min' ); ?>" required>
+			<label for="pw-conf">Ripeti la nuova password</label><input id="pw-conf" type="password" name="confirm" autocomplete="new-password" required>
+			<p class="hint">Almeno <?php echo (int) Portale\Settings::limit( 'password_min' ); ?> caratteri.</p>
+			<button class="btn" type="submit" style="margin-top:8px">Salva la password</button>
+		</form></details>
+	</div>
 	<?php if ( ! $subs ) : ?>
 		<div class="sub empty"><div class="ico" style="margin:0 auto 16px"><?php echo icon( 'key' ); ?></div><h2>Nessuna licenza, per ora</h2><p class="muted">Parti dal piano gratuito oppure scegli un piano Pro.</p>
 		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/#prezzi">Vedi i piani</a></div>
+	<?php endif; ?>
+	<?php if ( ! empty( $releases ) ) : ?>
+	<div class="sub">
+		<div class="sub-top"><h2>Scarica il plugin</h2></div>
+		<?php foreach ( $releases as $prod => $list ) : if ( ! $list ) { continue; } ?>
+			<p style="margin:12px 0 6px"><b><?php echo e( Portale\Releases::PRODUCTS[ $prod ][1] ); ?></b> <span class="muted small">versione <?php echo e( $list[0]['version'] ); ?> · <?php echo e( date_it( $list[0]['created_at'] ) ); ?></span></p>
+			<a class="btn" href="/scarica/<?php echo e( $prod ); ?>/<?php echo e( $list[0]['version'] ); ?>">Scarica la <?php echo e( $list[0]['version'] ); ?></a>
+			<?php if ( count( $list ) > 1 ) : ?>
+			<details style="margin-top:10px"><summary class="muted small">Versioni precedenti, per tornare indietro</summary>
+				<ul class="muted small" style="margin:8px 0 0;padding-left:18px"><?php foreach ( array_slice( $list, 1 ) as $r ) : ?><li><a href="/scarica/<?php echo e( $prod ); ?>/<?php echo e( $r['version'] ); ?>"><?php echo e( $r['version'] ); ?></a> · <?php echo e( date_it( $r['created_at'] ) ); ?><?php echo $r['note'] ? ' · ' . e( $r['note'] ) : ''; ?></li><?php endforeach; ?></ul>
+			</details>
+			<?php endif; ?>
+		<?php endforeach; ?>
+		<p class="hint">I pacchetti si scaricano solo da qui, con la licenza in regola. Carica lo zip da WordPress: Plugin → Aggiungi nuovo → Carica plugin. Per tornare indietro disattiva e sostituisci il plugin con la versione precedente (i dati restano).</p>
+	</div>
 	<?php endif; ?>
 	<?php foreach ( $subs as $s ) :
 		$key = '';

@@ -46,6 +46,11 @@ final class WegaClient {
 		return $this->request( 'PUT', '/licenses/' . rawurlencode( $licenseId ) . '/binding', array( 'license_key' => $licenseKey, 'identity' => $newDomain ) )['data'];
 	}
 
+	/** Chiavi pubbliche di Wega (nessun token: sono pubbliche). @return array [codice HTTP, corpo] */
+	public function jwks(): array {
+		return Http::withRetry( 'GET', preg_replace( '#/api/v1/?$#', '', $this->base ) . '/.well-known/jwks.json', array( 'Accept: application/json' ), null, 2 );
+	}
+
 	private function request( string $method, string $path, ?array $body = null ): array {
 		$headers = array( 'Authorization: Bearer ' . $this->token, 'Accept: application/json', 'Content-Type: application/json' );
 		// Una POST /licenses è idempotente (external_ref) e il rinnovo non lo è: il rinnovo non si ripete su 5xx.

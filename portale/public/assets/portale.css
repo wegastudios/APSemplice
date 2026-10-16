@@ -36,6 +36,7 @@ p { margin: 0 0 1em; }
 .nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .95rem; padding: 8px 12px; border-radius: 10px; }
 .nav a:hover { color: var(--fg); background: var(--surface-2); }
 .nav a.btn { color: var(--brand-fg); margin-left: 6px; }
+.nav a.btn:hover { background: var(--brand-2); color: var(--brand-fg); }
 
 /* Pulsanti */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border-radius: 12px; border: 1px solid transparent; background: var(--brand); color: var(--brand-fg); font: inherit; font-weight: 700; font-size: 1rem; text-decoration: none; cursor: pointer; transition: transform .12s, background .12s, box-shadow .12s; }
@@ -129,8 +130,8 @@ p { margin: 0 0 1em; }
 .side h2 { font-size: 1.4rem; } .side ul { list-style: none; padding: 0; margin: 20px 0; display: grid; gap: 14px; }
 .side li { display: flex; gap: 12px; align-items: flex-start; color: var(--muted); } .side li svg { flex: none; width: 22px; height: 22px; color: var(--brand); margin-top: 2px; } .side li b { color: var(--fg); display: block; }
 label { display: block; font-weight: 700; font-size: .93rem; margin: 18px 0 6px; }
-input[type=text], input[type=email] { width: 100%; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; }
-input[type=text]:hover, input[type=email]:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
+input[type=text], input[type=email], input[type=password], input[type=file] { width: 100%; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; }
+input[type=text]:hover, input[type=email]:hover, input[type=password]:hover, input[type=file]:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
 input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent); }
 .hint { color: var(--muted); font-size: .86rem; margin: 6px 0 0; }
 .panel form .btn { margin-top: 24px; }
@@ -220,3 +221,5 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 @media (max-width: 520px) { .cc-actions .btn { flex: 1 1 100%; } }
 .legal h2 { font-size: 1.25rem; margin: 1.8em 0 .5em; } .legal p, .legal li { color: var(--muted); } .legal ul { padding-left: 1.2em; } .legal strong { color: var(--fg); }
 .site-footer a[data-cc-open] { cursor: pointer; }
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--brand); text-decoration: underline; cursor: pointer; }
+.linklike:hover { color: var(--brand-2); }

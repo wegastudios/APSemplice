@@ -13,6 +13,10 @@ final class Billing {
 	/** @var WegaClient */
 	private $wega;
 
+	public function wega(): WegaClient {
+		return $this->wega;
+	}
+
 	public function __construct( Db $db, WegaClient $wega ) {
 		$this->db   = $db;
 		$this->wega = $wega;
