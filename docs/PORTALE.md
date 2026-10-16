@@ -61,8 +61,7 @@ firme dei webhook verificate (Stripe HMAC con tolleranza 5 minuti; PayPal con `v
 ## Da fare
 
 1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` in `config.php`; token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
-2. **Client nel plugin**: validazione giornaliera (`POST /licenses/validate`), attestazione JWT EdDSA, cambio dei livelli. Oggi il plugin ha i livelli *Pro (contabile)* e *Pro Fiscale*; il nuovo catalogo è *Lite/Full*: va deciso come si mappano (`plan_name` → `License::plan()`).
-   Le regole attuali (`docs/LICENZE.md`: 2 installazioni, sottodomini) non coincidono con il tipo 3 del server (un dominio, `www` ignorato): da allineare.
+2. **Client nel plugin**: fatto (`LicenseClient`, `License::sync()`, vedi `docs/LICENZE.md`). Resta la credenziale solo-verifica del server Wega in `ASEM_LICENSE_TOKEN` (permesso `licenses:validate`). I nomi dei piani inviati al server devono contenere Free, Lite o Full.
 3. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
 4. Pannello amministrativo del portale (elenco clienti, revoche): non incluso.
 

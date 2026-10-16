@@ -14,7 +14,7 @@ final class Edition {
 
 	/** Funzione => file (dentro includes/) che la contiene. */
 	const FEATURES = array(
-		'license'    => 'License.php',             // verifica della licenza (solo Pro)
+		'license'    => 'License.php',             // verifica della licenza (nel gratuito: chiave gratuita e servizi collegati)
 		'vat'        => 'Admin/VatFields.php',     // IVA: campi nei moduli e impostazioni fiscali
 		'levels'     => 'Admin/LevelsEditor.php',  // più livelli di socio, ognuno con la sua quota
 		'payments'   => 'PaymentService.php',      // pagamenti online
@@ -132,12 +132,34 @@ final class Edition {
 		return self::installed( $feature ) && ( 'license' === $feature || ( ! self::degraded() && ! self::plan_blocks( $feature ) ) );
 	}
 
-	/** Funzioni fiscali: solo con la licenza «Pro Fiscale» (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
+	/** Funzioni fiscali: solo con la licenza Pro Full (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
 	const FISCAL = array( 'vat', 'fivepm', 'fiscal' );
 
-	/** La licenza è di livello contabile e la funzione è fiscale? Senza licenza (verifica non attiva) tutto è disponibile. */
+	/** Funzioni di contabilità: conti e fondi, report, ricevute. Mancano nel Pro Lite; ci sono nel Pro Full e nel vecchio livello contabile. */
+	const ACCOUNTING = array( 'funds', 'reports', 'receipts' );
+
+	/** Il plugin Pro è presente (c'è almeno una sua funzione)? Solo allora una licenza non in regola sospende qualcosa. */
+	public static function pro_present(): bool {
+		return self::installed( 'payments' );
+	}
+
+	/**
+	 * Il livello della licenza esclude questa funzione? Pro Full: nessuna esclusione; contabile: le funzioni fiscali; Pro Lite: fiscali e di contabilità;
+	 * licenza gratuita (o nessuna chiave con la verifica attiva): tutte le funzioni Pro. Senza verifica attiva (standby) tutto è disponibile.
+	 */
 	public static function plan_blocks( string $feature ): bool {
-		return in_array( $feature, self::FISCAL, true ) && self::installed( 'license' ) && function_exists( 'get_option' ) && method_exists( License::class, 'plan' ) && 'fiscal' !== License::plan();
+		if ( 'license' === $feature || ! self::installed( 'license' ) || ! function_exists( 'get_option' ) || ! method_exists( License::class, 'plan' ) ) {
+			return false;
+		}
+		switch ( License::plan() ) {
+			case License::PLAN_FREE:
+				return true;
+			case License::PLAN_LITE:
+				return in_array( $feature, self::FISCAL, true ) || in_array( $feature, self::ACCOUNTING, true );
+			case License::PLAN_ACCOUNTING:
+				return in_array( $feature, self::FISCAL, true );
+		}
+		return false;
 	}
 
 	/**
@@ -150,6 +172,14 @@ final class Edition {
 	/** Perché una funzione avanzata non è disponibile (da mostrare a chi prova a usarla). */
 	public static function missing_message( string $feature = '' ): string {
 		if ( '' !== $feature && self::installed( $feature ) && ! self::degraded() && self::plan_blocks( $feature ) ) {
+			switch ( License::plan() ) {
+				case License::PLAN_FREE:
+					return LicensePolicy::STATUS_NOKEY === License::state()['status']
+						? 'Questa funzione fa parte di Associazione Semplice Pro: inserisci la chiave di licenza in Impostazioni per usarla.'
+						: 'Questa funzione fa parte di Associazione Semplice Pro (Lite o Full): la tua è la licenza gratuita.';
+				case License::PLAN_LITE:
+					return 'Questa funzione fa parte della licenza Associazione Semplice Pro Full: la tua licenza è Pro Lite, senza la parte contabile.';
+			}
 			return 'Questa funzione fa parte della licenza Associazione Semplice Pro Fiscale: la tua licenza è di livello contabile.';
 		}
 		if ( self::degraded() ) {

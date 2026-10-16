@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Cosa succede quando la licenza non è in regola (pagamento mancante, dominio non più associato).
+ * Cosa succede quando la licenza a pagamento non è in regola (pagamento mancante, dominio non più associato). Riguarda solo le funzioni del plugin Pro: l'edizione gratuita non perde mai nulla.
  * Logica pura: dato lo stato e la data di inizio del problema decide popup e funzioni bloccate.
  *
  * Regola concordata:
@@ -22,6 +22,7 @@ final class LicensePolicy {
 	const STATUS_ACTIVE     = 'active';
 	const STATUS_UNPAID     = 'unpaid';      // pagamento mancante o scaduto
 	const STATUS_UNLICENSED = 'unlicensed';  // dominio rimosso dalla licenza o chiave non valida
+	const STATUS_NOKEY      = 'nokey';       // verifica attiva ma nessuna chiave inserita: valgono le funzioni di base
 
 	const POPUP_NONE     = 'none';
 	const POPUP_CLOSABLE = 'closable';

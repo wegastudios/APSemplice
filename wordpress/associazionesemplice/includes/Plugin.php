@@ -63,6 +63,7 @@ final class Plugin {
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
+			'asem_license_check'          => array( 'daily', 1800, 'License', 'cron', '' ),
 			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
 		);
 		foreach ( $jobs as $hook => $j ) {

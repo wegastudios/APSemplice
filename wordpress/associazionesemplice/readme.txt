@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.10
+Stable tag: 1.1.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,10 @@ Advanced features (online payments, several accounts and funds, accounting and r
 
 == External services ==
 
-The plugin does not contact any external service on its own.
+The plugin works fully on its own. It contacts an external service only if you enter a license key (optional, see below) and for the optional features described after it.
+
+= License service (optional) =
+If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the license server of Wega Studios (license.wegastudios.com) to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The check is active only when the plugin is configured with the service credential and is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
 
 = PayPal donations (optional) =
 If you turn on donations, your website shows a form whose button opens PayPal's donation page (www.paypal.com/donate) in the visitor's browser, with the PayPal account, the purpose and the chosen amount you set. Nothing is sent from your server to PayPal. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
@@ -56,6 +59,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.11 =
+* License: optional free license key tied to the domain, checked daily with the license server (plan, expiry, signed response); license settings panel with a free key link; the free plugin never loses a basic feature because of a license. Pro Lite and Pro Full levels.
 
 = 1.1.10 =
 * Role names are now simply Member and Office (Socio, Segreteria); existing roles are renamed automatically.

@@ -302,9 +302,73 @@ asem_ok( Admin\ProPage::needed(), 'licenza contabile: la pagina che presenta il 
 ob_start();
 Admin\ProPage::render();
 $pl_page = (string) ob_get_clean();
-asem_ok( false !== strpos( $pl_page, 'Pro Fiscale' ) && false !== strpos( $pl_page, 'IVA' ) && false !== strpos( $pl_page, 'attiva' ), 'pagina Pro: elenca i due livelli e le funzioni già attive' );
+asem_ok( false !== strpos( $pl_page, 'Pro Full' ) && false !== strpos( $pl_page, 'IVA' ) && false !== strpos( $pl_page, 'attiva' ), 'pagina Pro: elenca i due livelli e le funzioni già attive' );
 delete_option( License::OPT_STATE );
 asem_ok( \AssociazioneSemplice\Edition::has( 'vat' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) && ! Admin\ProPage::needed(), 'licenza in standby: tutto disponibile come Pro completo, nessuna promozione' );
+// livello Pro Lite (senza contabilità) e licenza gratuita con il Pro installato
+License::set_state( 'active', null, null, 'lite' );
+asem_ok( 'lite' === License::plan() && \AssociazioneSemplice\Edition::has( 'payments' ) && \AssociazioneSemplice\Edition::has( 'levels' ) && \AssociazioneSemplice\Edition::has( 'broadcasts' ) && \AssociazioneSemplice\Edition::has( 'pwa' ), 'licenza Pro Lite: pagamenti, quote, comunicazioni e app sì' );
+asem_ok( ! \AssociazioneSemplice\Edition::has( 'funds' ) && ! \AssociazioneSemplice\Edition::has( 'reports' ) && ! \AssociazioneSemplice\Edition::has( 'receipts' ) && ! \AssociazioneSemplice\Edition::has( 'vat' ) && ! \AssociazioneSemplice\Edition::has( 'fiscal' ) && ! \AssociazioneSemplice\Edition::has( 'fivepm' ), 'licenza Pro Lite: niente contabilità né funzioni fiscali' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'funds' ), 'Pro Full' ), 'licenza Pro Lite: il messaggio rimanda al Pro Full' );
+License::set_state( 'active', null, null, 'free' );
+asem_ok( 'free' === License::plan() && ! \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::has( 'license' ) && ! \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita con il Pro installato: le funzioni Pro restano chiuse, la licenza si può gestire' );
+asem_ok( \AssociazioneSemplice\Edition::allows( 'export' ) && \AssociazioneSemplice\Edition::allows( 'member_area' ) && '' === Admin\LicenseNotice::html(), 'licenza gratuita: nessuna funzione di base viene toccata' );
+License::set_state( 'unpaid', $today, null, 'free' );
+asem_ok( \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita scaduta con il Pro installato: si sospendono le funzioni Pro' );
+delete_option( License::OPT_STATE );
+
+// verifica con il server (risposte simulate): chiave, livello, scadenze, errori di rete
+$lic_calls = array();
+$lic_resp  = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
+$lic_token = function () { return 'wic_test.segreto'; };
+$lic_home  = function () { return 'https://www.Prova-Sito.it'; };
+$lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp ) {
+	if ( false === strpos( $url, 'license.wegastudios.com' ) ) {
+		return $pre;
+	}
+	$lic_calls[] = array( $url, json_decode( (string) ( $args['body'] ?? '' ), true ), (array) ( $args['headers'] ?? array() ) );
+	return is_array( $lic_resp )
+		? array( 'response' => array( 'code' => 200, 'message' => 'OK' ), 'body' => wp_json_encode( $lic_resp ), 'headers' => array(), 'cookies' => array(), 'filename' => null )
+		: new WP_Error( 'http_request_failed', 'senza rete' );
+};
+add_filter( 'asem_license_token', $lic_token );
+add_filter( 'asem_license_is_local', '__return_false' );
+add_filter( 'home_url', $lic_home );
+add_filter( 'pre_http_request', $lic_http, 10, 3 );
+Settings::update( array( 'license_key' => '' ) );
+License::sync();
+asem_ok( \AssociazioneSemplice\LicensePolicy::STATUS_NOKEY === License::state()['status'] && 'free' === License::plan() && ! $lic_calls && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica attiva senza chiave: livello gratuito e nessuna chiamata al server' );
+asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'Collega la licenza gratuita' ) && false !== strpos( Admin\LicenseNotice::html(), 'domain=prova-sito.it' ), 'senza chiave: invito a ottenere la chiave gratuita, con il dominio già compilato' );
+Settings::update( array( 'license_key' => 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' ) );
+$lic_r = License::sync();
+asem_ok( $lic_r['ok'] && 'lite' === License::plan() && 1 === count( $lic_calls ) && 'prova-sito.it' === $lic_calls[0][1]['domain'] && 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' === $lic_calls[0][1]['license_key'], 'verifica: chiave e dominio normalizzato inviati, livello Lite letto' );
+asem_ok( 'Bearer wic_test.segreto' === $lic_calls[0][2]['Authorization'] && '2027-01-01' === License::state()['expires_at'], 'verifica: credenziale inviata, scadenza salvata' );
+asem_ok( 'Pro Lite' === License::status()['plan_label'] && false !== strpos( License::status()['note'], '01/01/2027' ) && \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ), 'verifica: stato mostrabile e funzioni del livello' );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta, funzioni Pro sospese' );
+asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'notice-warning' ) && \AssociazioneSemplice\Edition::allows( 'export' ), 'verifica: licenza scaduta, avviso e nessuna funzione di base toccata' );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'DOMAIN_MISMATCH', 'plan_name' => 'Pro Full' );
+License::sync();
+asem_ok( 'unlicensed' === License::state()['status'] && false !== strpos( License::status()['reason'], 'dominio' ), 'verifica: dominio diverso, spiegazione in italiano' );
+$lic_resp = null;
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'unlicensed' === License::state()['status'] && '' !== License::state()['error'], 'verifica: server irraggiungibile, lo stato precedente resta e l\'errore si ricorda' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'IN_GRACE', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
+License::sync();
+asem_ok( 'active' === License::state()['status'] && '' === License::state()['error'] && 'fiscal' === License::plan() && false !== strpos( Admin\LicenseNotice::html(), 'scaduta da pochi giorni' ), 'verifica: tolleranza di pochi giorni, funzioni attive e invito a rinnovare' );
+asem_ok( false !== strpos( License::free_url(), 'https://associazionesemplice.it/free?domain=prova-sito.it' ), 'chiave gratuita: indirizzo del portale con il dominio' );
+ob_start();
+Admin\LicensePanel::render();
+$lic_panel = (string) ob_get_clean();
+asem_ok( false !== strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave, dominio e controllo immediato' );
+remove_filter( 'pre_http_request', $lic_http, 10 );
+remove_filter( 'home_url', $lic_home );
+remove_filter( 'asem_license_is_local', '__return_false' );
+remove_filter( 'asem_license_token', $lic_token );
+Settings::update( array( 'license_key' => '' ) );
+delete_option( License::OPT_STATE );
+asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'senza credenziale la verifica torna in standby' );
 // quote diverse: spariscono, resta la quota sola
 $lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
 \AssociazioneSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : \AssociazioneSemplice\Money::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \AssociazioneSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );

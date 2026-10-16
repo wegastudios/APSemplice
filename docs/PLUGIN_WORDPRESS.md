@@ -652,10 +652,10 @@ Associazione Semplice (gratuito) contiene il nucleo; **Associazione Semplice Pro
 
 ## Livelli di licenza del Pro e pagina «Scopri il Pro»
 
-- **Pro (contabile)**: pagamenti online, conti e fondi, report di gestione, quote diverse, comunicazioni, app e Wallet, incasso sul posto, assicurazioni e presenze.
-- **Pro Fiscale**: in più IVA, 5 per mille, anni solari e rendiconto per il commercialista (più avanti la fatturazione elettronica) (`Edition::FISCAL`).
-- Il livello lo comunica il servizio delle licenze (`License::set_state( stato, dal, indirizzo, livello )`). Finché la verifica non è attiva (standby) il Pro vale come **completo**, fiscale compreso. Con la licenza scaduta si torna alle funzioni di base, con livello contabile spariscono solo le funzioni fiscali.
-- Nel gratuito (e col livello contabile) la voce di menu **Scopri il Pro** apre una pagina solo informativa con le funzioni dei due livelli (nessuna funzione finta); in Soldi c'è un'unica riga discreta. L'indirizzo del sito è modificabile con il filtro `asem_pro_url`.
+- **Pro Lite**: pagamenti online, quote diverse, comunicazioni, app e Wallet, incasso sul posto, assicurazioni e presenze, personalizzazione dei testi.
+- **Pro Full**: in più la contabilità (conti e fondi, report, ricevute: `Edition::ACCOUNTING`) e le funzioni fiscali (IVA, 5 per mille, anni solari e rendiconto, più avanti la fatturazione elettronica: `Edition::FISCAL`). Il vecchio livello «contabile» (tutto tranne le fiscali) resta riconosciuto.
+- Il livello lo comunica il servizio delle licenze (`License::sync()` verifica la chiave, vedi `docs/LICENZE.md`; `License::set_state( stato, dal, indirizzo, livello )` lo scrive). Finché la verifica non è attiva (standby) il Pro vale come **completo**. Licenza gratuita o nessuna chiave con la verifica attiva: nessuna funzione Pro. Con la licenza scaduta si torna alle funzioni di base. La licenza esiste anche nel gratuito (chiave gratuita facoltativa) e non blocca mai le funzioni di base.
+- Nel gratuito (e con Pro Lite) la voce di menu **Scopri il Pro** apre una pagina solo informativa con le funzioni dei due livelli (nessuna funzione finta); in Soldi c'è un'unica riga discreta. L'indirizzo del sito è modificabile con il filtro `asem_pro_url`.
 
 ## Colori
 
