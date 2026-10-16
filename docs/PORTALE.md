@@ -83,3 +83,13 @@ Il plugin non parla con il server Wega: chiede la verifica al portale, che la gi
 - Memoria breve (5 minuti) delle risposte, per chiave e dominio, e limiti orari per IP (60) e per chiave (20), modificabili da Impostazioni → «Verifiche dal plugin» (con i rischi). Superato il limite: 429 con `Retry-After`. Dietro un proxy fidato impostare `trust_forwarded_for` in `config.php`.
 - Registro: solo limiti superati ed errori di Wega, non ogni verifica.
 - Plugin (da fare nella sessione del plugin): `LicenseClient::API` → `https://associazionesemplice.it/api/license`, `ISSUER` e JWKS → il portale (l'`iss` del JWT resta quello di Wega), togliere `ASEM_LICENSE_TOKEN`, aggiornare il readme (servizio esterno) e `docs/LICENZE.md`.
+
+## Pacchetti del plugin (download riservato)
+
+Il portale ospita gli zip del plugin gratuito e del Pro (`Releases`). Restano online le **ultime 10 versioni** di ciascuno (limite «Versioni dei plugin da tenere online» in Impostazioni, 3–50) per poter tornare indietro; le più vecchie si cancellano a ogni nuova pubblicazione.
+
+- **Nessun link pubblico.** I file stanno in `data/releases/{free,pro}/VERSIONE.zip`, fuori dalla cartella pubblica. Si scaricano solo da `/scarica/{free|pro}/{versione}` con accesso eseguito (link per email) e licenza in regola: gratuito con qualunque licenza attiva, Pro con un piano a pagamento o di prova attivo (scaduta o pagamento non riuscito = niente). Il percorso è escluso da `robots.txt`, la risposta è `no-store` e `noindex`.
+- **Limite di scarichi** per cliente ogni 24 ore (default 10, 1–200, in Impostazioni con i rischi); la gestione non ha limiti. Ogni scarico è registrato (tabella `downloads`).
+- L'area cliente (`/account`) mostra «Scarica il plugin» con l'ultima versione e, in un menu a comparsa, le precedenti.
+- **Pubblicare una versione**: `bash wordpress/build.sh` poi `bash portale/release.sh free|pro|both ["nota"]` (carica via ssh e lancia `bin/release.php`), oppure dal pannello **Versioni** (`/admin/versioni`, richiede l'estensione `zip` di PHP e `upload_max_filesize` sufficiente). Il numero di versione si legge dall'intestazione del plugin dentro lo zip; una versione già presente non si sovrascrive.
+- Caricate il 2026-10-16: gratuito 1.1.11, Pro 1.1.4.
