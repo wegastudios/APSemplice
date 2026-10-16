@@ -130,8 +130,8 @@ p { margin: 0 0 1em; }
 .side h2 { font-size: 1.4rem; } .side ul { list-style: none; padding: 0; margin: 20px 0; display: grid; gap: 14px; }
 .side li { display: flex; gap: 12px; align-items: flex-start; color: var(--muted); } .side li svg { flex: none; width: 22px; height: 22px; color: var(--brand); margin-top: 2px; } .side li b { color: var(--fg); display: block; }
 label { display: block; font-weight: 700; font-size: .93rem; margin: 18px 0 6px; }
-input[type=text], input[type=email] { width: 100%; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; }
-input[type=text]:hover, input[type=email]:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
+input[type=text], input[type=email], input[type=password], input[type=file] { width: 100%; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; }
+input[type=text]:hover, input[type=email]:hover, input[type=password]:hover, input[type=file]:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
 input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent); }
 .hint { color: var(--muted); font-size: .86rem; margin: 6px 0 0; }
 .panel form .btn { margin-top: 24px; }
