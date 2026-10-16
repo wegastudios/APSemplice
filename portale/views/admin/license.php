@@ -60,6 +60,7 @@ $id    = e( $sub['id'] );
 				<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="status" value="<?php echo 'canceled' === $sub['status'] ? 'active' : 'canceled'; ?>">
 				<button class="btn alt" type="submit"><?php echo 'canceled' === $sub['status'] ? 'Segna come attiva' : 'Segna come annullata'; ?></button>
 			</form>
+			<form method="post" action="/admin/licenze/<?php echo $id; ?>/elimina" onsubmit="return confirm('Eliminare questa licenza dal portale? Il dominio torna libero. Il server licenze e il provider non vengono toccati. Non si può annullare.')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn danger" type="submit">Elimina dal portale</button></form>
 		</div>
 		<div class="sep"></div>
 		<form method="post" action="/admin/licenze/<?php echo $id; ?>/nota">

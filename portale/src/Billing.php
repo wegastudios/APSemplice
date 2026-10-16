@@ -425,4 +425,42 @@ final class Billing {
 		$t = is_string( $iso ) ? strtotime( $iso ) : false;
 		return false === $t ? null : gmdate( 'Y-m-d H:i:s', $t );
 	}
+
+	// --- Eliminazione (gestione) ---------------------------------------------------------------------------------------
+
+	/** Motivo per cui una licenza non si può eliminare, o null. Non tocca il server Wega né i provider. */
+	public function undeletableReason( array $sub ): ?string {
+		if ( in_array( $sub['provider'], array( 'stripe', 'paypal' ), true ) && in_array( $sub['status'], array( 'active', 'past_due' ), true ) && $this->isRecurring( $sub ) && ! $sub['cancel_at_period_end'] ) {
+			return 'Ha un rinnovo automatico attivo presso ' . ( 'stripe' === $sub['provider'] ? 'Stripe' : 'PayPal' ) . ': disdicilo prima (altrimenti il cliente continuerebbe a pagare).';
+		}
+		return null;
+	}
+
+	/** Elimina la licenza dal portale: il dominio torna libero. La licenza sul server Wega resta com'è. */
+	public function deleteSubscription( string $subId ): array {
+		$sub = $this->subscription( $subId );
+		if ( ! $sub ) {
+			throw new UserError( 'Licenza non trovata.' );
+		}
+		if ( $reason = $this->undeletableReason( $sub ) ) {
+			throw new UserError( $reason );
+		}
+		$this->db->run( 'DELETE FROM subscriptions WHERE id = ?', array( $subId ) );
+		return $sub;
+	}
+
+	/** Elimina il cliente con licenze, link di accesso e registro degli scarichi. @return int licenze eliminate */
+	public function deleteCustomer( string $customerId ): int {
+		$subs = $this->db->all( 'SELECT * FROM subscriptions WHERE customer_id = ?', array( $customerId ) );
+		foreach ( $subs as $s ) {
+			if ( $reason = $this->undeletableReason( $s ) ) {
+				throw new UserError( $s['domain'] . ': ' . $reason );
+			}
+		}
+		foreach ( array( 'subscriptions', 'login_tokens', 'downloads' ) as $t ) {
+			$this->db->run( 'DELETE FROM ' . $t . ' WHERE customer_id = ?', array( $customerId ) );
+		}
+		$this->db->run( 'DELETE FROM customers WHERE id = ?', array( $customerId ) );
+		return count( $subs );
+	}
 }

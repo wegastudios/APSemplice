@@ -543,5 +543,28 @@ for ( $i = 0; $i < 6; $i++ ) {
 check( 'password: dopo 5 errori si blocca anche con la password giusta', false !== strpos( (string) throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', 'una password lunga abbastanza', '9.9.9.6' ); } ), 'Troppi tentativi' ) );
 check( 'password: il blocco scade con l\'ora', 'c1' === $auth->loginWithPassword( 'socio@esempio.it', 'una password lunga abbastanza', '9.9.9.6', time() + 7200 )['id'] );
 
+// --- Eliminazione di clienti e licenze --------------------------------------------------------
+$ddb = new Db( new PDO( 'sqlite::memory:' ) );
+$ddb->migrate();
+$dbil = new Billing( $ddb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$ins = function ( string $cid, string $dom, string $status, string $prov = 'free', string $mode = 'once', int $cancel = 0 ) use ( $ddb ) {
+	$id = Db::id();
+	$ddb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, cancel_at_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( $id, $cid, 'free', 'free', $prov, $status, $dom, $mode, $cancel, Db::now(), Db::now() ) );
+	return $id;
+};
+$ddb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k1', 'a@esempio.it', Db::now() ) );
+$ddb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k2', 'b@esempio.it', Db::now() ) );
+$p1 = $ins( 'k1', 'sogna.it', 'pending' );
+check( 'dominio: occupato da una licenza in attesa di un altro cliente', null !== throwsUser( function () use ( $dbil ) { $dbil->startFree( 'b@esempio.it', 'sogna.it' ); } ) );
+$dbil->deleteSubscription( $p1 );
+check( 'eliminazione: licenza tolta e dominio di nuovo libero', null === $dbil->subscription( $p1 ) && null === throwsUser( function () use ( $dbil ) { $dbil->startFree( 'b@esempio.it', 'sogna.it' ); } ) );
+$rec = $ins( 'k1', 'ricorrente.it', 'active', 'stripe', 'recurring', 0 );
+check( 'eliminazione: rinnovo automatico attivo → rifiutata', null !== throwsUser( function () use ( $dbil, $rec ) { $dbil->deleteSubscription( $rec ); } ) && null !== $dbil->subscription( $rec ) );
+check( 'eliminazione cliente: bloccata se una licenza ha il rinnovo attivo', null !== throwsUser( function () use ( $dbil ) { $dbil->deleteCustomer( 'k1' ); } ) );
+$ddb->run( 'UPDATE subscriptions SET cancel_at_period_end = 1 WHERE id = ?', array( $rec ) );
+$ddb->run( 'INSERT INTO login_tokens (token_hash, customer_id, expires_at) VALUES (?,?,?)', array( 'h', 'k1', Db::now() ) );
+check( 'eliminazione cliente: restituisce il numero di licenze eliminate', 1 === $dbil->deleteCustomer( 'k1' ) );
+check( 'eliminazione cliente: email libera', null === $ddb->one( 'SELECT id FROM customers WHERE id = ?', array( 'k1' ) ) && null === $ddb->one( 'SELECT 1 AS x FROM login_tokens WHERE customer_id = ?', array( 'k1' ) ) && null === $ddb->one( 'SELECT 1 AS x FROM subscriptions WHERE customer_id = ?', array( 'k1' ) ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

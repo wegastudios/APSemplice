@@ -60,6 +60,8 @@ final class Admin {
 			}
 		} elseif ( 'clienti' === $a && $get ) {
 			$this->customers();
+		} elseif ( 'clienti' === $a && ! $get && '' !== $b && 'elimina' === $c ) {
+			$this->deleteCustomer( $b );
 		} elseif ( 'prezzi' === $a ) {
 			if ( $get ) {
 				$this->show( 'prices', 'prezzi', array( 'plans' => Config::get( 'plans', array() ) ) );
@@ -182,14 +184,14 @@ final class Admin {
 		$q      = trim( (string) ( $_GET['q'] ?? '' ) );
 		$status = (string) ( $_GET['stato'] ?? '' );
 		$page   = max( 1, (int) ( $_GET['p'] ?? 1 ) );
-		$where  = array( "s.status <> 'pending'" );
+		$where  = array( '1=1' );
 		$args   = array();
 		if ( '' !== $q ) {
 			$where[] = '(c.email LIKE ? OR s.domain LIKE ?)';
 			$like    = '%' . str_replace( array( '%', '_' ), array( '', '' ), $q ) . '%';
 			array_push( $args, $like, $like );
 		}
-		if ( in_array( $status, array( 'active', 'past_due', 'canceled', 'merged' ), true ) ) {
+		if ( in_array( $status, array( 'active', 'pending', 'past_due', 'canceled', 'merged' ), true ) ) {
 			$where[] = 's.status = ?';
 			$args[]  = $status;
 		}
@@ -249,6 +251,10 @@ final class Admin {
 				$this->billing->setStatus( $id, $st );
 				$this->done( 'status', 'Stato di ' . $sub['domain'] . ': ' . $st, $to, $id );
 				break;
+			case 'elimina':
+				$this->billing->deleteSubscription( $id );
+				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.', '/admin/licenze', $id );
+				break;
 			case 'nota':
 				$this->db->run( 'UPDATE subscriptions SET note = ? WHERE id = ?', array( mb_substr( trim( (string) ( $_POST['note'] ?? '' ) ), 0, 255 ), $id ) );
 				$this->done( 'note', 'Nota aggiornata.', $to, $id );
@@ -269,10 +275,23 @@ final class Admin {
 
 	private function customers(): void {
 		$rows = $this->db->all(
-			'SELECT c.*, (SELECT COUNT(*) FROM subscriptions s WHERE s.customer_id = c.id AND s.license_key_enc IS NOT NULL) AS licenses
+			'SELECT c.*, (SELECT COUNT(*) FROM subscriptions s WHERE s.customer_id = c.id) AS licenses, (SELECT GROUP_CONCAT(s.domain) FROM subscriptions s WHERE s.customer_id = c.id) AS domains
 			 FROM customers c ORDER BY c.created_at DESC LIMIT 300'
 		);
 		$this->show( 'customers', 'clienti', array( 'rows' => $rows ) );
+	}
+
+	private function deleteCustomer( string $id ): void {
+		$c = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $id ) );
+		if ( ! $c ) {
+			$this->notFound();
+			return;
+		}
+		if ( 0 === strcasecmp( $c['email'], $this->email ) ) {
+			throw new UserError( 'Non puoi eliminare il tuo stesso account mentre sei dentro.' );
+		}
+		$n = $this->billing->deleteCustomer( $id );
+		$this->done( 'customer_delete', 'Cliente ' . $c['email'] . ' eliminato (' . $n . ' licenze).', '/admin/clienti' );
 	}
 
 	private function savePlan( string $code ): void {
