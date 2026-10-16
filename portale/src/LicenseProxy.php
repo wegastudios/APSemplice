@@ -37,7 +37,7 @@ final class LicenseProxy {
 		}
 
 		$hour = gmdate( 'YmdH', $now );
-		if ( ! $this->allow( 'ip:' . hash( 'sha256', $ip ), $hour, Settings::limit( 'proxy_ip' ) ) || ! $this->allow( 'key:' . hash( 'sha256', $key ), $hour, Settings::limit( 'proxy_key' ) ) ) {
+		if ( ! $this->allow( 'ip:' . hash( 'sha256', $ip ), $hour, Settings::limit( 'proxy_ip' ), $now ) || ! $this->allow( 'key:' . hash( 'sha256', $key ), $hour, Settings::limit( 'proxy_key' ), $now ) ) {
 			Audit::log( $this->db, 'plugin', 'license.rate_limited', $dom );
 			return $this->error( 429, 'RATE_LIMITED', 'Troppe richieste: riprova più tardi.', array( 'Retry-After: 3600' ) );
 		}
@@ -86,8 +86,8 @@ final class LicenseProxy {
 	}
 
 	/** Conta una richiesta nella finestra oraria; false se supera il limite. */
-	private function allow( string $bucket, string $hour, int $max ): bool {
-		$this->db->run( 'DELETE FROM rate_limits WHERE hour < ?', array( gmdate( 'YmdH', time() - 7200 ) ) );
+	private function allow( string $bucket, string $hour, int $max, int $ref ): bool {
+		$this->db->run( 'DELETE FROM rate_limits WHERE hour < ?', array( gmdate( 'YmdH', $ref - 7200 ) ) );
 		$row = $this->db->one( 'SELECT n FROM rate_limits WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
 		if ( ! $row ) {
 			$this->db->run( 'INSERT INTO rate_limits (bucket, hour, n) VALUES (?,?,1)', array( $bucket, $hour ) );
