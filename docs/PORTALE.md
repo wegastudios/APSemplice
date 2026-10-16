@@ -23,6 +23,26 @@ I giorni in più rispetto al periodo (31/366) coprono i ritardi di pagamento; il
 - Area riservata `/account`: chiave, scadenza, **cambio dominio** (`PUT /licenses/{id}/binding`, max 3 ogni 30 giorni), disdetta del rinnovo, carta e fatture (portale Stripe).
 - Accesso senza password: link monouso di 15 minuti; il link apre una pagina con pulsante, così gli antispam non lo consumano.
 
+## Pagamenti: ricorrenti, singoli, prova
+
+- **Ricorrente** (Stripe Subscriptions / PayPal Subscriptions): richiede il prezzo `price_…` su Stripe e/o il piano `P-…` su PayPal, con lo stesso importo del listino. Rinnovo automatico, disdetta dall'area riservata.
+- **Singolo** (Stripe Checkout a pagamento unico / PayPal Orders): usa l'importo del listino, non serve nulla da creare sui provider. La licenza vale un periodo e non si rinnova da sola; il cliente la rinnova dall'area riservata (la **chiave resta la stessa**, si sposta la scadenza) e riceve un avviso prima della scadenza. Si può spegnere per piano e periodo.
+- **Prova Pro**: chi ha una licenza gratuita attiva può provare un piano Pro per N giorni (default 30), **una sola volta per licenza gratuita** e una sola volta per dominio (`trial_used_at` e `external_ref` idempotente sul server Wega). La prova è una licenza separata con una chiave sua: il cliente la incolla al posto di quella gratuita e a fine prova rimette la gratuita o passa al Pro.
+- **Emissione manuale** dal pannello: regali e accordi fuori portale, senza pagamento.
+
+## Pannello di gestione (`/admin`)
+
+Stesso accesso dei clienti (link per email), riservato agli indirizzi in `admins` di `config.php`; ogni richiesta ricontrolla l'indirizzo e ogni modifica va nel registro.
+
+- **Cruscotto**: licenze attive, abbonamenti, incasso mensile ricorrente stimato, prove in corso, scadenze, pagamenti non riusciti, cosa manca in `config.php`.
+- **Licenze**: ricerca, dettaglio con chiave, controllo sul server Wega, cambio dominio, rinnovo a mano, disdetta, stato, note; emissione manuale.
+- **Piani e prezzi**: nome, descrizione, funzioni, prezzi mensile/annuale, id Stripe e PayPal, pagamento singolo sì/no, piano visibile o nascosto. I valori salvati sostituiscono quelli di `config.php`.
+- **Email**: un modello per evento (accesso, conferma free, benvenuto, rinnovo, pagamento non riuscito, disdetta, scadenza, prova avviata e in scadenza, dominio cambiato) con segnaposto, anteprima, prova di invio, interruttore e ripristino.
+- **Impostazioni**: durate, finestra di rinnovo PayPal, giorni di preavviso, prova (attiva, piano, durata), indicizzazione dei motori di ricerca, mittente. Ogni limite ha il suo valore di default, è limitato a un intervallo e spiega i rischi di alzarlo o abbassarlo.
+- **Registro**: chi ha fatto cosa e quando.
+
+Lavori giornalieri: `bin/cron.php` (avvisi di scadenza), installato da `deploy.sh` nel crontab del server alle 8:00.
+
 ## Webhook da configurare
 
 - Stripe → `https://…/webhook/stripe`: `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`.

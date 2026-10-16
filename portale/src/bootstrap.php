@@ -10,6 +10,8 @@ spl_autoload_register( function ( $class ) {
 	}
 } );
 
+require __DIR__ . '/helpers.php';
+
 /** Escape per l'HTML delle pagine. */
 function e( $s ): string {
 	return htmlspecialchars( (string) $s, ENT_QUOTES, 'UTF-8' );

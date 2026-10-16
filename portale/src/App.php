@@ -1,7 +1,7 @@
 <?php
 namespace Portale;
 
-/** Router e pagine del portale (nessun framework). */
+/** Router e pagine del portale (nessun framework). Il pannello di gestione è in {@see Admin}. */
 final class App {
 
 	/** @var Db */
@@ -30,75 +30,80 @@ final class App {
 			$this->route( $method, $path );
 		} catch ( UserError $e ) {
 			http_response_code( 422 );
-			$this->view( 'message', array( 'title' => 'Non è andata a buon fine', 'text' => $e->getMessage() ) );
+			View::render( 'message', array( 'title' => 'Non è andata a buon fine', 'text' => $e->getMessage() ) );
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] ' . $e->getMessage() );
 			http_response_code( 500 );
-			$this->view( 'message', array( 'title' => 'Qualcosa è andato storto', 'text' => 'Riprova tra qualche minuto. Se il problema continua scrivici.' ) );
+			View::render( 'message', array( 'title' => 'Qualcosa è andato storto', 'text' => 'Riprova tra qualche minuto. Se il problema continua scrivici.' ) );
 		}
 	}
 
 	private function route( string $method, string $path ): void {
 		$get = 'GET' === $method;
-		if ( $get && '/' === $path ) {
-			$this->view( 'home', array( 'plans' => Config::get( 'plans', array() ) ) );
+		if ( 0 === strpos( $path, '/admin' ) ) {
+			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
+		} elseif ( $get && '/' === $path ) {
+			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
+		} elseif ( $get && '/robots.txt' === $path ) {
+			View::headers( 'text/plain; charset=utf-8' );
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && '/free' === $path ) {
-			$this->view( 'free', array() );
+			View::render( 'free', array() );
 		} elseif ( ! $get && '/free' === $path ) {
 			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ) );
 			if ( ! $this->auth->canIssue( $cust['id'] ) ) {
 				throw new UserError( 'Hai richiesto troppi link: riprova tra un po\'.' );
 			}
-			$this->sendLink( $cust, $this->auth->issue( $cust['id'], $sub['id'] ), 'Conferma la tua licenza gratuita', 'Per attivare la licenza gratuita di Associazione Semplice per ' . $sub['domain'] . ' apri questo link entro 15 minuti' );
-			$this->view( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Ti abbiamo scritto un link per confermare l\'email e ricevere la chiave.' ) );
+			$this->sendLink( $cust, $this->auth->issue( $cust['id'], $sub['id'] ), 'free_confirm', array( 'dominio' => $sub['domain'] ) );
+			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Ti abbiamo scritto un link per confermare l\'email e ricevere la chiave.' ) );
 		} elseif ( $get && '/acquista' === $path ) {
 			$plan   = (string) ( $_GET['plan'] ?? '' );
 			$period = (string) ( $_GET['period'] ?? '' );
-			if ( ! Config::price( $plan, $period ) ) {
+			$price  = Config::price( $plan, $period );
+			if ( ! $price ) {
 				throw new UserError( 'Piano non disponibile.' );
 			}
-			$this->view( 'buy', array( 'plan' => $plan, 'period' => $period, 'price' => Config::price( $plan, $period ), 'label' => Config::get( 'plans.' . $plan . '.label' ) ) );
+			View::render( 'buy', array(
+				'plan' => $plan, 'period' => $period, 'price' => $price, 'label' => Config::get( 'plans.' . $plan . '.label' ),
+				'methods' => $this->billing->methods( $price ), 'days' => Settings::limit( 'year' === $period ? 'duration_year' : 'duration_month' ),
+			) );
 		} elseif ( ! $get && '/acquista' === $path ) {
-			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), (string) $this->in( 'provider' ) );
+			list( $provider, $mode ) = array_pad( explode( ':', (string) $this->in( 'method' ), 2 ), 2, '' );
+			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode );
 			header( 'Location: ' . $url, true, 303 );
+		} elseif ( $get && '/paypal/ritorno' === $path ) {
+			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );
 		} elseif ( $get && '/grazie' === $path ) {
-			$this->view( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e vedere la chiave di licenza.' ) );
+			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e vedere la chiave di licenza.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
-			$this->view( 'login', array() );
+			View::render( 'login', array() );
 		} elseif ( ! $get && '/accedi' === $path ) {
 			$email = strtolower( trim( (string) $this->in( 'email' ) ) );
 			$cust  = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
 			// Stessa risposta se l'email non esiste: non si rivela chi è cliente.
 			if ( $cust && $this->auth->canIssue( $cust['id'] ) ) {
-				$this->sendLink( $cust, $this->auth->issue( $cust['id'] ), 'Il tuo accesso ad Associazione Semplice', 'Per entrare nell\'area riservata apri questo link entro 15 minuti' );
+				$this->sendLink( $cust, $this->auth->issue( $cust['id'] ), 'login_link' );
 			}
-			$this->view( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per entrare.' ) );
+			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per entrare.' ) );
 		} elseif ( $get && 0 === strpos( $path, '/entra/' ) ) {
 			// Il link apre una pagina con un pulsante: i programmi antispam che "visitano" i link non lo consumano.
-			$this->view( 'enter', array( 'token' => substr( $path, 7 ) ) );
+			View::render( 'enter', array( 'token' => substr( $path, 7 ) ) );
 		} elseif ( ! $get && '/entra' === $path ) {
-			$t = $this->auth->consume( (string) $this->in( 'token' ) );
-			if ( ! $t ) {
-				throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo.' );
-			}
-			if ( $t['subscription_id'] ) {
-				$sub = $this->billing->subscription( $t['subscription_id'] );
-				if ( $sub && 'free' === $sub['provider'] && $sub['customer_id'] === $t['customer_id'] ) {
-					$this->billing->activate( $sub['id'] );
-				}
-			}
-			session_regenerate_id( true );
-			$_SESSION['customer'] = $t['customer_id'];
-			header( 'Location: /account', true, 303 );
+			$this->enter();
 		} elseif ( $get && '/account' === $path ) {
-			$cid = $this->customerId();
-			$this->view( 'account', array( 'subs' => $this->billing->forCustomer( $cid ), 'email' => $this->customerEmail( $cid ) ) );
+			$this->account();
 		} elseif ( ! $get && '/account/dominio' === $path ) {
 			$this->billing->changeDomain( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'domain' ) );
 			header( 'Location: /account', true, 303 );
 		} elseif ( ! $get && '/account/annulla' === $path ) {
 			$this->billing->cancel( (string) $this->in( 'id' ), $this->customerId() );
 			header( 'Location: /account', true, 303 );
+		} elseif ( ! $get && '/account/prova' === $path ) {
+			$this->billing->startTrial( $this->customerId(), (string) $this->in( 'id' ) );
+			header( 'Location: /account', true, 303 );
+		} elseif ( ! $get && '/account/rinnova' === $path ) {
+			$url = $this->billing->startRenewal( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'provider' ) );
+			header( 'Location: ' . $url, true, 303 );
 		} elseif ( ! $get && '/account/fatturazione' === $path ) {
 			$sub = $this->billing->subscription( (string) $this->in( 'id' ) );
 			if ( ! $sub || $sub['customer_id'] !== $this->customerId() || empty( $sub['provider_customer'] ) || 'stripe' !== $sub['provider'] ) {
@@ -111,8 +116,54 @@ final class App {
 			header( 'Location: /', true, 303 );
 		} else {
 			http_response_code( 404 );
-			$this->view( 'message', array( 'title' => 'Pagina non trovata', 'text' => 'Questa pagina non esiste.' ) );
+			View::render( 'message', array( 'title' => 'Pagina non trovata', 'text' => 'Questa pagina non esiste.' ) );
 		}
+	}
+
+	private function enter(): void {
+		$t = $this->auth->consume( (string) $this->in( 'token' ) );
+		if ( ! $t ) {
+			throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo.' );
+		}
+		if ( $t['subscription_id'] ) {
+			$sub = $this->billing->subscription( $t['subscription_id'] );
+			if ( $sub && 'free' === $sub['provider'] && $sub['customer_id'] === $t['customer_id'] ) {
+				$this->billing->activate( $sub['id'] );
+			}
+		}
+		session_regenerate_id( true );
+		$_SESSION['customer'] = $t['customer_id'];
+		$_SESSION['admin']    = Admin::isAdminEmail( $this->customerEmail( $t['customer_id'] ) );
+		header( 'Location: ' . ( $_SESSION['admin'] ? '/admin' : '/account' ), true, 303 );
+	}
+
+	private function account(): void {
+		$cid  = $this->customerId();
+		$subs = $this->billing->forCustomer( $cid );
+		$trial = array();
+		foreach ( $subs as $s ) {
+			$trial[ $s['id'] ] = $this->billing->trialAvailable( $s );
+		}
+		View::render( 'account', array(
+			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
+			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
+			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['admin'] ),
+		) );
+	}
+
+	/** Il cliente torna da PayPal dopo aver approvato un pagamento singolo: qui si incassa l'ordine. */
+	private function paypalReturn( string $orderId ): void {
+		$sub = $this->billing->byProviderRef( 'paypal', $orderId );
+		if ( ! $sub || 'once' !== $sub['mode'] ) {
+			throw new UserError( 'Pagamento non trovato.' );
+		}
+		if ( 'pending' === $sub['status'] ) {
+			if ( ! PayPal::captureOrder( $orderId ) ) {
+				throw new UserError( 'PayPal non ha completato il pagamento. Non è stato addebitato nulla: riprova.' );
+			}
+			$this->billing->completePayment( $sub['id'] );
+		}
+		header( 'Location: /grazie', true, 303 );
 	}
 
 	private function webhook( string $path ): void {
@@ -134,9 +185,8 @@ final class App {
 		http_response_code( $code );
 	}
 
-	private function sendLink( array $cust, string $token, string $subject, string $intro ): void {
-		$url = rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token;
-		Mailer::send( $cust['email'], $subject, $intro . ":\n\n" . $url . "\n\nSe non sei stato tu, ignora questo messaggio.\n" );
+	private function sendLink( array $cust, string $token, string $event, array $vars = array() ): void {
+		Emails::send( $this->db, $event, $cust['email'], $vars + array( 'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token ) );
 	}
 
 	/** @return mixed */
@@ -166,19 +216,5 @@ final class App {
 			$_SESSION['csrf'] = bin2hex( random_bytes( 16 ) );
 		}
 		return (string) $_SESSION['csrf'];
-	}
-
-	private function view( string $name, array $vars ): void {
-		extract( $vars, EXTR_SKIP );
-		ob_start();
-		require __DIR__ . '/../views/' . $name . '.php';
-		$content = ob_get_clean();
-		header( 'Content-Type: text/html; charset=utf-8' );
-		header( 'X-Frame-Options: DENY' );
-		if ( ! Config::get( 'indexable', false ) ) {
-			header( 'X-Robots-Tag: noindex, nofollow, noarchive, nosnippet' );
-		}
-		header( 'Referrer-Policy: same-origin' );
-		require __DIR__ . '/../views/layout.php';
 	}
 }

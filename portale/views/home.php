@@ -83,6 +83,7 @@ $faq = array(
 	</div>
 	<div class="plans">
 	<?php foreach ( $plans as $code => $p ) :
+		if ( false === ( $p['visible'] ?? true ) ) { continue; }
 		$c    = $copy[ $code ] ?? array( 'tagline' => $p['description'] ?? '', 'features' => array() );
 		$tag  = $p['tag'] ?? ( $c['tag'] ?? '' );
 		$feat = $p['features'] ?? $c['features'];
@@ -110,6 +111,7 @@ $faq = array(
 		</div>
 	<?php endforeach; ?>
 	</div>
+	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova il piano Pro gratis per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola.</p><?php endif; ?>
 	<p class="fine">Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
 </div></section>
 

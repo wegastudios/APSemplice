@@ -14,6 +14,7 @@ session_start();
 
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
 $db->migrate();
+Portale\Settings::load( $db );
 $billing = new Portale\Billing( $db, new Portale\WegaClient( (string) Portale\Config::get( 'wega.base_url' ), (string) Portale\Config::get( 'wega.token' ) ) );
 
 ( new Portale\App( $db, $billing, new Portale\Auth( $db ) ) )->run(

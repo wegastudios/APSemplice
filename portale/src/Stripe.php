@@ -24,6 +24,26 @@ final class Stripe {
 		return (string) $r['url'];
 	}
 
+	/** Pagamento singolo (senza rinnovo): l'importo arriva dal listino del pannello, non serve un prezzo creato su Stripe. */
+	public static function oneTimeUrl( string $subscriptionId, string $email, int $cents, string $name ): string {
+		$r = self::call( 'POST', '/checkout/sessions', array(
+			'mode'                                                  => 'payment',
+			'line_items[0][price_data][currency]'                   => 'eur',
+			'line_items[0][price_data][unit_amount]'                => $cents,
+			'line_items[0][price_data][product_data][name]'         => $name,
+			'line_items[0][quantity]'                               => 1,
+			'customer_email'                                        => $email,
+			'client_reference_id'                                   => $subscriptionId,
+			'payment_intent_data[metadata][sub_id]'                 => $subscriptionId,
+			'success_url'                                           => Config::get( 'base_url' ) . '/grazie',
+			'cancel_url'                                            => Config::get( 'base_url' ) . '/',
+		) );
+		if ( empty( $r['url'] ) ) {
+			throw new \RuntimeException( 'Stripe non ha restituito l\'indirizzo di pagamento.' );
+		}
+		return (string) $r['url'];
+	}
+
 	public static function portalUrl( string $stripeCustomer ): string {
 		$r = self::call( 'POST', '/billing_portal/sessions', array( 'customer' => $stripeCustomer, 'return_url' => Config::get( 'base_url' ) . '/account' ) );
 		return (string) ( $r['url'] ?? '' );

@@ -65,13 +65,25 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS events (
 				provider VARCHAR(12) NOT NULL, event_id VARCHAR(120) NOT NULL, processed_at VARCHAR(19) NOT NULL,
 				PRIMARY KEY (provider, event_id))',
+			'CREATE TABLE IF NOT EXISTS settings (name VARCHAR(60) PRIMARY KEY, val TEXT NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS email_templates (
+				event VARCHAR(40) PRIMARY KEY, subject VARCHAR(255) NOT NULL, body TEXT NOT NULL,
+				enabled INTEGER NOT NULL DEFAULT 1, updated_at VARCHAR(19) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS audit (
+				id VARCHAR(32) PRIMARY KEY, at VARCHAR(19) NOT NULL, actor VARCHAR(190) NOT NULL, action VARCHAR(60) NOT NULL, detail TEXT NULL)',
+			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
+			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN renews VARCHAR(32) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN trial_used_at VARCHAR(19) NULL',
 		);
 		foreach ( $stmts as $sql ) {
 			try {
 				$this->pdo->exec( $sql );
 			} catch ( \PDOException $e ) {
-				// CREATE INDEX non ha IF NOT EXISTS su MySQL: se esiste già va bene.
-				if ( 0 !== strpos( $sql, 'CREATE INDEX' ) ) {
+				// CREATE INDEX e ADD COLUMN non hanno "IF NOT EXISTS" ovunque: se esistono già va bene.
+				if ( 0 !== strpos( $sql, 'CREATE INDEX' ) && 0 !== strpos( $sql, 'ALTER TABLE' ) ) {
 					throw $e;
 				}
 			}

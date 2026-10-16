@@ -20,7 +20,7 @@ final class PayPal {
 
 	private static function call( string $method, string $path, ?array $body = null ): array {
 		$headers = array( 'Authorization: Bearer ' . self::token(), 'Content-Type: application/json' );
-		list( $status, $raw ) = Http::send( $method, self::api() . $path, $headers, null === $body ? null : (string) json_encode( $body ) );
+		list( $status, $raw ) = Http::send( $method, self::api() . $path, $headers, null === $body ? null : (string) json_encode( $body ?: new \stdClass() ) );
 		$d = json_decode( $raw, true );
 		if ( $status < 200 || $status >= 300 ) {
 			throw new \RuntimeException( 'PayPal: richiesta non riuscita (' . $status . ').' );
@@ -47,6 +47,41 @@ final class PayPal {
 			}
 		}
 		throw new \RuntimeException( 'PayPal non ha restituito l\'indirizzo di approvazione.' );
+	}
+
+	/**
+	 * Pagamento singolo: crea l'ordine e restituisce [id ordine, indirizzo di approvazione].
+	 *
+	 * @return array [string $orderId, string $approvalUrl]
+	 */
+	public static function createOrder( string $subscriptionId, int $cents, string $description ): array {
+		$r = self::call( 'POST', '/v2/checkout/orders', array(
+			'intent'              => 'CAPTURE',
+			'purchase_units'      => array( array(
+				'reference_id' => $subscriptionId,
+				'custom_id'    => $subscriptionId,
+				'description'  => mb_substr( $description, 0, 120 ),
+				'amount'       => array( 'currency_code' => 'EUR', 'value' => number_format( $cents / 100, 2, '.', '' ) ),
+			) ),
+			'application_context' => array(
+				'brand_name'  => 'Associazione Semplice',
+				'user_action' => 'PAY_NOW',
+				'return_url'  => Config::get( 'base_url' ) . '/paypal/ritorno',
+				'cancel_url'  => Config::get( 'base_url' ) . '/',
+			),
+		) );
+		foreach ( (array) ( $r['links'] ?? array() ) as $l ) {
+			if ( in_array( $l['rel'] ?? '', array( 'approve', 'payer-action' ), true ) && ! empty( $l['href'] ) && ! empty( $r['id'] ) ) {
+				return array( (string) $r['id'], (string) $l['href'] );
+			}
+		}
+		throw new \RuntimeException( 'PayPal non ha restituito l\'indirizzo di approvazione.' );
+	}
+
+	/** Incassa un ordine approvato dal cliente. @return bool true se il pagamento è completato */
+	public static function captureOrder( string $orderId ): bool {
+		$r = self::call( 'POST', '/v2/checkout/orders/' . rawurlencode( $orderId ) . '/capture', array() );
+		return 'COMPLETED' === ( $r['status'] ?? '' );
 	}
 
 	public static function cancel( string $paypalSubscription ): void {

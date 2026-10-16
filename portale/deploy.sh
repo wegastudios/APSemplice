@@ -14,8 +14,10 @@ cd ~/portale && mkdir -p data
 cd ~/public_html
 printf '<?php\n// Punto d'"'"'ingresso del portale: il codice sta fuori dalla cartella pubblica (~/portale).\nrequire __DIR__ . "/../portale/public/index.php";\n' > index.php
 mkdir -p assets && cp ../portale/public/assets/* assets/
-[ -f robots.txt ] || cp ../portale/public/robots.txt robots.txt
-grep -q "X-Robots-Tag" .htaccess || { echo; cat ../portale/public/.htaccess; } >> .htaccess
+sed -i '/^# Sito non ancora pubblico/,$d;/^# Tutto ci/,$d' .htaccess
+{ echo; cat ../portale/public/.htaccess; } >> .htaccess
+rm -f robots.txt
+( crontab -l 2>/dev/null | grep -q "portale/bin/cron.php" ) || ( crontab -l 2>/dev/null; echo "0 8 * * * php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
 for f in $(find ../portale -name '*.php' -not -name config.php); do php -l "$f" >/dev/null; done
 echo "Pubblicato."
 REMOTE

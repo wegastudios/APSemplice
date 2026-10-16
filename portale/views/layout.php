@@ -19,6 +19,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 	<a class="logo" href="/"><span class="logo-mark"><?php echo icon( 'users' ); ?></span>Associazione Semplice</a>
 	<nav class="nav" aria-label="Principale">
 		<a href="/#funzioni">Funzioni</a><a href="/#prezzi">Prezzi</a><a href="/#domande">Domande</a>
+		<?php if ( ! empty( $_SESSION['admin'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>
 		<a class="btn small" href="<?php echo $logged ? '/account' : '/accedi'; ?>">Area riservata</a>
 	</nav>
 </div></header>

@@ -1,16 +1,17 @@
-<?php /** @var string $plan @var string $period @var array $price @var string $label */
-$methods = array();
-if ( ! empty( $price['stripe_price'] ) ) { $methods['stripe'] = 'Carta di credito o debito'; }
-if ( ! empty( $price['paypal_plan'] ) ) { $methods['paypal'] = 'PayPal'; }
-$cents  = (int) $price['cents'];
-$amount = number_format( $cents / 100, ( $cents % 100 ) ? 2 : 0, ',', '.' ) . ' €';
-$year   = 'year' === $period;
+<?php /** @var string $plan @var string $period @var array $price @var string $label @var array $methods @var int $days */
+$year  = 'year' === $period;
+$names = array(
+	'stripe:recurring' => array( 'Carta · rinnovo automatico', 'Si rinnova da sola ' . ( $year ? 'ogni anno' : 'ogni mese' ) . '. Disdici quando vuoi.' ),
+	'paypal:recurring' => array( 'PayPal · rinnovo automatico', 'Si rinnova da sola ' . ( $year ? 'ogni anno' : 'ogni mese' ) . '. Disdici quando vuoi.' ),
+	'stripe:once'      => array( 'Carta · pagamento singolo', 'Paghi una volta sola: la licenza vale ' . ( $year ? '1 anno' : '1 mese' ) . ' e non si rinnova da sola.' ),
+	'paypal:once'      => array( 'PayPal · pagamento singolo', 'Paghi una volta sola: la licenza vale ' . ( $year ? '1 anno' : '1 mese' ) . ' e non si rinnova da sola.' ),
+);
 ?>
 <section class="page"><div class="wrap page-grid">
 	<div class="panel">
 		<span class="eyebrow">Piano <?php echo e( $label ); ?></span>
-		<h1>Completa l'abbonamento</h1>
-		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php echo e( $amount ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
+		<h1>Completa l'acquisto</h1>
+		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php echo e( money( $price['cents'] ) ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
 		<?php if ( ! $methods ) : ?>
 			<p class="muted">Questo piano non è ancora acquistabile: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>
 		<?php else : ?>
@@ -24,12 +25,11 @@ $year   = 'year' === $period;
 			<p class="hint">La licenza sarà legata a questo dominio; potrai cambiarlo in seguito.</p>
 			<label>Come vuoi pagare</label>
 			<div class="choice">
-			<?php $first = true; foreach ( $methods as $k => $t ) : ?>
-				<label><input type="radio" name="provider" value="<?php echo e( $k ); ?>"<?php echo $first ? ' checked' : ''; ?>> <?php echo e( $t ); ?></label>
+			<?php $first = true; foreach ( $methods as $m ) : $k = $m[0] . ':' . $m[1]; ?>
+				<label><input type="radio" name="method" value="<?php echo e( $k ); ?>"<?php echo $first ? ' checked' : ''; ?>><span><?php echo e( $names[ $k ][0] ); ?><small class="muted" style="display:block;font-weight:400"><?php echo e( $names[ $k ][1] ); ?></small></span></label>
 			<?php $first = false; endforeach; ?>
 			</div>
 			<button class="btn big block" type="submit">Vai al pagamento sicuro</button>
-			<p class="hint">Rinnovo automatico: disdici quando vuoi dall'area riservata. La licenza resta valida fino alla scadenza già pagata.</p>
 		</form>
 		<?php endif; ?>
 	</div>

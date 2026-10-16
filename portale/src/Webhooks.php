@@ -27,8 +27,13 @@ final class Webhooks {
 			$o = $ev['data']['object'] ?? array();
 			switch ( $ev['type'] ) {
 				case 'checkout.session.completed':
-					if ( ! empty( $o['client_reference_id'] ) && 'subscription' === ( $o['mode'] ?? '' ) ) {
-						$this->activateAndNotify( (string) $o['client_reference_id'], (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null );
+					if ( empty( $o['client_reference_id'] ) ) {
+						break;
+					}
+					if ( 'subscription' === ( $o['mode'] ?? '' ) ) {
+						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null );
+					} elseif ( 'payment' === ( $o['mode'] ?? '' ) && 'paid' === ( $o['payment_status'] ?? '' ) ) {
+						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['payment_intent'] ?? '' ) ?: null );
 					}
 					break;
 				case 'invoice.paid':
@@ -44,6 +49,7 @@ final class Webhooks {
 					$sub = $this->billing->byProviderRef( 'stripe', (string) ( $o['subscription'] ?? '' ) );
 					if ( $sub && 'canceled' !== $sub['status'] ) {
 						$this->billing->setStatus( $sub['id'], 'past_due' );
+						$this->billing->notify( 'payment_failed', $sub );
 					}
 					break;
 				case 'customer.subscription.updated':
@@ -56,6 +62,10 @@ final class Webhooks {
 					$sub = $this->billing->byProviderRef( 'stripe', (string) ( $o['id'] ?? '' ) );
 					if ( $sub ) {
 						$this->billing->setStatus( $sub['id'], 'canceled' );
+						// Se il cliente aveva già disdetto ha già ricevuto l'email: avviso solo le chiusure decise dal provider.
+						if ( ! $sub['cancel_at_period_end'] ) {
+							$this->billing->notify( 'canceled', $sub );
+						}
 					}
 					break;
 			}
@@ -76,19 +86,26 @@ final class Webhooks {
 			switch ( $ev['event_type'] ) {
 				case 'BILLING.SUBSCRIPTION.ACTIVATED':
 					if ( ! empty( $r['custom_id'] ) ) {
-						$this->activateAndNotify( (string) $r['custom_id'], (string) ( $r['id'] ?? '' ) );
+						$this->billing->completePayment( (string) $r['custom_id'], (string) ( $r['id'] ?? '' ) );
+					}
+					break;
+				case 'PAYMENT.CAPTURE.COMPLETED':
+					// Pagamento singolo: normalmente già registrato al ritorno del cliente; qui è la rete di sicurezza.
+					if ( ! empty( $r['custom_id'] ) ) {
+						$this->billing->completePayment( (string) $r['custom_id'] );
 					}
 					break;
 				case 'PAYMENT.SALE.COMPLETED':
 					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['billing_agreement_id'] ?? '' ) );
 					if ( $sub ) {
-						$this->billing->renew( $sub['id'], (int) Config::get( 'renew_window_days', 5 ) );
+						$this->billing->renew( $sub['id'], Settings::limit( 'renew_window' ) );
 					}
 					break;
 				case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
 					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ) );
 					if ( $sub && 'canceled' !== $sub['status'] ) {
 						$this->billing->setStatus( $sub['id'], 'past_due' );
+						$this->billing->notify( 'payment_failed', $sub );
 					}
 					break;
 				case 'BILLING.SUBSCRIPTION.CANCELLED':
@@ -97,29 +114,13 @@ final class Webhooks {
 					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ) );
 					if ( $sub ) {
 						$this->billing->setStatus( $sub['id'], 'canceled' );
+						if ( ! $sub['cancel_at_period_end'] ) {
+							$this->billing->notify( 'canceled', $sub );
+						}
 					}
 					break;
 			}
 		} );
-	}
-
-	/** Attiva la licenza e, la prima volta, manda al cliente il link per vedere la chiave nell'area riservata. */
-	private function activateAndNotify( string $subId, ?string $ref, ?string $providerCustomer = null ): void {
-		$before = $this->billing->subscription( $subId );
-		$first  = $before && empty( $before['license_id'] );
-		$sub    = $this->billing->activate( $subId, $ref, $providerCustomer );
-		if ( $first && ! empty( $sub['license_id'] ) ) {
-			$cust = $this->db->one( 'SELECT * FROM customers WHERE id = ?', array( $sub['customer_id'] ) );
-			if ( $cust ) {
-				$token = ( new Auth( $this->db ) )->issue( $cust['id'] );
-				Mailer::send(
-					$cust['email'],
-					'Il tuo abbonamento ad Associazione Semplice è attivo',
-					"Grazie! La licenza per " . $sub['domain'] . " è pronta. Per vedere la chiave apri questo link entro 15 minuti:\n\n"
-					. rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token . "\n"
-				);
-			}
-		}
 	}
 
 	private function once( string $provider, string $eventId, callable $work ): int {
