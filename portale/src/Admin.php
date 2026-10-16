@@ -58,6 +58,8 @@ final class Admin {
 			} else {
 				$this->notFound();
 			}
+		} elseif ( 'wega' === $a ) {
+			$this->wegaSync( $get );
 		} elseif ( 'clienti' === $a && $get ) {
 			$this->customers();
 		} elseif ( 'clienti' === $a && ! $get && '' !== $b && 'elimina' === $c ) {
@@ -279,6 +281,43 @@ final class Admin {
 			 FROM customers c ORDER BY c.created_at DESC LIMIT 300'
 		);
 		$this->show( 'customers', 'clienti', array( 'rows' => $rows ) );
+	}
+
+	/** Confronto con il server Wega (elenco delle licenze del portale) e importazione di quelle mancanti. */
+	private function wegaSync( bool $get ): void {
+		try {
+			$rows = WegaSync::fetchAll( $this->billing->wega() );
+		} catch ( WegaException $e ) {
+			if ( in_array( $e->httpStatus, array( 401, 403 ), true ) ) {
+				$msg = 'Il token del portale non ha il permesso licenses:list: abilitalo dal pannello Wega (Portali).';
+			} elseif ( in_array( $e->httpStatus, array( 404, 405 ), true ) ) {
+				$msg = 'Il server Wega non offre ancora l\'elenco delle licenze (GET /licenses): vedi docs/WEGA-richiesta-elenco-licenze.md.';
+			} else {
+				$msg = 'Il server Wega ha risposto: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage();
+			}
+			$this->show( 'wega', 'wega', array( 'error' => $msg, 'rows' => array(), 'orphans' => array() ) );
+			return;
+		}
+		$cmp = WegaSync::compare( $this->db, $rows );
+		if ( $get ) {
+			$this->show( 'wega', 'wega', array( 'error' => '', 'rows' => $cmp, 'orphans' => WegaSync::orphans( $this->db, $rows ) ) );
+			return;
+		}
+		$only = (string) ( $_POST['id'] ?? '' );
+		$done = 0;
+		$skip = 0;
+		foreach ( $cmp as $r ) {
+			if ( 'missing' !== $r['_state'] || ( '' !== $only && (string) $r['id'] !== $only ) ) {
+				continue;
+			}
+			try {
+				WegaSync::import( $this->db, $this->billing, $r );
+				++$done;
+			} catch ( UserError $e ) {
+				++$skip;
+			}
+		}
+		$this->done( 'wega_import', $done . ' licenze importate da Wega' . ( $skip ? ', ' . $skip . ' saltate' : '' ) . '.', '/admin/wega' );
 	}
 
 	private function deleteCustomer( string $id ): void {

@@ -100,3 +100,7 @@ Il pannello `/admin` ha cinque sezioni, ciascuna con le sue schede: **Cruscotto*
 
 - L'elenco **Licenze** mostra anche quelle «in attesa» (pagamenti mai conclusi), che prima restavano invisibili ma occupavano il dominio (messaggio «dominio già registrato da un altro indirizzo email»). Filtro «In attesa» incluso.
 - **Elimina licenza** (elenco e dettaglio) e **Elimina cliente** (scheda Clienti e domini, con elenco dei domini): tolgono dal portale email, domini, licenze, link di accesso e registro scarichi, così email e dominio tornano usabili. Si rifiuta se resta un rinnovo automatico attivo su Stripe/PayPal (prima va disdetto) e non si può eliminare il proprio account. **Il server Wega e i provider non vengono toccati**: la licenza resta su Wega com'è.
+
+## Da Wega: confronto e importazione
+
+Gestione → Clienti → **Da Wega** elenca le licenze che il server Wega ha emesso per il portale (`GET /licenses`, scope `licenses:list`, **ancora da realizzare lato Wega**: richiesta in `docs/WEGA-richiesta-elenco-licenze.md`), le confronta con il database e permette di **importare** quelle mancanti (una o tutte). L'elenco non contiene le chiavi: le licenze importate non mostrano la chiave al cliente. Non sono importabili (con il motivo in tabella) le licenze con cliente che non è un'email, piano sconosciuto al portale o dominio già di un altro cliente. In fondo, le licenze del portale che Wega non elenca. Finché Wega non offre l'elenco la pagina lo dice (404/403) senza errori.

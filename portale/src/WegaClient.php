@@ -46,6 +46,13 @@ final class WegaClient {
 		return $this->request( 'PUT', '/licenses/' . rawurlencode( $licenseId ) . '/binding', array( 'license_key' => $licenseKey, 'identity' => $newDomain ) )['data'];
 	}
 
+	/** Elenco delle licenze del portale (richiede lo scope licenses:list). @return array [elementi, cursore successivo o null] */
+	public function listLicenses( ?string $cursor = null, int $limit = 100 ): array {
+		$q = '?limit=' . max( 1, min( 200, $limit ) ) . ( null !== $cursor ? '&cursor=' . rawurlencode( $cursor ) : '' );
+		$r = $this->request( 'GET', '/licenses' . $q );
+		return array( (array) ( $r['data'] ?? array() ), isset( $r['next_cursor'] ) && '' !== $r['next_cursor'] ? (string) $r['next_cursor'] : null );
+	}
+
 	/** Chiavi pubbliche di Wega (nessun token: sono pubbliche). @return array [codice HTTP, corpo] */
 	public function jwks(): array {
 		return Http::withRetry( 'GET', preg_replace( '#/api/v1/?$#', '', $this->base ) . '/.well-known/jwks.json', array( 'Accept: application/json' ), null, 2 );

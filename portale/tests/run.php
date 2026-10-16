@@ -566,5 +566,34 @@ $ddb->run( 'INSERT INTO login_tokens (token_hash, customer_id, expires_at) VALUE
 check( 'eliminazione cliente: restituisce il numero di licenze eliminate', 1 === $dbil->deleteCustomer( 'k1' ) );
 check( 'eliminazione cliente: email libera', null === $ddb->one( 'SELECT id FROM customers WHERE id = ?', array( 'k1' ) ) && null === $ddb->one( 'SELECT 1 AS x FROM login_tokens WHERE customer_id = ?', array( 'k1' ) ) && null === $ddb->one( 'SELECT 1 AS x FROM subscriptions WHERE customer_id = ?', array( 'k1' ) ) );
 
+// --- Importazione dall'elenco Wega ------------------------------------------------------------
+$sdb = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb->migrate();
+$sbil  = new Billing( $sdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$pages = array(
+	'' => array( 'data' => array(
+		array( 'id' => 'L1', 'plan_name' => 'Pro Full', 'customer_id' => 'Uno@Esempio.it', 'state' => 'ACTIVE', 'domain' => 'https://www.uno.it', 'expires_at' => '2027-01-01T00:00:00Z' ),
+		array( 'id' => 'L2', 'plan_name' => 'Piano Misterioso', 'customer_id' => 'due@esempio.it', 'state' => 'ACTIVE', 'domain' => 'due.it' ),
+	), 'next_cursor' => 'c2' ),
+	'c2' => array( 'data' => array(
+		array( 'id' => 'L3', 'plan_name' => 'Free', 'customer_id' => 'non-un-email', 'state' => 'ACTIVE', 'domain' => 'tre.it' ),
+		array( 'id' => 'L4', 'plan_name' => 'Pro Full', 'customer_id' => 'quattro@esempio.it', 'state' => 'REVOKED', 'domain' => 'quattro.it' ),
+	) ),
+);
+Http::$transport = function ( $m, $url ) use ( $pages ) {
+	preg_match( '/cursor=([^&]*)/', $url, $mm );
+	return array( 200, json_encode( $pages[ isset( $mm[1] ) ? rawurldecode( $mm[1] ) : '' ] ) );
+};
+$all = Portale\WegaSync::fetchAll( new WegaClient( 'https://license.test/api/v1', 't' ) );
+check( 'wega elenco: segue la paginazione fino in fondo', 4 === count( $all ) );
+$cmp = Portale\WegaSync::compare( $sdb, $all );
+check( 'wega elenco: mancante, piano ignoto, email non valida, mancante', array( 'missing', 'blocked', 'blocked', 'missing' ) === array_column( $cmp, '_state' ) );
+$sub = Portale\WegaSync::import( $sdb, $sbil, $all[0] );
+check( 'wega import: cliente in minuscolo, dominio normalizzato, piano mappato', 'uno@esempio.it' === $sdb->one( 'SELECT email FROM customers' )['email'] && 'uno.it' === $sub['domain'] && 'full' === $sub['plan_code'] && 'L1' === $sub['license_id'] && 'active' === $sub['status'] );
+check( 'wega import: stato REVOKED → annullata', 'canceled' === Portale\WegaSync::import( $sdb, $sbil, $all[3] )['status'] );
+check( 'wega import: ripetuta rifiutata', null !== throwsUser( function () use ( $sdb, $sbil, $all ) { Portale\WegaSync::import( $sdb, $sbil, $all[0] ); } ) );
+check( 'wega import: dopo l\'importazione risulta già nel portale', 'known' === Portale\WegaSync::compare( $sdb, array( $all[0] ) )[0]['_state'] );
+check( 'wega orfane: licenza del portale che Wega non elenca', 1 === count( Portale\WegaSync::orphans( $sdb, array( $all[0] ) ) ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
