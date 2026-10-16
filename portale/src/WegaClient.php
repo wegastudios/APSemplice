@@ -46,6 +46,19 @@ final class WegaClient {
 		return $this->request( 'PUT', '/licenses/' . rawurlencode( $licenseId ) . '/binding', array( 'license_key' => $licenseKey, 'identity' => $newDomain ) )['data'];
 	}
 
+	/** Operazioni di stato sulla licenza (percorsi provvisori: da allineare a quelli pubblicati da Wega). */
+	public function suspend( string $licenseId ): array {
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/suspend', array() );
+	}
+
+	public function restore( string $licenseId ): array {
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/restore', array() );
+	}
+
+	public function revoke( string $licenseId ): array {
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/revoke', array() );
+	}
+
 	/** Elenco delle licenze del portale (richiede lo scope licenses:list). @return array [elementi, cursore successivo o null] */
 	public function listLicenses( ?string $cursor = null, int $limit = 100 ): array {
 		$q = '?limit=' . max( 1, min( 200, $limit ) ) . ( null !== $cursor ? '&cursor=' . rawurlencode( $cursor ) : '' );
