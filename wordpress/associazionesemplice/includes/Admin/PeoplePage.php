@@ -251,7 +251,9 @@ final class PeoplePage {
 		}
 		echo '<div class="asem-card"><h2>Accesso all\'area riservata</h2>';
 		if ( ! empty( $p['wp_user_id'] ) ) {
-			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . '</p></div>';
+			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . '</p>';
+			self::detach_buttons( $p );
+			echo '</div>';
 			return;
 		}
 		$url = \AssociazioneSemplice\Frontend\Activation::url( (int) $p['id'] );
@@ -263,7 +265,23 @@ final class PeoplePage {
 		} else {
 			echo '<p class="description">Senza cellulare: copia il link e mandalo come preferisci. Oppure aggiungi l\'email qui sopra: l\'accesso si crea subito.</p>';
 		}
+		self::detach_buttons( $p );
 		echo '</div>';
+	}
+
+	/** «Scollega email» e «Scollega numero di telefono»: si riparte senza il dato ma lo storico resta. Solo segreteria e amministratori (la pagina è già riservata). */
+	private static function detach_buttons( array $p ): void {
+		$back = Ui::url( 'asem-person', array( 'id' => $p['id'] ) );
+		if ( ! empty( $p['email'] ) || ! empty( $p['wp_user_id'] ) ) {
+			Ui::form_open( 'asem_detach_email', $back, false, 'asem-inline' );
+			echo Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare l\'email? Il socio perde l\'accesso all\'area riservata e si riparte senza email; lo storico resta.">Scollega email</button> <span class="description">Il socio perde l\'accesso e può riattivarlo col link; lo storico resta. L\'utente del sito non viene cancellato: per riattivarsi il socio dovrà usare un\'altra email.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
+		if ( ! empty( $p['phone'] ) ) {
+			Ui::form_open( 'asem_detach_phone', $back, false, 'asem-inline' );
+			echo Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare il numero di telefono? Lo storico resta.">Scollega numero di telefono</button> <span class="description">Toglie il numero ' . esc_html( (string) $p['phone'] ) . ' dalla scheda; lo storico resta.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
 	}
 
 	/** Etichetta per un ospite: quante volte è venuto, eventuali registrazioni "gemelle" (stesso nome, email o telefono) e se è da invitare a iscriversi. */
