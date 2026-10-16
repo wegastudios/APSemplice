@@ -79,6 +79,19 @@ final class Limits {
 			'Chi usa più dispositivi non riuscirà ad attivarli tutti.'
 		);
 
+		$add(
+			'update_notice', 'comunicazioni', 'Avviso «ci sono aggiornamenti» di Associazione Semplice', 'flag', 1, 0, 1,
+			'Con una chiave di licenza inserita (anche la gratuita), il plugin chiede al portale di Associazione Semplice qual è l\'ultima versione e mostra un avviso chiudibile alla segreteria e agli amministratori quando ne esiste una più recente. Non invia la chiave né dati del sito.',
+			'Il sito fa una richiesta al portale di tanto in tanto (solo per leggere l\'ultima versione, senza inviare dati) e mostra l\'avviso: rischi trascurabili.',
+			'Se lo disattivi il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area clienti, con il rischio di restare su versioni vecchie, senza correzioni di sicurezza.'
+		);
+		$add(
+			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 6, 168,
+			'Ogni quante ore il plugin chiede al portale l\'ultima versione disponibile (solo se l\'avviso è attivo).',
+			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
+			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
+		);
+
 		// ---------- Accessi e sicurezza ----------
 		$add(
 			'first_access_per_ip', 'accesso', 'Richieste di «Primo accesso» per connessione, in un\'ora', 'richieste', 10, 1, 1000,

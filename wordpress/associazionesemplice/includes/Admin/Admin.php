@@ -17,6 +17,7 @@ final class Admin {
 		Dismiss::register();
 		if ( \AssociazioneSemplice\Edition::has( 'license' ) ) {
 			LicenseNotice::register();
+			UpdateNotice::register();
 		}
 		RegistersActions::register();
 		TechActions::register();

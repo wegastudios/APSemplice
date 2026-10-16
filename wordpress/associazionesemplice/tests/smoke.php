@@ -3461,6 +3461,23 @@ try {
 }
 asem_ok( $threw, 'scollega telefono: non per gli ospiti' );
 
+// avviso «ci sono aggiornamenti»
+add_filter( 'asem_license_is_local', '__return_false' );
+Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/free/99.0.0' ) ), false );
+$upd_html = Admin\UpdateNotice::html();
+asem_ok( false !== strpos( $upd_html, '99.0.0' ) && false !== strpos( $upd_html, 'asem-dismissible' ) && false !== strpos( $upd_html, 'https://associazionesemplice.it/scarica/free/99.0.0' ), 'aggiornamenti: avviso chiudibile con la nuova versione e il link di scarico' );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => ASEM_VERSION, 'url' => '' ) ), false );
+asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
+Settings::update( array( 'license_key' => '' ) );
+asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: senza chiave di licenza nessun avviso' );
+Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array( 'update_notice' => 0 ) ) );
+asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: spento dai limiti' );
+Settings::update( array( 'license_key' => '', 'limits' => array() ) );
+remove_filter( 'asem_license_is_local', '__return_false' );
+delete_option( \AssociazioneSemplice\UpdateCheck::OPT );
+
 // sospensione in blocco: scaduti da oltre 8 mesi
 $old_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Molto', 'last_name' => 'Scaduto', 'email' => 'molto.scaduto@example.com' ) );
 $people->set_membership( $old_a, (string) ( $cy - 3 ), true, 'manual' );

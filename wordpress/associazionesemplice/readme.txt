@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.13
+Stable tag: 1.1.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,9 @@ The plugin works fully on its own. It contacts an external service only if you e
 = License service (optional) =
 If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the license server of Wega Studios (license.wegastudios.com) to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The check is active only when the plugin is configured with the service credential and is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
 
+= Update notice (optional) =
+If you have entered a license key (the free one is enough), at most once every 24 hours (configurable in Settings, can be turned off) the plugin asks the website associazionesemplice.it for the latest plugin version numbers (https://associazionesemplice.it/api/plugin/latest) and shows a dismissible notice to administrators when a newer version exists. The request carries no license key, no member data and no information about your site. It is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
+
 = PayPal donations (optional) =
 If you turn on donations, your website shows a form whose button opens PayPal's donation page (www.paypal.com/donate) in the visitor's browser, with the PayPal account, the purpose and the chosen amount you set. Nothing is sent from your server to PayPal. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
 
@@ -59,6 +62,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.14 =
+* Update notice: with a license key entered, the plugin asks the Associazione Semplice website for the latest versions and shows a dismissible notice when a newer one exists (can be turned off or tuned in Settings, no data is sent).
 
 = 1.1.13 =
 * Member record: Detach email and Detach phone number buttons (office and administrators only); the member keeps their history but loses the access or the number.
