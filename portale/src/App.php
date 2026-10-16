@@ -24,6 +24,10 @@ final class App {
 				$this->webhook( $path );
 				return;
 			}
+			if ( 0 === strpos( $path, '/api/license/' ) || '/.well-known/jwks.json' === $path ) {
+				$this->licenseApi( $method, $path );
+				return;
+			}
 			if ( 'POST' === $method && ! $this->csrfOk() ) {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
 			}
@@ -172,6 +176,27 @@ final class App {
 			$this->billing->completePayment( $sub['id'] );
 		}
 		header( 'Location: /grazie', true, 303 );
+	}
+
+	/** API per il plugin: rimbalzo delle verifiche verso il server Wega (vedi {@see LicenseProxy}). */
+	private function licenseApi( string $method, string $path ): void {
+		$proxy = new LicenseProxy( $this->db, $this->billing->wega() );
+		if ( 'POST' === $method && '/api/license/validate' === $path ) {
+			$ip  = (string) ( Config::get( 'trust_forwarded_for', false ) ? trim( explode( ',', (string) ( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) )[0] ) : '' );
+			$ip  = '' !== $ip ? $ip : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+			$res = $proxy->validate( (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $ip );
+		} elseif ( 'GET' === $method && '/.well-known/jwks.json' === $path ) {
+			$res = $proxy->jwks();
+		} else {
+			$res = array( 404, '{"error":{"code":"NOT_FOUND","message":"Non trovato."}}', array() );
+		}
+		http_response_code( $res[0] );
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'X-Robots-Tag: noindex' );
+		foreach ( $res[2] as $h ) {
+			header( $h );
+		}
+		echo $res[1];
 	}
 
 	private function webhook( string $path ): void {

@@ -15,6 +15,8 @@ final class Settings {
 		'renew_window'   => array( 5, 1, 30, 'Un pagamento PayPal conta come rinnovo solo negli ultimi N giorni di validità. Se alzi: un primo pagamento tardivo potrebbe contare due volte. Se abbassi: un rinnovo anticipato di PayPal potrebbe non essere registrato.' ),
 		'reminder_days'  => array( 14, 0, 60, 'Giorni prima della scadenza in cui parte l\'email «licenza in scadenza» (0 = non inviare). Se alzi: più tempo ai clienti ma più email. Se abbassi: meno margine per rinnovare.' ),
 		'trial_days'     => array( 30, 1, 90, 'Giorni di prova gratuita del piano Pro, una sola volta per licenza gratuita. Se alzi: più clienti si convincono ma lo stesso dominio usa il Pro gratis più a lungo. Se abbassi: la prova può essere troppo breve per valutare il piano.' ),
+	'proxy_ip'       => array( 60, 5, 1000, 'Verifiche di licenza accettate da un singolo indirizzo IP ogni ora (il plugin ne fa una al giorno per sito). Se alzi: più margine per reti condivise con molti siti, ma è più facile tentare chiavi a caso. Se abbassi: più protezione dai tentativi, ma un\x27agenzia con molti siti sullo stesso server può essere respinta.' ),
+	'proxy_key'      => array( 20, 3, 200, 'Verifiche accettate ogni ora per la stessa chiave. Se alzi: più controlli manuali consentiti. Se abbassi: chi preme spesso «Controlla adesso» può essere respinto per un po\x27.' ),
 	);
 
 	/** Applica al Config i valori salvati. Da chiamare dopo la connessione al database. */
@@ -34,6 +36,8 @@ final class Settings {
 		self::apply( 'renew_window_days', $g, 'renew_window' );
 		self::apply( 'reminder_days', $g, 'reminder_days' );
 		self::apply( 'trial_days', $g, 'trial_days' );
+		self::apply( 'proxy_per_ip', $g, 'proxy_ip' );
+		self::apply( 'proxy_per_key', $g, 'proxy_key' );
 		if ( array_key_exists( 'trial_enabled', $g ) ) {
 			Config::set( 'trial_enabled', (bool) $g['trial_enabled'] );
 		}
@@ -63,7 +67,7 @@ final class Settings {
 
 	/** Valore corrente di un limite (da config o da pannello) dentro i margini consentiti. */
 	public static function limit( string $key ): int {
-		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days' );
+		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key' );
 		$v     = Config::get( $paths[ $key ], null );
 		return self::clamp( $key, null === $v ? self::LIMITS[ $key ][0] : $v );
 	}

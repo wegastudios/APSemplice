@@ -426,5 +426,55 @@ try {
 	check( 'wega: errore propagato con codice', 'INVALID_DOMAIN' === $e->errorCode && 422 === $e->httpStatus );
 }
 
+// --- Rimbalzo delle verifiche del plugin ------------------------------------------------
+$pdb    = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb->migrate();
+$pcalls = 0;
+Http::$transport = function ( $method, $url, $headers, $body ) use ( &$pcalls ) {
+	++$pcalls;
+	if ( false !== strpos( $url, 'jwks.json' ) ) {
+		return array( 200, '{"keys":[{"kty":"OKP"}]}' );
+	}
+	$in = json_decode( (string) $body, true );
+	if ( 'chiave-sconosciuta' === $in['license_key'] ) {
+		return array( 404, json_encode( array( 'error' => array( 'code' => 'LICENSE_NOT_FOUND', 'message' => 'no' ) ) ) );
+	}
+	if ( 'chiave-guasta-1' === $in['license_key'] ) {
+		return array( 500, '' );
+	}
+	return array( 200, json_encode( array( 'valid' => true, 'domain' => $in['domain'], 'attestation' => 'JWT.INTATTO.X' ) ) );
+};
+$proxy = new Portale\LicenseProxy( $pdb, new WegaClient( 'https://license.test/api/v1', 'tok-segreto' ) );
+$ok    = '{"license_key":"chiave-valida-1","domain":"https://WWW.Esempio.it/x"}';
+$r     = $proxy->validate( $ok, '1.1.1.1', 1700000000 );
+$j     = json_decode( $r[1], true );
+check( 'rimbalzo: risposta di Wega girata com\'è, dominio normalizzato', 200 === $r[0] && true === $j['valid'] && 'esempio.it' === $j['domain'] && 'JWT.INTATTO.X' === $j['attestation'] );
+check( 'rimbalzo: il token non compare nella risposta', false === strpos( $r[1], 'tok-segreto' ) );
+$before = $pcalls;
+$proxy->validate( $ok, '1.1.1.1', 1700000100 );
+check( 'rimbalzo: seconda richiesta dalla memoria', $pcalls === $before );
+$proxy->validate( $ok, '1.1.1.1', 1700000400 );
+check( 'rimbalzo: memoria scaduta, nuova richiesta a Wega', $pcalls === $before + 1 );
+check( 'rimbalzo: JSON rotto rifiutato', 422 === $proxy->validate( 'nonjson', '2.2.2.2' )[0] );
+check( 'rimbalzo: dominio locale rifiutato', 422 === $proxy->validate( '{"license_key":"chiave-valida-1","domain":"localhost"}', '2.2.2.2' )[0] );
+check( 'rimbalzo: chiave corta rifiutata', 422 === $proxy->validate( '{"license_key":"abc","domain":"esempio.it"}', '2.2.2.2' )[0] );
+$r = $proxy->validate( '{"license_key":"chiave-sconosciuta","domain":"esempio.it"}', '3.3.3.3', 1700000000 );
+check( 'rimbalzo: errore 4xx di Wega girato con il suo codice', 404 === $r[0] && 'LICENSE_NOT_FOUND' === json_decode( $r[1], true )['error']['code'] );
+$r = $proxy->validate( '{"license_key":"chiave-guasta-1","domain":"esempio.it"}', '4.4.4.4', 1700000000 );
+check( 'rimbalzo: errore del server Wega diventa 502 (il plugin tiene lo stato)', 502 === $r[0] );
+$last = 0;
+for ( $i = 0; $i < 25; $i++ ) {
+	$last = $proxy->validate( '{"license_key":"chiave-limite-0","domain":"esempio.it"}', '5.5.5.5', 1700000000 )[0];
+}
+check( 'rimbalzo: limite per chiave (20/ora) → 429 con Retry-After', 429 === $last && in_array( 'Retry-After: 3600', $proxy->validate( '{"license_key":"chiave-limite-0","domain":"esempio.it"}', '5.5.5.5', 1700000000 )[2], true ) );
+check( 'rimbalzo: la finestra successiva riparte', 200 === $proxy->validate( '{"license_key":"chiave-limite-0","domain":"esempio.it"}', '5.5.5.5', 1700000000 + 7200 )[0] );
+$r = $proxy->jwks( 1700000000 );
+check( 'jwks: chiavi pubbliche girate', 200 === $r[0] && isset( json_decode( $r[1], true )['keys'] ) );
+$before = $pcalls;
+$proxy->jwks( 1700000100 );
+check( 'jwks: seconda lettura dalla memoria', $pcalls === $before );
+Http::$transport = function () { return array( 0, '' ); };
+check( 'jwks: Wega irraggiungibile, si usa l\'ultima copia', 200 === $proxy->jwks( 1700000000 + 7200 )[0] );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

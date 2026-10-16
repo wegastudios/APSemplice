@@ -64,7 +64,7 @@ Fatto: vendita (Stripe e PayPal, ricorrente e singolo), licenze Wega, area clien
 
 Da fare:
 1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
-2. Credenziale solo-verifica del server Wega (`licenses:validate`) in `ASEM_LICENSE_TOKEN` nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
+2. Passare il plugin al rimbalzo (vedi sotto): così non serve nessuna credenziale nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
 3. Prova su staging dei percorsi reali (acquisto, rinnovo, webhook, prova Pro) con le chiavi di test.
 4. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
 
@@ -73,3 +73,13 @@ Da fare:
 - **Pagamenti** (`/admin/pagamenti`): token Wega, chiavi Stripe e PayPal si inseriscono da qui. Sono **cifrate** nel database con `app_key` (che resta in `config.php`), si vedono solo gli ultimi 4 caratteri, un campo vuoto non cambia nulla; le chiavi del pannello hanno la precedenza su `config.php`. Ogni servizio ha «Prova il collegamento» e la pagina mostra gli indirizzi dei webhook e gli eventi da selezionare.
 - **Cookie e script** (`/admin/cookie`): spazio per gli script di monitoraggio nell'header e nel footer, ciascuno con la sua categoria di consenso (statistiche, marketing, necessari). Gli script non necessari stanno in `<template>` e partono solo dopo il consenso (`assets/portale.js`); il banner compare solo se esiste uno script che richiede consenso; cambiando gli script a tutti viene richiesta di nuovo la scelta. Cookie della scelta: `asem_cc`, 6 mesi.
 - **Pagine legali** (`/admin/legale`): `/privacy` e `/cookie` con testi di base modificabili e dati del titolare. Sono un modello: vanno verificati da un consulente.
+
+## Rimbalzo delle verifiche del plugin
+
+Il plugin non parla con il server Wega: chiede la verifica al portale, che la gira a Wega con il proprio token (`LicenseProxy`). Nel plugin non restano né l'indirizzo di Wega né credenziali.
+
+- `POST /api/license/validate` con `{"license_key":…,"domain":…}`: il portale normalizza il dominio, chiama `POST /licenses/validate` e restituisce la risposta di Wega **invariata**, attestazione firmata compresa. Un `valid: false` è una risposta 200 come su Wega; gli errori 4xx di Wega passano con il loro codice; rete e errori 5xx diventano **502**, così il plugin tiene lo stato precedente. Il plugin può solo verificare: emissione, rinnovo e cambio dominio restano solo del portale.
+- `GET /.well-known/jwks.json`: copia in cache (1 ora, ultima copia valida se Wega non risponde) delle chiavi pubbliche di Wega. Il portale **non firma nulla**: il plugin verifica la firma EdDSA con le chiavi di Wega, quindi un portale compromesso non può dichiarare valida una chiave scaduta.
+- Memoria breve (5 minuti) delle risposte, per chiave e dominio, e limiti orari per IP (60) e per chiave (20), modificabili da Impostazioni → «Verifiche dal plugin» (con i rischi). Superato il limite: 429 con `Retry-After`. Dietro un proxy fidato impostare `trust_forwarded_for` in `config.php`.
+- Registro: solo limiti superati ed errori di Wega, non ogni verifica.
+- Plugin (da fare nella sessione del plugin): `LicenseClient::API` → `https://associazionesemplice.it/api/license`, `ISSUER` e JWKS → il portale (l'`iss` del JWT resta quello di Wega), togliere `ASEM_LICENSE_TOKEN`, aggiornare il readme (servizio esterno) e `docs/LICENZE.md`.
