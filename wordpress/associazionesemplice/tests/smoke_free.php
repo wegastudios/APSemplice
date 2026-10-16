@@ -57,7 +57,7 @@ free_ok( count( $lines ) >= 1, 'elenco dei file avanzati letto' );
 foreach ( $lines as $rel ) {
 	free_ok( ! file_exists( ASEM_DIR . 'includes/' . $rel ), "assente nell'edizione gratuita: $rel" );
 }
-free_ok( ! Edition::has( 'license' ) && ! Edition::has( 'vat' ) && ! Edition::has( 'levels' ), 'licenza, IVA e livelli non sono presenti' );
+free_ok( Edition::has( 'license' ) && ! Edition::has( 'vat' ) && ! Edition::has( 'levels' ), 'la licenza è presente anche nel gratuito; IVA e livelli no' );
 free_ok( Edition::allows( 'export' ) && Edition::allows( 'member_area' ), 'senza licenza le funzioni presenti sono consentite' );
 
 // ---------- IVA: anche con la partita IVA accesa non compare nulla di fiscale ----------
@@ -151,7 +151,7 @@ free_ok( \AssociazioneSemplice\Admin\ProPage::needed(), 'nel gratuito la pagina 
 ob_start();
 \AssociazioneSemplice\Admin\ProPage::render();
 $pro_page = (string) ob_get_clean();
-free_ok( false !== strpos( $pro_page, 'Pagamenti online' ) && false !== strpos( $pro_page, 'Pro Fiscale' ) && false !== strpos( $pro_page, 'IVA' ) && false === strpos( $pro_page, 'attiva</span>' ), 'pagina Pro: mostra le funzioni dei due livelli, nessuna già attiva' );
+free_ok( false !== strpos( $pro_page, 'Pagamenti online' ) && false !== strpos( $pro_page, 'Pro Full' ) && false !== strpos( $pro_page, 'IVA' ) && false === strpos( $pro_page, 'attiva</span>' ), 'pagina Pro: mostra le funzioni dei due livelli, nessuna già attiva' );
 
 // ---------- Il salvataggio dei livelli è rifiutato ----------
 $threw = false;

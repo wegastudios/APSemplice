@@ -8,7 +8,7 @@
 			<label for="email">La tua email</label>
 			<input id="email" type="email" name="email" placeholder="segreteria@miaassociazione.it" autocomplete="email" required>
 			<label for="domain">Indirizzo del sito WordPress</label>
-			<input id="domain" type="text" name="domain" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
+			<input id="domain" type="text" name="domain" value="<?php echo e( \Portale\Domain::normalize( (string) ( $_GET['domain'] ?? '' ) ) ); ?>" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
 			<p class="hint">Basta il dominio, senza «https://». Lo potrai cambiare dall'area riservata.</p>
 			<button class="btn big block" type="submit">Ricevi la chiave</button>
 		</form>

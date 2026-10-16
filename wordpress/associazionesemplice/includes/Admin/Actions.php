@@ -23,6 +23,7 @@ final class Actions {
 
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
+		'asem_save_license', 'asem_license_check',
 		'asem_save_settings', 'asem_save_payment_settings', 'asem_test_gateway', 'asem_save_card', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_wallet_clear', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_create_year', 'asem_close_year', 'asem_reopen_year',
@@ -130,6 +131,8 @@ final class Actions {
 			'asem_fund_settle'        => 'fund_settle',
 			'asem_cash_count'         => 'cash_count',
 			'asem_save_settings'      => 'save_settings',
+			'asem_save_license'       => 'save_license',
+			'asem_license_check'      => 'license_check',
 			'asem_quick_cash'         => 'quick_cash',
 			'asem_save_look'          => 'save_look',
 			'asem_save_donate'        => 'save_donate',
@@ -1150,7 +1153,6 @@ final class Actions {
 				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
 				'board_councillors'       => (int) ( $p['board_councillors'] ?? 7 ),
 				'member_area_page_id'     => (int) ( $p['member_area_page_id'] ?? 0 ),
-				'license_key'             => $txt( 'license_key' ),
 				'cancel_policy_default'   => $txt( 'cancel_policy_default' ),
 				'payment_hint'            => sanitize_textarea_field( $p['payment_hint'] ?? '' ),
 				'gate_message'            => $txt( 'gate_message' ),
@@ -1210,6 +1212,19 @@ final class Actions {
 			throw new \InvalidArgumentException( $res['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( Ui::url( 'asem-payments' ), $res['message'] );
+	}
+
+	/** Salva la chiave di licenza e la verifica subito con il server. */
+	private static function save_license( array $p ): array {
+		$key = mb_substr( sanitize_text_field( $p['license_key'] ?? '' ), 0, 120 );
+		Settings::update( array( 'license_key' => $key ) );
+		$r = License::sync();
+		return array( Ui::url( 'asem-settings' ), ( '' === $key ? 'Chiave rimossa. ' : 'Chiave salvata. ' ) . $r['message'] );
+	}
+
+	private static function license_check( array $p ): array {
+		$r = License::sync();
+		return array( Ui::url( 'asem-settings' ), $r['message'] );
 	}
 
 	private static function check_payments( array $p ): array {
