@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<?php if ( ! PortaleConfig::get( 'indexable', false ) ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
+<?php if ( ! \Portale\Config::get( 'indexable', false ) ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
 <title>Associazione Semplice · Portale</title>
 <style>
 :root { --bg:#fafaf7; --fg:#1d2433; --muted:#5b6475; --card:#fff; --line:#dfe3ea; --brand:#1f6f5c; --brand-fg:#fff; --err:#a32020; }
