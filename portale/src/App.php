@@ -175,6 +175,9 @@ final class App {
 		$content = ob_get_clean();
 		header( 'Content-Type: text/html; charset=utf-8' );
 		header( 'X-Frame-Options: DENY' );
+		if ( ! Config::get( 'indexable', false ) ) {
+			header( 'X-Robots-Tag: noindex, nofollow, noarchive, nosnippet' );
+		}
 		header( 'Referrer-Policy: same-origin' );
 		require __DIR__ . '/../views/layout.php';
 	}

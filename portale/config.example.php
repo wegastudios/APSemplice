@@ -4,6 +4,7 @@ return array(
 	'base_url' => 'https://portale.associazionesemplice.it',
 	'app_key'  => '',   // 32 byte in base64: php -r "echo base64_encode(random_bytes(32));"  (cifra le chiavi di licenza)
 	'mail_from' => 'info@associazionesemplice.it',
+	'indexable' => false, // finché è false: robots.txt, X-Robots-Tag e meta robots vietano l'indicizzazione (cambiare anche public/robots.txt prima del lancio)
 
 	// MySQL oppure SQLite (default).
 	'db' => array(

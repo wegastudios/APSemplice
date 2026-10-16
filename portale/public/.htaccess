@@ -1,0 +1,8 @@
+# Sito non ancora pubblico: nessun motore di ricerca deve indicizzarlo.
+<IfModule mod_headers.c>
+	Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+</IfModule>
+# Tutto ciò che non è un file reale passa dal router.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

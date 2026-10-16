@@ -160,7 +160,7 @@ final class Edition {
 
 	/** Indirizzo del sito dove si presenta e si acquista Associazione Semplice Pro (modificabile con il filtro `asem_pro_url`). */
 	public static function pro_url(): string {
-		return (string) apply_filters( 'asem_pro_url', 'https://www.wegastudios.com' );
+		return (string) apply_filters( 'asem_pro_url', 'https://associazionesemplice.it' );
 	}
 
 	/** Come {@see Edition::missing_message()}, con il collegamento per regolarizzare quando la licenza è scaduta (HTML già pronto). */
