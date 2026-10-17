@@ -7,7 +7,11 @@ $sections = array(
 	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/admin/email', 'Email' ), 'registro' => array( '/admin/registro', 'Registro' ) ) ),
 	'pagine'       => array( 'Pagine', array( 'legale' => array( '/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/admin/cookie', 'Script e consenso' ) ) ),
 );
-$current = 'cruscotto';
+if ( Portale\Staff::SUPPORT === ( $role ?? "" ) ) {
+	unset( $sections["cruscotto"], $sections["piani"], $sections["impostazioni"], $sections["pagine"] );
+	unset( $sections["clienti"][1]["wega"], $sections["clienti"][1]["staff"] );
+}
+$current = isset( $sections["cruscotto"] ) ? "cruscotto" : "clienti";
 foreach ( $sections as $sk => $sec ) {
 	if ( isset( $sec[1][ $nav ] ) ) {
 		$current = $sk;

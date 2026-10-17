@@ -13,6 +13,8 @@ final class Admin {
 	private $billing;
 	/** @var string */
 	private $email;
+	/** @var string admin o support */
+	private $role = '';
 
 	/** Amministratore = indirizzo in `admins` di config.php oppure con ruolo admin nello staff (il ruolo «solo supporto» non basta). */
 	public static function isAdminEmail( string $email, ?Db $db = null ): bool {
@@ -24,12 +26,26 @@ final class Admin {
 		$this->billing = $billing;
 		$row           = $db->one( 'SELECT email FROM customers WHERE id = ?', array( $customerId ) );
 		$this->email   = $row ? (string) $row['email'] : '';
-		if ( ! self::isAdminEmail( $this->email, $db ) ) {
+		$this->role = Staff::role( $db, $this->email ) ?? '';
+		if ( '' === $this->role ) {
 			$_SESSION['admin'] = false;
+			$_SESSION['staff'] = '';
 			http_response_code( 403 );
 			throw new UserError( 'Questa area è riservata alla gestione.' );
 		}
-		$_SESSION['admin'] = true;
+		$_SESSION['admin'] = Staff::ADMIN === $this->role;
+		$_SESSION['staff'] = $this->role;
+	}
+
+	/**
+	 * «Solo supporto»: vede e segue licenze e clienti (rinnovo, dominio, disdetta, sospensione, note) ma non tocca prezzi, piani,
+	 * versioni, pagamenti, email, pagine, impostazioni, registro, Wega e staff, e non emette né elimina licenze o clienti.
+	 */
+	private function supportMayDo( bool $get, string $a, string $b, string $c ): bool {
+		if ( 'licenze' === $a ) {
+			return 'nuova' !== $b && 'elimina' !== $c;
+		}
+		return 'clienti' === $a && $get;
 	}
 
 	public function handle( string $method, string $path ): void {
@@ -38,6 +54,17 @@ final class Admin {
 		$a   = $p[0] ?? '';
 		$b   = $p[1] ?? '';
 		$c   = $p[2] ?? '';
+
+		if ( Staff::SUPPORT === $this->role ) {
+			if ( '' === $a ) {
+				header( 'Location: /admin/licenze', true, 303 );
+				return;
+			}
+			if ( ! $this->supportMayDo( $get, $a, $b, $c ) ) {
+				http_response_code( 403 );
+				throw new UserError( 'Con il ruolo «solo supporto» questa funzione non è disponibile.' );
+			}
+		}
 
 		if ( '' === $a && $get ) {
 			$this->dashboard();
@@ -425,7 +452,7 @@ final class Admin {
 	}
 
 	private function show( string $view, string $nav, array $vars = array() ): void {
-		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email ) );
+		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role ) );
 	}
 
 	private function flash(): string {
