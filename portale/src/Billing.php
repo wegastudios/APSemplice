@@ -108,7 +108,7 @@ final class Billing {
 	}
 
 	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode ): array {
-		$domain = Domain::normalize( $domainInput );
+		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido: scrivi per esempio «miaassociazione.it», senza http:// e senza indirizzi IP.' );
 		}
@@ -341,7 +341,7 @@ final class Billing {
 		if ( ! $sub || $sub['customer_id'] !== $customerId || empty( $sub['license_key_enc'] ) ) {
 			throw new UserError( 'Abbonamento non trovato.' );
 		}
-		$domain = Domain::normalize( $domainInput );
+		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido.' );
 		}

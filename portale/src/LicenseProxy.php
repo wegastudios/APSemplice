@@ -50,7 +50,12 @@ final class LicenseProxy {
 		}
 
 		try {
-			$data = $this->wega->validate( $key, $dom );
+			// La licenza è legata al dominio registrabile e vale per tutti i suoi sottodomini (staging, test, clone…).
+			$reg  = Domain::registrable( $dom );
+			$data = $this->wega->validate( $key, $reg );
+			if ( empty( $data['valid'] ) && 'DOMAIN_MISMATCH' === ( $data['reason_code'] ?? '' ) && $reg !== $dom ) {
+				$data = $this->wega->validate( $key, $dom ); // licenze legate a un sottodominio esatto (emesse prima)
+			}
 		} catch ( WegaException $e ) {
 			// Errori del client (4xx) si girano com'erano; rete e server diventano 502, così il plugin tiene lo stato precedente.
 			if ( $e->httpStatus >= 400 && $e->httpStatus < 500 && 429 !== $e->httpStatus && 401 !== $e->httpStatus && 403 !== $e->httpStatus ) {

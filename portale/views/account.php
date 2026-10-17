@@ -96,6 +96,7 @@ $csrf = Portale\App::csrf();
 			<form method="post" action="/account/annulla" onsubmit="return confirm('Disdire il rinnovo automatico? La licenza resta valida fino alla scadenza.')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>"><button class="btn danger" type="submit">Disdici il rinnovo</button></form>
 			<?php endif; ?>
 		</div>
+		<?php if ( $key ) : ?><p class="hint"><b>Siti di prova inclusi.</b> La licenza vale per il dominio registrato <b><?php echo e( $s['domain'] ); ?></b> e per tutti i suoi sottodomini e sottocartelle: puoi usarla anche su <code>staging.<?php echo e( $s['domain'] ); ?></code>, <code>test.<?php echo e( $s['domain'] ); ?></code>, <code>clone.<?php echo e( $s['domain'] ); ?></code> oppure <code><?php echo e( $s['domain'] ); ?>/staging</code>, con la stessa chiave e senza cambiare nulla.</p><?php endif; ?>
 		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Puoi cambiarlo fino a 3 volte ogni 30 giorni.</p>
 	</div>
 	<?php endforeach; ?>
