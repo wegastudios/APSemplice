@@ -14,6 +14,8 @@ final class PeoplePage {
 		$q      = Ui::get_str( 'q' );
 		$type   = Ui::get_str( 'type' );
 		$status = Ui::get_str( 'status' );
+		$by     = Ui::get_str( 'orderby' );
+		$dir    = 'desc' === Ui::get_str( 'order' ) ? 'desc' : 'asc';
 		$rows   = Plugin::people()->search( array( 'q' => $q, 'type' => $type, 'status' => $status ) );
 		$at_limit = '1' === Ui::get_str( 'at_limit' );
 		$gov      = Plugin::people()->guest_overview();
@@ -22,6 +24,8 @@ final class PeoplePage {
 				return MemberType::GUEST === $x['type'] && ! empty( $gov[ (int) $x['id'] ]['flag'] );
 			} ) );
 		}
+		$rows   = self::sort_rows( $rows, $by, $dir );
+		$keep   = array_filter( array( 'q' => $q, 'type' => $type, 'status' => $status, 'at_limit' => $at_limit ? '1' : '' ), 'strlen' );
 		$today  = current_time( 'Y-m-d' );
 
 		Ui::header(
@@ -42,6 +46,9 @@ final class PeoplePage {
 		}
 
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-people">';
+		if ( '' !== $by ) { // il filtro non fa perdere l'ordinamento scelto
+			echo '<input type="hidden" name="orderby" value="' . esc_attr( $by ) . '"><input type="hidden" name="order" value="' . esc_attr( $dir ) . '">';
+		}
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
@@ -56,7 +63,7 @@ final class PeoplePage {
 			Ui::form_close();
 		}
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
-		echo '<table class="widefat striped"><thead><tr><th>Tessera</th><th>Nome</th><th>Tipo</th><th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
 		}
@@ -82,6 +89,48 @@ final class PeoplePage {
 		}
 		echo '</tbody></table>';
 		Ui::footer();
+	}
+
+	/** Ordina l'elenco per tessera (numerica, vuote in fondo), nome o tipo (come appare, a parità per nome). Senza criterio resta l'ordine per cognome e nome. */
+	public static function sort_rows( array $rows, string $by, string $dir = 'asc' ): array {
+		if ( ! in_array( $by, array( 'card', 'name', 'type' ), true ) ) {
+			return $rows;
+		}
+		$sign = 'desc' === $dir ? -1 : 1;
+		$name = function ( array $p ) {
+			return \AssociazioneSemplice\Text::lower( $p['last_name'] . ' ' . $p['first_name'] );
+		};
+		usort(
+			$rows,
+			function ( $a, $b ) use ( $by, $sign, $name ) {
+				if ( 'card' === $by ) {
+					$ca = trim( (string) $a['card_number'] );
+					$cb = trim( (string) $b['card_number'] );
+					if ( '' === $ca || '' === $cb ) {
+						if ( $ca === $cb ) {
+							return strcmp( $name( $a ), $name( $b ) );
+						}
+						return '' === $ca ? 1 : -1; // le persone senza tessera stanno sempre in fondo
+					}
+					$c = ctype_digit( $ca ) && ctype_digit( $cb ) ? (int) $ca <=> (int) $cb : strnatcasecmp( $ca, $cb );
+					return 0 !== $c ? $sign * $c : strcmp( $name( $a ), $name( $b ) );
+				}
+				if ( 'type' === $by ) {
+					$c = strcmp( \AssociazioneSemplice\Text::lower( \AssociazioneSemplice\Levels::label( $a ) ), \AssociazioneSemplice\Text::lower( \AssociazioneSemplice\Levels::label( $b ) ) );
+					return 0 !== $c ? $sign * $c : strcmp( $name( $a ), $name( $b ) );
+				}
+				return $sign * strcmp( $name( $a ), $name( $b ) );
+			}
+		);
+		return $rows;
+	}
+
+	/** Intestazione di colonna cliccabile che ordina l'elenco (di nuovo clic: ordine inverso). */
+	private static function sort_th( string $label, string $key, string $by, string $dir, array $keep ): string {
+		$next = $by === $key && 'asc' === $dir ? 'desc' : 'asc';
+		$url  = Ui::url( 'asem-people', array_merge( $keep, array( 'orderby' => $key, 'order' => $next ) ) );
+		$mark = $by === $key ? ( 'asc' === $dir ? ' ▲' : ' ▼' ) : '';
+		return '<th><a href="' . esc_url( $url ) . '">' . esc_html( $label . $mark ) . '</a></th>';
 	}
 
 	public static function render_edit(): void {
