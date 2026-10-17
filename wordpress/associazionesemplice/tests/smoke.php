@@ -2162,6 +2162,13 @@ asem_ok( 0 === $res2['people']['created'] && 4 === $res2['people']['updated'] &&
 $csv_p = $mkf( 'soci.csv', "Tessera;Nome;Cognome;Email\r\n902;Csv;Prova;csv.prova@example.com\r\n" );
 $pv    = ImportService::preview_file( $csv_p, 'soci.csv', array() );
 asem_ok( null === $pv['ledger'] && 'create' === $pv['people']['plan'][0]['action'], 'import CSV: i soci si leggono come prima' );
+// CSV con colonne-anno: gli anni di iscrizione effettivi
+$csv_y = $mkf( 'anni.csv', "Tessera;Nome;Cognome;Email;2023;2024;2025\r\n931;Anni;Effettivi;anni.effettivi@example.com;X;;x\r\n" );
+$pv    = ImportService::preview_file( $csv_y, 'anni.csv', array() );
+asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025' ) === $pv['people']['plan'][0]['row']['years'] && false !== strpos( (string) $pv['people']['plan'][0]['message'], 'Iscritto: 2023, 2025' ), 'import CSV: le colonne-anno diventano gli anni di iscrizione' );
+ImportService::apply( $pv, array() );
+$anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
+asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], '2023' ) && $people->has_membership( (int) $anni_p['id'], '2025' ) && ! $people->has_membership( (int) $anni_p['id'], '2024' ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );

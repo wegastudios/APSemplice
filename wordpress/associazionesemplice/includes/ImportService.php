@@ -218,6 +218,15 @@ final class ImportService {
 							$track['memberships'][] = array( $id, $year );
 						}
 					}
+					if ( $person && ! empty( $r['years'] ) && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
+						foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025…)
+							$y_had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, (string) $y ) );
+							$people->set_membership( $id, (string) $y, true, 'import' );
+							if ( ! $y_had ) {
+								$track['memberships'][] = array( $id, (string) $y );
+							}
+						}
+					}
 				} catch ( \InvalidArgumentException $e ) {
 					$failed[] = ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] . ': ' . $e->getMessage();
 				}
