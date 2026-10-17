@@ -756,5 +756,28 @@ check( 'sso: chi non è staff entra come cliente', 'customer' === Portale\Suppor
 Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => 'corto' ) );
 check( 'sso: segreto corto → non attivo, si va alla home del supporto', ! Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::url( $tdb, 'capo@esempio.it' ) );
 
+// --- Accesso unico al supporto: piano nel token ---------------------------------------------
+$cdb = new Db( new PDO( 'sqlite::memory:' ) );
+$cdb->migrate();
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p1', 'free@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p2', 'pro@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p3', 'scaduto@esempio.it', Db::now() ) );
+$ins2 = function ( $cid, $plan, $exp ) use ( $cdb ) {
+	$cdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( Db::id(), $cid, $plan, 'year', 'manual', 'active', Db::id() . '.it', 'once', $exp, Db::now(), Db::now() ) );
+};
+$future = gmdate( 'Y-m-d H:i:s', time() + 86400 * 30 );
+$past   = gmdate( 'Y-m-d H:i:s', time() - 86400 );
+$ins2( 'p1', 'free', $future );
+$ins2( 'p2', 'free', $future );
+$ins2( 'p2', 'full', $future );
+$ins2( 'p3', 'full', $past );
+check( 'sso: solo licenza gratuita → piano Free', array( 'plan' => 'Free' ) === Portale\SupportSso::claimsFor( $cdb, 'Free@Esempio.it' ) );
+check( 'sso: licenza a pagamento in regola → piano Pro', array( 'plan' => 'Pro' ) === Portale\SupportSso::claimsFor( $cdb, 'pro@esempio.it' ) );
+check( 'sso: licenza scaduta o sconosciuto → nessun piano', array() === Portale\SupportSso::claimsFor( $cdb, 'scaduto@esempio.it' ) && array() === Portale\SupportSso::claimsFor( $cdb, 'nessuno@esempio.it' ) );
+Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => str_repeat( 'a', 64 ) ) );
+list( $pp ) = explode( '.', Portale\SupportSso::token( 'pro@esempio.it', 'customer', 1000, array( 'plan' => 'Pro' ) ) );
+$pl2 = json_decode( base64_decode( strtr( $pp, '-_', '+/' ) ), true );
+check( 'sso: il token porta il piano e conserva gli altri claim', 'Pro' === $pl2['plan'] && 'customer' === $pl2['role'] && 'pro@esempio.it' === $pl2['sub'] && 1060 === $pl2['exp'] );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
