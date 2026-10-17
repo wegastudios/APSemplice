@@ -22,6 +22,7 @@ final class DashboardPage {
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
+		echo '<p class="description">Il tuo account su associazionesemplice.it: <a href="' . esc_url( (string) apply_filters( 'asem_portal_account_url', 'https://associazionesemplice.it/account' ) ) . '" target="_blank" rel="noopener">Area riservata</a> (licenza, dominio, pagamenti, download) · <a href="' . esc_url( (string) apply_filters( 'asem_portal_support_url', 'https://associazionesemplice.it/supporto/accedi' ) ) . '" target="_blank" rel="noopener">Supporto</a></p>';
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \AssociazioneSemplice\Modules::on( 'activities' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
 
