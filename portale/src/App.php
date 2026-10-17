@@ -114,6 +114,14 @@ final class App {
 			$this->enter( (string) $this->in( 'token' ) );
 		} elseif ( $get && 0 === strpos( $path, '/scarica/' ) ) {
 			$this->download( $path );
+		} elseif ( $get && '/supporto/accedi' === $path ) {
+			// Accesso unico al sito di supporto: serve aver fatto l'accesso qui; il ruolo (admin, solo supporto, cliente) si legge dall'email.
+			header( 'Cache-Control: no-store' );
+			if ( empty( $_SESSION['customer'] ) ) {
+				// Non connesso: dopo l'accesso si torna qui (destinazione fissa, mai da parametri dell'indirizzo: niente redirect aperti).
+				$_SESSION['after_login'] = '/supporto/accedi';
+			}
+			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( ! $get && '/account/password' === $path ) {
@@ -166,8 +174,15 @@ final class App {
 		$_SESSION['customer'] = $cust['id'];
 		$this->billing->touchCustomer( (string) $cust['id'] );
 		$_SESSION['via_link'] = $viaLink;
-		$_SESSION['admin']    = Admin::isAdminEmail( (string) $cust['email'] );
-		header( 'Location: ' . ( $_SESSION['admin'] ? '/admin' : '/account' ), true, 303 );
+		$role                = Staff::role( $this->db, (string) $cust['email'] ) ?? '';
+		$_SESSION['staff']    = $role;
+		$_SESSION['admin']    = Staff::ADMIN === $role;
+		$to = '' !== $role ? '/admin' : '/account';
+		if ( '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) {
+			$to = '/supporto/accedi';
+		}
+		unset( $_SESSION['after_login'] );
+		header( 'Location: ' . $to, true, 303 );
 	}
 
 	private function clientIp(): string {
@@ -212,7 +227,7 @@ final class App {
 			'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
-			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['admin'] ),
+			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
 			'releases' => array_combine( Releases::entitled( $subs ), array_map( function ( $p ) { return Releases::all( $this->db, $p ); }, Releases::entitled( $subs ) ) ) ?: array(),
 		) );
 	}

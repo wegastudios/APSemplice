@@ -729,6 +729,55 @@ $seen = array();
 $GLOBALS['reg_ok'] = false;
 $r = json_decode( $px->validate( '{"license_key":"chiave-di-prova-2","domain":"legato.esempio.it"}', '3.3.3.4', 1700000000 )[1], true );
 check( 'rimbalzo: licenza emessa per un sottodominio esatto: secondo tentativo sul sottodominio', true === $r['valid'] && array( 'esempio.it', 'legato.esempio.it' ) === $seen );
+// --- Staff e accesso unico al supporto --------------------------------------------------------
+$tdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$tdb->migrate();
+$tbil = new Billing( $tdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+Config::set( 'admins', array( 'Capo@Esempio.it' ) );
+check( 'staff: admin di config.php', 'admin' === Portale\Staff::role( $tdb, 'capo@esempio.it' ) );
+check( 'staff: sconosciuto senza ruolo', null === Portale\Staff::role( $tdb, 'altro@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, ' Aiuto@Esempio.it ', 'support' );
+check( 'staff: solo supporto non è amministratore', 'support' === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) && ! Portale\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) );
+check( 'staff: crea anche il cliente per poter entrare', 1 === (int) $tdb->one( 'SELECT COUNT(*) AS n FROM customers WHERE email = ?', array( 'aiuto@esempio.it' ) )['n'] );
+Portale\Staff::set( $tdb, $tbil, 'aiuto@esempio.it', 'admin' );
+check( 'staff: cambio ruolo a admin', Portale\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) && 2 === count( Portale\Staff::all( $tdb ) ) );
+check( 'staff: ruolo non valido rifiutato', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'x@esempio.it', 'root' ); } ) );
+check( 'staff: admin di config.php non modificabile', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'capo@esempio.it', 'support' ); } ) );
+Portale\Staff::remove( $tdb, 'aiuto@esempio.it' );
+check( 'staff: rimosso', null === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) );
+Config::set( 'base_url', 'https://portale.test' );
+Config::set( 'support', array( 'url' => 'https://supporto.test/', 'sso_secret' => str_repeat( 's', 40 ) ) );
+check( 'sso: attivo con segreto lungo, indirizzo senza barra finale', Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::supportUrl() );
+list( $p64, $sig ) = explode( '.', Portale\SupportSso::token( 'Capo@Esempio.it', 'admin', 1000 ) );
+$pl = json_decode( base64_decode( strtr( $p64, '-_', '+/' ) ), true );
+check( 'sso: contenuto del token', 'capo@esempio.it' === $pl['sub'] && 'admin' === $pl['role'] && 1060 === $pl['exp'] && 'https://supporto.test' === $pl['aud'] && 32 === strlen( $pl['jti'] ) );
+check( 'sso: firma HMAC-SHA256 verificabile', hash_equals( rtrim( strtr( base64_encode( hash_hmac( 'sha256', $p64, str_repeat( 's', 40 ), true ) ), '+/', '-_' ), '=' ), $sig ) );
+check( 'sso: chi non è staff entra come cliente', 'customer' === Portale\SupportSso::roleFor( $tdb, 'cliente@esempio.it' ) );
+Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => 'corto' ) );
+check( 'sso: segreto corto → non attivo, si va alla home del supporto', ! Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::url( $tdb, 'capo@esempio.it' ) );
+
+// --- Accesso unico al supporto: piano nel token ---------------------------------------------
+$cdb = new Db( new PDO( 'sqlite::memory:' ) );
+$cdb->migrate();
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p1', 'free@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p2', 'pro@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p3', 'scaduto@esempio.it', Db::now() ) );
+$ins2 = function ( $cid, $plan, $exp ) use ( $cdb ) {
+	$cdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( Db::id(), $cid, $plan, 'year', 'manual', 'active', Db::id() . '.it', 'once', $exp, Db::now(), Db::now() ) );
+};
+$future = gmdate( 'Y-m-d H:i:s', time() + 86400 * 30 );
+$past   = gmdate( 'Y-m-d H:i:s', time() - 86400 );
+$ins2( 'p1', 'free', $future );
+$ins2( 'p2', 'free', $future );
+$ins2( 'p2', 'full', $future );
+$ins2( 'p3', 'full', $past );
+check( 'sso: solo licenza gratuita → piano Free', array( 'plan' => 'Free' ) === Portale\SupportSso::claimsFor( $cdb, 'Free@Esempio.it' ) );
+check( 'sso: licenza a pagamento in regola → piano Pro', array( 'plan' => 'Pro' ) === Portale\SupportSso::claimsFor( $cdb, 'pro@esempio.it' ) );
+check( 'sso: licenza scaduta o sconosciuto → nessun piano', array() === Portale\SupportSso::claimsFor( $cdb, 'scaduto@esempio.it' ) && array() === Portale\SupportSso::claimsFor( $cdb, 'nessuno@esempio.it' ) );
+Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => str_repeat( 'a', 64 ) ) );
+list( $pp ) = explode( '.', Portale\SupportSso::token( 'pro@esempio.it', 'customer', 1000, array( 'plan' => 'Pro' ) ) );
+$pl2 = json_decode( base64_decode( strtr( $pp, '-_', '+/' ) ), true );
+check( 'sso: il token porta il piano e conserva gli altri claim', 'Pro' === $pl2['plan'] && 'customer' === $pl2['role'] && 'pro@esempio.it' === $pl2['sub'] && 1060 === $pl2['exp'] );
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
