@@ -2206,6 +2206,28 @@ foreach ( $people->search( array( 'type' => 'guest' ) ) as $gx ) {
 }
 asem_ok( $og2 && empty( $og2['host_person_id'] ) && 2 === (int) $og2['prior_visits'] && 'Concerto 2025' === $og2['notes'], 'import ospiti: con le regole spente entrano senza cellulare e ospitante, con Venute e note' );
 Settings::update( array( 'limits' => array() ) );
+
+// elenco soci ordinabile per tessera e per tipo
+$so_z = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ordina', 'last_name' => 'Zeta', 'email' => 'ordina.zeta@example.com', 'card_number' => '5' ) );
+$so_a = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Ordina', 'last_name' => 'Alfa', 'email' => 'ordina.alfa@example.com', 'card_number' => '100' ) );
+$so_m = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ordina', 'last_name' => 'Mela', 'email' => 'ordina.mela@example.com', 'card_number' => '40' ) );
+$so_s = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ordina', 'last_name' => 'Senza', 'email' => 'ordina.senza@example.com' ) );
+$pos = function ( string $html ) {
+	$p = array();
+	foreach ( array( 'Zeta', 'Mela', 'Alfa', 'Senza' ) as $n ) {
+		$p[ $n ] = (int) strpos( $html, '<strong>' . $n . ' Ordina</strong>' );
+	}
+	asort( $p );
+	return implode( ',', array_keys( $p ) );
+};
+$o1 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Ordina', array( 'q' => 'Ordina', 'orderby' => 'card', 'order' => 'asc' ) );
+asem_ok( 'Zeta,Mela,Alfa,Senza' === $pos( $o1 ), 'rubrica: ordinata per tessera, in ordine numerico e con le senza tessera in fondo' );
+$o2 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Ordina', array( 'q' => 'Ordina', 'orderby' => 'card', 'order' => 'desc' ) );
+asem_ok( 'Alfa,Mela,Zeta,Senza' === $pos( $o2 ), 'rubrica: tessera dal più alto, ancora senza tessera in fondo' );
+$o3 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Ordina', array( 'q' => 'Ordina', 'orderby' => 'type', 'order' => 'asc' ) );
+$o4 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Ordina', array( 'q' => 'Ordina', 'orderby' => 'type', 'order' => 'desc' ) );
+asem_ok( $pos( $o3 ) !== $pos( $o4 ) && strpos( $pos( $o3 ), 'Alfa' ) !== strpos( $pos( $o4 ), 'Alfa' ), 'rubrica: ordinabile per tipo di socio, in entrambi i versi' );
+asem_ok( false !== strpos( $o1, 'orderby=card' ) && false !== strpos( $o1, 'order=desc' ) && false !== strpos( $o1, 'Tessera ▲' ), 'rubrica: le intestazioni sono cliccabili e mostrano il verso' );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );
