@@ -34,6 +34,9 @@ final class PeopleCsv {
 		'zip'   => array( 'cap', 'codicepostale', 'zip', 'postalcode' ),
 		'city'  => array( 'comune', 'citta', 'localita', 'city' ),
 		'prov'  => array( 'provincia', 'prov', 'province' ),
+		'prior' => array( 'voltevenuto', 'voltegiavenuto', 'giavenuto', 'presenze', 'visite', 'partecipazioni', 'volte' ),
+		'notes' => array( 'note', 'eventipassati', 'eventi', 'storico', 'annotazioni' ),
+		'since' => array( 'annodiiscrizione', 'annoiscrizione', 'datadiiscrizione', 'dataiscrizione', 'iscrittodal', 'sociodal', 'dataingresso', 'ingresso' ),
 		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
 	);
 
@@ -111,6 +114,9 @@ final class PeopleCsv {
 				'city'      => $cell( $cells, $col['city'] ),
 				'prov'      => $cell( $cells, $col['prov'] ),
 				'years'     => $years,
+				'prior'     => self::parse_count( $cell( $cells, $col['prior'] ) ),
+				'notes'     => $cell( $cells, $col['notes'] ),
+				'since'     => self::parse_since( $cell( $cells, $col['since'] ) ),
 				'host'      => $cell( $cells, $col['host'] ),
 			);
 		}
@@ -123,6 +129,32 @@ final class PeopleCsv {
 			return false;
 		}
 		return ! in_array( Text::lower( trim( $v ) ), array( '', '0', '-', '–', '—', 'no', 'n', 'non iscritto', 'false' ), true );
+	}
+
+	/** «3», «3 volte», «3,0» → 3; vuoto o illeggibile → null. */
+	public static function parse_count( ?string $v ): ?int {
+		if ( null === $v || ! preg_match( '/^\s*(\d{1,4})(?:[.,]0+)?\s*(?:volt[ae])?\s*$/iu', $v, $m ) ) {
+			return null;
+		}
+		return (int) $m[1];
+	}
+
+	/** Anno di iscrizione: «2019» → 2019-01-01; una data (2019-03-05, 5/3/2019) resta tale; altro → null. */
+	public static function parse_since( ?string $v ): ?string {
+		if ( null === $v ) {
+			return null;
+		}
+		$v = trim( $v );
+		if ( preg_match( '/^(19[5-9]\d|20\d\d)$/', $v ) ) {
+			return $v . '-01-01';
+		}
+		if ( preg_match( '/^(\d{4})-(\d{2})-(\d{2})/', $v, $m ) && checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+			return $m[1] . '-' . $m[2] . '-' . $m[3];
+		}
+		if ( preg_match( '#^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$#', $v, $m ) && checkdate( (int) $m[2], (int) $m[1], (int) $m[3] ) ) {
+			return sprintf( '%04d-%02d-%02d', $m[3], $m[2], $m[1] );
+		}
+		return null;
 	}
 
 

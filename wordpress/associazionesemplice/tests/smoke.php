@@ -2169,6 +2169,18 @@ asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025
 ImportService::apply( $pv, array() );
 $anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
 asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], '2023' ) && $people->has_membership( (int) $anni_p['id'], '2025' ) && ! $people->has_membership( (int) $anni_p['id'], '2024' ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
+// Ospiti importati con il contatore delle volte già venuto, gli eventi passati nelle note e l'anno di iscrizione
+$csv_g = $mkf( 'ospiti-storici.csv', "Nome;Cognome;Cellulare;Ospite di;Volte venuto;Eventi passati;Anno di iscrizione\r\nOspite;Storico;333 1112233;anni.effettivi@example.com;3;Cena 2024, gita 2025;2020\r\n" );
+$pv    = ImportService::preview_file( $csv_g, 'ospiti-storici.csv', array() );
+ImportService::apply( $pv, array() );
+$og = null;
+foreach ( $people->search( array( 'type' => 'guest' ) ) as $gx ) {
+	if ( 'Storico' === $gx['last_name'] ) {
+		$og = $gx;
+	}
+}
+asem_ok( $og && 3 === (int) $og['prior_visits'] && 'Cena 2024, gita 2025' === $og['notes'] && '2020-01-01' === $og['joined_on'], 'import ospiti: volte già venuto, eventi passati nelle note e anno di iscrizione' );
+asem_ok( $og && 3 === $people->guest_overview()[ (int) $og['id'] ]['count'], 'ospiti: il contatore somma le volte già venuto a quelle registrate' );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );

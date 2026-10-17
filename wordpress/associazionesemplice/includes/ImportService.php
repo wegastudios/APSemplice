@@ -180,9 +180,18 @@ final class ImportService {
 						$data[ $to ] = $r[ $from ];
 					}
 				}
+				if ( ! empty( $r['notes'] ) ) {
+					$data['notes'] = $r['notes']; // ad es. gli eventi passati a cui l'ospite ha già partecipato
+				}
+				if ( ! empty( $r['since'] ) ) {
+					$data['joined_on'] = $r['since']; // anno (o data) di iscrizione
+				}
+				if ( 1 === $pass && isset( $r['prior'] ) && null !== $r['prior'] ) {
+					$data['prior_visits'] = (int) $r['prior']; // volte già venuto prima di usare il programma
+				}
 				try {
 					if ( 1 === $pass ) {
-						$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
+						$host =! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
 						if ( ! $host ) {
 							throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
 						}
@@ -207,7 +216,7 @@ final class ImportService {
 						$people->update( $id, $data );
 						$updated++;
 						if ( $before ) {
-							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id' ) ) );
+							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id', 'notes', 'joined_on', 'prior_visits' ) ) );
 						}
 					}
 					$person = $people->get( $id );

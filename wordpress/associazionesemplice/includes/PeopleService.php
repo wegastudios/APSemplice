@@ -375,6 +375,7 @@ class PeopleService {
 			'host_person_id' => ! empty( $d['host_person_id'] ) ? (int) $d['host_person_id'] : null,
 			'joined_on'      => $t( 'joined_on' ),
 			'notes'          => $t( 'notes' ),
+			'prior_visits'   => max( 0, min( 9999, (int) ( $d['prior_visits'] ?? 0 ) ) ),
 		);
 	}
 
@@ -429,6 +430,7 @@ class PeopleService {
 				'host_person_id' => $d['host_person_id'],
 				'joined_on'      => $d['joined_on'] ?: Db::today(),
 				'notes'          => $d['notes'],
+				'prior_visits'   => $d['prior_visits'],
 				'created_at'     => $now,
 				'updated_at'     => $now,
 			)
@@ -557,6 +559,9 @@ class PeopleService {
 		$acts   = Plugin::activities();
 		$guests = $this->search( array( 'type' => MemberType::GUEST ) );
 		$counts = $acts->participation_counts( array_column( $guests, 'id' ) );
+		foreach ( $guests as $g ) { // le volte già venuto prima di usare il programma (da scheda o da importazione) si sommano a quelle registrate
+			$counts[ (int) $g['id'] ] = (int) ( $counts[ (int) $g['id'] ] ?? 0 ) + (int) ( $g['prior_visits'] ?? 0 );
+		}
 		$limit  = $acts->guest_limit();
 		$by_key = array();
 		foreach ( $guests as $g ) {
@@ -642,6 +647,7 @@ class PeopleService {
 				'host_person_id' => $d['host_person_id'],
 				'joined_on'      => $d['joined_on'] ?: $current['joined_on'],
 				'notes'          => $d['notes'],
+				'prior_visits'   => $d['prior_visits'],
 				'updated_at'     => Db::now(),
 			),
 			array( 'id' => $id )
