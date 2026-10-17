@@ -320,10 +320,9 @@ delete_option( License::OPT_STATE );
 // verifica con il server (risposte simulate): chiave, livello, scadenze, errori di rete
 $lic_calls = array();
 $lic_resp  = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
-$lic_token = function () { return 'wic_test.segreto'; };
 $lic_home  = function () { return 'https://www.Prova-Sito.it'; };
 $lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp ) {
-	if ( false === strpos( $url, 'license.wegastudios.com' ) ) {
+	if ( false === strpos( $url, 'associazionesemplice.it' ) ) {
 		return $pre;
 	}
 	$lic_calls[] = array( $url, json_decode( (string) ( $args['body'] ?? '' ), true ), (array) ( $args['headers'] ?? array() ) );
@@ -331,7 +330,6 @@ $lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp ) {
 		? array( 'response' => array( 'code' => 200, 'message' => 'OK' ), 'body' => wp_json_encode( $lic_resp ), 'headers' => array(), 'cookies' => array(), 'filename' => null )
 		: new WP_Error( 'http_request_failed', 'senza rete' );
 };
-add_filter( 'asem_license_token', $lic_token );
 add_filter( 'asem_license_is_local', '__return_false' );
 add_filter( 'home_url', $lic_home );
 add_filter( 'pre_http_request', $lic_http, 10, 3 );
@@ -342,7 +340,7 @@ asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'Collega la licenza grat
 Settings::update( array( 'license_key' => 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' ) );
 $lic_r = License::sync();
 asem_ok( $lic_r['ok'] && 'lite' === License::plan() && 1 === count( $lic_calls ) && 'prova-sito.it' === $lic_calls[0][1]['domain'] && 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' === $lic_calls[0][1]['license_key'], 'verifica: chiave e dominio normalizzato inviati, livello Lite letto' );
-asem_ok( 'Bearer wic_test.segreto' === $lic_calls[0][2]['Authorization'] && '2027-01-01' === License::state()['expires_at'], 'verifica: credenziale inviata, scadenza salvata' );
+asem_ok( 'https://associazionesemplice.it/api/license/validate' === $lic_calls[0][0] && ! isset( $lic_calls[0][2]['Authorization'] ) && '2027-01-01' === License::state()['expires_at'], 'verifica: chiamata al portale senza credenziali, scadenza salvata' );
 asem_ok( 'Pro Lite' === License::status()['plan_label'] && false !== strpos( License::status()['note'], '01/01/2027' ) && \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ), 'verifica: stato mostrabile e funzioni del livello' );
 $lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
 $lic_r    = License::sync();
@@ -365,10 +363,9 @@ asem_ok( false !== strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $l
 remove_filter( 'pre_http_request', $lic_http, 10 );
 remove_filter( 'home_url', $lic_home );
 remove_filter( 'asem_license_is_local', '__return_false' );
-remove_filter( 'asem_license_token', $lic_token );
 Settings::update( array( 'license_key' => '' ) );
 delete_option( License::OPT_STATE );
-asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'senza credenziale la verifica torna in standby' );
+asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
 // quote diverse: spariscono, resta la quota sola
 $lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
 \AssociazioneSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : \AssociazioneSemplice\Money::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \AssociazioneSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );

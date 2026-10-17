@@ -90,6 +90,16 @@ final class LicenseClientTest extends TestCase {
 		$this->assertSame( 'esempio.it', $c['bid'] );
 	}
 
+	public function test_attestation_covers_subdomains_of_the_licensed_domain(): void {
+		list( $jwt, $jwks ) = $this->make( $this->claims() ); // bid = esempio.it
+		foreach ( array( 'staging.esempio.it', 'clone.staging.esempio.it', 'esempio.it', 'www.esempio.it' ) as $d ) {
+			$this->assertIsArray( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', $d, 1800000000 ), $d );
+		}
+		foreach ( array( 'esempio.com', 'altroesempio.it', 'esempio.it.evil.com' ) as $d ) {
+			$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', $d, 1800000000 ), $d );
+		}
+	}
+
 	public function test_attestation_rejects_wrong_audience_issuer_domain_and_time(): void {
 		list( $jwt, $jwks ) = $this->make( $this->claims() );
 		$now = 1800000000;
