@@ -41,7 +41,8 @@ final class LicensePanel {
 		echo '</p>';
 		if ( LicenseClient::enabled() && '' !== License::key() ) {
 			Ui::form_open( 'asem_license_check', Ui::url( 'asem-settings' ) );
-			echo '<p><button class="button">Controlla adesso</button> <span class="description">Il controllo avviene da solo una volta al giorno.</span></p>';
+			echo '<p><button class="button">Controlla adesso</button> <span class="description">Verifica la licenza e cerca nuove versioni del plugin. Il controllo avviene da solo una volta al giorno.</span></p>';
+			echo '<p class="description">' . esc_html( \AssociazioneSemplice\UpdateCheck::summary() ) . '</p>';
 			Ui::form_close();
 		}
 		echo '</div>';

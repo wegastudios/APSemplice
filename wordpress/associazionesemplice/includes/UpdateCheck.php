@@ -108,6 +108,28 @@ final class UpdateCheck {
 		return $out;
 	}
 
+	/** Frase per le impostazioni e per l'esito di «Controlla adesso»: ultime versioni note e data dell'ultimo controllo. */
+	public static function summary(): string {
+		if ( 1 !== Limits::get( 'update_notice' ) ) {
+			return 'Avviso aggiornamenti spento (Impostazioni → Tecniche → Limiti e soglie).';
+		}
+		$l = self::latest();
+		if ( ! $l['checked_at'] ) {
+			return 'Aggiornamenti: non ancora controllati.';
+		}
+		$when = mysql2date( 'd/m/Y H:i', (string) $l['checked_at'] );
+		if ( '' !== (string) $l['error'] ) {
+			return 'Aggiornamenti: ultimo controllo del ' . $when . ' non riuscito (' . $l['error'] . ').';
+		}
+		$pending = self::pending();
+		if ( $pending ) {
+			return 'Aggiornamenti: disponibile ' . implode( ', ', array_map( function ( $u ) {
+				return $u['label'] . ' ' . $u['latest'] . ' (hai la ' . $u['installed'] . ')';
+			}, $pending ) ) . '. Controllato il ' . $when . '.';
+		}
+		return 'Aggiornamenti: sei all\'ultima versione. Controllato il ' . $when . '.';
+	}
+
 	/** Dove si scarica: l'indirizzo indicato dal portale (https), altrimenti l'area clienti. */
 	public static function download_url( array $u ): string {
 		return '' !== $u['url'] ? $u['url'] : (string) apply_filters( 'asem_license_portal_url', 'https://associazionesemplice.it/accedi' );

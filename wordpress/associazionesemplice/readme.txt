@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.16
+Stable tag: 1.1.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.17 =
+* Settings → License: 'Check now' also looks for new plugin versions (skipping the wait between checks) and shows the latest known versions and the date of the last check.
 
 = 1.1.16 =
 * Dashboard: links to your associazionesemplice.it account area and to support.

@@ -1237,8 +1237,13 @@ final class Actions {
 	}
 
 	private static function license_check( array $p ): array {
-		$r = License::sync();
-		return array( Ui::url( 'asem-settings' ), $r['message'] );
+		$r   = License::sync();
+		$msg = $r['message'];
+		if ( \AssociazioneSemplice\UpdateCheck::enabled() ) {
+			\AssociazioneSemplice\UpdateCheck::fetch(); // «Controlla adesso» salta anche l'attesa tra un controllo di versione e l'altro
+			$msg .= ' ' . \AssociazioneSemplice\UpdateCheck::summary();
+		}
+		return array( Ui::url( 'asem-settings' ), $msg );
 	}
 
 	private static function check_payments( array $p ): array {
