@@ -7,6 +7,9 @@ final class Http {
 	/** @var callable|null function (string $method, string $url, array $headers, ?string $body): array{0:int,1:string} */
 	public static $transport = null;
 
+	/** @var array nome server → indirizzo IP da usare solo se la risoluzione del nome fallisce (CURLE_COULDNT_RESOLVE_HOST) */
+	public static $fallback = array();
+
 	/** @return array [codice HTTP, corpo] */
 	public static function send( string $method, string $url, array $headers = array(), ?string $body = null ): array {
 		if ( null !== self::$transport ) {
@@ -25,6 +28,12 @@ final class Http {
 			curl_setopt( $ch, CURLOPT_POSTFIELDS, $body );
 		}
 		$raw    = curl_exec( $ch );
+		$host   = (string) parse_url( $url, PHP_URL_HOST );
+		if ( false === $raw && 6 === curl_errno( $ch ) && isset( self::$fallback[ $host ] ) ) {
+			$port = 'https' === parse_url( $url, PHP_URL_SCHEME ) ? 443 : 80;
+			curl_setopt( $ch, CURLOPT_RESOLVE, array( $host . ':' . $port . ':' . self::$fallback[ $host ] ) );
+			$raw = curl_exec( $ch );
+		}
 		$status = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 		curl_close( $ch );
 		return array( $status, false === $raw ? '' : (string) $raw );

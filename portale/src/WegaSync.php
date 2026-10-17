@@ -130,6 +130,12 @@ final class WegaSync {
 				(string) $r['id'], $exp ? gmdate( 'Y-m-d H:i:s', $exp ) : null, 'Importata da Wega (' . $state . ')', Db::now(), Db::now(),
 			)
 		);
+		// La chiave non è nell'elenco: si rilegge da Wega (se il permesso manca la licenza resta senza chiave).
+		try {
+			$billing->recoverKey( $id );
+		} catch ( WegaException $e ) {
+			error_log( '[portale] chiave non recuperata ' . $id . ': ' . $e->errorCode );
+		}
 		return $billing->subscription( $id );
 	}
 }

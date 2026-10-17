@@ -11,7 +11,7 @@ include __DIR__ . '/_nav.php'; ?>
 	<?php foreach ( $rows as $s ) : $st = sub_status( $s ); ?>
 		<tr><td><?php echo e( $s['email'] ); ?></td><td><a href="/admin/licenze/<?php echo e( $s['id'] ); ?>"><?php echo e( $s['domain'] ); ?></a></td>
 		<td><?php echo e( Portale\Config::get( 'plans.' . $s['plan_code'] . '.label', $s['plan_code'] ) ); ?></td><td><?php echo e( sub_kind( $s ) ); ?></td>
-		<td><span class="badge <?php echo e( $st[1] ); ?>"><?php echo e( $st[0] ); ?></span></td><td><?php echo e( date_it( $s['expires_at'] ) ); ?></td><td><form method="post" action="/admin/licenze/<?php echo e( $s['id'] ); ?>/elimina" onsubmit="return confirm('Eliminare dal portale la licenza di <?php echo e( $s['domain'] ); ?>? Il dominio torna libero. Non si può annullare.')"><input type="hidden" name="csrf" value="<?php echo e( PortaleApp::csrf() ); ?>"><button class="btn danger small" type="submit">Elimina</button></form></td></tr>
+		<td><span class="badge <?php echo e( $st[1] ); ?>"><?php echo e( $st[0] ); ?></span></td><td><?php echo e( date_it( $s['expires_at'] ) ); ?></td><td><form method="post" action="/admin/licenze/<?php echo e( $s['id'] ); ?>/elimina" onsubmit="return confirm('Eliminare dal portale la licenza di <?php echo e( $s['domain'] ); ?>? Il dominio torna libero. Non si può annullare.')"><input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>"><button class="btn danger small" type="submit">Elimina</button></form></td></tr>
 	<?php endforeach; ?>
 	<?php if ( ! $rows ) : ?><tr><td colspan="7" class="muted">Nessuna licenza trovata.</td></tr><?php endif; ?>
 	</tbody></table></div>

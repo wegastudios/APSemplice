@@ -4,18 +4,19 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Client del server delle licenze Wega (https://license.wegastudios.com/api/v1).
- *
- * Il plugin controlla la chiave **solo con `POST /licenses/validate`**, con una credenziale che ha il solo permesso di verifica
- * (`licenses:validate`): non può emettere né rinnovare licenze, quindi è innocua anche se visibile. La credenziale si definisce con la
- * costante `ASEM_LICENSE_TOKEN` o con il filtro `asem_license_token`; finché non c'è la verifica resta in «standby» (tutto consentito).
+ * Client delle licenze. Il plugin non parla direttamente col server Wega: controlla la chiave col portale di Associazione Semplice
+ * (`POST https://associazionesemplice.it/api/license/validate`), che la verifica con Wega e restituisce la risposta di Wega invariata, con
+ * l'attestazione firmata. Nessuna credenziale nel plugin. La licenza vale per il dominio registrato e per tutti i suoi sottodomini e
+ * sottocartelle (siti di prova compresi). Sui siti locali la verifica non c'è e resta lo stato «standby» (tutto consentito).
  *
  * Le parti pure (domini, livelli, interpretazione della risposta, firma dell'attestazione) non usano WordPress e si provano con PHPUnit.
  */
 final class LicenseClient {
 
-	const API    = 'https://license.wegastudios.com/api/v1';
-	const ISSUER = 'https://license.wegastudios.com';
+	const API      = 'https://associazionesemplice.it/api/license';
+	const JWKS_URL = 'https://associazionesemplice.it/.well-known/jwks.json';
+	/** Emittente dell'attestazione: resta quello di Wega, che firma; il portale non firma niente. */
+	const ISSUER   = 'https://license.wegastudios.com';
 
 	const OPT_JWKS = 'asem_license_jwks';
 
@@ -23,19 +24,14 @@ final class LicenseClient {
 		return rtrim( (string) apply_filters( 'asem_license_api', self::API ), '/' );
 	}
 
-	public static function token(): string {
-		$default = defined( 'ASEM_LICENSE_TOKEN' ) ? (string) ASEM_LICENSE_TOKEN : '';
-		return trim( (string) apply_filters( 'asem_license_token', $default ) );
-	}
-
 	/** Sito di sviluppo (localhost, *.local, *.test, indirizzi IP): non richiede licenza e non occupa un dominio. */
 	public static function is_local(): bool {
 		return (bool) apply_filters( 'asem_license_is_local', LicenseRules::is_local( home_url() ) );
 	}
 
-	/** La verifica con il server è attiva: c'è la credenziale e il sito non è locale. */
+	/** La verifica con il portale è attiva: il sito non è locale. */
 	public static function enabled(): bool {
-		return '' !== self::token() && ! self::is_local();
+		return ! self::is_local();
 	}
 
 	/**
@@ -127,10 +123,10 @@ final class LicenseClient {
 	 */
 	public static function validate( string $key, string $domain ) {
 		$res = wp_remote_post(
-			self::api() . '/licenses/validate',
+			self::api() . '/validate',
 			array(
 				'timeout' => 15,
-				'headers' => array( 'Authorization' => 'Bearer ' . self::token(), 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
+				'headers' => array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
 				'body'    => wp_json_encode( array( 'license_key' => $key, 'domain' => $domain ) ),
 			)
 		);
@@ -139,9 +135,6 @@ final class LicenseClient {
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		$body = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		if ( 401 === $code ) {
-			return new \WP_Error( 'asem_license_auth', 'Il plugin non è autorizzato a verificare le licenze (credenziale rifiutata).' );
-		}
 		if ( 429 === $code || $code >= 500 || 0 === $code ) {
 			return new \WP_Error( 'asem_license_unavailable', 'Il server delle licenze non è disponibile adesso (codice ' . $code . ').' );
 		}
@@ -154,13 +147,13 @@ final class LicenseClient {
 		return $body;
 	}
 
-	/** Chiavi pubbliche del server (JWKS), tenute in memoria 12 ore. @return array|null */
+	/** Chiavi pubbliche di Wega (JWKS), lette dal portale che ne tiene una copia; in memoria 12 ore. @return array|null */
 	public static function jwks(): ?array {
 		$cached = get_transient( self::OPT_JWKS );
 		if ( is_array( $cached ) && isset( $cached['keys'] ) ) {
 			return $cached;
 		}
-		$res = wp_remote_get( preg_replace( '#/api/v1$#', '', self::api() ) . '/.well-known/jwks.json', array( 'timeout' => 10, 'headers' => array( 'Accept' => 'application/json' ) ) );
+		$res = wp_remote_get( (string) apply_filters( 'asem_license_jwks_url', self::JWKS_URL ), array( 'timeout' => 10, 'headers' => array( 'Accept' => 'application/json' ) ) );
 		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
 			return null;
 		}
@@ -214,7 +207,8 @@ final class LicenseClient {
 		if ( ! isset( $claims['exp'] ) || (int) $claims['exp'] <= $now || ( isset( $claims['nbf'] ) && (int) $claims['nbf'] > $now + 60 ) ) {
 			return null;
 		}
-		if ( null !== $domain && ( $claims['bid'] ?? '' ) !== $domain ) {
+		// `bid` è il dominio registrato della licenza: vale anche per i suoi sottodomini (siti di prova).
+		if ( null !== $domain && ! LicenseRules::same_domain( (string) ( $claims['bid'] ?? '' ), $domain ) ) {
 			return null;
 		}
 		return $claims;

@@ -5,7 +5,7 @@ $names = array(
 	'reminder_days' => 'Avviso di scadenza, giorni prima (0 = mai)', 'trial_days' => 'Durata della prova Pro (giorni)',
 	'proxy_ip' => 'Verifiche dal plugin per IP, ogni ora', 'proxy_key' => 'Verifiche dal plugin per chiave, ogni ora',
 	'releases_keep' => 'Versioni dei plugin da tenere online', 'download_day' => 'Scarichi per cliente ogni 24 ore',
-	'password_min' => 'Lunghezza minima della password', 'login_fails' => 'Errori di password per ora prima del blocco',
+	'free_inactive_days' => 'Rinnovo gratuito: giorni senza accessi dopo i quali scade', 'free_renew_ahead' => 'Rinnovo gratuito: giorni di anticipo', 'password_min' => 'Lunghezza minima della password', 'login_fails' => 'Errori di password per ora prima del blocco',
 );
 ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
@@ -23,7 +23,7 @@ $names = array(
 		</div>
 		<div class="card2">
 			<h2>Durate e promemoria</h2>
-			<?php foreach ( array( 'duration_month', 'duration_year', 'duration_free', 'renew_window', 'reminder_days' ) as $k ) : ?>
+			<?php foreach ( array( 'duration_month', 'duration_year', 'duration_free', 'renew_window', 'reminder_days', 'free_inactive_days', 'free_renew_ahead' ) as $k ) : ?>
 				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
 				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">
 				<div class="risk"><?php echo e( $limits[ $k ][3] ); ?></div>

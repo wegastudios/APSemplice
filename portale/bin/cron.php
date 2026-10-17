@@ -11,3 +11,6 @@ $db->migrate();
 Portale\Settings::load( $db );
 $billing = new Portale\Billing( $db, new Portale\WegaClient( (string) Portale\Config::get( 'wega.base_url' ), (string) Portale\Config::get( 'wega.token' ) ) );
 echo date( 'c' ), ' avvisi di scadenza inviati: ', $billing->sendReminders(), "\n";
+list( $renewed, $lapsed ) = $billing->autoRenewFree();
+echo date( 'c' ), ' licenze gratuite rinnovate: ', $renewed, ', lasciate scadere per inattività: ', $lapsed, "
+";

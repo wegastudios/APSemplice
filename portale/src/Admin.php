@@ -258,6 +258,12 @@ final class Admin {
 				$deleted = $this->billing->deleteSubscription( $id );
 				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.' . ( ! empty( $deleted['_warning'] ) ? ' ' . $deleted['_warning'] : '' ), '/admin/licenze', $id );
 				break;
+			case 'chiave':
+				if ( ! $this->billing->recoverKey( $id ) ) {
+					throw new UserError( 'Non risulta nessuna chiave da recuperare per questa licenza.' );
+				}
+				$this->done( 'key_recover', 'Chiave di ' . $sub['domain'] . ' recuperata da Wega.', $to, $id );
+				break;
 			case 'nota':
 				$this->db->run( 'UPDATE subscriptions SET note = ? WHERE id = ?', array( mb_substr( trim( (string) ( $_POST['note'] ?? '' ) ), 0, 255 ), $id ) );
 				$this->done( 'note', 'Nota aggiornata.', $to, $id );

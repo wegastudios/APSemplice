@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * ({@see LicenseClient}). Il plugin gratuito funziona anche senza chiave: la licenza abilita i servizi collegati (prova Pro, avvisi di
  * aggiornamento) e, con il plugin Pro, le funzioni del piano acquistato. Mai nessuna funzione di base dipende dalla licenza.
  *
- * Finché la verifica non è attiva (nessuna credenziale, oppure sito locale) lo stato è `standby` e tutto è consentito.
+ * Finché la verifica non è attiva (sito locale) lo stato è `standby` e tutto è consentito.
  * Vedi docs/LICENZE.md.
  */
 final class License {

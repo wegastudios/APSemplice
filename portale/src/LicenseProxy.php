@@ -45,11 +45,17 @@ final class LicenseProxy {
 		$ck  = hash( 'sha256', $key . '|' . $dom );
 		$hit = $this->db->one( 'SELECT body, at FROM proxy_cache WHERE k = ?', array( $ck ) );
 		if ( $hit && $now - (int) strtotime( $hit['at'] . ' UTC' ) < self::CACHE_TTL ) {
+			$this->seen( (string) $hit['body'], $now );
 			return array( 200, (string) $hit['body'], array() );
 		}
 
 		try {
-			$data = $this->wega->validate( $key, $dom );
+			// La licenza è legata al dominio registrabile e vale per tutti i suoi sottodomini (staging, test, clone…).
+			$reg  = Domain::registrable( $dom );
+			$data = $this->wega->validate( $key, $reg );
+			if ( empty( $data['valid'] ) && 'DOMAIN_MISMATCH' === ( $data['reason_code'] ?? '' ) && $reg !== $dom ) {
+				$data = $this->wega->validate( $key, $dom ); // licenze legate a un sottodominio esatto (emesse prima)
+			}
 		} catch ( WegaException $e ) {
 			// Errori del client (4xx) si girano com'erano; rete e server diventano 502, così il plugin tiene lo stato precedente.
 			if ( $e->httpStatus >= 400 && $e->httpStatus < 500 && 429 !== $e->httpStatus && 401 !== $e->httpStatus && 403 !== $e->httpStatus ) {
@@ -60,9 +66,30 @@ final class LicenseProxy {
 		}
 
 		$body = (string) json_encode( $data );
+		$this->seen( $body, $now );
 		$this->db->run( 'DELETE FROM proxy_cache WHERE k = ?', array( $ck ) );
 		$this->db->run( 'INSERT INTO proxy_cache (k, body, at) VALUES (?,?,?)', array( $ck, $body, gmdate( 'Y-m-d H:i:s', $now ) ) );
 		return array( 200, $body, array() );
+	}
+
+	/**
+	 * Ultime versioni pubblicate dei plugin, per l'avviso «ci sono aggiornamenti». Pubblico: il plugin non manda né chiave né dati del sito.
+	 * Il link porta all'accesso (gli zip non hanno indirizzi pubblici). @return array [codice, corpo JSON, intestazioni]
+	 */
+	public function latest( string $ip, ?int $now = null ): array {
+		$now = $now ?? time();
+		if ( ! $this->allow( 'plugin:' . hash( 'sha256', $ip ), gmdate( 'YmdH', $now ), Settings::limit( 'proxy_ip' ), $now ) ) {
+			return $this->error( 429, 'RATE_LIMITED', 'Troppe richieste: riprova più tardi.', array( 'Retry-After: 3600' ) );
+		}
+		$url = rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi';
+		$out = array();
+		foreach ( array_keys( Releases::PRODUCTS ) as $p ) {
+			$all = Releases::all( $this->db, $p );
+			if ( $all ) {
+				$out[ $p ] = array( 'version' => $all[0]['version'], 'url' => $url );
+			}
+		}
+		return array( 200, (string) json_encode( (object) $out ), array( 'Cache-Control: public, max-age=300' ) );
 	}
 
 	/** Chiavi pubbliche di Wega, in cache; se Wega non risponde si usa l'ultima copia. @return array [codice, corpo, intestazioni] */
@@ -83,6 +110,14 @@ final class LicenseProxy {
 			return array( 200, (string) $row['body'], array( 'Cache-Control: public, max-age=300' ) );
 		}
 		return $this->error( 502, 'UPSTREAM', 'Chiavi non disponibili.' );
+	}
+
+	/** Una verifica valida conta come accesso: serve al rinnovo automatico delle licenze gratuite. */
+	private function seen( string $body, int $now ): void {
+		$j = json_decode( $body, true );
+		if ( is_array( $j ) && ! empty( $j['valid'] ) && ! empty( $j['license_id'] ) ) {
+			$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE license_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ), (string) $j['license_id'] ) );
+		}
 	}
 
 	/** Conta una richiesta nella finestra oraria; false se supera il limite. */

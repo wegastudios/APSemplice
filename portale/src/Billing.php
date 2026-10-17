@@ -108,7 +108,7 @@ final class Billing {
 	}
 
 	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode ): array {
-		$domain = Domain::normalize( $domainInput );
+		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido: scrivi per esempio «miaassociazione.it», senza http:// e senza indirizzi IP.' );
 		}
@@ -341,7 +341,7 @@ final class Billing {
 		if ( ! $sub || $sub['customer_id'] !== $customerId || empty( $sub['license_key_enc'] ) ) {
 			throw new UserError( 'Abbonamento non trovato.' );
 		}
-		$domain = Domain::normalize( $domainInput );
+		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido.' );
 		}
@@ -426,6 +426,62 @@ final class Billing {
 	private function date( $iso ): ?string {
 		$t = is_string( $iso ) ? strtotime( $iso ) : false;
 		return false === $t ? null : gmdate( 'Y-m-d H:i:s', $t );
+	}
+
+	// --- Rinnovo automatico delle licenze gratuite ----------------------------------------------------------------
+
+	/** Registra un accesso (verifica dal plugin o ingresso del cliente) sulla licenza con questo id Wega. */
+	public function touch( string $licenseId, ?int $now = null ): void {
+		$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE license_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ?? time() ), $licenseId ) );
+	}
+
+	public function touchCustomer( string $customerId, ?int $now = null ): void {
+		$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE customer_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ?? time() ), $customerId ) );
+	}
+
+	/**
+	 * Rinnova le licenze gratuite in scadenza (entro «free_renew_ahead» giorni), salvo quelle senza accessi da più di «free_inactive_days»:
+	 * per accesso si intende una verifica dal plugin o l'ingresso del cliente (se mai avvenuto, vale la data di emissione). Le inattive scadono.
+	 * Un errore di Wega su una licenza non ferma le altre. @return array [rinnovate, lasciate scadere]
+	 */
+	public function autoRenewFree( ?int $now = null ): array {
+		$now   = $now ?? time();
+		$rows  = $this->db->all(
+			"SELECT * FROM subscriptions WHERE provider = 'free' AND status = 'active' AND license_key_enc IS NOT NULL AND expires_at IS NOT NULL AND expires_at <= ?",
+			array( gmdate( 'Y-m-d H:i:s', $now + Settings::limit( 'free_renew_ahead' ) * 86400 ) )
+		);
+		$limit = $now - Settings::limit( 'free_inactive_days' ) * 86400;
+		$done  = 0;
+		$lapse = 0;
+		foreach ( $rows as $s ) {
+			$seen = strtotime( ( $s['last_seen_at'] ?: $s['created_at'] ) . ' UTC' );
+			if ( $seen < $limit ) {
+				++$lapse;
+				continue;
+			}
+			try {
+				if ( $this->renew( $s['id'], null, $now, false ) ) {
+					++$done;
+				}
+			} catch ( WegaException $e ) {
+				error_log( '[portale] rinnovo gratuito ' . $s['id'] . ': ' . $e->errorCode . ' ' . $e->httpStatus );
+			}
+		}
+		return array( $done, $lapse );
+	}
+
+	/** Rilegge da Wega la chiave di una licenza del portale che non la conserva (importata o persa) e la salva cifrata. */
+	public function recoverKey( string $subId ): bool {
+		$sub = $this->subscription( $subId );
+		if ( ! $sub || empty( $sub['license_id'] ) || ! empty( $sub['license_key_enc'] ) ) {
+			return false;
+		}
+		$key = $this->wega->licenseKey( (string) $sub['license_id'] );
+		if ( '' === $key ) {
+			return false;
+		}
+		$this->db->run( 'UPDATE subscriptions SET license_key_enc = ?, updated_at = ? WHERE id = ?', array( Secrets::seal( $key ), Db::now(), $subId ) );
+		return true;
 	}
 
 	// --- Specchio su Wega ----------------------------------------------------------------------------------------------

@@ -339,23 +339,23 @@ check( 'robots: segnali di non indicizzazione di default', false === Config::get
 
 // --- Chiavi dal pannello ----------------------------------------------------------------------------------------------------------
 $tokenOk = 'wic_3c6d8003fdd2b68f.d5S6nSoypyWsa5RmmMPApIHcrhCf5d_rB1Pr_6ftmO13bJlM';
-$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
+$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret_test' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
 Portale\Settings::load( $db );
-check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
+check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret_test', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
 $raw = $db->one( "SELECT val FROM settings WHERE name = 'secrets'" )['val'];
 check( 'chiavi: nel database restano cifrate', false === strpos( $raw, 'sk_test_' ) && false === strpos( $raw, 'wic_3c6d' ) );
 $st = Portale\Settings::secretsStatus( $db );
-check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret']['mask'] && 'pannello' === $st['stripe_secret']['source'] && 'config.php' === $st['paypal_secret']['source'] );
+check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret_test']['mask'] && 'pannello' === $st['stripe_secret_test']['source'] && 'config.php' === $st['paypal_secret']['source'] );
 check( 'chiavi: formato sbagliato rifiutato', null !== throwsUser( function () use ( $db ) {
 	Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => 'non-una-chiave' ) );
 } ) && null !== throwsUser( function () use ( $db ) {
 	Portale\Settings::saveSecrets( $db, array( 'wega_token' => 'sbagliato' ) );
 } ) );
-Portale\Settings::saveSecrets( $db, array( 'stripe_webhook' => 'whsec_abcdefghijklmnop' ) );
+Portale\Settings::saveSecrets( $db, array( 'stripe_webhook_test' => 'whsec_abcdefghijklmnop' ) );
 Portale\Settings::load( $db );
 check( 'chiavi: un modulo non cancella le altre né la modalità PayPal', 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && 'whsec_abcdefghijklmnop' === Config::get( 'stripe.webhook_secret' ) && true === Config::get( 'paypal.live' ) );
-Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook' => '1' ) );
-check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook']['source'] );
+Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook_test' => '1' ) );
+check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook_test']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook_test']['source'] );
 
 // Prova dei collegamenti (server finto).
 $prev = Http::$transport;
@@ -614,6 +614,121 @@ $mcode = 500;
 check( 'specchio: errore vero del server → bloccato', null !== throwsUser( function () use ( $mbil, $msub ) { $mbil->mirror( $msub, 'restore' ); } ) );
 check( 'differenze: licenze identiche', array() === Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'active' ), array( 'domain' => 'www.a.it', 'expires_at' => '2027-01-01T00:00:00Z', 'state' => 'ACTIVE' ) ) );
 check( 'differenze: dominio, scadenza e stato diversi', 3 === count( Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'canceled' ), array( 'domain' => 'b.it', 'expires_at' => '2027-03-01T00:00:00Z', 'state' => 'ACTIVE' ) ) ) );
+
+// --- Rinnovo automatico delle licenze gratuite ------------------------------------------------
+$fdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$fdb->migrate();
+$fbil = new Billing( $fdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$fdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'f1', 'f@esempio.it', Db::now() ) );
+$fnow = 1800000000;
+$fmk  = function ( string $dom, string $exp, ?string $seen, string $created, string $provider = 'free' ) use ( $fdb ) {
+	$id = Db::id();
+	$fdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, license_key_enc, expires_at, last_seen_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', array( $id, 'f1', 'free', 'free', $provider, 'active', $dom, 'once', Portale\Secrets::seal( 'K-' . $dom ), $exp, $seen, $created, $created ) );
+	return $id;
+};
+$day     = 86400;
+$due     = $fmk( 'attiva.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), gmdate( 'Y-m-d H:i:s', $fnow - 5 * $day ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ) );
+$idle    = $fmk( 'inattiva.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), gmdate( 'Y-m-d H:i:s', $fnow - 45 * $day ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ) );
+$fresh   = $fmk( 'nuova.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), null, gmdate( 'Y-m-d H:i:s', $fnow - 10 * $day ) );
+$later   = $fmk( 'lontana.it', gmdate( 'Y-m-d H:i:s', $fnow + 100 * $day ), gmdate( 'Y-m-d H:i:s', $fnow ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ) );
+$paid    = $fmk( 'pagata.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), gmdate( 'Y-m-d H:i:s', $fnow ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ), 'stripe' );
+$renewed = array();
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$renewed, $fnow ) {
+	$renewed[] = json_decode( (string) $body, true )['license_key'];
+	return array( 200, json_encode( array( 'data' => array( 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', $fnow + 366 * 86400 ) ) ) ) );
+};
+list( $r, $l ) = $fbil->autoRenewFree( $fnow );
+check( 'gratuite: rinnova chi ha accessi recenti e chi è appena nato, lascia scadere chi è inattivo da oltre 30 giorni', 2 === $r && 1 === $l && array( 'K-attiva.it', 'K-nuova.it' ) === $renewed );
+check( 'gratuite: la scadenza della rinnovata si sposta avanti', strtotime( $fbil->subscription( $due )['expires_at'] . ' UTC' ) > $fnow + 300 * $day );
+check( 'gratuite: non tocca quelle lontane dalla scadenza né quelle a pagamento', in_array( 'K-lontana.it', $renewed, true ) === false && in_array( 'K-pagata.it', $renewed, true ) === false );
+list( $r2 ) = $fbil->autoRenewFree( $fnow );
+check( 'gratuite: ripetere il lavoro non rinnova due volte', 0 === $r2 );
+$fbil->touch( 'ZZ' );
+$fdb->run( 'UPDATE subscriptions SET license_id = ? WHERE id = ?', array( 'LIC-I', $idle ) );
+$fbil->touch( 'LIC-I', $fnow );
+check( 'gratuite: un accesso riporta la licenza tra quelle da rinnovare', 'x' !== (string) $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] && strtotime( $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] . ' UTC' ) === $fnow );
+
+// --- Ultime versioni dei plugin (avviso aggiornamenti) ----------------------------------------
+$ldb = new Db( new PDO( 'sqlite::memory:' ) );
+$ldb->migrate();
+$lpx = new Portale\LicenseProxy( $ldb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$r   = $lpx->latest( '7.7.7.7', 1700000000 );
+check( 'aggiornamenti: senza versioni pubblicate l\'elenco è vuoto', 200 === $r[0] && '{}' === $r[1] );
+foreach ( array( '1.1.9', '1.1.14', '1.1.10' ) as $v ) {
+	$ldb->run( 'INSERT INTO releases (product, version, size, sha256, created_at) VALUES (?,?,?,?,?)', array( 'free', $v, 1, 'x', Db::now() ) );
+}
+$j = json_decode( $lpx->latest( '7.7.7.7', 1700000000 )[1], true );
+check( 'aggiornamenti: ultima versione in ordine numerico, prodotto senza versioni omesso, link https all\'accesso', '1.1.14' === $j['free']['version'] && ! isset( $j['pro'] ) && 0 === strpos( $j['free']['url'], 'https://' ) && '/accedi' === substr( $j['free']['url'], -7 ) );
+check( 'aggiornamenti: cache pubblica di 5 minuti', in_array( 'Cache-Control: public, max-age=300', $lpx->latest( '7.7.7.7', 1700000000 )[2], true ) );
+$last = 0;
+for ( $i = 0; $i < 70; $i++ ) {
+	$last = $lpx->latest( '8.8.8.8', 1700000000 )[0];
+}
+check( 'aggiornamenti: limite per IP', 429 === $last );
+
+// --- Recupero della chiave da Wega ------------------------------------------------------------
+$kdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$kdb->migrate();
+$kbil = new Billing( $kdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$kdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k1', 'k@esempio.it', Db::now() ) );
+$kdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( 's1', 'k1', 'free', 'manual', 'manual', 'active', 'k.it', 'once', 'LK1', Db::now(), Db::now() ) );
+$kurl = '';
+Http::$transport = function ( $m, $url ) use ( &$kurl ) {
+	$kurl = $m . ' ' . $url;
+	return array( 200, '{"data":{"license_id":"LK1","license_key":"WEGA-RECUPERATA"}}' );
+};
+check( 'chiave: recuperata da Wega e salvata cifrata', $kbil->recoverKey( 's1' ) && 'GET https://license.test/api/v1/licenses/LK1/key' === $kurl && 'WEGA-RECUPERATA' === Portale\Secrets::open( $kbil->subscription( 's1' )['license_key_enc'] ) );
+check( 'chiave: già presente, non si rilegge', ! $kbil->recoverKey( 's1' ) );
+// --- Risoluzione di riserva del server licenze --------------------------------------------------
+new WegaClient( 'https://license.test/api/v1', 't' );
+check( 'wega: se il DNS non risolve il nome si riprova sull IP noto', '65.108.75.89' === ( Http::$fallback['license.test'] ?? '' ) );
+Http::$fallback = array();
+
+// --- Modalità reale/prova: due gruppi di credenziali ---------------------------------------------------------
+$k = array( 'live' => 'sk_live_' . str_repeat( 'b', 24 ), 'test' => 'sk_test_' . str_repeat( 'a', 24 ) );
+$pdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb2->migrate();
+Portale\Settings::load( $pdb2 );
+check( 'stripe: chiave di prova nel campo reale rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret' => $k['test'] ) ); } ) );
+check( 'stripe: chiave reale nel campo di prova rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret_test' => $k['live'] ) ); } ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => $k['live'], 'stripe_secret_test' => $k['test'], 'stripe_webhook' => 'whsec_LIVELIVELIVE1', 'stripe_webhook_test' => 'whsec_TESTTESTTEST1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'stripe: con la casella spenta si usano le credenziali di prova', false === Portale\Settings::stripeLive() && $k['test'] === Config::get( 'stripe.secret_key' ) && 'whsec_TESTTESTTEST1' === Config::get( 'stripe.webhook_secret' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_live' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'stripe: accendere la casella cambia da sola le credenziali (reali)', true === Portale\Settings::stripeLive() && $k['live'] === Config::get( 'stripe.secret_key' ) && 'whsec_LIVELIVELIVE1' === Config::get( 'stripe.webhook_secret' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'paypal_client_test' => str_repeat( 'S', 24 ), 'paypal_secret_test' => str_repeat( 'T', 24 ), 'paypal_live_present' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'paypal: sandbox attivo usa le credenziali sandbox; Stripe resta reale', str_repeat( 'S', 24 ) === Config::get( 'paypal.client_id' ) && true === Portale\Settings::stripeLive() );
+// Vecchio salvataggio con un solo gruppo: si assegna alla modalità giusta.
+$mdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb2->migrate();
+$mdb2->run( 'INSERT INTO settings (name, val) VALUES (?,?)', array( 'secrets', json_encode( array( 'stripe_secret' => Portale\Secrets::seal( $k['test'] ), 'stripe_webhook' => Portale\Secrets::seal( 'whsec_OLDOLDOLD12' ) ) ) ) );
+Portale\Settings::load( $mdb2 );
+$st2 = Portale\Settings::secretsStatus( $mdb2 );
+check( 'migrazione: chiave Stripe di prova del vecchio salvataggio finisce nel gruppo di prova', ! $st2['stripe_secret']['set'] && $st2['stripe_secret_test']['set'] && $st2['stripe_webhook_test']['set'] && false === Portale\Settings::stripeLive() );
+
+
+// --- Dominio registrabile: la licenza vale per i sottodomini ----------------------------------
+check( 'dominio: staging, test e clone ricadono nel dominio registrabile', array( 'esempio.it', 'esempio.it', 'esempio.it', 'esempio.it' ) === array_map( array( 'Portale\Domain', 'forLicense' ), array( 'staging.esempio.it', 'https://test.esempio.it/wp-admin', 'www.clone.esempio.it', 'esempio.it/staging' ) ) );
+check( 'dominio: suffissi a più etichette (co.uk)', 'esempio.co.uk' === Domain::forLicense( 'staging.esempio.co.uk' ) && '' === Domain::forLicense( 'localhost' ) );
+$rdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb2->migrate();
+$seen = array();
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$seen ) {
+	$in     = json_decode( (string) $body, true );
+	$seen[] = $in['domain'];
+	$ok     = in_array( $in['domain'], array( 'esempio.it', 'legato.esempio.it' ), true ) && ( 'legato.esempio.it' === $in['domain'] || ! empty( $GLOBALS['reg_ok'] ) );
+	return array( 200, json_encode( array( 'valid' => $ok, 'reason_code' => $ok ? 'ACTIVE' : 'DOMAIN_MISMATCH', 'license_id' => 'LZ' ) ) );
+};
+$GLOBALS['reg_ok'] = true;
+$px = new Portale\LicenseProxy( $rdb2, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$r  = json_decode( $px->validate( '{"license_key":"chiave-di-prova-1","domain":"staging.esempio.it"}', '3.3.3.3', 1700000000 )[1], true );
+check( 'rimbalzo: un sottodominio chiede a Wega il dominio registrabile', true === $r['valid'] && array( 'esempio.it' ) === $seen );
+$seen = array();
+$GLOBALS['reg_ok'] = false;
+$r = json_decode( $px->validate( '{"license_key":"chiave-di-prova-2","domain":"legato.esempio.it"}', '3.3.3.4', 1700000000 )[1], true );
+check( 'rimbalzo: licenza emessa per un sottodominio esatto: secondo tentativo sul sottodominio', true === $r['valid'] && array( 'esempio.it', 'legato.esempio.it' ) === $seen );
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

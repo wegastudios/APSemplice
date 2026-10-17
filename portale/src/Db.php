@@ -78,6 +78,7 @@ final class Db {
 			'CREATE INDEX idx_dl_customer ON downloads (customer_id, at)',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN last_seen_at VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',

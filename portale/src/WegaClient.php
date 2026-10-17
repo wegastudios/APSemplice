@@ -12,6 +12,12 @@ final class WegaClient {
 	public function __construct( string $baseUrl, string $token ) {
 		$this->base  = rtrim( $baseUrl, '/' );
 		$this->token = $token;
+		// Se il DNS non risolve il nome del server licenze (accaduto per nameserver incoerenti), si riprova una volta sull'IP noto.
+		$ip   = (string) Config::get( 'wega.fallback_ip', '65.108.75.89' );
+		$host = (string) parse_url( $this->base, PHP_URL_HOST );
+		if ( '' !== $ip && '' !== $host ) {
+			Http::$fallback[ $host ] = $ip;
+		}
 	}
 
 	/** Chiede una chiave. `external_ref` rende la richiesta idempotente. @return array dati con license_key, license_id, expires_at… */
@@ -46,17 +52,28 @@ final class WegaClient {
 		return $this->request( 'PUT', '/licenses/' . rawurlencode( $licenseId ) . '/binding', array( 'license_key' => $licenseKey, 'identity' => $newDomain ) )['data'];
 	}
 
-	/** Operazioni di stato sulla licenza (percorsi provvisori: da allineare a quelli pubblicati da Wega). */
+	/** Operazioni di stato sulla licenza (scope licenses:manage). */
 	public function suspend( string $licenseId ): array {
-		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/suspend', array() );
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/suspend', array( 'reason' => 'portale' ) );
 	}
 
 	public function restore( string $licenseId ): array {
-		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/restore', array() );
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/restore', array( 'reason' => 'portale' ) );
 	}
 
 	public function revoke( string $licenseId ): array {
-		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/revoke', array() );
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/revoke', array( 'reason' => 'portale' ) );
+	}
+
+	/** Chiave di una licenza già emessa (scope licenses:reveal-key, ogni lettura è registrata da Wega): serve a ripristinare il portale. */
+	public function licenseKey( string $licenseId ): string {
+		$r = $this->request( 'GET', '/licenses/' . rawurlencode( $licenseId ) . '/key' );
+		return (string) ( $r['data']['license_key'] ?? '' );
+	}
+
+	/** Modifica campi della licenza (customer_id, plan_name, expires_at, duration_days, domain…; scope licenses:manage). */
+	public function patch( string $licenseId, array $fields ): array {
+		return $this->request( 'PATCH', '/licenses/' . rawurlencode( $licenseId ), $fields );
 	}
 
 	/** Elenco delle licenze del portale (richiede lo scope licenses:list). @return array [elementi, cursore successivo o null] */

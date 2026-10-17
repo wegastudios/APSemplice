@@ -20,6 +20,7 @@ return array(
 	'wega' => array(
 		'base_url' => 'https://license.wegastudios.com/api/v1',
 		'token'    => '',   // wic_xxxxxxxx.SEGRETO
+	'fallback_ip' => '65.108.75.89', // usato solo se il DNS non risolve license.wegastudios.com (vuoto = mai)
 	),
 
 	'stripe' => array(

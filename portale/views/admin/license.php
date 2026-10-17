@@ -12,6 +12,9 @@ $id    = e( $sub['id'] );
 		<?php if ( $key ) : ?>
 			<label style="margin-top:0">Chiave di licenza</label>
 			<div class="keybox"><code><?php echo e( $key ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $key ); ?>">Copia</button></div>
+		<?php elseif ( ! empty( $sub['license_id'] ) ) : ?>
+			<p class="muted">Il portale non conserva la chiave di questa licenza (importata da Wega o persa).</p>
+			<form method="post" action="/admin/licenze/<?php echo $id; ?>/chiave"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Recupera la chiave da Wega</button></form>
 		<?php endif; ?>
 		<div class="sep"></div>
 		<dl class="dl">

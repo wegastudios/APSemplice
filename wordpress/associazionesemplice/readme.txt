@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.14
+Stable tag: 1.1.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -33,7 +33,7 @@ Advanced features (online payments, several accounts and funds, accounting and r
 The plugin works fully on its own. It contacts an external service only if you enter a license key (optional, see below) and for the optional features described after it.
 
 = License service (optional) =
-If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the license server of Wega Studios (license.wegastudios.com) to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The check is active only when the plugin is configured with the service credential and is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
+If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the website associazionesemplice.it (https://associazionesemplice.it/api/license/validate), which checks it with the license server of Wega Studios (license.wegastudios.com), to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The license covers the registered domain and its subdomains. The check is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
 
 = Update notice (optional) =
 If you have entered a license key (the free one is enough), at most once every 24 hours (configurable in Settings, can be turned off) the plugin asks the website associazionesemplice.it for the latest plugin version numbers (https://associazionesemplice.it/api/plugin/latest) and shows a dismissible notice to administrators when a newer version exists. The request carries no license key, no member data and no information about your site. It is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
@@ -62,6 +62,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.1.15 =
+* License check now goes through the Associazione Semplice website (no credential in the plugin); a license covers the registered domain and all its subdomains and subfolders (staging and test sites included).
 
 = 1.1.14 =
 * Update notice: with a license key entered, the plugin asks the Associazione Semplice website for the latest versions and shows a dismissible notice when a newer one exists (can be turned off or tuned in Settings, no data is sent).
