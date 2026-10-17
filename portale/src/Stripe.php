@@ -86,6 +86,9 @@ final class Stripe {
 	}
 
 	private static function call( string $method, string $path, array $form ): array {
+		if ( null !== Config::get( 'stripe.live', null ) && Settings::stripeLive() !== (bool) preg_match( '/^(sk|rk)_live_/', (string) Config::get( 'stripe.secret_key', '' ) ) ) {
+			throw new UserError( 'La modalità di Stripe scelta in Pagamenti non corrisponde alla chiave inserita: correggila prima di incassare.' );
+		}
 		$headers = array( 'Authorization: Bearer ' . Config::get( 'stripe.secret_key' ), 'Content-Type: application/x-www-form-urlencoded' );
 		list( $status, $raw ) = Http::send( $method, self::API . $path, $headers, http_build_query( $form ) );
 		$data = json_decode( $raw, true );

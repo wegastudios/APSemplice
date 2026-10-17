@@ -216,9 +216,21 @@ final class Settings {
 		if ( array_key_exists( 'paypal_live', $pay ) ) {
 			Config::set( 'paypal.live', (bool) $pay['paypal_live'] );
 		}
+		if ( array_key_exists( 'stripe_live', $pay ) ) {
+			Config::set( 'stripe.live', (bool) $pay['stripe_live'] );
+		}
 	}
 
 	/** Per il modulo: per ogni chiave se c'è, da dove viene e gli ultimi caratteri (mai il valore intero). */
+	/** Modalità Stripe: quella scelta dal pannello, altrimenti dedotta dalla chiave (sk_live_ = reale). */
+	public static function stripeLive(): bool {
+		$v = Config::get( 'stripe.live', null );
+		if ( null !== $v ) {
+			return (bool) $v;
+		}
+		return (bool) preg_match( '/^(sk|rk)_live_/', (string) Config::get( 'stripe.secret_key', '' ) );
+	}
+
 	public static function secretsStatus( Db $db ): array {
 		$sealed = self::read( $db, 'secrets' );
 		$out    = array();
@@ -234,11 +246,19 @@ final class Settings {
 			$out[ $k ] = array( 'set' => '' !== $val, 'mask' => '' !== $val ? '••••' . substr( $val, -4 ) : '', 'source' => $fromPanel ? 'pannello' : ( '' !== $val ? 'config.php' : '' ) );
 		}
 		$out['paypal_live'] = (bool) Config::get( 'paypal.live', false );
+		$out['stripe_live'] = self::stripeLive();
 		return $out;
 	}
 
 	/** Salva le chiavi dal modulo: vuoto = non cambia, «rimuovi» = cancella. @return array nomi dei campi cambiati */
 	public static function saveSecrets( Db $db, array $in ): array {
+		// La chiave Stripe deve essere della modalità scelta (reale o prova): mai incassi veri con la casella «prova» e viceversa.
+		if ( isset( $in['stripe_live_present'] ) && '' !== trim( (string) ( $in['stripe_secret'] ?? '' ) ) ) {
+			$live = ! empty( $in['stripe_live'] );
+			if ( $live !== (bool) preg_match( '/^(sk|rk)_live_/', trim( (string) $in['stripe_secret'] ) ) ) {
+				throw new UserError( $live ? 'Hai scelto la modalità reale ma la chiave è di prova (sk_test_…): inserisci la chiave «live».' : 'Hai scelto la modalità di prova ma la chiave è reale (sk_live_…): inserisci la chiave «test» o attiva la modalità reale.' );
+			}
+		}
 		$sealed  = self::read( $db, 'secrets' );
 		$changed = array();
 		foreach ( self::SECRETS as $k => $def ) {
@@ -256,8 +276,14 @@ final class Settings {
 		}
 		self::write( $db, 'secrets', $sealed );
 		// La modalità PayPal si cambia solo dal modulo PayPal (che manda anche questo campo nascosto).
+		$pay = self::read( $db, 'payments' );
+		if ( isset( $in['stripe_live_present'] ) ) {
+			$pay['stripe_live'] = ! empty( $in['stripe_live'] );
+			self::write( $db, 'payments', $pay );
+		}
 		if ( isset( $in['paypal_live_present'] ) ) {
-			self::write( $db, 'payments', array( 'paypal_live' => ! empty( $in['paypal_live'] ) ) );
+			$pay['paypal_live'] = ! empty( $in['paypal_live'] );
+			self::write( $db, 'payments', $pay );
 		}
 		return $changed;
 	}

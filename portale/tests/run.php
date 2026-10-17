@@ -684,5 +684,17 @@ new WegaClient( 'https://license.test/api/v1', 't' );
 check( 'wega: se il DNS non risolve il nome si riprova sull IP noto', '65.108.75.89' === ( Http::$fallback['license.test'] ?? '' ) );
 Http::$fallback = array();
 
+// --- Modalità Stripe (reale/prova) ------------------------------------------------------------
+$pdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb2->migrate();
+check( 'stripe: chiave di prova con modalità reale rifiutata', null !== throwsUser( function () use ( $pdb2 ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_live' => '1', 'stripe_secret' => 'sk_test_' . str_repeat( 'a', 24 ) ) ); } ) );
+check( 'stripe: chiave reale con modalità di prova rifiutata', null !== throwsUser( function () use ( $pdb2 ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => 'sk_live_' . str_repeat( 'a', 24 ) ) ); } ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => 'sk_test_' . str_repeat( 'a', 24 ) ) );
+Portale\Settings::load( $pdb2 );
+check( 'stripe: chiave di prova con casella spenta accettata e modalità prova', false === Portale\Settings::stripeLive() && 'sk_test_' . str_repeat( 'a', 24 ) === Config::get( 'stripe.secret_key' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'pagamenti: il salvataggio di PayPal non azzera la modalità di Stripe', false === Portale\Settings::stripeLive() && true === Config::get( 'paypal.live' ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

@@ -22,6 +22,10 @@ final class Connections {
 		if ( '' === $key ) {
 			return array( false, 'Stripe: manca la chiave segreta.' );
 		}
+		$isLive = (bool) preg_match( '/^(sk|rk)_live_/', $key );
+		if ( Settings::stripeLive() !== $isLive ) {
+			return array( false, 'Stripe: la modalità scelta (' . ( Settings::stripeLive() ? 'reale' : 'prova' ) . ') non corrisponde alla chiave (' . ( $isLive ? 'reale' : 'di prova' ) . ').' );
+		}
 		list( $status ) = Http::send( 'GET', Stripe::API . '/balance', array( 'Authorization: Bearer ' . $key ) );
 		$mode = 0 === strpos( $key, 'sk_live_' ) || 0 === strpos( $key, 'rk_live_' ) ? 'modalità reale' : 'modalità di prova';
 		if ( 200 === $status ) {
