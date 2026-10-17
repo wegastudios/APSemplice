@@ -15,7 +15,7 @@ foreach ( $sections as $sk => $sec ) {
 }
 ?>
 <div class="wrap" style="padding-top:28px">
-<div class="admin-top"><h1>Gestione</h1><span class="muted small"><?php echo e( $admin_email ); ?> · <a href="/account">La mia area cliente</a></span></div>
+<div class="admin-top"><h1>Gestione</h1><span class="muted small"><?php echo e( $admin_email ); ?> · <a href="/account">La mia area cliente</a> · <a href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a></span></div>
 <nav class="tabs" aria-label="Gestione">
 <?php foreach ( $sections as $sk => $sec ) : $first = array_values( $sec[1] )[0]; ?><a href="<?php echo e( $first[0] ); ?>"<?php echo $sk === $current ? ' aria-current="page"' : ''; ?>><?php echo e( $sec[0] ); ?></a><?php endforeach; ?>
 </nav>
