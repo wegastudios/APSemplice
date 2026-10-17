@@ -34,6 +34,9 @@ final class PeopleCsv {
 		'zip'   => array( 'cap', 'codicepostale', 'zip', 'postalcode' ),
 		'city'  => array( 'comune', 'citta', 'localita', 'city' ),
 		'prov'  => array( 'provincia', 'prov', 'province' ),
+		'prior' => array( 'voltevenuto', 'venute', 'venuto', 'voltegiavenuto', 'giavenuto', 'presenze', 'visite', 'partecipazioni', 'volte' ),
+		'notes' => array( 'note', 'eventipassati', 'eventi', 'storico', 'annotazioni' ),
+		'since' => array( 'annodiiscrizione', 'annoiscrizione', 'datadiiscrizione', 'dataiscrizione', 'iscrittodal', 'sociodal', 'dataingresso', 'ingresso' ),
 		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
 	);
 
@@ -74,6 +77,10 @@ final class PeopleCsv {
 		foreach ( $header as $i => $h ) {
 			if ( preg_match( '/^(19[5-9]\d|20\d\d)$/', (string) $h ) ) {
 				$year_cols[ (int) $i ] = (string) $h;
+			} elseif ( 'annocorrente' === $h ) { // intestazioni relative: «ANNO CORRENTE» e «ANNO SCORSO» si risolvono al momento dell'importazione
+				$year_cols[ (int) $i ] = '@current';
+			} elseif ( in_array( $h, array( 'annoscorso', 'annoprecedente' ), true ) ) {
+				$year_cols[ (int) $i ] = '@previous';
 			}
 		}
 		$cell = function ( array $cells, int $i ) {
@@ -111,6 +118,9 @@ final class PeopleCsv {
 				'city'      => $cell( $cells, $col['city'] ),
 				'prov'      => $cell( $cells, $col['prov'] ),
 				'years'     => $years,
+				'prior'     => self::parse_count( $cell( $cells, $col['prior'] ) ),
+				'notes'     => $cell( $cells, $col['notes'] ),
+				'since'     => self::parse_since( $cell( $cells, $col['since'] ) ),
 				'host'      => $cell( $cells, $col['host'] ),
 			);
 		}
@@ -123,6 +133,32 @@ final class PeopleCsv {
 			return false;
 		}
 		return ! in_array( Text::lower( trim( $v ) ), array( '', '0', '-', '–', '—', 'no', 'n', 'non iscritto', 'false' ), true );
+	}
+
+	/** «3», «3 volte», «3,0» → 3; vuoto o illeggibile → null. */
+	public static function parse_count( ?string $v ): ?int {
+		if ( null === $v || ! preg_match( '/^\s*(\d{1,4})(?:[.,]0+)?\s*(?:volt[ae])?\s*$/iu', $v, $m ) ) {
+			return null;
+		}
+		return (int) $m[1];
+	}
+
+	/** Anno di iscrizione: «2019» → 2019-01-01; una data (2019-03-05, 5/3/2019) resta tale; altro → null. */
+	public static function parse_since( ?string $v ): ?string {
+		if ( null === $v ) {
+			return null;
+		}
+		$v = trim( $v );
+		if ( preg_match( '/^(19[5-9]\d|20\d\d)$/', $v ) ) {
+			return $v . '-01-01';
+		}
+		if ( preg_match( '/^(\d{4})-(\d{2})-(\d{2})/', $v, $m ) && checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+			return $m[1] . '-' . $m[2] . '-' . $m[3];
+		}
+		if ( preg_match( '#^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$#', $v, $m ) && checkdate( (int) $m[2], (int) $m[1], (int) $m[3] ) ) {
+			return sprintf( '%04d-%02d-%02d', $m[3], $m[2], $m[1] );
+		}
+		return null;
 	}
 
 
@@ -205,7 +241,9 @@ final class PeopleCsv {
 	 * @param string $default_type tipo da usare quando la colonna Tipo manca o è vuota
 	 * @return array [ ['row'=>riga, 'type'=>tipo|null, 'action'=>'create'|'update'|'error', 'message'=>?, 'matched_id'=>?], ... ]
 	 */
-	public static function plan( array $rows, array $existing, string $default_type = MemberType::ORDINARY ): array {
+	public static function plan( array $rows, array $existing, string $default_type = MemberType::ORDINARY, array $opts = array() ): array {
+		$need_host  = ! isset( $opts['guest_host_required'] ) || (bool) $opts['guest_host_required'];
+		$need_phone = ! isset( $opts['guest_phone_required'] ) || (bool) $opts['guest_phone_required'];
 		$by_card = array();
 		$by_mail = array();
 		$by_tax  = array();
@@ -353,7 +391,7 @@ final class PeopleCsv {
 				$tax_in_file[ $tax ] = $r['line'];
 			}
 			if ( ! empty( $r['years'] ) ) {
-				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', $r['years'] );
+				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', str_replace( array( '@current', '@previous' ), array( 'anno corrente', 'anno scorso' ), $r['years'] ) );
 			}
 			$plans[] = array( 'row' => $r, 'type' => $type, 'type_given' => null !== $r['type_text'], 'action' => $act, 'message' => $msg, 'matched_id' => $match ? $match['id'] : null );
 		}
@@ -382,16 +420,31 @@ final class PeopleCsv {
 					return array( 'row' => $r, 'type' => null, 'action' => 'error', 'message' => $msg, 'matched_id' => null );
 				};
 				$host = null === $r['host'] ? '' : trim( $r['host'] );
-				if ( '' === $host ) {
-					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome)' );
+				if ( '' === $host && $need_host ) {
+					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome). Per importare ospiti senza ospitante spegni la regola in Impostazioni → Tecniche → Limiti e soglie' );
 					continue;
 				}
 				if ( null !== $r['email'] && ! filter_var( $r['email'], FILTER_VALIDATE_EMAIL ) ) {
 					$plans[ $idx ] = $err( 'Email non valida: ' . $r['email'] );
 					continue;
 				}
-				if ( ! Phone::is_valid( (string) $r['phone'] ) ) {
-					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni)' );
+				if ( ( $need_phone || null !== $r['phone'] ) && ! Phone::is_valid( (string) $r['phone'] ) ) {
+					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni). Per importare ospiti senza cellulare spegni la regola in Impostazioni → Tecniche → Limiti e soglie' );
+					continue;
+				}
+				if ( '' === $host ) { // ospite senza ospitante (la regola è spenta nei Limiti): si riconosce per nome e cognome
+					$gkey = 'senza|' . Text::normalize( $r['first'] . $r['last'] );
+					if ( isset( $guests_in_file[ $gkey ] ) ) {
+						$plans[ $idx ] = $err( 'Lo stesso ospite è già alla riga ' . $guests_in_file[ $gkey ] . ' del file' );
+						continue;
+					}
+					$guests_in_file[ $gkey ] = $r['line'];
+					$match                   = $guests_of[0][ Text::normalize( $r['first'] . $r['last'] ) ] ?? null;
+					$plans[ $idx ]           = array(
+						'row' => $r, 'type' => MemberType::GUEST, 'type_given' => true, 'action' => $match ? 'update' : 'create',
+						'message' => $match ? 'Ospite esistente' : null, 'matched_id' => $match ? (int) $match['id'] : null,
+						'host_text' => '', 'host_id' => null,
+					);
 					continue;
 				}
 				// Chi è l'ospitante: tessera, email oppure nome e cognome (in uno dei due ordini).

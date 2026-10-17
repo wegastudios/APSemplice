@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '36';
+	const DB_VERSION        = '37';
 
 	public static function activate(): void {
 		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
@@ -137,6 +137,7 @@ final class Install {
   rules_accepted_at datetime DEFAULT NULL,
   rules_accepted_version varchar(20) DEFAULT NULL,
   rules_accepted_source varchar(20) DEFAULT NULL,
+  prior_visits int(10) unsigned NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,

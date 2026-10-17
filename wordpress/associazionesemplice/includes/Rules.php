@@ -11,7 +11,7 @@ final class Rules {
 	 * @param array|null $host persona ospitante (con almeno 'type'), solo per gli ospiti
 	 * @return string[] messaggi di errore (vuoto = valido)
 	 */
-	public static function validate_person( array $d, ?array $host = null ): array {
+	public static function validate_person( array $d, ?array $host = null, array $relax = array() ): array {
 		$errors = array();
 		$type   = (string) ( $d['type'] ?? '' );
 		if ( ! MemberType::is_valid( $type ) ) {
@@ -50,13 +50,15 @@ final class Rules {
 		if ( MemberType::GUEST === $type && '' !== $card ) {
 			$errors[] = 'Gli ospiti non hanno il numero di tessera.';
 		}
-		if ( MemberType::GUEST === $type && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
+		if ( MemberType::GUEST === $type && empty( $relax['phone'] ) && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
 			$errors[] = 'Il numero di cellulare è obbligatorio per gli ospiti (serve a riconoscerli ed evitare doppioni, e a contattarli su WhatsApp).';
 		}
 
 		if ( MemberType::requires_host( $type ) ) {
 			if ( empty( $d['host_person_id'] ) ) {
-				$errors[] = 'Un ospite deve essere collegato al socio che lo ospita.';
+				if ( empty( $relax['host'] ) ) {
+					$errors[] = 'Un ospite deve essere collegato al socio che lo ospita.';
+				}
 			} elseif ( null === $host || ! MemberType::is_member( (string) ( $host['type'] ?? '' ) ) ) {
 				$errors[] = 'Il socio ospitante non è valido (deve essere un socio, non un altro ospite).';
 			}

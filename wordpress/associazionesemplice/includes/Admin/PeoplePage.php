@@ -147,6 +147,7 @@ final class PeoplePage {
 			. 'CAP <input type="text" name="zip" value="' . esc_attr( $val( 'zip' ) ) . '" size="7" maxlength="12"> Comune <input type="text" name="city" value="' . esc_attr( $val( 'city' ) ) . '" maxlength="100"> Prov. <input type="text" name="province" value="' . esc_attr( $val( 'province' ) ) . '" size="3" maxlength="5">'
 			. '<p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria; chi si attiva dal sito deve inserirlo.</p></td></tr>';
 		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
+		echo '<tr class="asem-row-host"><th>Volte già venuto</th><td><input type="number" name="prior_visits" min="0" max="9999" value="' . (int) $val( 'prior_visits' ) . '" class="small-text"><p class="description">Quante volte è già venuto prima di usare il programma: si somma alle partecipazioni registrate qui e conta per la soglia dell\'invito a iscriversi. Gli eventi passati puoi segnarli nelle note.</p></td></tr>';
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
 		echo '</tbody></table>';
 		submit_button( $p ? 'Salva' : 'Crea' );

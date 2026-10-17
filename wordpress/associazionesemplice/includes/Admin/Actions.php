@@ -205,6 +205,7 @@ final class Actions {
 			'host_person_id' => $p['host_person_id'] ?? '',
 			'joined_on'      => $p['joined_on'] ?? '',
 			'notes'          => $p['notes'] ?? '',
+			'prior_visits'   => $p['prior_visits'] ?? 0,
 		);
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {

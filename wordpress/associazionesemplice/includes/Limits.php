@@ -209,6 +209,18 @@ final class Limits {
 		);
 		// ---------- Soci ----------
 		$add(
+			'guest_phone_required', 'soci', 'Cellulare obbligatorio per gli ospiti', 'flag', 1, 0, 1,
+			'Un ospite non si registra senza cellulare: è il dato che serve a riconoscerlo (anche se viene da soci diversi) e a contattarlo su WhatsApp.',
+			'Mantienilo attivo: è il comportamento consigliato.',
+			'Gli ospiti senza cellulare si distinguono solo per nome e cognome: più facile creare doppioni, e il contatore delle volte già venuto può dividersi su più schede. Utile per importare uno storico di ospiti di cui non hai il numero.'
+		);
+		$add(
+			'guest_host_required', 'soci', 'Socio ospitante obbligatorio per gli ospiti', 'flag', 1, 0, 1,
+			'Un ospite si registra sempre come ospite di un socio (chi lo ha portato).',
+			'Mantienilo attivo: è il comportamento consigliato.',
+			'Si possono registrare ospiti senza dire chi li ha portati: si perde l\'elenco degli ospiti di ciascun socio. Utile per importare uno storico di ospiti.'
+		);
+		$add(
 			'suspend_after_months', 'soci', 'Mesi di tessera scaduta prima di proporre la sospensione', 'mesi', 8, 1, 60,
 			'Dopo quanti mesi dalla scadenza compare il pulsante per sospendere in blocco i soci che non hanno rinnovato.',
 			'I soci che non rinnovano restano «attivi» più a lungo nelle liste e nei conteggi.',

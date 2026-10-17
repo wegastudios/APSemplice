@@ -31,4 +31,33 @@ final class PeopleCsvYearsTest extends TestCase {
 		$r = PeopleCsv::parse_table( array( array( 'Nome', 'Cognome', 'Tipo' ), array( 'Anna', 'Rossi', 'ordinario' ) ) );
 		$this->assertSame( array(), $r['rows'][0]['years'] );
 	}
+
+	public function test_guest_columns_since_and_count(): void {
+		$r = PeopleCsv::parse_table( array(
+			array( 'Nome', 'Cognome', 'Cellulare', 'Ospite di', 'Volte venuto', 'Eventi passati', 'Anno di iscrizione' ),
+			array( 'Anna', 'Rossi', '333 1234567', 'Bianchi', '4 volte', 'Cena 2024, gita 2025', '2019' ),
+			array( 'Eva', 'Verdi', '333 7654321', 'Bianchi', 'boh', '', '5/3/2021' ),
+		) );
+		$this->assertSame( 4, $r['rows'][0]['prior'] );
+		$this->assertSame( 'Cena 2024, gita 2025', $r['rows'][0]['notes'] );
+		$this->assertSame( '2019-01-01', $r['rows'][0]['since'] );
+		$this->assertNull( $r['rows'][1]['prior'] );
+		$this->assertNull( $r['rows'][1]['notes'] );
+		$this->assertSame( '2021-03-05', $r['rows'][1]['since'] );
+		$this->assertSame( '2020-02-29', PeopleCsv::parse_since( '2020-02-29' ) );
+		$this->assertNull( PeopleCsv::parse_since( '31/02/2021' ) );
+		$this->assertNull( PeopleCsv::parse_since( 'ieri' ) );
+	}
+
+	public function test_relative_year_headers_and_venute_alias(): void {
+		$r = PeopleCsv::parse_table( array(
+			array( 'Nome', 'Cognome', 'ANNO CORRENTE', 'ANNO SCORSO', 'Anno Iscrizione', 'Venute' ),
+			array( 'Anna', 'Rossi', '', 'SI', '2017', '5' ),
+			array( 'Eva', 'Verdi', 'SI', 'SI', '', '' ),
+		) );
+		$this->assertSame( array( '@previous' ), $r['rows'][0]['years'] );
+		$this->assertSame( array( '@current', '@previous' ), $r['rows'][1]['years'] );
+		$this->assertSame( '2017-01-01', $r['rows'][0]['since'] );
+		$this->assertSame( 5, $r['rows'][0]['prior'], '«Venute» è il contatore delle volte già venuto' );
+	}
 }
