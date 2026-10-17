@@ -679,5 +679,17 @@ Http::$transport = function ( $m, $url ) use ( &$kurl ) {
 };
 check( 'chiave: recuperata da Wega e salvata cifrata', $kbil->recoverKey( 's1' ) && 'GET https://license.test/api/v1/licenses/LK1/key' === $kurl && 'WEGA-RECUPERATA' === Portale\Secrets::open( $kbil->subscription( 's1' )['license_key_enc'] ) );
 check( 'chiave: già presente, non si rilegge', ! $kbil->recoverKey( 's1' ) );
+// --- Header X-Portal-Domain su ogni chiamata a Wega ---------------------------------------------
+$hdrs = array();
+Http::$transport = function ( $m, $url, $h ) use ( &$hdrs ) {
+	$hdrs = $h;
+	return array( 200, '{"data":[]}' );
+};
+( new WegaClient( 'https://license.test/api/v1', 't' ) )->show( 'X' );
+check( 'wega: ogni chiamata porta X-Portal-Domain (dominio di base_url)', in_array( 'X-Portal-Domain: portale.test', $hdrs, true ) );
+Config::set( 'wega.portal_domain', 'https://WWW.Altro.it/' );
+check( 'wega: il dominio si può impostare in config (wega.portal_domain)', 'altro.it' === WegaClient::portalDomain() );
+Config::set( 'wega.portal_domain', '' );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
