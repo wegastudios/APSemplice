@@ -1,6 +1,7 @@
 <?php /** @var string $content */
 $robots = ! \Portale\Config::get( 'indexable', false );
 $logged = ! empty( $_SESSION['customer'] );
+$support_href = \Portale\SupportSso::enabled() && $logged ? '/supporto/accedi' : \Portale\SupportSso::supportUrl();
 $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 ?><!doctype html>
 <html lang="it">
@@ -18,7 +19,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <header class="site-header"><div class="wrap">
 	<a class="logo" href="/"><span class="logo-mark"><?php echo icon( 'users' ); ?></span>Associazione Semplice</a>
 	<nav class="nav" aria-label="Principale">
-		<a href="/#funzioni">Funzioni</a><a href="/#prezzi">Prezzi</a><a href="/#domande">Domande</a><a href="https://supporto.associazionesemplice.it">Supporto</a>
+		<a href="/#funzioni">Funzioni</a><a href="/#prezzi">Prezzi</a><a href="/#domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 		<?php if ( ! empty( $_SESSION['admin'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>
 		<a class="btn small" href="<?php echo $logged ? '/account' : '/accedi'; ?>">Area riservata</a>
 	</nav>
@@ -26,7 +27,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <main><?php echo $content; ?></main>
 <footer class="site-footer"><div class="wrap">
 	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice · un progetto di Wega Studios</div>
-	<div><a href="/free">Licenza gratuita</a><a href="https://supporto.associazionesemplice.it">Supporto</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
+	<div><a href="/free">Licenza gratuita</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( \Portale\Tracking::banner() ) : $cc = \Portale\Tracking::categories(); ?>
 <div class="cc" id="cc" role="dialog" aria-label="Cookie" aria-live="polite" hidden data-rev="<?php echo (int) \Portale\Tracking::conf()['rev']; ?>" data-cats="<?php echo e( implode( ',', array_keys( $cc ) ) ); ?>">

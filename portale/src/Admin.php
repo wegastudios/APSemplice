@@ -14,14 +14,9 @@ final class Admin {
 	/** @var string */
 	private $email;
 
-	public static function isAdminEmail( string $email ): bool {
-		$email = strtolower( trim( $email ) );
-		foreach ( (array) Config::get( 'admins', array() ) as $a ) {
-			if ( '' !== $email && strtolower( trim( (string) $a ) ) === $email ) {
-				return true;
-			}
-		}
-		return false;
+	/** Amministratore = indirizzo in `admins` di config.php oppure con ruolo admin nello staff (il ruolo «solo supporto» non basta). */
+	public static function isAdminEmail( string $email, ?Db $db = null ): bool {
+		return Staff::ADMIN === Staff::role( $db, $email );
 	}
 
 	public function __construct( Db $db, Billing $billing, string $customerId ) {
@@ -29,7 +24,7 @@ final class Admin {
 		$this->billing = $billing;
 		$row           = $db->one( 'SELECT email FROM customers WHERE id = ?', array( $customerId ) );
 		$this->email   = $row ? (string) $row['email'] : '';
-		if ( ! self::isAdminEmail( $this->email ) ) {
+		if ( ! self::isAdminEmail( $this->email, $db ) ) {
 			$_SESSION['admin'] = false;
 			http_response_code( 403 );
 			throw new UserError( 'Questa area è riservata alla gestione.' );
@@ -60,6 +55,8 @@ final class Admin {
 			}
 		} elseif ( 'wega' === $a ) {
 			$this->wegaSync( $get );
+		} elseif ( 'staff' === $a ) {
+			$this->staff( $get, $b, $c );
 		} elseif ( 'clienti' === $a && $get ) {
 			$this->customers();
 		} elseif ( 'clienti' === $a && ! $get && '' !== $b && 'elimina' === $c ) {
@@ -325,6 +322,25 @@ final class Admin {
 			}
 		}
 		$this->done( 'wega_import', $done . ' licenze importate da Wega' . ( $skip ? ', ' . $skip . ' saltate' : '' ) . '.', '/admin/wega' );
+	}
+
+	/** Staff: elenco, aggiunta/cambio ruolo (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
+	private function staff( bool $get, string $b, string $c ): void {
+		if ( $get && '' === $b ) {
+			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
+		} elseif ( ! $get && '' === $b ) {
+			$email = Staff::set( $this->db, $this->billing, (string) ( $_POST['email'] ?? '' ), (string) ( $_POST['role'] ?? '' ) );
+			$this->done( 'staff_set', $email . ' · ' . Staff::LABELS[ (string) $_POST['role'] ], '/admin/staff' );
+		} elseif ( ! $get && 'rimuovi' === $b ) {
+			$email = strtolower( trim( (string) ( $_POST['email'] ?? '' ) ) );
+			if ( $email === strtolower( $this->email ) ) {
+				throw new UserError( 'Non puoi togliere te stesso dallo staff.' );
+			}
+			Staff::remove( $this->db, $email );
+			$this->done( 'staff_remove', $email . ' tolto dallo staff.', '/admin/staff' );
+		} else {
+			$this->notFound();
+		}
 	}
 
 	private function deleteCustomer( string $id ): void {

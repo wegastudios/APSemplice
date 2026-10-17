@@ -8,6 +8,9 @@ return array(
 	'trust_forwarded_for' => false, // true solo dietro un proxy fidato: i limiti del rimbalzo licenze usano X-Forwarded-For invece dell'IP della connessione
 	'admins'    => array(),   // email che possono entrare nel pannello di gestione (stesso accesso dei clienti, link per email)
 
+	// Sito di supporto clienti e accesso unico: lo stesso segreto (almeno 32 caratteri casuali) va nel .env del sito di supporto.
+	'support' => array( 'url' => 'https://supporto.associazionesemplice.it', 'sso_secret' => '' ),
+
 	// MySQL oppure SQLite (default).
 	'db' => array(
 		'dsn'  => 'sqlite:' . __DIR__ . '/data/portale.sqlite',

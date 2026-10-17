@@ -76,6 +76,7 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS releases (product VARCHAR(8) NOT NULL, version VARCHAR(20) NOT NULL, size INTEGER NOT NULL, sha256 VARCHAR(64) NOT NULL, note VARCHAR(500) NULL, created_at VARCHAR(19) NOT NULL, PRIMARY KEY (product, version))',
 			'CREATE TABLE IF NOT EXISTS downloads (id VARCHAR(32) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, at VARCHAR(19) NOT NULL, product VARCHAR(8) NOT NULL, version VARCHAR(20) NOT NULL)',
 			'CREATE INDEX idx_dl_customer ON downloads (customer_id, at)',
+			'CREATE TABLE IF NOT EXISTS staff (email VARCHAR(190) PRIMARY KEY, role VARCHAR(10) NOT NULL, created_at VARCHAR(19) NOT NULL)',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN last_seen_at VARCHAR(19) NULL',

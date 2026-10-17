@@ -3,7 +3,7 @@
 $sections = array(
 	'cruscotto'    => array( 'Cruscotto', array( 'cruscotto' => array( '/admin', 'Cruscotto' ) ) ),
 	'piani'        => array( 'Piani', array( 'prezzi' => array( '/admin/prezzi', 'Piani e prezzi' ), 'versioni' => array( '/admin/versioni', 'Versioni del plugin' ) ) ),
-	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/admin/licenze', 'Licenze' ), 'clienti' => array( '/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/admin/wega', 'Da Wega' ) ) ),
+	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/admin/licenze', 'Licenze' ), 'clienti' => array( '/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/admin/wega', 'Da Wega' ), 'staff' => array( '/admin/staff', 'Staff e supporto' ) ) ),
 	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/admin/email', 'Email' ), 'registro' => array( '/admin/registro', 'Registro' ) ) ),
 	'pagine'       => array( 'Pagine', array( 'legale' => array( '/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/admin/cookie', 'Script e consenso' ) ) ),
 );

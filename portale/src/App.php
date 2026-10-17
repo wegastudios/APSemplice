@@ -114,6 +114,10 @@ final class App {
 			$this->enter( (string) $this->in( 'token' ) );
 		} elseif ( $get && 0 === strpos( $path, '/scarica/' ) ) {
 			$this->download( $path );
+		} elseif ( $get && '/supporto/accedi' === $path ) {
+			// Accesso unico al sito di supporto: serve aver fatto l'accesso qui; il ruolo (admin, solo supporto, cliente) si legge dall'email.
+			header( 'Cache-Control: no-store' );
+			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( ! $get && '/account/password' === $path ) {
@@ -166,7 +170,7 @@ final class App {
 		$_SESSION['customer'] = $cust['id'];
 		$this->billing->touchCustomer( (string) $cust['id'] );
 		$_SESSION['via_link'] = $viaLink;
-		$_SESSION['admin']    = Admin::isAdminEmail( (string) $cust['email'] );
+		$_SESSION['admin']    = Admin::isAdminEmail( (string) $cust['email'], $this->db );
 		header( 'Location: ' . ( $_SESSION['admin'] ? '/admin' : '/account' ), true, 303 );
 	}
 
