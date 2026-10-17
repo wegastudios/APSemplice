@@ -2170,7 +2170,7 @@ ImportService::apply( $pv, array() );
 $anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
 asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], '2023' ) && $people->has_membership( (int) $anni_p['id'], '2025' ) && ! $people->has_membership( (int) $anni_p['id'], '2024' ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
 // Ospiti importati con il contatore delle volte già venuto, gli eventi passati nelle note e l'anno di iscrizione
-$csv_g = $mkf( 'ospiti-storici.csv', "Nome;Cognome;Cellulare;Ospite di;Volte venuto;Eventi passati;Anno di iscrizione\r\nOspite;Storico;333 1112233;anni.effettivi@example.com;3;Cena 2024, gita 2025;2020\r\n" );
+$csv_g = $mkf( 'ospiti-storici.csv', "Tipo;Nome;Cognome;Cellulare;Ospite di;Volte venuto;Eventi passati;Anno di iscrizione\r\nospite;Ospite;Storico;333 1112233;anni.effettivi@example.com;3;Cena 2024, gita 2025;2020\r\n" );
 $pv    = ImportService::preview_file( $csv_g, 'ospiti-storici.csv', array() );
 ImportService::apply( $pv, array() );
 $og = null;
@@ -2181,6 +2181,31 @@ foreach ( $people->search( array( 'type' => 'guest' ) ) as $gx ) {
 }
 asem_ok( $og && 3 === (int) $og['prior_visits'] && 'Cena 2024, gita 2025' === $og['notes'] && '2020-01-01' === $og['joined_on'], 'import ospiti: volte già venuto, eventi passati nelle note e anno di iscrizione' );
 asem_ok( $og && 3 === $people->guest_overview()[ (int) $og['id'] ]['count'], 'ospiti: il contatore somma le volte già venuto a quelle registrate' );
+// intestazioni relative («ANNO CORRENTE», «ANNO SCORSO») e anno di iscrizione
+$csv_r = $mkf( 'relativi.csv', "Nome;Cognome;N. Telefono;N° Tessera;ANNO CORRENTE;ANNO SCORSO;Anno Iscrizione\r\nRelativa;Prova;333 4445566;951;;SI;2018\r\nCorrente;Prova;333 4445577;952;SI;SI;2018\r\n" );
+$pv    = ImportService::preview_file( $csv_r, 'relativi.csv', array() );
+ImportService::apply( $pv, array() );
+$cy_l  = Settings::membership_year()->label();
+$py_l  = Settings::membership_year()->previous()->label();
+$rel_a = $people->find_by_card( '951' );
+$rel_b = $people->find_by_card( '952' );
+asem_ok( $rel_a && $rel_b && $people->has_membership( (int) $rel_a['id'], $py_l ) && ! $people->has_membership( (int) $rel_a['id'], $cy_l ) && $people->has_membership( (int) $rel_b['id'], $py_l ) && $people->has_membership( (int) $rel_b['id'], $cy_l ), 'import: «ANNO SCORSO» e «ANNO CORRENTE» diventano le iscrizioni di quegli anni' );
+asem_ok( $rel_a && '2018-01-01' === $rel_a['joined_on'] && '333 4445566' === $rel_a['phone'], 'import: «Anno Iscrizione» e «N. Telefono» letti' );
+// ospiti senza cellulare né ospitante: solo se le due regole sono spente
+$csv_h = $mkf( 'ospiti-liberi.csv', "Tipo;Nome;Cognome;Cellulare;Venute;Ospite di;note\r\nospite;Senza;Ospitante;;2;;Concerto 2025\r\n" );
+$pv    = ImportService::preview_file( $csv_h, 'ospiti-liberi.csv', array() );
+asem_ok( 'error' === $pv['people']['plan'][0]['action'], 'import ospiti: senza cellulare e ospitante è un errore finché le regole sono accese' );
+Settings::update( array( 'limits' => array( 'guest_phone_required' => 0, 'guest_host_required' => 0 ) ) );
+$pv = ImportService::preview_file( $csv_h, 'ospiti-liberi.csv', array() );
+ImportService::apply( $pv, array() );
+$og2 = null;
+foreach ( $people->search( array( 'type' => 'guest' ) ) as $gx ) {
+	if ( 'Ospitante' === $gx['last_name'] ) {
+		$og2 = $gx;
+	}
+}
+asem_ok( $og2 && empty( $og2['host_person_id'] ) && 2 === (int) $og2['prior_visits'] && 'Concerto 2025' === $og2['notes'], 'import ospiti: con le regole spente entrano senza cellulare e ospitante, con Venute e note' );
+Settings::update( array( 'limits' => array() ) );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );

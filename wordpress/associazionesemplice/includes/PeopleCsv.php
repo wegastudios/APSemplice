@@ -34,7 +34,7 @@ final class PeopleCsv {
 		'zip'   => array( 'cap', 'codicepostale', 'zip', 'postalcode' ),
 		'city'  => array( 'comune', 'citta', 'localita', 'city' ),
 		'prov'  => array( 'provincia', 'prov', 'province' ),
-		'prior' => array( 'voltevenuto', 'voltegiavenuto', 'giavenuto', 'presenze', 'visite', 'partecipazioni', 'volte' ),
+		'prior' => array( 'voltevenuto', 'venute', 'venuto', 'voltegiavenuto', 'giavenuto', 'presenze', 'visite', 'partecipazioni', 'volte' ),
 		'notes' => array( 'note', 'eventipassati', 'eventi', 'storico', 'annotazioni' ),
 		'since' => array( 'annodiiscrizione', 'annoiscrizione', 'datadiiscrizione', 'dataiscrizione', 'iscrittodal', 'sociodal', 'dataingresso', 'ingresso' ),
 		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
@@ -77,6 +77,10 @@ final class PeopleCsv {
 		foreach ( $header as $i => $h ) {
 			if ( preg_match( '/^(19[5-9]\d|20\d\d)$/', (string) $h ) ) {
 				$year_cols[ (int) $i ] = (string) $h;
+			} elseif ( 'annocorrente' === $h ) { // intestazioni relative: «ANNO CORRENTE» e «ANNO SCORSO» si risolvono al momento dell'importazione
+				$year_cols[ (int) $i ] = '@current';
+			} elseif ( in_array( $h, array( 'annoscorso', 'annoprecedente' ), true ) ) {
+				$year_cols[ (int) $i ] = '@previous';
 			}
 		}
 		$cell = function ( array $cells, int $i ) {
@@ -237,7 +241,9 @@ final class PeopleCsv {
 	 * @param string $default_type tipo da usare quando la colonna Tipo manca o è vuota
 	 * @return array [ ['row'=>riga, 'type'=>tipo|null, 'action'=>'create'|'update'|'error', 'message'=>?, 'matched_id'=>?], ... ]
 	 */
-	public static function plan( array $rows, array $existing, string $default_type = MemberType::ORDINARY ): array {
+	public static function plan( array $rows, array $existing, string $default_type = MemberType::ORDINARY, array $opts = array() ): array {
+		$need_host  = ! isset( $opts['guest_host_required'] ) || (bool) $opts['guest_host_required'];
+		$need_phone = ! isset( $opts['guest_phone_required'] ) || (bool) $opts['guest_phone_required'];
 		$by_card = array();
 		$by_mail = array();
 		$by_tax  = array();
@@ -385,7 +391,7 @@ final class PeopleCsv {
 				$tax_in_file[ $tax ] = $r['line'];
 			}
 			if ( ! empty( $r['years'] ) ) {
-				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', $r['years'] );
+				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', str_replace( array( '@current', '@previous' ), array( 'anno corrente', 'anno scorso' ), $r['years'] ) );
 			}
 			$plans[] = array( 'row' => $r, 'type' => $type, 'type_given' => null !== $r['type_text'], 'action' => $act, 'message' => $msg, 'matched_id' => $match ? $match['id'] : null );
 		}
@@ -414,16 +420,31 @@ final class PeopleCsv {
 					return array( 'row' => $r, 'type' => null, 'action' => 'error', 'message' => $msg, 'matched_id' => null );
 				};
 				$host = null === $r['host'] ? '' : trim( $r['host'] );
-				if ( '' === $host ) {
-					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome)' );
+				if ( '' === $host && $need_host ) {
+					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome). Per importare ospiti senza ospitante spegni la regola in Impostazioni → Tecniche → Limiti e soglie' );
 					continue;
 				}
 				if ( null !== $r['email'] && ! filter_var( $r['email'], FILTER_VALIDATE_EMAIL ) ) {
 					$plans[ $idx ] = $err( 'Email non valida: ' . $r['email'] );
 					continue;
 				}
-				if ( ! Phone::is_valid( (string) $r['phone'] ) ) {
-					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni)' );
+				if ( ( $need_phone || null !== $r['phone'] ) && ! Phone::is_valid( (string) $r['phone'] ) ) {
+					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni). Per importare ospiti senza cellulare spegni la regola in Impostazioni → Tecniche → Limiti e soglie' );
+					continue;
+				}
+				if ( '' === $host ) { // ospite senza ospitante (la regola è spenta nei Limiti): si riconosce per nome e cognome
+					$gkey = 'senza|' . Text::normalize( $r['first'] . $r['last'] );
+					if ( isset( $guests_in_file[ $gkey ] ) ) {
+						$plans[ $idx ] = $err( 'Lo stesso ospite è già alla riga ' . $guests_in_file[ $gkey ] . ' del file' );
+						continue;
+					}
+					$guests_in_file[ $gkey ] = $r['line'];
+					$match                   = $guests_of[0][ Text::normalize( $r['first'] . $r['last'] ) ] ?? null;
+					$plans[ $idx ]           = array(
+						'row' => $r, 'type' => MemberType::GUEST, 'type_given' => true, 'action' => $match ? 'update' : 'create',
+						'message' => $match ? 'Ospite esistente' : null, 'matched_id' => $match ? (int) $match['id'] : null,
+						'host_text' => '', 'host_id' => null,
+					);
 					continue;
 				}
 				// Chi è l'ospitante: tessera, email oppure nome e cognome (in uno dei due ordini).

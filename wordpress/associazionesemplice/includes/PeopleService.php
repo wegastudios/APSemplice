@@ -381,7 +381,7 @@ class PeopleService {
 
 	private function assert_valid( array $d, ?int $except_id ): void {
 		$host   = $d['host_person_id'] ? $this->get( (int) $d['host_person_id'] ) : null;
-		$errors = Rules::validate_person( $d, $host );
+		$errors = Rules::validate_person( $d, $host, array( 'phone' => ! Limits::flag( 'guest_phone_required' ), 'host' => ! Limits::flag( 'guest_host_required' ) ) );
 		if ( $errors ) {
 			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}

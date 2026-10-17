@@ -58,7 +58,7 @@ final class ImportService {
 		$out = array( 'people' => null, 'ledger' => null, 'ignored' => $ignored );
 		if ( $people_rows ) {
 			$default = MemberType::is_member( (string) ( $opts['default_type'] ?? '' ) ) ? $opts['default_type'] : MemberType::ORDINARY;
-			$out['people'] = array( 'plan' => PeopleCsv::plan( $people_rows, self::existing_people(), $default ) );
+			$out['people'] = array( 'plan' => PeopleCsv::plan( $people_rows, self::existing_people(), $default, array( 'guest_phone_required' => Limits::flag( 'guest_phone_required' ), 'guest_host_required' => Limits::flag( 'guest_host_required' ) ) ) );
 		}
 		if ( $ledger_rows ) {
 			$plan             = LedgerImport::plan( $ledger_rows, self::ledger_context( $ledger_rows, (int) ( $opts['default_account_id'] ?? 0 ), $people_rows ) );
@@ -191,11 +191,11 @@ final class ImportService {
 				}
 				try {
 					if ( 1 === $pass ) {
-						$host =! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
-						if ( ! $host ) {
+						$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
+						if ( ! $host && ( '' !== trim( (string) $row['host_text'] ) || Limits::flag( 'guest_host_required' ) ) ) {
 							throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
 						}
-						$data['host_person_id'] = $host;
+						$data['host_person_id'] = $host ?: '';
 					}
 					if ( 'create' === $row['action'] ) {
 						$data['type'] = $row['type'];
@@ -228,7 +228,8 @@ final class ImportService {
 						}
 					}
 					if ( $person && ! empty( $r['years'] ) && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
-						foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025…)
+						foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025… oppure «ANNO CORRENTE» e «ANNO SCORSO»)
+							$y = '@current' === $y ? $year : ( '@previous' === $y ? Settings::membership_year()->previous()->label() : $y );
 							$y_had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, (string) $y ) );
 							$people->set_membership( $id, (string) $y, true, 'import' );
 							if ( ! $y_had ) {

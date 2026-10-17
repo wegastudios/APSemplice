@@ -64,7 +64,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.1.19 =
-* Import: 'Anno di iscrizione', guests' 'Volte venuto' counter (added to the registered participations) and 'Eventi passati' notes; guest form has the same counter.
+* Import: membership years from year columns (2024, 2025… or ANNO CORRENTE / ANNO SCORSO), 'Anno di iscrizione', 'N. Telefono'; guests get a 'Venute' counter (added to the registered participations) and notes for past events. New limits let you register guests without a mobile number or a host (for importing a history); both rules stay on by default.
 
 = 1.1.18 =
 * Member import: columns titled with a year (2023, 2024…) record the actual membership years; 'N. Telefono' is recognised as the phone column.

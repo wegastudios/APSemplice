@@ -48,4 +48,16 @@ final class PeopleCsvYearsTest extends TestCase {
 		$this->assertNull( PeopleCsv::parse_since( '31/02/2021' ) );
 		$this->assertNull( PeopleCsv::parse_since( 'ieri' ) );
 	}
+
+	public function test_relative_year_headers_and_venute_alias(): void {
+		$r = PeopleCsv::parse_table( array(
+			array( 'Nome', 'Cognome', 'ANNO CORRENTE', 'ANNO SCORSO', 'Anno Iscrizione', 'Venute' ),
+			array( 'Anna', 'Rossi', '', 'SI', '2017', '5' ),
+			array( 'Eva', 'Verdi', 'SI', 'SI', '', '' ),
+		) );
+		$this->assertSame( array( '@previous' ), $r['rows'][0]['years'] );
+		$this->assertSame( array( '@current', '@previous' ), $r['rows'][1]['years'] );
+		$this->assertSame( '2017-01-01', $r['rows'][0]['since'] );
+		$this->assertSame( 5, $r['rows'][0]['prior'], '«Venute» è il contatore delle volte già venuto' );
+	}
 }
