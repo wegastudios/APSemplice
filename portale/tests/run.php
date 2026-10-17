@@ -339,23 +339,23 @@ check( 'robots: segnali di non indicizzazione di default', false === Config::get
 
 // --- Chiavi dal pannello ----------------------------------------------------------------------------------------------------------
 $tokenOk = 'wic_3c6d8003fdd2b68f.d5S6nSoypyWsa5RmmMPApIHcrhCf5d_rB1Pr_6ftmO13bJlM';
-$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
+$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret_test' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
 Portale\Settings::load( $db );
-check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
+check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret_test', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
 $raw = $db->one( "SELECT val FROM settings WHERE name = 'secrets'" )['val'];
 check( 'chiavi: nel database restano cifrate', false === strpos( $raw, 'sk_test_' ) && false === strpos( $raw, 'wic_3c6d' ) );
 $st = Portale\Settings::secretsStatus( $db );
-check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret']['mask'] && 'pannello' === $st['stripe_secret']['source'] && 'config.php' === $st['paypal_secret']['source'] );
+check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret_test']['mask'] && 'pannello' === $st['stripe_secret_test']['source'] && 'config.php' === $st['paypal_secret']['source'] );
 check( 'chiavi: formato sbagliato rifiutato', null !== throwsUser( function () use ( $db ) {
 	Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => 'non-una-chiave' ) );
 } ) && null !== throwsUser( function () use ( $db ) {
 	Portale\Settings::saveSecrets( $db, array( 'wega_token' => 'sbagliato' ) );
 } ) );
-Portale\Settings::saveSecrets( $db, array( 'stripe_webhook' => 'whsec_abcdefghijklmnop' ) );
+Portale\Settings::saveSecrets( $db, array( 'stripe_webhook_test' => 'whsec_abcdefghijklmnop' ) );
 Portale\Settings::load( $db );
 check( 'chiavi: un modulo non cancella le altre né la modalità PayPal', 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && 'whsec_abcdefghijklmnop' === Config::get( 'stripe.webhook_secret' ) && true === Config::get( 'paypal.live' ) );
-Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook' => '1' ) );
-check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook']['source'] );
+Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook_test' => '1' ) );
+check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook_test']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook_test']['source'] );
 
 // Prova dei collegamenti (server finto).
 $prev = Http::$transport;
@@ -684,17 +684,30 @@ new WegaClient( 'https://license.test/api/v1', 't' );
 check( 'wega: se il DNS non risolve il nome si riprova sull IP noto', '65.108.75.89' === ( Http::$fallback['license.test'] ?? '' ) );
 Http::$fallback = array();
 
-// --- Modalità Stripe (reale/prova) ------------------------------------------------------------
+// --- Modalità reale/prova: due gruppi di credenziali ---------------------------------------------------------
+$k = array( 'live' => 'sk_live_' . str_repeat( 'b', 24 ), 'test' => 'sk_test_' . str_repeat( 'a', 24 ) );
 $pdb2 = new Db( new PDO( 'sqlite::memory:' ) );
 $pdb2->migrate();
-check( 'stripe: chiave di prova con modalità reale rifiutata', null !== throwsUser( function () use ( $pdb2 ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_live' => '1', 'stripe_secret' => 'sk_test_' . str_repeat( 'a', 24 ) ) ); } ) );
-check( 'stripe: chiave reale con modalità di prova rifiutata', null !== throwsUser( function () use ( $pdb2 ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => 'sk_live_' . str_repeat( 'a', 24 ) ) ); } ) );
-Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => 'sk_test_' . str_repeat( 'a', 24 ) ) );
 Portale\Settings::load( $pdb2 );
-check( 'stripe: chiave di prova con casella spenta accettata e modalità prova', false === Portale\Settings::stripeLive() && 'sk_test_' . str_repeat( 'a', 24 ) === Config::get( 'stripe.secret_key' ) );
-Portale\Settings::saveSecrets( $pdb2, array( 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
+check( 'stripe: chiave di prova nel campo reale rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret' => $k['test'] ) ); } ) );
+check( 'stripe: chiave reale nel campo di prova rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret_test' => $k['live'] ) ); } ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => $k['live'], 'stripe_secret_test' => $k['test'], 'stripe_webhook' => 'whsec_LIVELIVELIVE1', 'stripe_webhook_test' => 'whsec_TESTTESTTEST1' ) );
 Portale\Settings::load( $pdb2 );
-check( 'pagamenti: il salvataggio di PayPal non azzera la modalità di Stripe', false === Portale\Settings::stripeLive() && true === Config::get( 'paypal.live' ) );
+check( 'stripe: con la casella spenta si usano le credenziali di prova', false === Portale\Settings::stripeLive() && $k['test'] === Config::get( 'stripe.secret_key' ) && 'whsec_TESTTESTTEST1' === Config::get( 'stripe.webhook_secret' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_live' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'stripe: accendere la casella cambia da sola le credenziali (reali)', true === Portale\Settings::stripeLive() && $k['live'] === Config::get( 'stripe.secret_key' ) && 'whsec_LIVELIVELIVE1' === Config::get( 'stripe.webhook_secret' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'paypal_client_test' => str_repeat( 'S', 24 ), 'paypal_secret_test' => str_repeat( 'T', 24 ), 'paypal_live_present' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'paypal: sandbox attivo usa le credenziali sandbox; Stripe resta reale', str_repeat( 'S', 24 ) === Config::get( 'paypal.client_id' ) && true === Portale\Settings::stripeLive() );
+// Vecchio salvataggio con un solo gruppo: si assegna alla modalità giusta.
+$mdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb2->migrate();
+$mdb2->run( 'INSERT INTO settings (name, val) VALUES (?,?)', array( 'secrets', json_encode( array( 'stripe_secret' => Portale\Secrets::seal( $k['test'] ), 'stripe_webhook' => Portale\Secrets::seal( 'whsec_OLDOLDOLD12' ) ) ) ) );
+Portale\Settings::load( $mdb2 );
+$st2 = Portale\Settings::secretsStatus( $mdb2 );
+check( 'migrazione: chiave Stripe di prova del vecchio salvataggio finisce nel gruppo di prova', ! $st2['stripe_secret']['set'] && $st2['stripe_secret_test']['set'] && $st2['stripe_webhook_test']['set'] && false === Portale\Settings::stripeLive() );
+
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
