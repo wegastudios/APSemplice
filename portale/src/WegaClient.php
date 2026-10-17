@@ -12,6 +12,12 @@ final class WegaClient {
 	public function __construct( string $baseUrl, string $token ) {
 		$this->base  = rtrim( $baseUrl, '/' );
 		$this->token = $token;
+		// Se il DNS non risolve il nome del server licenze (accaduto per nameserver incoerenti), si riprova una volta sull'IP noto.
+		$ip   = (string) Config::get( 'wega.fallback_ip', '65.108.75.89' );
+		$host = (string) parse_url( $this->base, PHP_URL_HOST );
+		if ( '' !== $ip && '' !== $host ) {
+			Http::$fallback[ $host ] = $ip;
+		}
 	}
 
 	/** Chiede una chiave. `external_ref` rende la richiesta idempotente. @return array dati con license_key, license_id, expires_at… */
@@ -82,21 +88,8 @@ final class WegaClient {
 		return Http::withRetry( 'GET', preg_replace( '#/api/v1/?$#', '', $this->base ) . '/.well-known/jwks.json', array( 'Accept: application/json' ), null, 2 );
 	}
 
-	/** Dominio del portale registrato su Wega (header X-Portal-Domain su ogni chiamata): `wega.portal_domain` oppure il dominio di `base_url` senza www. */
-	public static function portalDomain(): string {
-		$d = (string) Config::get( 'wega.portal_domain', '' );
-		if ( '' === $d ) {
-			$d = (string) parse_url( (string) Config::get( 'base_url', '' ), PHP_URL_HOST );
-		}
-		return Domain::normalize( $d );
-	}
-
 	private function request( string $method, string $path, ?array $body = null ): array {
 		$headers = array( 'Authorization: Bearer ' . $this->token, 'Accept: application/json', 'Content-Type: application/json' );
-		$domain  = self::portalDomain();
-		if ( '' !== $domain ) {
-			$headers[] = 'X-Portal-Domain: ' . $domain;
-		}
 		// Una POST /licenses è idempotente (external_ref) e il rinnovo non lo è: il rinnovo non si ripete su 5xx.
 		$tries = '/licenses/renew' === $path ? 1 : 3;
 		list( $status, $raw ) = Http::withRetry( $method, $this->base . $path, $headers, null === $body ? null : (string) json_encode( $body ), $tries );
