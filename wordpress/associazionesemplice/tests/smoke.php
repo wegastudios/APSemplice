@@ -2182,13 +2182,13 @@ foreach ( $people->search( array( 'type' => 'guest' ) ) as $gx ) {
 asem_ok( $og && 3 === (int) $og['prior_visits'] && 'Cena 2024, gita 2025' === $og['notes'] && '2020-01-01' === $og['joined_on'], 'import ospiti: volte già venuto, eventi passati nelle note e anno di iscrizione' );
 asem_ok( $og && 3 === $people->guest_overview()[ (int) $og['id'] ]['count'], 'ospiti: il contatore somma le volte già venuto a quelle registrate' );
 // intestazioni relative («ANNO CORRENTE», «ANNO SCORSO») e anno di iscrizione
-$csv_r = $mkf( 'relativi.csv', "Nome;Cognome;N. Telefono;N° Tessera;ANNO CORRENTE;ANNO SCORSO;Anno Iscrizione\r\nRelativa;Prova;333 4445566;951;;SI;2018\r\nCorrente;Prova;333 4445577;952;SI;SI;2018\r\n" );
+$csv_r = $mkf( 'relativi.csv', "Nome;Cognome;N. Telefono;N° Tessera;ANNO CORRENTE;ANNO SCORSO;Anno Iscrizione\r\nRelativa;Prova;333 4445566;961;;SI;2018\r\nCorrente;Prova;333 4445577;962;SI;SI;2018\r\n" );
 $pv    = ImportService::preview_file( $csv_r, 'relativi.csv', array() );
 ImportService::apply( $pv, array() );
 $cy_l  = Settings::membership_year()->label();
 $py_l  = Settings::membership_year()->previous()->label();
-$rel_a = $people->find_by_card( '951' );
-$rel_b = $people->find_by_card( '952' );
+$rel_a = $people->find_by_card( '961' );
+$rel_b = $people->find_by_card( '962' );
 asem_ok( $rel_a && $rel_b && $people->has_membership( (int) $rel_a['id'], $py_l ) && ! $people->has_membership( (int) $rel_a['id'], $cy_l ) && $people->has_membership( (int) $rel_b['id'], $py_l ) && $people->has_membership( (int) $rel_b['id'], $cy_l ), 'import: «ANNO SCORSO» e «ANNO CORRENTE» diventano le iscrizioni di quegli anni' );
 asem_ok( $rel_a && '2018-01-01' === $rel_a['joined_on'] && '333 4445566' === $rel_a['phone'], 'import: «Anno Iscrizione» e «N. Telefono» letti' );
 // ospiti senza cellulare né ospitante: solo se le due regole sono spente
