@@ -117,6 +117,10 @@ final class App {
 		} elseif ( $get && '/supporto/accedi' === $path ) {
 			// Accesso unico al sito di supporto: serve aver fatto l'accesso qui; il ruolo (admin, solo supporto, cliente) si legge dall'email.
 			header( 'Cache-Control: no-store' );
+			if ( empty( $_SESSION['customer'] ) ) {
+				// Non connesso: dopo l'accesso si torna qui (destinazione fissa, mai da parametri dell'indirizzo: niente redirect aperti).
+				$_SESSION['after_login'] = '/supporto/accedi';
+			}
 			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
@@ -173,7 +177,12 @@ final class App {
 		$role                = Staff::role( $this->db, (string) $cust['email'] ) ?? '';
 		$_SESSION['staff']    = $role;
 		$_SESSION['admin']    = Staff::ADMIN === $role;
-		header( 'Location: ' . ( '' !== $role ? '/admin' : '/account' ), true, 303 );
+		$to = '' !== $role ? '/admin' : '/account';
+		if ( '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) {
+			$to = '/supporto/accedi';
+		}
+		unset( $_SESSION['after_login'] );
+		header( 'Location: ' . $to, true, 303 );
 	}
 
 	private function clientIp(): string {
