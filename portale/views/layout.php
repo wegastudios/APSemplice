@@ -11,13 +11,13 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <title>Associazione Semplice · Il gestionale per le associazioni</title>
 <meta name="description" content="Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.">
 <?php if ( $robots ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-<meta name="theme-color" content="#0f6b57">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230f6b57'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#21248b">
+<link rel="icon" type="image/png" href="/assets/favicon.png?v=<?php echo e( $v ); ?>"><link rel="apple-touch-icon" href="/assets/logo.png?v=<?php echo e( $v ); ?>">
 <link rel="stylesheet" href="/assets/portale.css?v=<?php echo e( $v ); ?>">
 <?php echo \Portale\Tracking::slot( 'head' ); ?></head>
 <body>
 <header class="site-header"><div class="wrap">
-	<a class="logo" href="/"><span class="logo-mark"><?php echo icon( 'users' ); ?></span>Associazione Semplice</a>
+	<a class="logo" href="/"><span class="logo-mark"><img src="/assets/logo.png?v=<?php echo e( $v ); ?>" alt="" width="38" height="38"></span>Associazione Semplice</a>
 	<nav class="nav" aria-label="Principale">
 		<a href="/#funzioni">Funzioni</a><a href="/#prezzi">Prezzi</a><a href="/#domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>

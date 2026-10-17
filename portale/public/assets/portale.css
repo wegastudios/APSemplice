@@ -1,16 +1,18 @@
-/* Associazione Semplice · portale. Colori come variabili, tema chiaro e scuro. */
+/* Associazione Semplice · portale. Colori del logo (indaco #21248B, verde salvia #5F8578, oro #EFCB5D) come variabili, tema chiaro e scuro. */
 :root {
-	--bg: #f7f5ef; --surface: #ffffff; --surface-2: #f0ede4; --fg: #14211d; --muted: #5a6761; --line: #e1ddd0;
-	--brand: #0f6b57; --brand-2: #0b5646; --brand-soft: #dff1ea; --brand-fg: #ffffff;
-	--accent: #e8a33d; --accent-soft: #fbefd5; --danger: #b3261e; --danger-soft: #fbe4e1; --ok: #1a7f4b;
-	--shadow: 0 1px 2px rgba(20,33,29,.06), 0 8px 24px rgba(20,33,29,.07);
+	--bg: #f6f8f6; --surface: #ffffff; --surface-2: #edf2ef; --fg: #14172e; --muted: #566069; --line: #dbe3de;
+	--brand: #21248b; --brand-2: #171a6b; --brand-soft: #e7e8f7; --brand-fg: #ffffff;
+	--sage: #5f8578; --sage-soft: #e3ece8;
+	--accent: #efcb5d; --accent-soft: #fbf3d4; --danger: #b3261e; --danger-soft: #fbe4e1; --ok: #2f7a5f;
+	--shadow: 0 1px 2px rgba(20,23,46,.06), 0 8px 24px rgba(20,23,46,.07);
 	--radius: 16px; --max: 1120px;
 }
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #0e1513; --surface: #16201d; --surface-2: #1c2824; --fg: #eef3f0; --muted: #9fb0a9; --line: #26352f;
-		--brand: #3ec3a0; --brand-2: #62d6b8; --brand-soft: #143a31; --brand-fg: #06201a;
-		--accent: #f0b254; --accent-soft: #3a2d12; --danger: #ff8a80; --danger-soft: #3b1a17; --ok: #5fd397;
+		--bg: #0f1311; --surface: #161c1a; --surface-2: #1c2421; --fg: #eef2f0; --muted: #a2b0aa; --line: #27322e;
+		--brand: #a6a9ff; --brand-2: #c4c6ff; --brand-soft: #1d1f4d; --brand-fg: #0c0d2b;
+		--sage: #86ab9d; --sage-soft: #1f2e29;
+		--accent: #efcb5d; --accent-soft: #3a3013; --danger: #ff8a80; --danger-soft: #3b1a17; --ok: #6fd1a6;
 		--shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
 	}
 }
@@ -31,7 +33,7 @@ p { margin: 0 0 1em; }
 .site-header { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
 .site-header .wrap { display: flex; align-items: center; justify-content: space-between; height: 66px; gap: 16px; }
 .logo { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 800; letter-spacing: -.02em; font-size: 1.1rem; }
-.logo-mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); display: grid; place-items: center; color: var(--brand-fg); }
+.logo-mark { width: 38px; height: 38px; display: grid; place-items: center; flex: none; } .logo-mark img { width: 100%; height: 100%; display: block; }
 .nav { display: flex; align-items: center; gap: 6px; }
 .nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .95rem; padding: 8px 12px; border-radius: 10px; }
 .nav a:hover { color: var(--fg); background: var(--surface-2); }
@@ -114,7 +116,7 @@ p { margin: 0 0 1em; }
 /* Fascia finale */
 .cta-band { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: var(--brand-fg); border-radius: 28px; padding: 56px 32px; text-align: center; margin: 0 auto; }
 .cta-band p { opacity: .9; max-width: 560px; margin: 0 auto 26px; font-size: 1.1rem; }
-.cta-band .btn { background: #fff; color: #0b5646; }
+.cta-band .btn { background: #fff; color: #21248b; }
 
 /* Piè di pagina */
 .site-footer { border-top: 1px solid var(--line); padding: 36px 0 44px; margin-top: 72px; color: var(--muted); font-size: .92rem; }
@@ -168,7 +170,7 @@ input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 4px c
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 @media print { .site-header, .site-footer, .cta-band { display: none; } }
 .logo, .btn.small { white-space: nowrap; }
-@media (max-width: 480px) { .logo { font-size: .98rem; gap: 8px; } .logo-mark { width: 30px; height: 30px; } .nav a.btn { margin-left: 0; padding: 8px 12px; } .site-header .wrap { gap: 8px; } }
+@media (max-width: 480px) { .logo { font-size: .98rem; gap: 8px; } .logo-mark { width: 32px; height: 32px; } .nav a.btn { margin-left: 0; padding: 8px 12px; } .site-header .wrap { gap: 8px; } }
 
 /* Pannello di gestione */
 .admin { padding: 0 0 8px; }
