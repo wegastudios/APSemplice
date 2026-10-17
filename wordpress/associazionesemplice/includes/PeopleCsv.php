@@ -28,7 +28,7 @@ final class PeopleCsv {
 		'first' => array( 'nome', 'firstname', 'name' ),
 		'last'  => array( 'cognome', 'surname', 'lastname' ),
 		'mail'  => array( 'email', 'mail', 'emailaddress', 'indirizzoemail', 'postaelettronica' ),
-		'phone' => array( 'telefono', 'tel', 'cellulare', 'cell', 'mobile', 'phone', 'telefonocellulare' ),
+		'phone' => array( 'telefono', 'ntelefono', 'numerotelefono', 'ncellulare', 'tel', 'cellulare', 'cell', 'mobile', 'phone', 'telefonocellulare' ),
 		'tax'   => array( 'codicefiscale', 'cf', 'codfisc', 'codicefisc', 'fiscalcode' ),
 		'addr'  => array( 'indirizzo', 'via', 'residenza', 'address' ),
 		'zip'   => array( 'cap', 'codicepostale', 'zip', 'postalcode' ),
@@ -69,6 +69,13 @@ final class PeopleCsv {
 		foreach ( self::COLS as $k => $names ) {
 			$col[ $k ] = SheetReader::col( $header, $names );
 		}
+		// Colonne con un anno come titolo (2024, 2025…): una crocetta, un «sì» o qualunque segno dice che il socio era iscritto in quell'anno.
+		$year_cols = array();
+		foreach ( $header as $i => $h ) {
+			if ( preg_match( '/^(19[5-9]\d|20\d\d)$/', (string) $h ) ) {
+				$year_cols[ (int) $i ] = (string) $h;
+			}
+		}
 		$cell = function ( array $cells, int $i ) {
 			if ( $i < 0 || ! isset( $cells[ $i ] ) ) {
 				return null;
@@ -83,6 +90,12 @@ final class PeopleCsv {
 			}
 			$card   = $cell( $cells, $col['card'] );
 			$tax    = $cell( $cells, $col['tax'] );
+			$years = array();
+			foreach ( $year_cols as $yi => $label ) {
+				if ( self::is_marked( $cell( $cells, $yi ) ) ) {
+					$years[] = $label;
+				}
+			}
 			$rows[] = array(
 				'line'      => $lines ? (int) ( $lines[ $idx ] ?? $idx + 1 ) : $idx + 1,
 				'sheet'     => $sheet,
@@ -97,10 +110,19 @@ final class PeopleCsv {
 				'zip'       => $cell( $cells, $col['zip'] ),
 				'city'      => $cell( $cells, $col['city'] ),
 				'prov'      => $cell( $cells, $col['prov'] ),
+				'years'     => $years,
 				'host'      => $cell( $cells, $col['host'] ),
 			);
 		}
 		return array( 'rows' => $rows );
+	}
+
+	/** La cella di un anno indica l'iscrizione? Vuota o «no», «0», «-» no; una crocetta, «sì», «1» o altro sì. */
+	public static function is_marked( ?string $v ): bool {
+		if ( null === $v ) {
+			return false;
+		}
+		return ! in_array( Text::lower( trim( $v ) ), array( '', '0', '-', '–', '—', 'no', 'n', 'non iscritto', 'false' ), true );
 	}
 
 
@@ -329,6 +351,9 @@ final class PeopleCsv {
 			}
 			if ( null !== $tax ) {
 				$tax_in_file[ $tax ] = $r['line'];
+			}
+			if ( ! empty( $r['years'] ) ) {
+				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', $r['years'] );
 			}
 			$plans[] = array( 'row' => $r, 'type' => $type, 'type_given' => null !== $r['type_text'], 'action' => $act, 'message' => $msg, 'matched_id' => $match ? $match['id'] : null );
 		}
